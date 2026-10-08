@@ -1,15 +1,20 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Account,
+  AppSetting,
+  AssetClass,
   Assignment,
   Bonus,
   Category,
   CategoryGroup,
+  Holding,
   ImportBatch,
   IncomeProfile,
+  InvAccount,
   Person,
   RecurringLog,
   RecurringRule,
+  Security,
   TaxSettings,
   Txn,
 } from './types';
@@ -27,6 +32,11 @@ export class FinanceDB extends Dexie {
   incomeProfiles!: Table<IncomeProfile, number>;
   bonuses!: Table<Bonus, number>;
   taxSettings!: Table<TaxSettings, number>;
+  invAccounts!: Table<InvAccount, number>;
+  assetClasses!: Table<AssetClass, number>;
+  securities!: Table<Security, number>;
+  holdings!: Table<Holding, number>;
+  settings!: Table<AppSetting, string>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -60,6 +70,13 @@ export class FinanceDB extends Dexie {
       bonuses: '++id, [personId+year]',
       taxSettings: '++id, year',
     });
+    this.version(4).stores({
+      invAccounts: '++id, kind',
+      assetClasses: '++id',
+      securities: '++id, ticker',
+      holdings: '++id, accountId, securityId',
+      settings: 'key',
+    });
   }
 }
 
@@ -83,4 +100,20 @@ export async function seedIfEmpty(d: FinanceDB = db) {
       await d.categories.add({ groupId, name, kind: group === 'Income' ? 'income' : 'expense' });
     }
   }
+}
+
+/** Default asset classes. Return/volatility are editable ASSUMPTIONS, not predictions. */
+const DEFAULT_CLASSES: Omit<AssetClass, 'id'>[] = [
+  { name: 'US stocks', kind: 'equity', expectedReturnPct: 7, volatilityPct: 16 },
+  { name: 'International stocks', kind: 'equity', expectedReturnPct: 7, volatilityPct: 18 },
+  { name: 'Bonds', kind: 'bond', expectedReturnPct: 4, volatilityPct: 6 },
+  { name: 'Real estate (REITs)', kind: 'real_estate', expectedReturnPct: 6.5, volatilityPct: 17 },
+  { name: 'Balanced / target-date', kind: 'balanced', expectedReturnPct: 6, volatilityPct: 11 },
+  { name: 'Cash', kind: 'cash', expectedReturnPct: 3, volatilityPct: 1 },
+  { name: 'Other', kind: 'other', expectedReturnPct: 5, volatilityPct: 15 },
+];
+
+export async function seedAssetClassesIfEmpty(d: FinanceDB = db) {
+  if ((await d.assetClasses.count()) > 0) return;
+  await d.assetClasses.bulkAdd(DEFAULT_CLASSES);
 }

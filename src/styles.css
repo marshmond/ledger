@@ -74,3 +74,38 @@ input.assign { width: 110px; text-align: right; }
 .rta-neg { border-color: var(--neg); }
 .rta-neg .rta-amt { color: var(--neg); }
 .rta-zero .rta-amt { color: var(--muted); }
+
+/* ---- charts (palette from the validated reference set; dark values are separately stepped, not inverted) ---- */
+.viz {
+  --surface-1: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  background: var(--surface-1); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 12px; position: relative;
+}
+@media (prefers-color-scheme: dark) {
+  .viz {
+    --surface-1: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #898781;
+    --grid: #2c2c2a; --axis: #383835;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+.viz h3 { margin: 0 0 4px; font-size: 1rem; }
+.viz .sub { color: var(--ink-2); font-size: 0.85rem; margin-bottom: 8px; }
+.viz svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.viz svg:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0; font-size: 0.85rem; color: var(--ink-2); }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.legend .line { width: 16px; height: 0; border-top: 2px solid; display: inline-block; }
+.tip { position: absolute; pointer-events: none; background: var(--surface-1); color: var(--ink); border: 1px solid var(--axis); border-radius: 6px; padding: 6px 8px; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 5; min-width: 150px; }
+.tip .row2 { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.tip .row2 strong { font-variant-numeric: tabular-nums; }
+.tip .k { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.tip .k i { display: inline-block; width: 10px; border-top: 2px solid; }
+.alloc { display: flex; gap: 2px; height: 24px; }
+.alloc > div { border-radius: 4px; min-width: 2px; }
+.alloc > div:hover, .alloc > div:focus-visible { filter: brightness(1.12); outline: none; }
+.hero { font-size: 3rem; font-weight: 700; line-height: 1.1; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 8px 0; }
+.tile { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.tile .v { font-size: 1.3rem; font-weight: 600; }

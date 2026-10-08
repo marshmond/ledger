@@ -1,8 +1,8 @@
 import type { FinanceDB } from '../db';
 
 export interface BackupFile {
-  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data. */
-  version: 1 | 2 | 3;
+  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data; 4 adds investments. */
+  version: 1 | 2 | 3 | 4;
   exportedAt: string;
   accounts: unknown[];
   categoryGroups: unknown[];
@@ -16,11 +16,16 @@ export interface BackupFile {
   incomeProfiles?: unknown[];
   bonuses?: unknown[];
   taxSettings?: unknown[];
+  invAccounts?: unknown[];
+  assetClasses?: unknown[];
+  securities?: unknown[];
+  holdings?: unknown[];
+  settings?: unknown[];
 }
 
 export async function exportAll(d: FinanceDB): Promise<BackupFile> {
   return {
-    version: 3,
+    version: 4,
     exportedAt: new Date().toISOString(),
     accounts: await d.accounts.toArray(),
     categoryGroups: await d.categoryGroups.toArray(),
@@ -34,14 +39,22 @@ export async function exportAll(d: FinanceDB): Promise<BackupFile> {
     incomeProfiles: await d.incomeProfiles.toArray(),
     bonuses: await d.bonuses.toArray(),
     taxSettings: await d.taxSettings.toArray(),
+    invAccounts: await d.invAccounts.toArray(),
+    assetClasses: await d.assetClasses.toArray(),
+    securities: await d.securities.toArray(),
+    holdings: await d.holdings.toArray(),
+    // The market-data API key is never exported: backups can be shared or stored in the cloud.
+    settings: (await d.settings.toArray()).filter((s) => s.key !== 'priceApiKey'),
   };
 }
 
 /** Replaces ALL data with the backup's contents. Older (version 1) backups restore with an empty budget. */
 export async function importAll(d: FinanceDB, b: BackupFile) {
-  if (![1, 2, 3].includes(b.version)) throw new Error('Unsupported backup version');
-  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings];
+  if (![1, 2, 3, 4].includes(b.version)) throw new Error('Unsupported backup version');
+  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings, d.invAccounts, d.assetClasses, d.securities, d.holdings, d.settings];
   await d.transaction('rw', tables, async () => {
+    // The API key lives only on this device (never in backups), so a restore must not wipe it.
+    const apiKey = await d.settings.get('priceApiKey');
     await Promise.all(tables.map((t) => t.clear()));
     await d.accounts.bulkAdd(b.accounts as never[]);
     await d.categoryGroups.bulkAdd(b.categoryGroups as never[]);
@@ -55,6 +68,12 @@ export async function importAll(d: FinanceDB, b: BackupFile) {
     await d.incomeProfiles.bulkAdd((b.incomeProfiles ?? []) as never[]);
     await d.bonuses.bulkAdd((b.bonuses ?? []) as never[]);
     await d.taxSettings.bulkAdd((b.taxSettings ?? []) as never[]);
+    await d.invAccounts.bulkAdd((b.invAccounts ?? []) as never[]);
+    await d.assetClasses.bulkAdd((b.assetClasses ?? []) as never[]);
+    await d.securities.bulkAdd((b.securities ?? []) as never[]);
+    await d.holdings.bulkAdd((b.holdings ?? []) as never[]);
+    await d.settings.bulkAdd((b.settings ?? []) as never[]);
+    if (apiKey) await d.settings.put(apiKey);
   });
 }
 

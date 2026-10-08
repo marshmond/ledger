@@ -11,6 +11,8 @@ import BackupPage from './pages/BackupPage';
 import BudgetPage from './pages/BudgetPage';
 import ScheduledPage from './pages/ScheduledPage';
 import IncomePage from './pages/IncomePage';
+import InvestmentsPage from './pages/InvestmentsPage';
+import ProjectionPage from './pages/ProjectionPage';
 
 export default function App() {
   const dueCount = useLiveQuery(async () => (await dueInstances(db, todayISO(), 7)).length, []) ?? 0;
@@ -21,6 +23,8 @@ export default function App() {
         <NavLink to="/" end>Accounts</NavLink>
         <NavLink to="/budget">Budget</NavLink>
         <NavLink to="/income">Income</NavLink>
+        <NavLink to="/investments">Investments</NavLink>
+        <NavLink to="/projections">Projections</NavLink>
         <NavLink to="/scheduled">Scheduled{dueCount > 0 && <span className="count">{dueCount}</span>}</NavLink>
         <NavLink to="/import">Import</NavLink>
         <NavLink to="/categories">Categories</NavLink>
@@ -32,6 +36,8 @@ export default function App() {
           <Route path="/account/:id" element={<LedgerPage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/income" element={<IncomePage />} />
+          <Route path="/investments" element={<InvestmentsPage />} />
+          <Route path="/projections" element={<ProjectionPage />} />
           <Route path="/scheduled" element={<ScheduledPage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/categories" element={<CategoriesPage />} />

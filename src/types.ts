@@ -195,3 +195,63 @@ export interface TaxSettings {
   /** JSON of an edited TaxTables for this year, if you changed the built-in one. */
   tablesOverride?: string;
 }
+
+// ---- Investments (Phase 4) ----
+
+export type InvKind = 'brokerage' | 'ira' | '401k' | '529';
+export type InvTaxType = 'taxable' | 'traditional' | 'roth' | '529';
+
+export interface InvAccount {
+  id?: number;
+  name: string;
+  kind: InvKind;
+  /** IRAs and 401(k)s can be traditional or Roth; brokerage is taxable; 529 is its own bucket. */
+  taxType: InvTaxType;
+  personId?: number | null;
+  /** Uninvested cash sitting in the account. */
+  cashCents: number;
+  /** Planned contribution per year for projections (today's dollars at year 1). */
+  annualContributionCents: number;
+  /** Yearly increase in the contribution, e.g. 3 = 3% more each year. */
+  contributionGrowthPct: number;
+  /** 401(k) only: take contributions from the Income model (your deferrals + employer match). */
+  linkToIncome: boolean;
+  closed?: boolean;
+}
+
+export type AssetKind = 'equity' | 'bond' | 'cash' | 'real_estate' | 'balanced' | 'other';
+
+/** An asset class carries the return/volatility ASSUMPTIONS used in projections. They are assumptions, not forecasts. */
+export interface AssetClass {
+  id?: number;
+  name: string;
+  kind: AssetKind;
+  /** Average (arithmetic) nominal return per year, in percent. */
+  expectedReturnPct: number;
+  /** Standard deviation of yearly returns, in percent. */
+  volatilityPct: number;
+}
+
+export interface Security {
+  id?: number;
+  ticker: string;
+  name: string;
+  /** The vehicle itself carries its asset class (e.g. a target-date fund is one class). */
+  assetClassId: number;
+  priceCents: number | null;
+  priceDate: string | null;
+  priceSource: 'manual' | 'api' | null;
+}
+
+export interface Holding {
+  id?: number;
+  accountId: number;
+  securityId: number;
+  shares: number;
+  costBasisCents: number | null;
+}
+
+export interface AppSetting {
+  key: string;
+  value: unknown;
+}
