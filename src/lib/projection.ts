@@ -41,6 +41,22 @@ export interface ProjInput {
   classes: ClassAssumption[];
   years: number;
   inflation: number;
+  /**
+   * One-time inflows/outflows (windfalls) in cents for year t, signed. Treated as arriving at the end of year t and
+   * spread across accounts in proportion to their balances. Balances never go below zero.
+   */
+  extraFlow?: (t: number) => number;
+}
+
+/** Spreads a flow across balances pro rata (equally if all are zero); balances are floored at zero. */
+function spreadFlow(bals: number[] | Float64Array, flow: number): void {
+  if (flow === 0 || bals.length === 0) return;
+  let total = 0;
+  for (let i = 0; i < bals.length; i++) total += bals[i];
+  for (let i = 0; i < bals.length; i++) {
+    const share = total > 0 ? bals[i] / total : 1 / bals.length;
+    bals[i] = Math.max(0, bals[i] + flow * share);
+  }
 }
 
 // ---------- steady (expected) path ----------
@@ -59,15 +75,16 @@ const accountMu = (a: ProjAccount, mu: Map<number, number>) => {
 
 export function steadyPath(inp: ProjInput): Steady {
   const mu = new Map(inp.classes.map((c) => [c.id, c.mu]));
-  const per = inp.accounts.map((a) => {
-    const r = accountMu(a, mu);
-    const values = [a.startCents];
-    for (let t = 1; t <= inp.years; t++) {
+  const rates = inp.accounts.map((a) => accountMu(a, mu));
+  const per = inp.accounts.map((a) => ({ id: a.id, name: a.name, values: [a.startCents] }));
+  for (let t = 1; t <= inp.years; t++) {
+    const bals = inp.accounts.map((a, i) => {
       const c = a.contribution(t);
-      values.push((values[t - 1] + c / 2) * (1 + r) + c / 2);
-    }
-    return { id: a.id, name: a.name, values };
-  });
+      return (per[i].values[t - 1] + c / 2) * (1 + rates[i]) + c / 2;
+    });
+    if (inp.extraFlow) spreadFlow(bals, inp.extraFlow(t));
+    bals.forEach((b, i) => per[i].values.push(b));
+  }
   const total = Array.from({ length: inp.years + 1 }, (_, t) => per.reduce((s, p) => s + p.values[t], 0));
   return { total, perAccount: per };
 }
@@ -86,7 +103,7 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-function normalSampler(rand: () => number): () => number {
+export function normalSampler(rand: () => number): () => number {
   let spare: number | null = null;
   return () => {
     if (spare !== null) {
@@ -236,8 +253,9 @@ export function runMonteCarlo(inp: ProjInput, sims = 5000, seed = 1): McResult {
         for (let i = 0; i < n; i++) g += W[a][i] * R[i];
         const c = C[a][t];
         bal[a] = (bal[a] + c / 2) * g + c / 2;
-        total += bal[a];
       }
+      if (inp.extraFlow) spreadFlow(bal, inp.extraFlow(t));
+      for (let a = 0; a < accounts.length; a++) total += bal[a];
       paths[s * stride + t] = total;
     }
   }

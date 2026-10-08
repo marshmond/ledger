@@ -100,7 +100,22 @@ const W = 720;
 const H = 320;
 const M = { l: 56, r: 12, t: 12, b: 28 };
 
-export function FanChart({ data, title, subtitle, realTerms }: { data: FanData; title: string; subtitle: string; realTerms: boolean }) {
+export function FanChart({
+  data,
+  title,
+  subtitle,
+  realTerms,
+  marker,
+  steadyLabel = 'Steady-return path (average)',
+}: {
+  data: FanData;
+  title: string;
+  subtitle: string;
+  realTerms: boolean;
+  /** A labelled vertical rule, e.g. the retirement year. */
+  marker?: { index: number; label: string };
+  steadyLabel?: string;
+}) {
   const n = data.p50.length - 1;
   const [idx, setIdx] = useState<number | null>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -137,7 +152,7 @@ export function FanChart({ data, title, subtitle, realTerms }: { data: FanData; 
     ['Median', data.p50[idx], 'var(--s1)', 1],
     ['25th percentile', data.p25[idx], 'var(--s1)', 0.6],
     ['10th percentile', data.p10[idx], 'var(--s1)', 0.35],
-    ['Steady-return path', data.steady[idx], 'var(--s2)', 1],
+    ['Steady path', data.steady[idx], 'var(--s2)', 1],
   ] as [string, number, string, number][];
 
   const tipLeft = idx === null ? 0 : (x(idx) / W) * 100;
@@ -150,7 +165,7 @@ export function FanChart({ data, title, subtitle, realTerms }: { data: FanData; 
         <span className="key"><span className="line" style={{ borderColor: 'var(--s1)' }} />Median (typical outcome)</span>
         <span className="key"><span className="swatch" style={{ background: 'var(--s1)', opacity: 0.35 }} />Middle 50% of outcomes</span>
         <span className="key"><span className="swatch" style={{ background: 'var(--s1)', opacity: 0.15 }} />10th to 90th percentile</span>
-        <span className="key"><span className="line" style={{ borderColor: 'var(--s2)' }} />Steady-return path (average)</span>
+        <span className="key"><span className="line" style={{ borderColor: 'var(--s2)' }} />{steadyLabel}</span>
       </div>
       <svg
         ref={svg}
@@ -177,6 +192,12 @@ export function FanChart({ data, title, subtitle, realTerms }: { data: FanData; 
         {xTicks.map((t) => (
           <text key={t} x={x(t)} y={H - 8} textAnchor="middle" fontSize={11} fill="var(--ink-3)">{data.startYear + t}</text>
         ))}
+        {marker && marker.index >= 0 && marker.index <= n && (
+          <g>
+            <line x1={x(marker.index)} x2={x(marker.index)} y1={M.t} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} />
+            <text x={x(marker.index) + 4} y={M.t + 11} fontSize={11} fill="var(--ink-2)">{marker.label}</text>
+          </g>
+        )}
         <path d={band(data.p90, data.p10)} fill="var(--s1)" fillOpacity={0.12} />
         <path d={band(data.p75, data.p25)} fill="var(--s1)" fillOpacity={0.22} />
         <path d={line(data.steady)} fill="none" stroke="var(--s2)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />

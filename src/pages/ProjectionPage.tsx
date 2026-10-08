@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { buildIncomeModel } from '../lib/income';
+import { windfallFlow } from '../lib/retirement';
 import { formatCents, todayISO } from '../lib/money';
 import { probAtLeast, realTargetToNominal, runMonteCarlo, steadyPath, toReal } from '../lib/projection';
 import { baseContribution, buildProjection, DEFAULT_PROJECTION, type ProjectionSettings } from '../lib/projectionInput';
@@ -19,6 +20,7 @@ export default function ProjectionPage() {
   const profiles = useLiveQuery(() => db.incomeProfiles.toArray(), []) ?? [];
   const bonuses = useLiveQuery(() => db.bonuses.toArray(), []) ?? [];
   const taxSettings = useLiveQuery(() => db.taxSettings.toArray(), []) ?? [];
+  const windfalls = useLiveQuery(() => db.windfalls.toArray(), []) ?? [];
   const saved = useLiveQuery(() => db.settings.get('projection'), []);
   const s: ProjectionSettings = { ...DEFAULT_PROJECTION, ...((saved?.value as Partial<ProjectionSettings>) ?? {}) };
   const setS = (patch: Partial<ProjectionSettings>) => db.settings.put({ key: 'projection', value: { ...s, ...patch } });
@@ -33,11 +35,12 @@ export default function ProjectionPage() {
   const result = useMemo(() => {
     if (open.length === 0 || classes.length === 0) return null;
     const built = buildProjection({ accounts, holdings, securities, assetClasses: classes }, incomeModel.years, s);
+    built.input.extraFlow = windfallFlow(windfalls, year0, s.inflationPct / 100);
     const steady = steadyPath(built.input);
     const mc = runMonteCarlo(built.input, s.sims, seed);
     return { built, steady, mc };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts, holdings, securities, classes, incomeModel, s.years, s.inflationPct, s.sims, seed]);
+  }, [accounts, holdings, securities, classes, incomeModel, windfalls, s.years, s.inflationPct, s.sims, seed]);
 
   if (accounts.length === 0) {
     return (
@@ -163,6 +166,9 @@ export default function ProjectionPage() {
         <>
           <h2>Results</h2>
           {result.built.warnings.map((w) => <p key={w} className="warn">{w}</p>)}
+          {windfalls.some((w) => w.include) && (
+            <p className="muted">Includes {windfalls.filter((w) => w.include).length} windfall(s) from <Link to="/retirement">Retirement</Link>, treated as arriving at the end of their year.</p>
+          )}
           <div className="viz">
             <div className="muted">Median outcome in {year0 + n} ({s.realTerms ? "today's dollars" : 'future dollars'})</div>
             <div className="hero">{formatCents(Math.round(fan.p50[n]))}</div>
@@ -203,7 +209,7 @@ export default function ProjectionPage() {
               <li><strong>Median vs steady path.</strong> The orange steady path assumes every year earns exactly the average. Real returns bounce around, and a big loss hurts more than an equal gain helps, so the typical (median) outcome lands below the steady path. That gap is normal.</li>
               <li><strong>The bands.</strong> The darker band holds the middle half of simulated futures; the lighter band holds 80% of them. About one future in ten ends below the lower edge, and one in ten above the upper.</li>
               <li><strong>What is assumed.</strong> Each account keeps its current mix (rebalanced yearly). Contributions arrive evenly through the year. Asset classes move together in realistic ways (stocks with stocks, bonds less so).</li>
-              <li><strong>What is not modeled.</strong> Fees, taxes, withdrawals, and market conditions that change over time. Retirement withdrawals and one-time windfalls come in a later phase.</li>
+              <li><strong>What is not modeled.</strong> Fees, taxes, and market conditions that change over time. Withdrawals in retirement are modeled on the <Link to="/retirement">Retirement</Link> page, and college-type goals on <Link to="/goals">Goals</Link>.</li>
             </ul>
           </div>
         </>

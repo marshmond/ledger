@@ -1,4 +1,5 @@
 export function formatCents(cents: number): string {
+  cents = Math.round(cents); // callers sometimes pass computed (fractional) cents
   const sign = cents < 0 ? '-' : '';
   const abs = Math.abs(cents);
   const dollars = Math.floor(abs / 100).toLocaleString('en-US');

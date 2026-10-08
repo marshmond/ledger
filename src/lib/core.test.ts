@@ -36,6 +36,9 @@ describe('money', () => {
   it('formats', () => {
     expect(formatCents(-123456)).toBe('-$1,234.56');
     expect(formatCents(5)).toBe('$0.05');
+    // fractional cents (from solvers/projections) must never leak into the text
+    expect(formatCents(10084915.1611328125)).toBe('$100,849.15');
+    expect(formatCents(-0.4)).toBe('$0.00');
   });
 });
 

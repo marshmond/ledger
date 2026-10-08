@@ -7,6 +7,7 @@ import type {
   Bonus,
   Category,
   CategoryGroup,
+  Goal,
   Holding,
   ImportBatch,
   IncomeProfile,
@@ -17,6 +18,7 @@ import type {
   Security,
   TaxSettings,
   Txn,
+  Windfall,
 } from './types';
 
 export class FinanceDB extends Dexie {
@@ -37,6 +39,8 @@ export class FinanceDB extends Dexie {
   securities!: Table<Security, number>;
   holdings!: Table<Holding, number>;
   settings!: Table<AppSetting, string>;
+  windfalls!: Table<Windfall, number>;
+  goals!: Table<Goal, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -76,6 +80,10 @@ export class FinanceDB extends Dexie {
       securities: '++id, ticker',
       holdings: '++id, accountId, securityId',
       settings: 'key',
+    });
+    this.version(5).stores({
+      windfalls: '++id',
+      goals: '++id',
     });
   }
 }

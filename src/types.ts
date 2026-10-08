@@ -255,3 +255,65 @@ export interface AppSetting {
   key: string;
   value: unknown;
 }
+
+// ---- Goals, windfalls, retirement (Phase 5) ----
+
+/** A one-time inflow (or outflow, if negative) to the portfolio, in a given calendar year. */
+export interface Windfall {
+  id?: number;
+  label: string;
+  year: number;
+  /** Signed: positive = money in (inheritance, equity sale), negative = money out (large purchase). */
+  amountCents: number;
+  /** If true the amount is in today's dollars and is inflated to the year it arrives. */
+  todaysDollars: boolean;
+  /** Turn off to see the plan without it. */
+  include: boolean;
+}
+
+/** Income received in retirement that reduces what must come from the portfolio (Social Security, pension...). */
+export interface IncomeStream {
+  id: string;
+  label: string;
+  /** Per year, in today's dollars, after tax. Assumed to rise with inflation. */
+  annualCents: number;
+  startYear: number;
+  endYear?: number | null;
+}
+
+export interface RetirementSettings {
+  retireYear: number;
+  /** Years of retirement to fund. */
+  planYears: number;
+  /** Yearly spending in retirement, today's dollars, after tax. */
+  spendingCents: number;
+  /** Effective tax rate applied to what is withdrawn from the portfolio (grosses withdrawals up). */
+  taxRatePct: number;
+  streams: IncomeStream[];
+  /** If set, the stock share of the portfolio from retirement on (uses your first stock and bond classes). */
+  equityPctAtRetirement: number | null;
+  /** How sure you want to be that the money lasts (used to find sustainable spending). */
+  targetConfidencePct: number;
+  sims: number;
+}
+
+/** A savings goal funded by one account over time, then drawn down (college, etc.). */
+export interface Goal {
+  id?: number;
+  name: string;
+  /** Investment account that funds it (its balance and mix are used). */
+  accountId: number | null;
+  /** First calendar year a cost is paid. */
+  startYear: number;
+  /** Number of years of costs. */
+  years: number;
+  /** Yearly cost in today's dollars. */
+  annualCostCents: number;
+  /** Cost inflation per year (college costs have historically outpaced general inflation). */
+  costInflationPct: number;
+  /** Share of the cost you intend to fund from this account. */
+  fundingPct: number;
+  contributionGrowthPct: number;
+  /** How sure you want to be that it is fully funded. */
+  confidencePct: number;
+}
