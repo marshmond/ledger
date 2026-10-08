@@ -64,3 +64,13 @@ label.f input, label.f select { color: var(--fg); font-size: 1rem; }
   th, td { padding: 6px 4px; font-size: 0.9rem; }
   .hide-sm { display: none; }
 }
+
+.count { margin-left: 4px; background: var(--accent); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 0.75rem; }
+.badge.scheduled { color: var(--accent); border-color: var(--accent); }
+input.assign { width: 110px; text-align: right; }
+.rta { align-items: center; }
+.rta-amt { font-size: 1.8rem; font-weight: 700; }
+.rta-pos .rta-amt { color: var(--pos); }
+.rta-neg { border-color: var(--neg); }
+.rta-neg .rta-amt { color: var(--neg); }
+.rta-zero .rta-amt { color: var(--muted); }

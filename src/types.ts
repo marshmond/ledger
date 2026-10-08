@@ -23,6 +23,46 @@ export interface Category {
   groupId: number | null;
   name: string;
   hidden?: boolean;
+  /** Income categories feed Ready to Assign instead of being budgeted. Default: expense. */
+  kind?: 'expense' | 'income';
+}
+
+/** Money given a job: one row per month per budget line. */
+export interface Assignment {
+  id?: number;
+  month: string; // 'YYYY-MM'
+  /** `c<categoryId>` for a category, `p<cardAccountId>` for a card's payment line. */
+  key: string;
+  amountCents: number;
+}
+
+export type Frequency = 'weekly' | 'biweekly' | 'semimonthly' | 'monthly' | 'quarterly' | 'yearly';
+
+export interface RecurringRule {
+  id?: number;
+  accountId: number;
+  payee: string;
+  /** Signed from the account's point of view, like a transaction. */
+  amountCents: number;
+  categoryId: number | null;
+  /** If set, posting creates a transfer with this account instead of a categorized transaction. */
+  transferAccountId?: number | null;
+  memo: string;
+  frequency: Frequency;
+  startDate: string;
+  endDate?: string | null;
+  /** For semimonthly: the two days of month (31 = last day). */
+  semiDays?: [number, number];
+  active: boolean;
+}
+
+export interface RecurringLog {
+  id?: number;
+  ruleId: number;
+  /** The scheduled date this entry refers to (not the edited posting date). */
+  date: string;
+  action: 'posted' | 'skipped';
+  txnId?: number;
 }
 
 export type TxnStatus = 'pending' | 'cleared' | 'reconciled';
@@ -52,6 +92,8 @@ export interface Txn {
   fingerprint?: string;
   /** Set only on rows created by an import batch. */
   importBatchId?: number | null;
+  /** Set when approved from a scheduled (recurring) item. */
+  recurringId?: number;
 }
 
 export interface ImportBatch {

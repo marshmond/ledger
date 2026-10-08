@@ -104,6 +104,7 @@ export default function LedgerPage() {
                 <td>
                   {t.payee || <span className="muted">(no payee)</span>}{' '}
                   <span className={`badge ${t.status}`}>{t.status}</span>
+                  {t.recurringId && t.status === 'pending' && <span className="badge scheduled"> scheduled</span>}
                   <div className="muted">{t.memo}</div>
                 </td>
                 <td className="hide-sm">

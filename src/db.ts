@@ -1,5 +1,14 @@
 import Dexie, { type Table } from 'dexie';
-import type { Account, Category, CategoryGroup, ImportBatch, Txn } from './types';
+import type {
+  Account,
+  Assignment,
+  Category,
+  CategoryGroup,
+  ImportBatch,
+  RecurringLog,
+  RecurringRule,
+  Txn,
+} from './types';
 
 export class FinanceDB extends Dexie {
   accounts!: Table<Account, number>;
@@ -7,6 +16,9 @@ export class FinanceDB extends Dexie {
   categories!: Table<Category, number>;
   txns!: Table<Txn, number>;
   importBatches!: Table<ImportBatch, number>;
+  assignments!: Table<Assignment, number>;
+  recurring!: Table<RecurringRule, number>;
+  recurringLog!: Table<RecurringLog, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -17,6 +29,23 @@ export class FinanceDB extends Dexie {
       txns: '++id, accountId, date, [accountId+date], fingerprint, externalId, transferTxnId, importBatchId',
       importBatches: '++id, accountId',
     });
+    this.version(2)
+      .stores({
+        assignments: '++id, month, [month+key]',
+        recurring: '++id, accountId',
+        recurringLog: '++id, [ruleId+date]',
+      })
+      .upgrade(async (tx) => {
+        // Categories seeded under "Income" in v1 become income categories.
+        const groups = await tx.table('categoryGroups').toArray();
+        const incomeIds = groups.filter((g) => g.name === 'Income').map((g) => g.id);
+        await tx
+          .table('categories')
+          .toCollection()
+          .modify((c) => {
+            if (incomeIds.includes(c.groupId)) c.kind = 'income';
+          });
+      });
   }
 }
 
@@ -36,6 +65,8 @@ export async function seedIfEmpty(d: FinanceDB = db) {
   if ((await d.categoryGroups.count()) > 0) return;
   for (const [group, cats] of Object.entries(STARTER)) {
     const groupId = await d.categoryGroups.add({ name: group });
-    for (const name of cats) await d.categories.add({ groupId, name });
+    for (const name of cats) {
+      await d.categories.add({ groupId, name, kind: group === 'Income' ? 'income' : 'expense' });
+    }
   }
 }

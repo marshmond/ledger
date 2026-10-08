@@ -40,6 +40,14 @@ export default function CategoriesPage() {
                 defaultValue={c.name}
                 onBlur={(e) => e.target.value.trim() && db.categories.update(c.id!, { name: e.target.value.trim() })}
               />
+              <select
+                value={c.kind ?? 'expense'}
+                onChange={(e) => db.categories.update(c.id!, { kind: e.target.value as 'expense' | 'income' })}
+                title="Income categories feed Ready to Assign instead of being budgeted"
+              >
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
               <button className="link danger" onClick={() => removeCategory(c.id!)}>delete</button>
             </div>
           ))}
