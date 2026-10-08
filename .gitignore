@@ -1,0 +1,7 @@
+node_modules
+dist
+*.local
+# Never commit financial data exports or backups
+backups/
+*.ledgerbackup
+*.csv

@@ -1,0 +1,96 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import type { AccountKind } from '../types';
+import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+
+const KIND_LABEL: Record<AccountKind, string> = {
+  checking: 'Checking',
+  savings: 'Savings',
+  credit_card: 'Credit Card',
+};
+
+export default function AccountsPage() {
+  const data = useLiveQuery(async () => {
+    const [accounts, txns] = await Promise.all([db.accounts.toArray(), db.txns.toArray()]);
+    return accounts.map((a) => ({
+      a,
+      balance: a.openingBalanceCents + txns.filter((t) => t.accountId === a.id).reduce((s, t) => s + t.amountCents, 0),
+    }));
+  });
+
+  const [name, setName] = useState('');
+  const [kind, setKind] = useState<AccountKind>('checking');
+  const [balance, setBalance] = useState('');
+  const [date, setDate] = useState(todayISO());
+  const [error, setError] = useState('');
+
+  async function add() {
+    setError('');
+    if (!name.trim()) return setError('Give the account a name');
+    const cents = balance.trim() === '' ? 0 : parseAmountToCents(balance);
+    if (cents === null) return setError('Starting balance is not a valid amount');
+    // For cards the user types what they owe (positive); we store debt as negative.
+    const signed = kind === 'credit_card' ? -Math.abs(cents) : cents;
+    await db.accounts.add({ name: name.trim(), kind, openingBalanceCents: signed, openingDate: date });
+    setName('');
+    setBalance('');
+  }
+
+  const total = (kinds: AccountKind[]) =>
+    (data ?? []).filter((x) => kinds.includes(x.a.kind) && !x.a.closed).reduce((s, x) => s + x.balance, 0);
+
+  return (
+    <>
+      <h1>Accounts</h1>
+      {data && data.length > 0 && (
+        <div className="card row spread">
+          <span>Cash (checking + savings): <strong>{formatCents(total(['checking', 'savings']))}</strong></span>
+          <span>Card debt: <strong className="neg">{formatCents(total(['credit_card']))}</strong></span>
+          <span>Net: <strong>{formatCents(total(['checking', 'savings', 'credit_card']))}</strong></span>
+        </div>
+      )}
+      {(['checking', 'savings', 'credit_card'] as AccountKind[]).map((k) => {
+        const list = (data ?? []).filter((x) => x.a.kind === k);
+        if (!list.length) return null;
+        return (
+          <section key={k}>
+            <h2>{KIND_LABEL[k]}</h2>
+            <table>
+              <tbody>
+                {list.map(({ a, balance }) => (
+                  <tr key={a.id}>
+                    <td><Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}</td>
+                    <td className={`num ${balance < 0 ? 'neg' : ''}`}>{formatCents(balance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        );
+      })}
+
+      <h2>Add account</h2>
+      <div className="card">
+        <div className="grid">
+          <label className="f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Capital One" /></label>
+          <label className="f">Type
+            <select value={kind} onChange={(e) => setKind(e.target.value as AccountKind)}>
+              {Object.entries(KIND_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </label>
+          <label className="f">{kind === 'credit_card' ? 'Amount currently owed' : 'Starting balance'}
+            <input value={balance} onChange={(e) => setBalance(e.target.value)} inputMode="decimal" placeholder="0.00" />
+          </label>
+          <label className="f">As of<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <button className="primary" onClick={add}>Add account</button>
+          <span className="muted">Transactions before the “as of” date are treated as already included in the starting balance.</span>
+        </div>
+        {error && <div className="error">{error}</div>}
+      </div>
+    </>
+  );
+}
