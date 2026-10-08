@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import type { Account, Split, Txn, TxnStatus } from '../types';
+import type { Account, Category, CategoryGroup, Split, Txn, TxnStatus } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { validateSplits } from '../lib/ledger';
 import { convertToTransfer, createTransfer, updateTxn } from '../lib/transfers';
@@ -14,7 +14,33 @@ interface Props {
   onDone: () => void;
 }
 
-const centsToField = (c: number) => (Math.abs(c) / 100).toFixed(2);
+function CategorySelect({
+  value,
+  onChange,
+  allowTransfer,
+  groups,
+  cats,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  allowTransfer?: boolean;
+  groups: CategoryGroup[];
+  cats: Category[];
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Uncategorized</option>
+      {allowTransfer && <option value="transfer">↔ Transfer to/from another account…</option>}
+      {groups.map((g) => (
+        <optgroup key={g.id} label={g.name}>
+          {cats.filter((c) => c.groupId === g.id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
+
+const centsToField =(c: number) => (Math.abs(c) / 100).toFixed(2);
 
 export default function TxnForm({ account, editing, otherAccountId, onDone }: Props) {
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
@@ -98,18 +124,6 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
     }
   }
 
-  const CatSelect = ({ value, onChange, allowTransfer }: { value: string; onChange: (v: string) => void; allowTransfer?: boolean }) => (
-    <select value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">Uncategorized</option>
-      {allowTransfer && <option value="transfer">↔ Transfer to/from another account…</option>}
-      {groups.map((g) => (
-        <optgroup key={g.id} label={g.name}>
-          {cats.filter((c) => c.groupId === g.id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </optgroup>
-      ))}
-    </select>
-  );
-
   const incomeWord = account.kind === 'credit_card' ? 'Payment / credit (+)' : 'Inflow (+)';
   const outWord = account.kind === 'credit_card' ? 'Charge (−)' : 'Outflow (−)';
 
@@ -139,7 +153,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
       {!isTransfer && (
         <div className="row" style={{ marginTop: 8 }}>
           {!splitOn || choice === 'transfer' ? (
-            <label className="f">Category <CatSelect value={choice} onChange={setChoice} allowTransfer /></label>
+            <label className="f">Category <CategorySelect groups={groups} cats={cats} value={choice} onChange={setChoice} allowTransfer /></label>
           ) : (
             <strong>Split</strong>
           )}
@@ -167,7 +181,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
         <div style={{ marginTop: 8 }}>
           {splits.map((r, i) => (
             <div className="row" key={i} style={{ marginBottom: 4 }}>
-              <CatSelect value={r.cat} onChange={(v) => setSplits(splits.map((x, j) => (j === i ? { ...x, cat: v } : x)))} />
+              <CategorySelect groups={groups} cats={cats} value={r.cat} onChange={(v) => setSplits(splits.map((x, j) => (j === i ? { ...x, cat: v } : x)))} />
               <input
                 style={{ width: 110 }}
                 inputMode="decimal"
