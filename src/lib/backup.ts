@@ -1,8 +1,8 @@
 import type { FinanceDB } from '../db';
 
 export interface BackupFile {
-  /** 1 = Phase 1 data only; 2 adds budget assignments and recurring items. */
-  version: 1 | 2;
+  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data. */
+  version: 1 | 2 | 3;
   exportedAt: string;
   accounts: unknown[];
   categoryGroups: unknown[];
@@ -12,11 +12,15 @@ export interface BackupFile {
   assignments?: unknown[];
   recurring?: unknown[];
   recurringLog?: unknown[];
+  people?: unknown[];
+  incomeProfiles?: unknown[];
+  bonuses?: unknown[];
+  taxSettings?: unknown[];
 }
 
 export async function exportAll(d: FinanceDB): Promise<BackupFile> {
   return {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     accounts: await d.accounts.toArray(),
     categoryGroups: await d.categoryGroups.toArray(),
@@ -26,13 +30,17 @@ export async function exportAll(d: FinanceDB): Promise<BackupFile> {
     assignments: await d.assignments.toArray(),
     recurring: await d.recurring.toArray(),
     recurringLog: await d.recurringLog.toArray(),
+    people: await d.people.toArray(),
+    incomeProfiles: await d.incomeProfiles.toArray(),
+    bonuses: await d.bonuses.toArray(),
+    taxSettings: await d.taxSettings.toArray(),
   };
 }
 
 /** Replaces ALL data with the backup's contents. Older (version 1) backups restore with an empty budget. */
 export async function importAll(d: FinanceDB, b: BackupFile) {
-  if (b.version !== 1 && b.version !== 2) throw new Error('Unsupported backup version');
-  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog];
+  if (![1, 2, 3].includes(b.version)) throw new Error('Unsupported backup version');
+  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings];
   await d.transaction('rw', tables, async () => {
     await Promise.all(tables.map((t) => t.clear()));
     await d.accounts.bulkAdd(b.accounts as never[]);
@@ -43,6 +51,10 @@ export async function importAll(d: FinanceDB, b: BackupFile) {
     await d.assignments.bulkAdd((b.assignments ?? []) as never[]);
     await d.recurring.bulkAdd((b.recurring ?? []) as never[]);
     await d.recurringLog.bulkAdd((b.recurringLog ?? []) as never[]);
+    await d.people.bulkAdd((b.people ?? []) as never[]);
+    await d.incomeProfiles.bulkAdd((b.incomeProfiles ?? []) as never[]);
+    await d.bonuses.bulkAdd((b.bonuses ?? []) as never[]);
+    await d.taxSettings.bulkAdd((b.taxSettings ?? []) as never[]);
   });
 }
 

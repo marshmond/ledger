@@ -4,6 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { copyLastMonth, loadBudget, nextMonth, prevMonth, setAssignment, type BudgetRow } from '../lib/budget';
 import { monthLabel, monthOf } from '../lib/dates';
+import { buildIncomeModel } from '../lib/income';
+import { monthlyNet } from '../lib/payroll';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 
 function Assigned({ month, row }: { month: string; row: BudgetRow }) {
@@ -32,6 +34,19 @@ export default function BudgetPage() {
   const [month, setMonth] = useState(monthOf(todayISO()));
   const [note, setNote] = useState('');
   const budget = useLiveQuery(() => loadBudget(db, month), [month]);
+  const forecast = useLiveQuery(async () => {
+    const year = Number(month.slice(0, 4));
+    const [people, profiles, bonuses, settings] = await Promise.all([
+      db.people.toArray(),
+      db.incomeProfiles.toArray(),
+      db.bonuses.toArray(),
+      db.taxSettings.toArray(),
+    ]);
+    const model = buildIncomeModel(year, people, profiles, bonuses, settings.find((s) => s.year === year));
+    if (model.years.length === 0) return null;
+    const idx = Number(month.slice(5, 7)) - 1;
+    return { net: monthlyNet(model.years)[idx], checks: model.years.reduce((a, y) => a + y.events.filter((e) => Number(e.date.slice(5, 7)) === idx + 1).length, 0) };
+  }, [month]);
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
 
@@ -102,6 +117,13 @@ export default function BudgetPage() {
           </div>
         </div>
       </div>
+
+      {forecast && forecast.net > 0 && (
+        <p className="muted">
+          Projected take-home for {monthLabel(month)} from your <Link to="/income">Income</Link> model: <strong>{formatCents(forecast.net)}</strong> across {forecast.checks} paycheck{forecast.checks === 1 ? '' : 's'}.
+          Enter income as it arrives; this is a guide for how much to plan on.
+        </p>
+      )}
 
       <div className="row">
         <button

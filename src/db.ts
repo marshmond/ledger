@@ -2,11 +2,15 @@ import Dexie, { type Table } from 'dexie';
 import type {
   Account,
   Assignment,
+  Bonus,
   Category,
   CategoryGroup,
   ImportBatch,
+  IncomeProfile,
+  Person,
   RecurringLog,
   RecurringRule,
+  TaxSettings,
   Txn,
 } from './types';
 
@@ -19,6 +23,10 @@ export class FinanceDB extends Dexie {
   assignments!: Table<Assignment, number>;
   recurring!: Table<RecurringRule, number>;
   recurringLog!: Table<RecurringLog, number>;
+  people!: Table<Person, number>;
+  incomeProfiles!: Table<IncomeProfile, number>;
+  bonuses!: Table<Bonus, number>;
+  taxSettings!: Table<TaxSettings, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -46,6 +54,12 @@ export class FinanceDB extends Dexie {
             if (incomeIds.includes(c.groupId)) c.kind = 'income';
           });
       });
+    this.version(3).stores({
+      people: '++id',
+      incomeProfiles: '++id, [personId+year]',
+      bonuses: '++id, [personId+year]',
+      taxSettings: '++id, year',
+    });
   }
 }
 
