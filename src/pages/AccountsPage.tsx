@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { AccountKind } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { BACKUP_STALE_DAYS } from './BackupPage';
 
 const KIND_LABEL: Record<AccountKind, string> = {
   checking: 'Checking',
@@ -20,6 +21,9 @@ export default function AccountsPage() {
     }));
   });
 
+  const lastBackup = (useLiveQuery(() => db.settings.get('lastBackup'), []) as { value?: string } | undefined)?.value;
+  const hasData = (data?.length ?? 0) > 0;
+  const backupAge = lastBackup ? Math.floor((Date.now() - Date.parse(lastBackup)) / 86400000) : null;
   const [name, setName] = useState('');
   const [kind, setKind] = useState<AccountKind>('checking');
   const [balance, setBalance] = useState('');
@@ -44,6 +48,12 @@ export default function AccountsPage() {
   return (
     <>
       <h1>Accounts</h1>
+      {hasData && (backupAge === null || backupAge > BACKUP_STALE_DAYS) && (
+        <p className="warn">
+          {backupAge === null ? 'You have not backed up this data yet.' : `Your last backup was ${backupAge} days ago.`} Your data lives only in this browser, so
+          export a backup from the <Link to="/backup">Backup</Link> page.
+        </p>
+      )}
       {data && data.length > 0 && (
         <div className="card row spread">
           <span>Cash (checking + savings): <strong>{formatCents(total(['checking', 'savings']))}</strong></span>
