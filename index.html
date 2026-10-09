@@ -2,6 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Apply a saved Light/Dark choice before first paint (no flash). "Device" stores nothing. -->
+    <script>try{var t=localStorage.getItem("ledger-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}</script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1f6feb" />
     <meta name="description" content="Personal finance and investment planning. Your data stays on your device." />

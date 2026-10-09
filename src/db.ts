@@ -12,6 +12,9 @@ import type {
   ImportBatch,
   IncomeProfile,
   InvAccount,
+  Loan,
+  LoanEvent,
+  LoanRateChange,
   Person,
   RecurringLog,
   RecurringRule,
@@ -41,6 +44,9 @@ export class FinanceDB extends Dexie {
   settings!: Table<AppSetting, string>;
   windfalls!: Table<Windfall, number>;
   goals!: Table<Goal, number>;
+  loans!: Table<Loan, number>;
+  loanRates!: Table<LoanRateChange, number>;
+  loanEvents!: Table<LoanEvent, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -84,6 +90,11 @@ export class FinanceDB extends Dexie {
     this.version(5).stores({
       windfalls: '++id',
       goals: '++id',
+    });
+    this.version(6).stores({
+      loans: '++id',
+      loanRates: '++id, loanId',
+      loanEvents: '++id, loanId',
     });
   }
 }

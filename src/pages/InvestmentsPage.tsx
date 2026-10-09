@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, seedAssetClassesIfEmpty } from '../db';
 import type { AssetClass, AssetKind, Holding, InvAccount, InvKind, InvTaxType, Security } from '../types';
-import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { formatCents, todayISO } from '../lib/money';
 import { allocationFor, gainLoss, holdingValue, summarize } from '../lib/investments';
 import { applyPrices, fetchPrices, PER_MINUTE } from '../lib/prices';
 import { AllocationBar, compactUSD, type AllocItem } from './charts';
 import { MoneyField, NumField } from './fields';
+import PriceCell from './PriceCell';
 
 const KIND_LABEL: Record<InvKind, string> = { brokerage: 'Brokerage', ira: 'IRA', '401k': '401(k)', '529': '529' };
 const KIND_ORDER: InvKind[] = ['brokerage', 'ira', '401k', '529'];
@@ -118,8 +119,8 @@ function AccountBlock({ s, holdings, securities, classes }: { s: ReturnType<type
           </div>
           {s.missingPrices.length > 0 && <p className="warn">No price yet: {s.missingPrices.join(', ')}. Refresh prices or enter one below.</p>}
           {mine.length > 0 && (
-            <table>
-              <thead><tr><th>Holding</th><th className="num">Shares</th><th className="num hide-sm">Price</th><th className="num">Value</th><th className="num hide-sm">Gain / loss</th><th></th></tr></thead>
+            <div className="scroll-x"><table>
+              <thead><tr><th>Holding</th><th className="num">Shares</th><th className="num">Price</th><th className="num">Value</th><th className="num hide-sm">Gain / loss</th><th></th></tr></thead>
               <tbody>
                 {mine.map((h) => {
                   const sec = secById.get(h.securityId);
@@ -131,7 +132,7 @@ function AccountBlock({ s, holdings, securities, classes }: { s: ReturnType<type
                         <input style={{ width: 90, textAlign: 'right' }} inputMode="decimal" defaultValue={h.shares} key={`${h.id}-${h.shares}`}
                           onBlur={(e) => { const n = Number(e.target.value); if (n > 0 && n !== h.shares) db.holdings.update(h.id!, { shares: n }); else e.target.value = String(h.shares); }} />
                       </td>
-                      <td className="num hide-sm">{sec?.priceCents != null ? formatCents(sec.priceCents) : <span className="warn">none</span>}</td>
+                      <td className="num">{sec ? <PriceCell key={`${sec.id}-${sec.priceCents}`} sec={sec} /> : null}</td>
                       <td className="num">{formatCents(holdingValue(h, sec))}</td>
                       <td className={`num hide-sm ${gl === null ? 'muted' : gl < 0 ? 'neg' : 'pos'}`}>{gl === null ? '—' : formatCents(gl)}</td>
                       <td><button className="link danger" onClick={() => confirm(`Remove ${sec?.ticker} from ${a.name}?`) && db.holdings.delete(h.id!)}>remove</button></td>
@@ -139,7 +140,7 @@ function AccountBlock({ s, holdings, securities, classes }: { s: ReturnType<type
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
           {adding ? (
             <HoldingForm account={a} securities={securities} classes={classes} onDone={() => setAdding(false)} />
@@ -300,12 +301,7 @@ export default function InvestmentsPage() {
                   </select>
                 </td>
                 <td className="num">
-                  <input style={{ width: 100, textAlign: 'right' }} inputMode="decimal" key={`${s.id}-${s.priceCents}`} defaultValue={s.priceCents != null ? (s.priceCents / 100).toFixed(2) : ''} placeholder="price"
-                    onBlur={(e) => {
-                      const c = e.target.value.trim() === '' ? null : parseAmountToCents(e.target.value);
-                      if (c === undefined || (c !== null && c <= 0)) return;
-                      if (c !== s.priceCents) db.securities.update(s.id!, { priceCents: c, priceDate: c === null ? null : todayISO(), priceSource: c === null ? null : 'manual' });
-                    }} />
+                  <PriceCell key={`${s.id}-${s.priceCents}`} sec={s} />
                 </td>
                 <td className="hide-sm muted">{s.priceDate ? `${s.priceDate} (${s.priceSource})` : '—'}</td>
                 <td>{!secInUse(s.id!) && <button className="link danger" onClick={() => db.securities.delete(s.id!)}>delete</button>}</td>

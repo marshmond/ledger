@@ -124,8 +124,9 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
     }
   }
 
-  const incomeWord = account.kind === 'credit_card' ? 'Payment / credit (+)' : 'Inflow (+)';
-  const outWord = account.kind === 'credit_card' ? 'Charge (−)' : 'Outflow (−)';
+  const liability = account.kind === 'credit_card' || account.kind === 'loan';
+  const incomeWord = liability ? 'Payment / credit (+)' : 'Inflow (+)';
+  const outWord = account.kind === 'credit_card' ? 'Charge (−)' : account.kind === 'loan' ? 'Interest / added to balance (−)' : 'Outflow (−)';
 
   return (
     <div className="card">

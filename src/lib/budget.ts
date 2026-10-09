@@ -61,8 +61,13 @@ export interface BudgetInput {
 
 export function computeBudget({ accounts, categories, txns, assignments, month }: BudgetInput): BudgetResult {
   const cards = accounts.filter((a) => a.kind === 'credit_card');
-  const cashAccts = new Set(accounts.filter((a) => a.kind !== 'credit_card').map((a) => a.id!));
+  // Loans (mortgage, HELOC...) are debts like cards, but nothing is bought on them: they only get a payment line, which you fund
+  // by assigning the principal you plan to pay. They are never part of spendable cash.
+  const loans = accounts.filter((a) => a.kind === 'loan');
+  const debtAccts = [...cards, ...loans];
+  const cashAccts = new Set(accounts.filter((a) => a.kind !== 'credit_card' && a.kind !== 'loan').map((a) => a.id!));
   const cardIds = new Set(cards.map((c) => c.id!));
+  const payIds = new Set(debtAccts.map((c) => c.id!));
   const expense = categories.filter((c) => c.kind !== 'income');
   const expenseIds = new Set(expense.map((c) => c.id!));
   const incomeIds = new Set(categories.filter((c) => c.kind === 'income').map((c) => c.id!));
@@ -100,7 +105,7 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
 
     for (const t of list) {
       if (t.transferTxnId) {
-        if (cardIds.has(t.accountId)) payments.set(t.accountId, (payments.get(t.accountId) ?? 0) + t.amountCents);
+        if (payIds.has(t.accountId)) payments.set(t.accountId, (payments.get(t.accountId) ?? 0) + t.amountCents);
         continue;
       }
       for (const s of allocations(t)) {
@@ -163,7 +168,7 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
       });
     }
 
-    for (const card of cards) {
+    for (const card of debtAccts) {
       const k = payKey(card.id!);
       const cr = carry.get(k) ?? 0;
       const assigned = assignedBy.get(`${m}|${k}`) ?? 0;

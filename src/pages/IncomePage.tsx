@@ -9,6 +9,7 @@ import { buildIncomeModel, DEFAULT_SETTINGS, newProfile, parseTablesJson, resolv
 import { monthlyNet, type PersonYear } from '../lib/payroll';
 import ProfileEditor from './ProfileEditor';
 import { MoneyField, NumField } from './fields';
+import Collapsible from './Collapsible';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const monthName = (m: number) => monthLabel(`2026-${String(m).padStart(2, '0')}`).split(' ')[0];
@@ -18,6 +19,7 @@ function Milestones({ y, name }: { y: PersonYear; name: string }) {
   const rows: [string, string | null, string][] = [
     ['Social Security cap reached', y.milestones.ssCapDate, 'No more 6.2% Social Security on pay after this; take-home rises.'],
     ['401(k) annual limit reached', y.milestones.k401LimitDate, 'Deferrals stop after this paycheck; take-home rises (and a non-true-up match stops).'],
+    ['Employer 401(k) yearly maximum reached', y.milestones.matchCapDate, 'The employer contribution stops after this paycheck.'],
     ['HSA limit reached', y.milestones.hsaLimitDate, ''],
     ['ESPP limit reached', y.milestones.esppCapDate, 'IRS $25,000 stock-value limit.'],
     ['Additional Medicare (0.9%) starts', y.milestones.addlMedicareStartDate, 'Withholding on wages above $200,000.'],
@@ -125,7 +127,7 @@ export default function IncomePage() {
         </div>
       )}
 
-      <h2>People</h2>
+      <Collapsible id="income.people" title="People">
       <div className="row">
         {people.map((p) => <span className="badge" key={p.id}>{p.name}{p.birthYear ? ` (b. ${p.birthYear})` : ''}</span>)}
         <input placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
@@ -142,6 +144,7 @@ export default function IncomePage() {
       <p className="muted">Birth year sets 401(k) catch-up (50+, and the larger 60–63 amount) and HSA catch-up (55+).</p>
 
       {people.length === 0 && <p className="muted">Add yourself and your spouse to begin.</p>}
+      </Collapsible>
 
       {people.map((p) => {
         const prof = profiles.find((x) => x.personId === p.id && x.year === year);
@@ -169,7 +172,7 @@ export default function IncomePage() {
         );
       })}
 
-      <h2>Bonuses</h2>
+      <Collapsible id="income.bonuses" title="Bonuses">
       <p className="muted">Enter each bonus by the month it is paid (assumed mid-month). Add, change, or remove them whenever the timing changes; everything below updates.</p>
       <div className="row">
         <label className="f">Person
@@ -212,7 +215,9 @@ export default function IncomePage() {
         </table>
       )}
 
-      <h2>Household tax settings</h2>
+      </Collapsible>
+
+      <Collapsible id="income.household" title="Household tax settings">
       <div className="grid">
         <MoneyField key={`i${year}`} label="Itemized deductions (if larger than standard)" cents={settings?.itemizedDeductionCents ?? 0} onChange={(c) => setSettings({ itemizedDeductionCents: c })} />
         <MoneyField key={`o${year}`} label="Other taxable income" cents={settings?.otherIncomeCents ?? 0} onChange={(c) => setSettings({ otherIncomeCents: c })} />
@@ -222,9 +227,10 @@ export default function IncomePage() {
       </div>
       <p className="muted">Credit amounts are yours to enter; I don’t apply dependent credits automatically because the rules depend on your situation.</p>
 
+      </Collapsible>
+
       {model.years.length > 0 && model.tables && hh && (
-        <>
-          <h2>{year} results</h2>
+        <Collapsible id="income.results" title={`${year} results`}>
           <div className="grid">
             {model.years.map((y) => (
               <div className="card" key={y.personId}>
@@ -284,7 +290,7 @@ export default function IncomePage() {
             {model.years.map((y) => <Milestones key={y.personId} y={y} name={personName(y.personId)} />)}
           </div>
 
-          <h2>Take-home by month</h2>
+          <Collapsible id="income.monthly" level={3} title="Take-home by month">
           <table>
             <thead>
               <tr><th>Month</th>{model.years.map((y) => <th className="num" key={y.personId}>{personName(y.personId)}</th>)}<th className="num">Household</th></tr>
@@ -304,6 +310,7 @@ export default function IncomePage() {
             </tbody>
           </table>
           <p className="muted">Numbers in parentheses are paychecks received that month (including bonuses). Months with an extra paycheck stand out.</p>
+          </Collapsible>
 
           {model.years.map((y) => {
             const prof = profiles.find((p) => p.personId === y.personId && p.year === year)!;
@@ -347,7 +354,7 @@ export default function IncomePage() {
             <ul>{model.tables.notes.map((n) => <li key={n} className="muted">{n}</li>)}</ul>
             <p className="muted">This is a planning model, not tax advice or a substitute for your pay stubs and W-2.</p>
           </div>
-        </>
+        </Collapsible>
       )}
     </>
   );

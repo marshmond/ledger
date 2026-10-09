@@ -1,6 +1,6 @@
 import type { Bracket, TaxTables } from '../data/taxYears';
 import type { Bonus, DeductionItem, DeductionType, IncomeProfile, Person, TaxSettings } from '../types';
-import { addDays } from './dates';
+import { addDays, monthPayDate } from './dates';
 import { daysBetween } from './money';
 import { occurrencesBetween } from './schedule';
 
@@ -104,6 +104,8 @@ export interface PersonYear {
     hsaLimitDate: string | null;
     esppCapDate: string | null;
     addlMedicareStartDate: string | null;
+    /** The date the employer's yearly contribution maximum was reached, if one is set and reached. */
+    matchCapDate: string | null;
   };
   warnings: string[];
 }
@@ -120,12 +122,24 @@ function payDates(p: IncomeProfile, year: number): string[] {
   // The entered pay date is just an anchor: the schedule runs both forward and backward from it, so the whole
   // year is covered no matter which pay date was entered.
   const jan1 = `${year}-01-01`;
+  if (p.frequency === 'monthly' || p.frequency === 'semimonthly') {
+    // Day-of-month schedules: specs are explicit days (31 = last day) or the last business day, optionally moved off weekends.
+    const want = p.frequency === 'semimonthly' ? 2 : 1;
+    const fallback = p.frequency === 'semimonthly' ? (p.semiDays ?? [1, 15]) : [Number(p.firstPayDate.slice(8, 10)) || 1];
+    const specs = (p.payDays?.length ? p.payDays : fallback).slice(0, want);
+    const adjust = p.weekendAdjust ?? false;
+    const out: string[] = [];
+    // Include next January: a 1st that falls on a weekend moves back into December of this year.
+    for (let m = 1; m <= 13; m++) {
+      const month = m === 13 ? `${year + 1}-01` : `${year}-${String(m).padStart(2, '0')}`;
+      for (const spec of specs) out.push(monthPayDate(month, spec, adjust));
+    }
+    return out.filter((d) => d.startsWith(`${year}-`)).sort();
+  }
   let startDate: string;
   if (p.frequency === 'weekly' || p.frequency === 'biweekly') {
     const step = p.frequency === 'weekly' ? 7 : 14;
     startDate = addDays(p.firstPayDate, Math.floor(daysBetween(jan1, p.firstPayDate) / step) * step);
-  } else if (p.frequency === 'monthly') {
-    startDate = `${year}-01-${p.firstPayDate.slice(8, 10)}`;
   } else startDate = jan1;
   const rule = {
     accountId: 0,
@@ -166,10 +180,10 @@ export function simulatePerson(
       .map((b): Slot => ({ date: `${year}-${String(b.month).padStart(2, '0')}-15`, kind: 'bonus', label: b.label || 'Bonus', bonusGross: b.grossCents })),
   ].sort((a, b) => a.date.localeCompare(b.date) || (a.kind === 'regular' ? -1 : 1));
 
-  const ytd = { k401: 0, hsa: 0, fsa: 0, espp: 0, ficaWages: 0, ssWages: 0, eligibleComp: 0, k401Defer: 0, pfmlWages: 0 };
+  const ytd = { k401: 0, hsa: 0, fsa: 0, espp: 0, ficaWages: 0, ssWages: 0, eligibleComp: 0, k401Defer: 0, pfmlWages: 0, employer: 0 };
   const events: PayEvent[] = [];
   const warnings: string[] = [];
-  const milestones: PersonYear['milestones'] = { ssCapDate: null, k401LimitDate: null, hsaLimitDate: null, esppCapDate: null, addlMedicareStartDate: null };
+  const milestones: PersonYear['milestones'] = { ssCapDate: null, k401LimitDate: null, hsaLimitDate: null, esppCapDate: null, addlMedicareStartDate: null, matchCapDate: null };
   const match = profile.match ?? null;
 
   for (const s of slots) {
@@ -257,15 +271,24 @@ export function simulatePerson(
       }
     }
 
-    // Employer match (per paycheck unless true-up is on).
+    // Employer 401(k) contribution. Two formulas: a match on what you contribute (default) or a flat % of pay.
+    // An optional yearly dollar maximum stops it once reached. (A match with true-up is computed at year end instead.)
     let employerMatch = 0;
     if (match) {
       const eligible = isBonus ? (match.appliesToBonus ? gross : 0) : gross;
       ytd.eligibleComp += eligible;
       ytd.k401Defer += deferThisEvent;
-      if (!match.trueUp) {
+      const flat = match.formula === 'flat';
+      if (flat) employerMatch = Math.round((eligible * (match.flatPctOfPay ?? 0)) / 100);
+      else if (!match.trueUp) {
         const matchable = Math.min(deferThisEvent, Math.round((eligible * match.upToPctOfPay) / 100));
         employerMatch = Math.round((matchable * match.ratePct) / 100);
+      }
+      const cap = match.annualCapCents && match.annualCapCents > 0 ? match.annualCapCents : null;
+      if (cap !== null && (flat || !match.trueUp)) {
+        employerMatch = Math.max(0, Math.min(employerMatch, cap - ytd.employer));
+        ytd.employer += employerMatch;
+        if (!milestones.matchCapDate && ytd.employer >= cap) milestones.matchCapDate = s.date;
       }
     }
 
@@ -294,8 +317,13 @@ export function simulatePerson(
   }
 
   // Year-end true-up of the employer match.
-  if (match?.trueUp && events.length) {
-    const total = Math.round((Math.min(ytd.k401Defer, Math.round((ytd.eligibleComp * match.upToPctOfPay) / 100)) * match.ratePct) / 100);
+  if (match?.trueUp && match.formula !== 'flat' && events.length) {
+    let total = Math.round((Math.min(ytd.k401Defer, Math.round((ytd.eligibleComp * match.upToPctOfPay) / 100)) * match.ratePct) / 100);
+    const cap = match.annualCapCents && match.annualCapCents > 0 ? match.annualCapCents : null;
+    if (cap !== null && total >= cap) {
+      total = cap;
+      milestones.matchCapDate = events[events.length - 1].date; // known only at year end
+    }
     events[events.length - 1].employerMatch = total;
     events[events.length - 1].notes.push('Includes year-end match true-up');
   }

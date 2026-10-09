@@ -5,7 +5,9 @@ import App from './App';
 import { seedIfEmpty } from './db';
 import './styles.css';
 import { startPwa } from './pwa';
+import { initTheme } from './theme';
 
+initTheme();
 startPwa();
 
 seedIfEmpty().finally(() => {

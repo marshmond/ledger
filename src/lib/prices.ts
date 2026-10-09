@@ -1,5 +1,5 @@
 import type { FinanceDB } from '../db';
-import { todayISO } from './money';
+import { parseAmountToCents, todayISO } from './money';
 
 /**
  * Market-data prices via Twelve Data's /price endpoint (free key; limits at time of writing: 8 requests/minute,
@@ -72,4 +72,31 @@ export async function applyPrices(d: FinanceDB, results: PriceResult[]): Promise
     }
   }
   return n;
+}
+
+export type PriceEntry = { ok: true; cents: number | null } | { ok: false; error: string };
+
+/** Parses a typed price. Empty clears the price; anything that is not a positive amount is rejected (never silently cleared). */
+export function parsePriceInput(text: string): PriceEntry {
+  const t = text.trim();
+  if (t === '') return { ok: true, cents: null };
+  const cents = parseAmountToCents(t);
+  if (cents === null) return { ok: false, error: `"${t}" is not a valid price` };
+  if (cents <= 0) return { ok: false, error: 'A price must be greater than zero' };
+  return { ok: true, cents };
+}
+
+/**
+ * Stores a manually typed price on a security (it then applies to every account holding that ticker).
+ * A later price refresh overwrites it; a ticker the API cannot price keeps the manual value.
+ */
+export async function setManualPrice(d: FinanceDB, securityId: number, text: string): Promise<PriceEntry> {
+  const r = parsePriceInput(text);
+  if (!r.ok) return r;
+  await d.securities.update(securityId, {
+    priceCents: r.cents,
+    priceDate: r.cents === null ? null : todayISO(),
+    priceSource: r.cents === null ? null : 'manual',
+  });
+  return r;
 }

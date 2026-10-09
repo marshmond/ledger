@@ -247,3 +247,138 @@ export function FanChart({
     </div>
   );
 }
+
+// ---------- generic line chart (balance over time and similar) ----------
+
+export interface LineSeries {
+  label: string;
+  /** CSS color token, e.g. 'var(--s1)'. */
+  color: string;
+  values: number[]; // cents; shorter series end early and read as zero afterwards
+  dashed?: boolean;
+}
+
+export function LinesChart({
+  title,
+  subtitle,
+  series,
+  xLabels,
+  marker,
+}: {
+  title: string;
+  subtitle?: string;
+  series: LineSeries[];
+  /** One label per x position (e.g. the payment date). The axis shows the year of January positions. */
+  xLabels: string[];
+  marker?: { index: number; label: string };
+}) {
+  const n = Math.max(1, ...series.map((s) => s.values.length)) - 1;
+  const [idx, setIdx] = useState<number | null>(null);
+  const svg = useRef<SVGSVGElement>(null);
+  const val = (s: LineSeries, i: number) => s.values[i] ?? 0;
+  const max = Math.max(1, ...series.flatMap((s) => s.values));
+  const ticks = niceTicks(max / 100, 5).map((v) => v * 100);
+  const top = ticks[ticks.length - 1] || 1;
+  const x = (i: number) => M.l + (i / Math.max(n, 1)) * (W - M.l - M.r);
+  const y = (v: number) => M.t + (1 - v / top) * (H - M.t - M.b);
+  const path = (s: LineSeries) => {
+    const pts: string[] = [];
+    for (let i = 0; i <= Math.min(n, s.values.length); i++) pts.push(`${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(val(s, i)).toFixed(1)}`);
+    return pts.join(' ');
+  };
+  const yearTicks: number[] = [];
+  const yearOf = (i: number) => xLabels[i]?.slice(0, 4);
+  const stepYears = n > 240 ? 10 : n > 120 ? 5 : n > 48 ? 2 : 1;
+  for (let i = 0; i <= n; i++) {
+    const yr = Number(yearOf(i));
+    if (yr && (i === 0 || (xLabels[i].slice(5, 7) === '01' && yr % stepYears === 0))) yearTicks.push(i);
+  }
+  const locate = (clientX: number) => {
+    const r = svg.current!.getBoundingClientRect();
+    const px = ((clientX - r.left) / r.width) * W;
+    setIdx(Math.min(n, Math.max(0, Math.round(((px - M.l) / (W - M.l - M.r)) * n))));
+  };
+
+  return (
+    <div className="viz">
+      <h3>{title}</h3>
+      {subtitle && <div className="sub">{subtitle}</div>}
+      {series.length > 1 && (
+        <div className="legend">
+          {series.map((s) => (
+            <span className="key" key={s.label}>
+              <span className="line" style={{ borderColor: s.color, borderTopStyle: s.dashed ? 'dashed' : 'solid' }} />{s.label}
+            </span>
+          ))}
+        </div>
+      )}
+      <svg
+        ref={svg}
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`${title}. ${series.map((s) => `${s.label}: starts ${compactUSD(s.values[0] ?? 0)}`).join('; ')}.`}
+        tabIndex={0}
+        onPointerMove={(e) => locate(e.clientX)}
+        onPointerLeave={() => setIdx(null)}
+        onFocus={() => setIdx((i) => i ?? 0)}
+        onBlur={() => setIdx(null)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowRight') setIdx((i) => Math.min(n, (i ?? 0) + 1));
+          if (e.key === 'ArrowLeft') setIdx((i) => Math.max(0, (i ?? 0) - 1));
+        }}
+      >
+        {ticks.map((v) => (
+          <g key={v}>
+            <line x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} stroke="var(--grid)" strokeWidth={1} />
+            <text x={M.l - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fill="var(--ink-3)">{compactUSD(v)}</text>
+          </g>
+        ))}
+        <line x1={M.l} x2={W - M.r} y1={y(0)} y2={y(0)} stroke="var(--axis)" strokeWidth={1} />
+        {yearTicks.map((i) => (
+          <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="var(--ink-3)">{yearOf(i)}</text>
+        ))}
+        {marker && marker.index >= 0 && marker.index <= n && (
+          <g>
+            <line x1={x(marker.index)} x2={x(marker.index)} y1={M.t} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} />
+            <text x={x(marker.index) + 4} y={M.t + 11} fontSize={11} fill="var(--ink-2)">{marker.label}</text>
+          </g>
+        )}
+        {series.map((s) => (
+          <path key={s.label} d={path(s)} fill="none" stroke={s.color} strokeWidth={2} strokeDasharray={s.dashed ? '6 4' : undefined} strokeLinejoin="round" strokeLinecap="round" />
+        ))}
+        {idx !== null && (
+          <g>
+            <line x1={x(idx)} x2={x(idx)} y1={M.t} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} />
+            {series.map((s) => <circle key={s.label} cx={x(idx)} cy={y(val(s, idx))} r={4} fill={s.color} stroke="var(--surface-1)" strokeWidth={2} />)}
+          </g>
+        )}
+      </svg>
+      {idx !== null && (
+        <div className="tip" style={{ left: `clamp(8px, calc(${(x(idx) / W) * 100}% - 70px), calc(100% - 210px))`, top: series.length > 1 ? 92 : 64 }}>
+          <div style={{ marginBottom: 4 }}><strong>{xLabels[idx] ?? ''}</strong></div>
+          {series.map((s) => (
+            <div className="row2" key={s.label}>
+              <span className="k"><i style={{ borderColor: s.color }} />{s.label}</span>
+              <strong>{compactUSD(val(s, idx))}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+      <details style={{ marginTop: 8 }}>
+        <summary>Show as table</summary>
+        <div style={{ overflowX: 'auto', maxHeight: 320 }}>
+          <table>
+            <thead><tr><th>Date</th>{series.map((s) => <th className="num" key={s.label}>{s.label}</th>)}</tr></thead>
+            <tbody>
+              {Array.from({ length: n + 1 }, (_, i) => i)
+                .filter((i) => i % 12 === 0 || i === n)
+                .map((i) => (
+                  <tr key={i}><td>{xLabels[i] ?? ''}</td>{series.map((s) => <td className="num" key={s.label}>{formatCents(Math.round(val(s, i)))}</td>)}</tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}

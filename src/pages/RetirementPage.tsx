@@ -8,6 +8,7 @@ import { buildIncomeModel } from '../lib/income';
 import { buildProjection, DEFAULT_PROJECTION, type ProjectionSettings } from '../lib/projectionInput';
 import { DEFAULT_RETIREMENT, planRetirement, sustainableSpending, trailingAnnualSpending, type RetirementInput } from '../lib/retirement';
 import { toReal } from '../lib/projection';
+import { loanView, paymentsInYear } from '../lib/loanSchedule';
 import { FanChart, compactUSD } from './charts';
 import { MoneyField, NumField } from './fields';
 
@@ -26,6 +27,9 @@ export default function RetirementPage() {
   const txns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
   const pfCategories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const pfAccounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
+  const loans = useLiveQuery(() => db.loans.toArray(), []) ?? [];
+  const loanRates = useLiveQuery(() => db.loanRates.toArray(), []) ?? [];
+  const loanEvents = useLiveQuery(() => db.loanEvents.toArray(), []) ?? [];
   const savedR = useLiveQuery(() => db.settings.get('retirement'), []);
   const savedP = useLiveQuery(() => db.settings.get('projection'), []);
 
@@ -51,8 +55,18 @@ export default function RetirementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, holdings, securities, classes, incomeModel, ps.years, ps.inflationPct]);
 
-  const input: RetirementInput | null = built ? { year0, accounts: built.input.accounts, classes: built.input.classes, windfalls, inflation: infl, settings: rs } : null;
-  const settingsKey = JSON.stringify([rs, windfalls, infl, built?.startTotal]);
+  // Your actual (not what-if) loans, with the schedules you have set up.
+  const debts = useMemo(
+    () =>
+      loans
+        .filter((l) => !l.scenario)
+        .map((l) => ({ loan: l, s: loanView(l, loanRates.filter((r) => r.loanId === l.id), loanEvents.filter((e) => e.loanId === l.id)).schedule }))
+        .filter((x) => x.s.rows.length > 0),
+    [loans, loanRates, loanEvents],
+  );
+  const debtPaymentsAt = (t: number) => debts.reduce((sum, x) => sum + paymentsInYear(x.s, year0 + t), 0);
+  const input: RetirementInput | null = built ? { year0, accounts: built.input.accounts, classes: built.input.classes, windfalls, inflation: infl, settings: rs, debtPaymentsAt } : null;
+  const settingsKey = JSON.stringify([rs, windfalls, infl, built?.startTotal, debts.map((x) => [x.loan.id, x.s.totalPaid, x.s.rows.length])]);
 
   const result = useMemo(() => (input && rs.spendingCents > 0 ? planRetirement(input, seed) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -180,6 +194,37 @@ export default function RetirementPage() {
           }}
         >Add</button>
       </div>
+
+      <h2>Your debts in retirement</h2>
+      {debts.length === 0 ? (
+        <p className="muted">No loans set up. Add a mortgage or HELOC on the <Link to="/debt">Debt</Link> tab and its payments and payoff date can be included here.</p>
+      ) : (
+        <>
+          <table>
+            <tbody>
+              {debts.map(({ loan, s }) => {
+                const after = Array.from({ length: Math.max(0, s.rows.length ? Number(s.rows.at(-1)!.date.slice(0, 4)) - rs.retireYear : 0) }, (_, i) => rs.retireYear + 1 + i);
+                const during = after.reduce((sum, y) => sum + paymentsInYear(s, y), 0);
+                return (
+                  <tr key={loan.id}>
+                    <td>{loan.name}</td>
+                    <td>{s.payoffDate ? `paid off ${s.payoffDate.slice(0, 7)}` : 'not paid off in the schedule'}</td>
+                    <td className="num">{formatCents(during)} due after {rs.retireYear}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <label className="chk" style={{ marginTop: 6 }}>
+            <input type="checkbox" checked={!!rs.includeDebtPayments} onChange={(e) => setR({ includeDebtPayments: e.target.checked })} />
+            Add these loan payments (principal + interest) to my retirement spending
+          </label>
+          <p className="muted">
+            Leave this off if the yearly spending above already includes your mortgage or HELOC payments. If you pulled spending from your ledger,
+            note it includes interest but not principal, so turn this on to cover the principal.
+          </p>
+        </>
+      )}
 
       <h2>Windfalls</h2>
       <p className="muted">

@@ -297,3 +297,62 @@ describe('investments persistence', () => {
     expect((await d2.settings.get('priceApiKey'))?.value).toBe('LOCAL-KEY'); // restore keeps this device's key
   });
 });
+
+describe('manual price override', () => {
+  const setup = async () => {
+    const d = new FinanceDB(`manual-price-${Math.random()}`);
+    const id = await d.securities.add({ ticker: 'VTSAX', name: 'Total Market', assetClassId: 1, priceCents: null, priceDate: null, priceSource: null });
+    return { d, id };
+  };
+  const ok = (body: unknown) => async () => ({ status: 200, json: async () => body });
+
+  it('parses typed prices, rejects junk, and treats empty as a clear', async () => {
+    const { parsePriceInput } = await import('./prices');
+    expect(parsePriceInput('123.45')).toEqual({ ok: true, cents: 12345 });
+    expect(parsePriceInput(' $1,234.5 ')).toEqual({ ok: true, cents: 123450 });
+    expect(parsePriceInput('')).toEqual({ ok: true, cents: null });
+    expect(parsePriceInput('abc').ok).toBe(false);
+    expect(parsePriceInput('0').ok).toBe(false);
+    expect(parsePriceInput('-5').ok).toBe(false);
+  });
+
+  it('stores a manual price with its source and date', async () => {
+    const { d, id } = await setup();
+    const { setManualPrice } = await import('./prices');
+    expect(await setManualPrice(d, id, '98.76')).toEqual({ ok: true, cents: 9876 });
+    const s = (await d.securities.get(id))!;
+    expect(s).toMatchObject({ priceCents: 9876, priceSource: 'manual' });
+    expect(s.priceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('invalid text is rejected and leaves the stored price alone (regression: it used to clear it)', async () => {
+    const { d, id } = await setup();
+    const { setManualPrice } = await import('./prices');
+    await setManualPrice(d, id, '50');
+    const r = await setManualPrice(d, id, 'fifty');
+    expect(r.ok).toBe(false);
+    expect((await d.securities.get(id))!.priceCents).toBe(5000);
+  });
+
+  it('an empty box clears the price on purpose', async () => {
+    const { d, id } = await setup();
+    const { setManualPrice } = await import('./prices');
+    await setManualPrice(d, id, '50');
+    await setManualPrice(d, id, '');
+    expect(await d.securities.get(id)).toMatchObject({ priceCents: null, priceSource: null, priceDate: null });
+  });
+
+  it('a later refresh overwrites the manual price, but a ticker the API cannot price keeps it', async () => {
+    const { d, id } = await setup();
+    const { setManualPrice } = await import('./prices');
+    await setManualPrice(d, id, '50');
+
+    const failed = await fetchPrices(['VTSAX'], 'k', { fetchImpl: ok({ code: 400, status: 'error', message: 'symbol not found' }) });
+    await applyPrices(d, failed);
+    expect(await d.securities.get(id)).toMatchObject({ priceCents: 5000, priceSource: 'manual' });
+
+    const good = await fetchPrices(['VTSAX'], 'k', { fetchImpl: ok({ price: '120.10' }) });
+    await applyPrices(d, good);
+    expect(await d.securities.get(id)).toMatchObject({ priceCents: 12010, priceSource: 'api' });
+  });
+});

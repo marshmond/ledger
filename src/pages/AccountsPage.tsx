@@ -10,7 +10,11 @@ const KIND_LABEL: Record<AccountKind, string> = {
   checking: 'Checking',
   savings: 'Savings',
   credit_card: 'Credit Card',
+  loan: 'Loan',
 };
+
+/** Accounts you can add by hand. Loans are created from the Debt tab so they carry their schedule. */
+const ADDABLE: AccountKind[] = ['checking', 'savings', 'credit_card'];
 
 export default function AccountsPage() {
   const data = useLiveQuery(async () => {
@@ -58,10 +62,11 @@ export default function AccountsPage() {
         <div className="card row spread">
           <span>Cash (checking + savings): <strong>{formatCents(total(['checking', 'savings']))}</strong></span>
           <span>Card debt: <strong className="neg">{formatCents(total(['credit_card']))}</strong></span>
-          <span>Net: <strong>{formatCents(total(['checking', 'savings', 'credit_card']))}</strong></span>
+          {(data ?? []).some((x) => x.a.kind === 'loan') && <span>Loans: <strong className="neg">{formatCents(total(['loan']))}</strong></span>}
+          <span>Net: <strong>{formatCents(total(['checking', 'savings', 'credit_card', 'loan']))}</strong></span>
         </div>
       )}
-      {(['checking', 'savings', 'credit_card'] as AccountKind[]).map((k) => {
+      {(['checking', 'savings', 'credit_card', 'loan'] as AccountKind[]).map((k) => {
         const list = (data ?? []).filter((x) => x.a.kind === k);
         if (!list.length) return null;
         return (
@@ -87,7 +92,7 @@ export default function AccountsPage() {
           <label className="f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Capital One" /></label>
           <label className="f">Type
             <select value={kind} onChange={(e) => setKind(e.target.value as AccountKind)}>
-              {Object.entries(KIND_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              {ADDABLE.map((v) => <option key={v} value={v}>{KIND_LABEL[v]}</option>)}
             </select>
           </label>
           <label className="f">{kind === 'credit_card' ? 'Amount currently owed' : 'Starting balance'}

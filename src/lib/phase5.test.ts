@@ -296,3 +296,29 @@ describe('backup includes goals and windfalls', () => {
     expect(await d2.goals.count()).toBe(1);
   });
 });
+
+describe('loan payments in retirement', () => {
+  const classes: ClassAssumption[] = [{ id: 1, name: 'Stocks', kind: 'equity', mu: 0.07, sigma: 0.16 }];
+  const acct: ProjAccount = { id: 1, name: 'P', kind: 'brokerage', startCents: $(1_000_000), weights: new Map([[1, 1]]), contribution: () => 0 };
+  const base = (over: Partial<RetirementInput['settings']> = {}, debt?: (t: number) => number): RetirementInput => ({
+    year0: 2026, accounts: [acct], classes, windfalls: [], inflation: 0.025, debtPaymentsAt: debt,
+    settings: { ...DEFAULT_RETIREMENT(2026), retireYear: 2026, planYears: 20, spendingCents: $(40000), taxRatePct: 20, sims: 100, ...over },
+  });
+
+  it('is off by default: the payments are ignored even if supplied', () => {
+    const m = buildRetirementModel(base({}, () => $(12000)));
+    expect(m.withdrawal(3)).toBeCloseTo(($(40000) * 1.025 ** 3) / 0.8, 2);
+  });
+
+  it('when on, scheduled loan payments are added to what the portfolio must cover, grossed up for tax', () => {
+    const m = buildRetirementModel(base({ includeDebtPayments: true }, (t) => (t <= 5 ? $(12000) : 0)));
+    expect(m.withdrawal(3)).toBeCloseTo((($(40000) * 1.025 ** 3) + $(12000)) / 0.8, 2);
+    expect(m.withdrawal(6)).toBeCloseTo(($(40000) * 1.025 ** 6) / 0.8, 2); // the loan is paid off
+  });
+
+  it('more debt means a lower chance the money lasts', () => {
+    const without = planRetirement(base({ includeDebtPayments: true, sims: 1500 }, () => 0)).mc.successRate;
+    const withDebt = planRetirement(base({ includeDebtPayments: true, sims: 1500 }, () => $(25000))).mc.successRate;
+    expect(withDebt).toBeLessThan(without);
+  });
+});

@@ -2,7 +2,7 @@
 // Amounts are signed from the account's point of view: negative = money out / debt up.
 // A credit card with a balance of -50000 means $500.00 owed.
 
-export type AccountKind = 'checking' | 'savings' | 'credit_card';
+export type AccountKind = 'checking' | 'savings' | 'credit_card' | 'loan';
 
 export interface Account {
   id?: number;
@@ -140,7 +140,16 @@ export interface DeductionItem {
   appliesToBonus: boolean;
 }
 
+/** A pay day within a month: 1-31 (31 = the last day, safe in short months) or the last business day. */
+export type PayDay = number | 'lastBusiness';
+
 export interface MatchConfig {
+  /** 'match' (default): a share of what you contribute. 'flat': a % of your pay, whether or not you contribute. */
+  formula?: 'match' | 'flat';
+  /** Flat formula: employer contributes this % of eligible pay. */
+  flatPctOfPay?: number;
+  /** Optional yearly dollar maximum on the employer contribution (either formula). */
+  annualCapCents?: number | null;
   /** Employer contributes this % of your contribution... */
   ratePct: number;
   /** ...up to this % of your pay. (50% up to 6% => ratePct 50, upToPctOfPay 6) */
@@ -160,6 +169,13 @@ export interface IncomeProfile {
   /** Any real pay date; the schedule continues from it. */
   firstPayDate: string;
   semiDays?: [number, number];
+  /** Pay days within the month: two for twice-a-month pay, one for monthly. Takes precedence over semiDays / firstPayDate. */
+  payDays?: PayDay[];
+  /** If a pay day lands on a weekend, pay on the prior business day (holidays are not considered). */
+  weekendAdjust?: boolean;
+  /** Benefit switches. Unset means "on if a matching deduction already exists". */
+  esppEnrolled?: boolean;
+  hasHsa?: boolean;
   /** Raises: the last entry on or before a pay date applies. */
   salary: { effectiveDate: string; annualCents: number }[];
   deductions: DeductionItem[];
@@ -295,6 +311,8 @@ export interface RetirementSettings {
   /** How sure you want to be that the money lasts (used to find sustainable spending). */
   targetConfidencePct: number;
   sims: number;
+  /** Add your scheduled loan payments (principal + interest) to retirement withdrawals. Off by default: your spending figure may already include them. */
+  includeDebtPayments?: boolean;
 }
 
 /** A savings goal funded by one account over time, then drawn down (college, etc.). */
@@ -316,4 +334,71 @@ export interface Goal {
   contributionGrowthPct: number;
   /** How sure you want to be that it is fully funded. */
   confidencePct: number;
+}
+
+// ---- Debt (mortgage, HELOC, other loans) ----
+
+export type LoanKind = 'mortgage' | 'heloc' | 'auto' | 'student' | 'personal' | 'other';
+
+export interface Loan {
+  id?: number;
+  name: string;
+  kind: LoanKind;
+  /** A new or what-if loan: shown and calculated, but not counted in your debt totals and never tied to the ledger. */
+  scenario?: boolean;
+  /**
+   * 'original': built from the original amount, term, and first payment date.
+   * 'current': built from today's balance and the months remaining. (HELOCs always use 'current'.)
+   */
+  setup: 'original' | 'current';
+  originalAmountCents?: number;
+  termMonths?: number;
+  firstPaymentDate?: string;
+  balanceCents?: number;
+  /** The date `balanceCents` is as of. */
+  asOfDate?: string;
+  /** Date of the next payment due (payments continue on this day each month). */
+  nextPaymentDate?: string;
+  remainingMonths?: number;
+  /** Current annual rate in percent. Later changes go in the rate-change list. */
+  annualRatePct: number;
+  /** Your actual monthly principal-and-interest payment, if you know it (it overrides the calculated one at the start). */
+  paymentOverrideCents?: number | null;
+  /** Shown as part of the monthly total; they do not affect the loan balance. */
+  escrowMonthlyCents?: number;
+  pmiMonthlyCents?: number;
+  heloc?: { drawStartDate: string; drawMonths: number; repayMonths: number; creditLimitCents?: number | null };
+  /**
+   * What extra principal does between rate changes. 'shorten': keep the payment and finish early.
+   * 'lower': recalculate a lower payment over the remaining term. (A rate change always recalculates.)
+   */
+  extraMode: 'shorten' | 'lower';
+  /** What-if: add this many points to every rate from `shockFrom` on. */
+  shockPct?: number;
+  shockFrom?: string;
+  /** Ledger link: the liability account holding this loan's balance, and where interest is recorded. */
+  ledgerAccountId?: number | null;
+  interestCategoryId?: number | null;
+  escrowCategoryId?: number | null;
+}
+
+export interface LoanRateChange {
+  id?: number;
+  loanId: number;
+  /** The new rate applies to payments on or after this date. */
+  date: string;
+  annualRatePct: number;
+}
+
+export interface LoanEvent {
+  id?: number;
+  loanId: number;
+  /** 'draw' adds to a HELOC balance (draw period only); 'extra' is principal paid on top of the regular payment. */
+  type: 'draw' | 'extra';
+  date: string;
+  amountCents: number;
+  /** Extra principal every month from `date` (until `endDate`, if set). */
+  monthly?: boolean;
+  endDate?: string | null;
+  note?: string;
 }

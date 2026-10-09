@@ -11,8 +11,11 @@
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light dark;
 }
+/* Theme: "Device" follows the OS setting; a forced choice sets data-theme on <html> (see src/theme.ts).
+   The dark values are declared under both scopes below: the media query (only when not forced light) and the forced-dark scope. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --bg: #12151a;
     --fg: #e8eaed;
     --muted: #98a2b3;
@@ -24,6 +27,19 @@
     --warn: #e3b341;
   }
 }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #12151a;
+  --fg: #e8eaed;
+  --muted: #98a2b3;
+  --line: #2a2f38;
+  --card: #1a1e25;
+  --accent: #5b9bff;
+  --neg: #ff7b72;
+  --pos: #56d364;
+  --warn: #e3b341;
+}
+:root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); }
 .nav { display: flex; gap: 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -83,11 +99,16 @@ input.assign { width: 110px; text-align: right; }
   background: var(--surface-1); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 12px; position: relative;
 }
 @media (prefers-color-scheme: dark) {
-  .viz {
+  :root:not([data-theme="light"]) .viz {
     --surface-1: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #898781;
     --grid: #2c2c2a; --axis: #383835;
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
   }
+}
+:root[data-theme="dark"] .viz {
+  --surface-1: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #898781;
+  --grid: #2c2c2a; --axis: #383835;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
 }
 .viz h3 { margin: 0 0 4px; font-size: 1rem; }
 .viz .sub { color: var(--ink-2); font-size: 0.85rem; margin-bottom: 8px; }
@@ -109,3 +130,39 @@ input.assign { width: 110px; text-align: right; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 8px 0; }
 .tile { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .tile .v { font-size: 1.3rem; font-weight: 600; }
+
+/* ---- theme button, checkboxes ---- */
+.themebtn { margin-left: auto; padding: 3px 10px; border-radius: 14px; white-space: nowrap; }
+input[type="checkbox"], input[type="radio"] { padding: 0; width: 1.05em; height: 1.05em; flex: none; margin: 0; }
+.chk { display: inline-flex; align-items: flex-start; gap: 6px; max-width: 100%; }
+.chk input[type="checkbox"] { margin-top: 0.2em; }
+/* short labels in tight groups stay on one line; long sentences wrap on small screens */
+.checks { display: flex; flex-direction: column; gap: 4px; }
+.checks .chk { white-space: nowrap; align-items: center; }
+.grid > *, .row > * { min-width: 0; }
+label.f select, label.f input { max-width: 100%; min-width: 0; }
+select { max-width: 100%; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+
+/* ---- collapsible sections ---- */
+.collapse-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.collapse-head h2, .collapse-head h3 { margin: 12px 0 6px; }
+.collapse-btn { background: none; border: none; padding: 2px 0; font: inherit; font-weight: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: baseline; gap: 6px; text-align: left; }
+.collapse-btn:hover { color: var(--accent); }
+.collapse-btn .chev { color: var(--muted); width: 1em; display: inline-block; }
+[hidden] { display: none !important; }
+
+/* ---- transactions screen ---- */
+details.pick { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; max-height: 260px; overflow: auto; }
+details.pick summary { cursor: pointer; }
+details.pick label.chk { display: flex; margin: 2px 0; }
+tr.selected td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.show-sm { display: none; }
+@media (max-width: 640px) { .show-sm { display: block; } }
+.bulk { border-color: var(--accent); }
+
+/* On phones, a table wider than the screen scrolls sideways inside its own box instead of stretching the whole page. */
+@media (max-width: 640px) {
+  table { display: block; overflow-x: auto; max-width: 100%; }
+  table input, table select { max-width: 160px; }
+}

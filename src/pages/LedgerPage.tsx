@@ -27,7 +27,7 @@ export default function LedgerPage() {
 
   if (!account || !txns) return <p className="muted">Loading…</p>;
 
-  const isCard = account.kind === 'credit_card';
+  const isCard = account.kind === 'credit_card' || account.kind === 'loan'; // a balance you owe, shown positive
   const acctName = (aid: number) => accounts.find((a) => a.id === aid)?.name ?? '?';
   const catName = (cid: number | null) => cats.find((c) => c.id === cid)?.name ?? 'Uncategorized';
 
@@ -50,7 +50,7 @@ export default function LedgerPage() {
     <>
       <div className="row spread">
         <h1>{account.name}</h1>
-        <Link to="/">← Accounts</Link>
+        <span className="row"><Link to="/transactions">All transactions</Link><Link to="/">← Accounts</Link></span>
       </div>
       <div className="card row spread">
         <span>{isCard ? 'Owed' : 'Balance'}: <strong className={balance < 0 ? 'neg' : ''}>{formatCents(isCard ? -balance : balance)}</strong></span>
@@ -141,7 +141,7 @@ export default function LedgerPage() {
 
       <h2>Reconcile</h2>
       <div className="card">
-        <p className="muted">Enter the ending balance from your statement. {isCard ? 'For a card, enter the amount owed.' : ''}</p>
+        <p className="muted">Enter the ending balance from your statement. {isCard ? 'For a card or loan, enter the amount owed.' : ''}</p>
         <div className="row">
           <label className="f">Statement date<input type="date" value={recDate} onChange={(e) => setRecDate(e.target.value)} /></label>
           <label className="f">Ending balance<input value={recBal} onChange={(e) => setRecBal(e.target.value)} inputMode="decimal" /></label>

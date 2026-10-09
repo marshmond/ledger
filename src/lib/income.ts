@@ -1,6 +1,6 @@
 import type { FinanceDB } from '../db';
 import { builtInTables, type TaxTables } from '../data/taxYears';
-import type { Bonus, IncomeProfile, Person, TaxSettings } from '../types';
+import type { Bonus, IncomeProfile, PayDay, Person, TaxSettings } from '../types';
 import { defaultFlags, householdTax, simulatePerson, type HouseholdTax, type PersonYear } from './payroll';
 
 export const DEFAULT_SETTINGS = (year: number): TaxSettings => ({
@@ -139,4 +139,25 @@ export function buildIncomeModel(
     household: tables && years.length ? householdTax(years, settings ?? DEFAULT_SETTINGS(year), tables) : null,
     missingProfiles: people.filter((p) => !mine.some((m) => m.personId === p.id)),
   };
+}
+
+// ---- benefit switches (ESPP / HSA appear only when switched on) ----
+
+/** An explicit switch wins; otherwise a profile that already has an ESPP deduction counts as enrolled. */
+export const esppOn = (p: IncomeProfile): boolean => p.esppEnrolled ?? p.deductions.some((d) => d.type === 'espp');
+export const hsaOn = (p: IncomeProfile): boolean => p.hasHsa ?? (p.deductions.some((d) => d.type === 'hsa') || p.employerHsaAnnualCents > 0);
+
+// ---- pay days ----
+
+/** The pay days to show for a day-of-month schedule: saved choices, else what older profiles implied. */
+export function payDaysOf(p: Pick<IncomeProfile, 'frequency' | 'payDays' | 'semiDays' | 'firstPayDate'>): PayDay[] {
+  const need = p.frequency === 'semimonthly' ? 2 : p.frequency === 'monthly' ? 1 : 0;
+  const base: PayDay[] = p.payDays?.length
+    ? p.payDays
+    : p.frequency === 'semimonthly'
+      ? [...(p.semiDays ?? [1, 15])]
+      : [Number(p.firstPayDate.slice(8, 10)) || 1];
+  const out = base.slice(0, need);
+  while (out.length < need) out.push(out.length === 0 ? 1 : 15);
+  return out;
 }

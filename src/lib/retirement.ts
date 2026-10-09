@@ -58,6 +58,8 @@ export interface RetirementInput {
   windfalls: Windfall[];
   inflation: number;
   settings: RetirementSettings;
+  /** Loan payments (principal + interest + extra) in cents for period t, nominal. Used only when includeDebtPayments is on. */
+  debtPaymentsAt?: (t: number) => number;
 }
 
 export interface RetirementModel {
@@ -84,7 +86,9 @@ export function buildRetirementModel(inp: RetirementInput, spendingCents = inp.s
     s.streams
       .filter((x) => year0 + t >= x.startYear && (x.endYear == null || year0 + t <= x.endYear))
       .reduce((sum, x) => sum + x.annualCents * Math.pow(1 + inflation, t), 0);
-  const withdrawal = (t: number) => Math.max(0, spendingNominal(t) - streamsAt(t)) / (1 - tax);
+  const debt = (t: number) => (s.includeDebtPayments && inp.debtPaymentsAt ? Math.max(0, inp.debtPaymentsAt(t)) : 0);
+  // Loan payments come from after-tax money like spending, so they are grossed up the same way.
+  const withdrawal = (t: number) => (Math.max(0, spendingNominal(t) - streamsAt(t)) + debt(t)) / (1 - tax);
 
   const before = blendMix(inp.accounts);
   const after = s.equityPctAtRetirement != null ? mixWithEquity(inp.classes, s.equityPctAtRetirement) ?? before : before;
