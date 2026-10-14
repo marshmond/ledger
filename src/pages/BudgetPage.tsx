@@ -36,13 +36,15 @@ export default function BudgetPage() {
   const budget = useLiveQuery(() => loadBudget(db, month), [month]);
   const forecast = useLiveQuery(async () => {
     const year = Number(month.slice(0, 4));
-    const [people, profiles, bonuses, settings] = await Promise.all([
+    const [people, profiles, bonuses, settings, rsuVests, securities] = await Promise.all([
       db.people.toArray(),
       db.incomeProfiles.toArray(),
       db.bonuses.toArray(),
       db.taxSettings.toArray(),
+      db.rsuVests.toArray(),
+      db.securities.toArray(),
     ]);
-    const model = buildIncomeModel(year, people, profiles, bonuses, settings.find((s) => s.year === year));
+    const model = buildIncomeModel(year, people, profiles, bonuses, settings.find((s) => s.year === year), { vests: rsuVests, securities });
     if (model.years.length === 0) return null;
     const idx = Number(month.slice(5, 7)) - 1;
     return { net: monthlyNet(model.years)[idx], checks: model.years.reduce((a, y) => a + y.events.filter((e) => Number(e.date.slice(5, 7)) === idx + 1).length, 0) };

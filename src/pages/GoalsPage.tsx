@@ -112,13 +112,14 @@ export default function GoalsPage() {
   const profiles = useLiveQuery(() => db.incomeProfiles.toArray(), []) ?? [];
   const bonuses = useLiveQuery(() => db.bonuses.toArray(), []) ?? [];
   const taxSettings = useLiveQuery(() => db.taxSettings.toArray(), []) ?? [];
+  const rsuVests = useLiveQuery(() => db.rsuVests.toArray(), []) ?? [];
   const goals = useLiveQuery(() => db.goals.toArray(), []) ?? [];
   const savedP = useLiveQuery(() => db.settings.get('projection'), []);
   const ps: ProjectionSettings = { ...DEFAULT_PROJECTION, ...((savedP?.value as Partial<ProjectionSettings>) ?? {}) };
 
   const incomeModel = useMemo(
-    () => buildIncomeModel(year0, people, profiles, bonuses, taxSettings.find((t) => t.year === year0)),
-    [year0, people, profiles, bonuses, taxSettings],
+    () => buildIncomeModel(year0, people, profiles, bonuses, taxSettings.find((t) => t.year === year0), { vests: rsuVests, securities }),
+    [year0, people, profiles, bonuses, taxSettings, rsuVests, securities],
   );
   const built = useMemo(() => {
     const open = accounts.filter((a) => !a.closed);

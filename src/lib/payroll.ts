@@ -3,6 +3,7 @@ import type { Bonus, DeductionItem, DeductionType, IncomeProfile, Person, TaxSet
 import { addDays, monthPayDate } from './dates';
 import { daysBetween } from './money';
 import { occurrencesBetween } from './schedule';
+import type { ResolvedVest } from './rsu';
 
 /**
  * Payroll engine: simulates one person's year paycheck by paycheck, applying annual caps (Social Security wage base,
@@ -56,8 +57,10 @@ export function catchUpFor(p: Person | undefined, year: number, t: TaxTables): {
 
 export interface PayEvent {
   date: string;
-  kind: 'regular' | 'bonus';
+  kind: 'regular' | 'bonus' | 'rsu';
   label: string;
+  /** RSU vests: the vest this event came from. */
+  vestId?: number;
   gross: number;
   /** Employee deductions by deduction id (after caps). */
   deductions: Record<string, number>;
@@ -82,6 +85,8 @@ export interface PersonYear {
   totals: {
     gross: number;
     bonusGross: number;
+    /** Gross value of RSU vests paid in the year. */
+    rsuGross: number;
     net: number;
     fedTaxable: number;
     ficaTaxable: number;
@@ -160,6 +165,7 @@ export function simulatePerson(
   person: Person | undefined,
   bonuses: Bonus[],
   t: TaxTables,
+  vests: ResolvedVest[] = [],
 ): PersonYear {
   const year = profile.year;
   const nominal = nominalPeriods(profile);
@@ -172,12 +178,15 @@ export function simulatePerson(
     espp: Math.round(t.limits.esppStockValue * (1 - profile.esppDiscountPct / 100)),
   };
 
-  type Slot = { date: string; kind: 'regular' | 'bonus'; label: string; bonusGross: number };
+  type Slot = { date: string; kind: 'regular' | 'bonus' | 'rsu'; label: string; bonusGross: number; vestId?: number; kept?: boolean };
   const slots: Slot[] = [
     ...payDates(profile, year).map((date): Slot => ({ date, kind: 'regular', label: 'Paycheck', bonusGross: 0 })),
     ...bonuses
       .filter((b) => b.personId === profile.personId && b.year === year)
       .map((b): Slot => ({ date: `${year}-${String(b.month).padStart(2, '0')}-15`, kind: 'bonus', label: b.label || 'Bonus', bonusGross: b.grossCents })),
+    ...vests
+      .filter((r) => r.vest.personId === profile.personId && r.vest.date.startsWith(`${year}-`) && r.grossCents > 0)
+      .map((r): Slot => ({ date: r.vest.date, kind: 'rsu', label: r.vest.grant ? `RSU: ${r.vest.grant}` : 'RSU vest', bonusGross: r.grossCents, vestId: r.vest.id, kept: r.vest.kind === 'stock' && r.vest.afterVest === 'held' })),
   ].sort((a, b) => a.date.localeCompare(b.date) || (a.kind === 'regular' ? -1 : 1));
 
   const ytd = { k401: 0, hsa: 0, fsa: 0, espp: 0, ficaWages: 0, ssWages: 0, eligibleComp: 0, k401Defer: 0, pfmlWages: 0, employer: 0 };
@@ -187,7 +196,8 @@ export function simulatePerson(
   const match = profile.match ?? null;
 
   for (const s of slots) {
-    const isBonus = s.kind === 'bonus';
+    const isRsu = s.kind === 'rsu';
+    const isBonus = s.kind !== 'regular';
     const gross = isBonus ? s.bonusGross : Math.round(salaryAt(profile, s.date) / nominal);
     const notes: string[] = [];
     const ded: Record<string, number> = {};
@@ -198,7 +208,8 @@ export function simulatePerson(
 
     for (const item of profile.deductions) {
       let planned = 0;
-      if (isBonus) planned = item.mode === 'percent' && item.appliesToBonus ? Math.round((gross * item.value) / 100) : 0;
+      if (isRsu) planned = 0;
+      else if (isBonus) planned = item.mode === 'percent' && item.appliesToBonus ? Math.round((gross * item.value) / 100) : 0;
       else if (item.mode === 'percent') planned = Math.round((gross * item.value) / 100);
       else planned = profile.mode === 'annual' ? Math.round(item.value / 12) : item.value;
 
@@ -253,7 +264,13 @@ export function simulatePerson(
     // Income tax withholding (estimates; see TaxTables notes).
     let fedWithholding: number;
     let stateWithholding: number;
-    if (isBonus) {
+    if (isRsu) {
+      // Vests are withheld at the rates you set for them (default: the supplemental federal rate and the MA flat rate).
+      const fedRate = profile.rsuWithholding ? profile.rsuWithholding.fedPct / 100 : t.supplementalFedRate;
+      const stateRate = profile.rsuWithholding ? profile.rsuWithholding.statePct / 100 : t.ma.withholdingRate;
+      fedWithholding = Math.round(fedTaxable * fedRate);
+      stateWithholding = Math.round(stateTaxable * stateRate);
+    } else if (isBonus) {
       fedWithholding = profile.fedWithholding.mode === 'manual' ? 0 : Math.round(fedTaxable * t.supplementalFedRate);
       stateWithholding = profile.stateWithholding.mode === 'manual' ? 0 : Math.round(stateTaxable * t.ma.withholdingRate);
     } else {
@@ -275,7 +292,7 @@ export function simulatePerson(
     // An optional yearly dollar maximum stops it once reached. (A match with true-up is computed at year end instead.)
     let employerMatch = 0;
     if (match) {
-      const eligible = isBonus ? (match.appliesToBonus ? gross : 0) : gross;
+      const eligible = isRsu ? 0 : isBonus ? (match.appliesToBonus ? gross : 0) : gross;
       ytd.eligibleComp += eligible;
       ytd.k401Defer += deferThisEvent;
       const flat = match.formula === 'flat';
@@ -293,12 +310,18 @@ export function simulatePerson(
     }
 
     const dedTotal = Object.values(ded).reduce((a, b) => a + b, 0);
-    const net = gross - dedTotal - fedWithholding - socialSecurity - medicare - addlMedicare - stateWithholding - pfml;
+    let net = gross - dedTotal - fedWithholding - socialSecurity - medicare - addlMedicare - stateWithholding - pfml;
+    // Shares you keep are not cash: the tax comes out of the vest (sell-to-cover) and the rest stays as stock.
+    if (s.kept) {
+      notes.push('Net amount kept as shares, not paid as cash');
+      net = 0;
+    }
     if (net < 0) notes.push('Deductions and taxes exceed this paycheck');
     events.push({
       date: s.date,
       kind: s.kind,
       label: s.label,
+      vestId: s.vestId,
       gross,
       deductions: ded,
       employerMatch,
@@ -334,6 +357,7 @@ export function simulatePerson(
   const typeTotal = (types: DeductionType[]) =>
     profile.deductions.filter((i) => types.includes(i.type)).reduce((a, i) => a + dedTotals[i.id], 0);
 
+  for (const r of vests) if (r.vest.personId === profile.personId && r.vest.date.startsWith(`${year}-`) && r.warning) warnings.push(r.warning);
   if (events.length === 0) warnings.push('No pay dates fall in this year. Check the first pay date and frequency.');
 
   return {
@@ -343,6 +367,7 @@ export function simulatePerson(
     totals: {
       gross: sum((e) => e.gross),
       bonusGross: sum((e) => (e.kind === 'bonus' ? e.gross : 0)),
+      rsuGross: sum((e) => (e.kind === 'rsu' ? e.gross : 0)),
       net: sum((e) => e.net),
       fedTaxable: sum((e) => e.fedTaxable),
       ficaTaxable: sum((e) => e.ficaTaxable),

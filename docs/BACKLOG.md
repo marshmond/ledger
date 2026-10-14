@@ -4,7 +4,24 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS: everything below was BUILT on 2026-10-09 (owner asked "build these now")
+## STATUS 2026-10-14: the Roth conversion planner and RSU vesting (last two sections of this file) were BUILT ("build all")
+
+Verified with 318 automated tests and a browser walkthrough (entering cash and stock vests, editing a vest price, recording held shares, running the planner and the simulations, phone layout).
+
+Judgment calls (please review):
+1. **RSU withholding** defaults to the federal supplemental rate (22%) and the MA flat rate (5%), plus Social Security/Medicare; set the real rates per person under "Withholding on vests". Over-$1M supplemental wages (37%) are not modeled.
+2. **Held stock** assumes the tax is covered by selling shares at the vest (sell-to-cover): you keep the net shares, with the net value as cost basis. The paycheck-detail row shows net $0 for it (it is not spendable cash). "Add to holdings" only appears once the vest date has passed and creates or adds to a holding in the chosen brokerage account.
+3. **Cash vests** are treated as wages paid on the vest date (taxed through payroll). The "at risk / escrow" flag was never answered, so it was not built.
+4. **Roth planner scope:** two people at most; both live through the plan; conversions happen on January 1; a 401(k) rolls into the IRA when its owner retires (that is also when it becomes convertible); no early-withdrawal penalties or Roth 5-year rules; HSA ignored; survivor tax filing not modeled; heirs' tax is one flat rate.
+5. **Before everyone has retired**, wages are assumed to cover spending and the ordinary taxes, so only the extra cost caused by a conversion (tax, IRMAA, lost ACA credit) comes out of savings. After that, spending plus all taxes come from Social Security, other income, RMDs, then taxable, traditional, Roth.
+6. **Tax tables for the planner** are in `src/data/retirementTax.ts` (2026), with items marked UNVERIFIED (ACA applicable-percentage table, IRMAA dollar amounts, MA 65+ exemption, senior-deduction phase-out). Later years scale indexed amounts by your inflation assumption; non-indexed amounts (Social Security thresholds, NIIT threshold, senior deduction ending 2028) stay fixed.
+7. **IRMAA** uses income from two years earlier; for the first two plan years it uses the first year's income. **ACA** credit assumes a two-person household and the "benchmark plan" premium you enter; spending should exclude health premiums before Medicare.
+8. **Simulated futures** use one common market return per year for all accounts (lognormal), identical random paths for every strategy.
+9. **Bracket-fill** strategies solve each year's conversion exactly for the ordinary-income bracket top (two passes, so withdrawals that change with the conversion are accounted for).
+
+Still open: survivor/death scenarios, HSA, inherited-account 10-year payout, state tax other than MA, "at risk" cash vests, RSU vests feeding the Projections tab as separate cash flows.
+
+## STATUS: everything below (through All Transactions) was BUILT on 2026-10-09 (owner asked "build these now")
 
 Built and verified (242 automated tests, plus a walkthrough in the browser: theme switching, pay schedules and employer cap, ESPP/HSA switches,
 collapse memory, price override, every transaction filter/sort/bulk/export, mortgage and HELOC numbers against independent calculations,
@@ -198,3 +215,38 @@ Decisions confirmed by the owner. Same working rule: do not build until the owne
 ## Other tabs
 
 _Not yet received._ Accounts, Budget, Scheduled, Import, Categories, Projections, Retirement, Goals, Backup.
+
+---
+
+## New feature: Roth conversion scenario planner
+
+Requested 2026-10-13. Decisions confirmed by the owner. Do not build until the owner says all notes are in.
+
+- [ ] **Compare Roth conversion strategies over the retirement horizon.**
+  - **Needs per-account tax type** (traditional / Roth / taxable / HSA) because Retirement currently pools savings. Ask about IRA after-tax basis (pro-rata rule) and after-tax/Roth 401(k) money.
+  - **Inputs:** both birth years and retirement years; wages (from Income); Social Security benefit and claiming ages considered; pensions/rental/other income; interest, dividends and gains from taxable holdings; spending need (from Retirement); source of conversion tax (outside money vs from the conversion); growth assumptions reuse the per-asset-class returns; optional heir bracket.
+  - **Strategies:** none (baseline); fill to a chosen bracket; fixed dollar per year; gap years only (retirement to Social Security/RMDs); owner's own year-by-year table.
+  - **Decisions:** conversion income counts for MA income tax (yes); model the ACA subsidy cliff (yes); exact tax calculation per scenario, not an approximation; compare on all three objectives: lowest lifetime taxes, highest ending wealth, highest after-tax wealth for heirs.
+  - **Output:** tax by year per scenario, IRMAA surcharge (two-year lookback), taxable share of Social Security, RMDs with and without conversions, marginal bracket by year with cliffs flagged, ending after-tax wealth, how long money lasts (existing Monte Carlo).
+
+## New feature: RSU vesting
+
+Requested 2026-10-13, for both spouses. Details being clarified.
+
+- [ ] **RSU vest events for each spouse.** Decisions confirmed 2026-10-13:
+  - Entry: one row per vest event (date, shares, grant name, which person, ticker).
+  - Value: shares x the ticker's price in Investments (manual or refreshed), so projected vests follow the price.
+  - Withholding: varies/unknown, so a per-person withholding rate (default federal 22% flat supplemental, plus Social Security/Medicare/MA) compared against actual liability on the Income tab.
+  - After vest: shares are held; each vest creates a holding in a brokerage account with the vest-date price as cost basis.
+  - Vest income counts as wages (FICA, Social Security wage-base cap, tax estimates) in the vest year.
+  - **Update 2026-10-13 (owner):**
+    - Past vests (already happened this year) are entered too; they count toward this year's wages and withholding.
+    - Future vests are valued at the ticker's current price; each vest can be given its **actual vest price**, which then sets the value and the cost basis for that date.
+    - "After vest" is a per-vest choice: **held in a brokerage account** (new holding, vest price as basis) or **sold immediately** (proceeds are cash income, no holding, no gain/loss). The earlier "held" decision is superseded by this.
+    - Ticker is set per vest event, so it works whether or not both spouses share a company.
+  - **Update 2026-10-13 (owner, supersedes the stock-price, ticker and holding decisions above):** the RSUs are in a private company that was acquired, so there is no market price to pull. Every vest **pays out as cash at a fixed price**. So: no ticker, no price lookup, no holding or cost basis, no held/sold switch. Each vest is a dated cash payment taxed as wages (withholding rate per person, FICA/Social Security cap, MA). Open: enter as dollars per vest or as shares x a per-share deal price; whether the amount is certain or contingent (escrow/holdback).
+  - **Update 2026-10-13 (owner, final; replaces the previous update):** both kinds exist. The owner's RSUs are in an acquired private company and pay out as cash; the spouse's are in a public company and vest as shares. Each vest (or grant) therefore has a **type choice: "Vests as cash" or "Tied to common stock"**.
+    - **Cash:** ask for the synthetic (deal) price per share; value = shares x that price. No ticker, no price lookup, no holding. The payout is dated cash income taxed as wages.
+    - **Common stock:** link to a ticker (price from Investments, manual or refreshed). Future vests use the current price; an optional actual vest price overrides it and sets the cost basis. Per-vest choice of **held in a brokerage account** (new holding at the vest price) or **sold immediately** (cash income, no holding).
+    - Both types: past vests this year are entered too; withholding rate set per person (default 22% federal supplemental plus Social Security/Medicare/MA) compared with actual liability; vest income counts as wages (FICA, wage-base cap).
+    - Still open: for cash vests, whether any payout is contingent (escrow/holdback) and should be flagged "at risk".

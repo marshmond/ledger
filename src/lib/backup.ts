@@ -1,8 +1,8 @@
 import type { FinanceDB } from '../db';
 
 export interface BackupFile {
-  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data; 4 adds investments; 5 adds goals and windfalls; 6 adds loans. */
-  version: 1 | 2 | 3 | 4 | 5 | 6;
+  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data; 4 adds investments; 5 adds goals and windfalls; 6 adds loans; 7 adds RSU vests. */
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   exportedAt: string;
   accounts: unknown[];
   categoryGroups: unknown[];
@@ -26,11 +26,12 @@ export interface BackupFile {
   loans?: unknown[];
   loanRates?: unknown[];
   loanEvents?: unknown[];
+  rsuVests?: unknown[];
 }
 
 export async function exportAll(d: FinanceDB): Promise<BackupFile> {
   return {
-    version: 6,
+    version: 7,
     exportedAt: new Date().toISOString(),
     accounts: await d.accounts.toArray(),
     categoryGroups: await d.categoryGroups.toArray(),
@@ -55,13 +56,14 @@ export async function exportAll(d: FinanceDB): Promise<BackupFile> {
     loans: await d.loans.toArray(),
     loanRates: await d.loanRates.toArray(),
     loanEvents: await d.loanEvents.toArray(),
+    rsuVests: await d.rsuVests.toArray(),
   };
 }
 
 /** Replaces ALL data with the backup's contents. Older (version 1) backups restore with an empty budget. */
 export async function importAll(d: FinanceDB, b: BackupFile) {
-  if (![1, 2, 3, 4, 5, 6].includes(b.version)) throw new Error('Unsupported backup version');
-  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings, d.invAccounts, d.assetClasses, d.securities, d.holdings, d.settings, d.windfalls, d.goals, d.loans, d.loanRates, d.loanEvents];
+  if (![1, 2, 3, 4, 5, 6, 7].includes(b.version)) throw new Error('Unsupported backup version');
+  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings, d.invAccounts, d.assetClasses, d.securities, d.holdings, d.settings, d.windfalls, d.goals, d.loans, d.loanRates, d.loanEvents, d.rsuVests];
   await d.transaction('rw', tables, async () => {
     // The API key lives only on this device (never in backups), so a restore must not wipe it.
     const apiKey = await d.settings.get('priceApiKey');
@@ -88,6 +90,7 @@ export async function importAll(d: FinanceDB, b: BackupFile) {
     await d.loans.bulkAdd((b.loans ?? []) as never[]);
     await d.loanRates.bulkAdd((b.loanRates ?? []) as never[]);
     await d.loanEvents.bulkAdd((b.loanEvents ?? []) as never[]);
+    await d.rsuVests.bulkAdd((b.rsuVests ?? []) as never[]);
     if (apiKey) await d.settings.put(apiKey);
   });
 }

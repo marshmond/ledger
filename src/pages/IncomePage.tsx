@@ -10,6 +10,7 @@ import { monthlyNet, type PersonYear } from '../lib/payroll';
 import ProfileEditor from './ProfileEditor';
 import { MoneyField, NumField } from './fields';
 import Collapsible from './Collapsible';
+import RsuSection from './RsuSection';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const monthName = (m: number) => monthLabel(`2026-${String(m).padStart(2, '0')}`).split(' ')[0];
@@ -42,9 +43,12 @@ export default function IncomePage() {
   const profiles = useLiveQuery(() => db.incomeProfiles.toArray(), []) ?? [];
   const bonuses = useLiveQuery(() => db.bonuses.toArray(), []) ?? [];
   const allSettings = useLiveQuery(() => db.taxSettings.toArray(), []) ?? [];
+  const rsuVests = useLiveQuery(() => db.rsuVests.toArray(), []) ?? [];
+  const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
+  const invAccounts = useLiveQuery(() => db.invAccounts.toArray(), []) ?? [];
   const settings = allSettings.find((s) => s.year === year);
 
-  const model = useMemo(() => buildIncomeModel(year, people, profiles, bonuses, settings), [year, people, profiles, bonuses, settings]);
+  const model = useMemo(() => buildIncomeModel(year, people, profiles, bonuses, settings, { vests: rsuVests, securities }), [year, people, profiles, bonuses, settings, rsuVests, securities]);
   const yearsWithData = [...new Set([...profiles.map((p) => p.year), thisYear, thisYear + 1])].sort();
 
   const [newName, setNewName] = useState('');
@@ -217,6 +221,8 @@ export default function IncomePage() {
 
       </Collapsible>
 
+      <RsuSection year={year} people={people} profiles={profiles} model={model} vests={rsuVests} securities={securities} invAccounts={invAccounts} tables={model.tables} />
+
       <Collapsible id="income.household" title="Household tax settings">
       <div className="grid">
         <MoneyField key={`i${year}`} label="Itemized deductions (if larger than standard)" cents={settings?.itemizedDeductionCents ?? 0} onChange={(c) => setSettings({ itemizedDeductionCents: c })} />
@@ -235,7 +241,7 @@ export default function IncomePage() {
             {model.years.map((y) => (
               <div className="card" key={y.personId}>
                 <strong>{personName(y.personId)}</strong>
-                <div>Gross {formatCents(y.totals.gross)}{y.totals.bonusGross > 0 && <span className="muted"> (incl. {formatCents(y.totals.bonusGross)} bonus)</span>}</div>
+                <div>Gross {formatCents(y.totals.gross)}{y.totals.bonusGross > 0 && <span className="muted"> (incl. {formatCents(y.totals.bonusGross)} bonus)</span>}{y.totals.rsuGross > 0 && <span className="muted"> (incl. {formatCents(y.totals.rsuGross)} stock awards)</span>}</div>
                 <div>Take-home {formatCents(y.totals.net)}</div>
                 <div className="muted">
                   401(k): {formatCents(y.contributions.k401Pretax)} pre-tax + {formatCents(y.contributions.k401Roth)} Roth
@@ -327,7 +333,7 @@ export default function IncomePage() {
                         const dedTotal = Object.values(e.deductions).reduce((a, b) => a + b, 0);
                         return (
                           <tr key={i}>
-                            <td>{e.date}{e.kind === 'bonus' && <span className="badge"> {e.label}</span>}{e.notes.length > 0 && <div className="warn">{e.notes.join('; ')}</div>}</td>
+                            <td>{e.date}{e.kind !== 'regular' && <span className="badge"> {e.label}</span>}{e.notes.length > 0 && <div className="warn">{e.notes.join('; ')}</div>}</td>
                             <td className="num">{formatCents(e.gross)}</td>
                             <td className="num">{formatCents(dedTotal)}</td>
                             <td className="num">{formatCents(e.fedWithholding)}</td>

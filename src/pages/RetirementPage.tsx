@@ -23,6 +23,7 @@ export default function RetirementPage() {
   const profiles = useLiveQuery(() => db.incomeProfiles.toArray(), []) ?? [];
   const bonuses = useLiveQuery(() => db.bonuses.toArray(), []) ?? [];
   const taxSettings = useLiveQuery(() => db.taxSettings.toArray(), []) ?? [];
+  const rsuVests = useLiveQuery(() => db.rsuVests.toArray(), []) ?? [];
   const windfalls = useLiveQuery(() => db.windfalls.toArray(), []) ?? [];
   const txns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
   const pfCategories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
@@ -43,8 +44,8 @@ export default function RetirementPage() {
   const [busy, setBusy] = useState(false);
 
   const incomeModel = useMemo(
-    () => buildIncomeModel(year0, people, profiles, bonuses, taxSettings.find((t) => t.year === year0)),
-    [year0, people, profiles, bonuses, taxSettings],
+    () => buildIncomeModel(year0, people, profiles, bonuses, taxSettings.find((t) => t.year === year0), { vests: rsuVests, securities }),
+    [year0, people, profiles, bonuses, taxSettings, rsuVests, securities],
   );
 
   const built = useMemo(() => {

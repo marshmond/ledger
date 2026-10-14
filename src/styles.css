@@ -139,6 +139,7 @@ input[type="checkbox"], input[type="radio"] { padding: 0; width: 1.05em; height:
 /* short labels in tight groups stay on one line; long sentences wrap on small screens */
 .checks { display: flex; flex-direction: column; gap: 4px; }
 .checks .chk { white-space: nowrap; align-items: center; }
+.checks.wrap .chk { white-space: normal; align-items: flex-start; }
 .grid > *, .row > * { min-width: 0; }
 label.f select, label.f input { max-width: 100%; min-width: 0; }
 select { max-width: 100%; }

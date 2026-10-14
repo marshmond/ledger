@@ -1,6 +1,7 @@
 import type { FinanceDB } from '../db';
 import { builtInTables, type TaxTables } from '../data/taxYears';
-import type { Bonus, IncomeProfile, PayDay, Person, TaxSettings } from '../types';
+import type { Bonus, IncomeProfile, PayDay, Person, RsuVest, Security, TaxSettings } from '../types';
+import { resolveVests, type ResolvedVest } from './rsu';
 import { defaultFlags, householdTax, simulatePerson, type HouseholdTax, type PersonYear } from './payroll';
 
 export const DEFAULT_SETTINGS = (year: number): TaxSettings => ({
@@ -105,17 +106,21 @@ export interface IncomeModel {
   people: Person[];
   years: PersonYear[];
   household: HouseholdTax | null;
+  /** Every RSU vest with its value (all years). */
+  vests: ResolvedVest[];
   missingProfiles: Person[];
 }
 
 export async function loadIncomeModel(d: FinanceDB, year: number): Promise<IncomeModel> {
-  const [people, profiles, bonuses, allSettings] = await Promise.all([
+  const [people, profiles, bonuses, allSettings, rsuVests, securities] = await Promise.all([
     d.people.toArray(),
     d.incomeProfiles.toArray(), // filtered by year in buildIncomeModel
     d.bonuses.toArray(),
     d.taxSettings.where('year').equals(year).toArray(),
+    d.rsuVests.toArray(),
+    d.securities.toArray(),
   ]);
-  return buildIncomeModel(year, people, profiles, bonuses, allSettings[0]);
+  return buildIncomeModel(year, people, profiles, bonuses, allSettings[0], { vests: rsuVests, securities });
 }
 
 export function buildIncomeModel(
@@ -124,11 +129,13 @@ export function buildIncomeModel(
   profiles: IncomeProfile[],
   bonuses: Bonus[],
   settings?: TaxSettings,
+  rsu?: { vests: RsuVest[]; securities: Security[] },
 ): IncomeModel {
   const { tables, source } = resolveTables(year, settings);
+  const vests = resolveVests(rsu?.vests ?? [], rsu?.securities ?? []);
   const mine = profiles.filter((p) => p.year === year);
   const years = tables
-    ? mine.map((p) => simulatePerson(p, people.find((x) => x.id === p.personId), bonuses, tables))
+    ? mine.map((p) => simulatePerson(p, people.find((x) => x.id === p.personId), bonuses, tables, vests))
     : [];
   return {
     year,
@@ -137,6 +144,7 @@ export function buildIncomeModel(
     people,
     years,
     household: tables && years.length ? householdTax(years, settings ?? DEFAULT_SETTINGS(year), tables) : null,
+    vests,
     missingProfiles: people.filter((p) => !mine.some((m) => m.personId === p.id)),
   };
 }

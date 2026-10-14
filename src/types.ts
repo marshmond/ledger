@@ -184,6 +184,8 @@ export interface IncomeProfile {
   hsaCoverage: 'self' | 'family';
   /** ESPP purchase discount, used for the IRS $25,000 limit. */
   esppDiscountPct: number;
+  /** Withholding on RSU vests, in percent. Unset: the federal supplemental rate and the MA flat rate from the tax tables. */
+  rsuWithholding?: { fedPct: number; statePct: number };
   fedWithholding: { mode: 'estimate' | 'manual'; manualPerPaycheckCents: number; twoJobs: boolean; extraPerPaycheckCents: number };
   stateWithholding: { mode: 'estimate' | 'manual'; manualPerPaycheckCents: number };
 }
@@ -196,6 +198,29 @@ export interface Bonus {
   month: number; // 1-12
   grossCents: number;
   label: string;
+}
+
+/**
+ * One RSU vest. 'cash' awards pay out in cash at a fixed (synthetic or deal) price per share, so there is no ticker.
+ * 'stock' awards vest as shares of a security: the value uses the security's price unless the actual vest price is known.
+ */
+export interface RsuVest {
+  id?: number;
+  personId: number;
+  date: string;
+  grant: string;
+  kind: 'cash' | 'stock';
+  shares: number;
+  /** Cash: the synthetic price per share (required). Stock: the actual price on the vest date, once known (optional). */
+  priceCents?: number | null;
+  /** Stock only. */
+  securityId?: number | null;
+  /** Stock only: shares are kept (added to a holding at the vest price) or sold at once (cash income). */
+  afterVest?: 'held' | 'sold';
+  /** Held shares go to this investment account. */
+  accountId?: number | null;
+  /** Held shares have been added to the account's holdings. */
+  recorded?: boolean;
 }
 
 export interface TaxSettings {

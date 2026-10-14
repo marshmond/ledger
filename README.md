@@ -11,11 +11,12 @@ to Twelve Data using your own key.
 | **Accounts** | Checking, savings, and credit cards with starting balances; ledger with categories, splits, pending/cleared/reconciled; transfers (a card payment entered from either side creates the matching entry); reconcile to a statement |
 | **Transactions** | Every transaction from every account in one place: filter by account, date range, category, payee/memo, and amount (greater than, less than, between), sort by any column, edit or delete rows, bulk-change category/status, export the filtered list to CSV, and save filters |
 | **Budget** | Envelope ("every dollar has a job") budget: Ready to Assign, rollover, overspending rules, credit-card payment lines, funding for existing card debt |
-| **Income** | Salary, bonuses (entered by month), 401(k) pre-tax/Roth, employer match, HSA/FSA/ESPP and other deductions, with annual caps applied paycheck by paycheck; federal (married filing jointly) and Massachusetts tax vs withholding |
+| **Income** | Salary, bonuses (entered by month), RSU vests (cash at a set price, or tied to a stock with held/sold choice), 401(k) pre-tax/Roth, employer match, HSA/FSA/ESPP and other deductions, with annual caps applied paycheck by paycheck; federal (married filing jointly) and Massachusetts tax vs withholding |
 | **Investments** | Brokerage, IRA, 401(k), and 529 accounts with holdings, per-holding asset class, allocation, and optional price refresh |
 | **Projections** | Long-term growth with contributions: steady-return path and Monte Carlo ranges, today's or future dollars |
 | **Retirement** | Does the money last? Spending vs savings, other income, windfalls, sustainable spending |
 | **Goals** | Contribution needed for goals like college (529) |
+| **Roth** | Roth conversion planner: compares strategies (fill a bracket, fixed amounts, your own table, with optional IRMAA and ACA-cliff limits) using exact yearly federal and MA taxes, Social Security taxation, RMDs, Medicare IRMAA, and the ACA credit; ranks them by lowest lifetime cost, most money left, and best for heirs; simulated futures show how often the money lasts |
 | **Debt** | Mortgage, HELOC (interest-only draw period then payback), and other loans: amortization schedules, extra principal in any period, rate changes and what-if rate shocks, new/what-if loans, and an optional link to your ledger that splits payments into principal and interest |
 | **Scheduled** | Recurring items that you approve before they post |
 | **Import** | CSV import with duplicate protection and undo |
@@ -74,6 +75,8 @@ Massachusetts figures for **2026** are built in. For a new year, open **Income**
 update the numbers (amounts are in cents). Sources: IRS (inflation-adjustments release and the retirement-plan limits notice), SSA
 (contribution and benefit base), Massachusetts DOR (personal income tax rates and Form 1 instructions), and Massachusetts DFML
 (paid family and medical leave rates). Items marked UNVERIFIED in the notes could not be confirmed from an official source; check them.
+
+The Roth planner has its own rules in `src/data/retirementTax.ts` (capital-gains thresholds, IRMAA tiers, ACA credit, RMD table, senior deduction). Check them each year too; they scale with your inflation assumption in later years, but the law can change.
 
 ## Price data (optional)
 

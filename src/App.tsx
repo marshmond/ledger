@@ -12,6 +12,7 @@ import BudgetPage from './pages/BudgetPage';
 import ScheduledPage from './pages/ScheduledPage';
 import IncomePage from './pages/IncomePage';
 import ThemeToggle from './pages/ThemeToggle';
+import RothPage from './pages/RothPage';
 import DebtPage from './pages/DebtPage';
 import TransactionsPage from './pages/TransactionsPage';
 import InvestmentsPage from './pages/InvestmentsPage';
@@ -33,6 +34,7 @@ export default function App() {
         <NavLink to="/projections">Projections</NavLink>
         <NavLink to="/retirement">Retirement</NavLink>
         <NavLink to="/goals">Goals</NavLink>
+        <NavLink to="/roth">Roth</NavLink>
         <NavLink to="/debt">Debt</NavLink>
         <NavLink to="/scheduled">Scheduled{dueCount > 0 && <span className="count">{dueCount}</span>}</NavLink>
         <NavLink to="/import">Import</NavLink>
@@ -51,6 +53,7 @@ export default function App() {
           <Route path="/projections" element={<ProjectionPage />} />
           <Route path="/retirement" element={<RetirementPage />} />
           <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/roth" element={<RothPage />} />
           <Route path="/debt" element={<DebtPage />} />
           <Route path="/scheduled" element={<ScheduledPage />} />
           <Route path="/import" element={<ImportPage />} />

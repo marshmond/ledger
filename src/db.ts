@@ -16,6 +16,7 @@ import type {
   LoanEvent,
   LoanRateChange,
   Person,
+  RsuVest,
   RecurringLog,
   RecurringRule,
   Security,
@@ -47,6 +48,7 @@ export class FinanceDB extends Dexie {
   loans!: Table<Loan, number>;
   loanRates!: Table<LoanRateChange, number>;
   loanEvents!: Table<LoanEvent, number>;
+  rsuVests!: Table<RsuVest, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -95,6 +97,9 @@ export class FinanceDB extends Dexie {
       loans: '++id',
       loanRates: '++id, loanId',
       loanEvents: '++id, loanId',
+    });
+    this.version(7).stores({
+      rsuVests: '++id, personId, date',
     });
   }
 }
