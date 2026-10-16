@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, seedAssetClassesIfEmpty } from '../db';
-import type { AssetClass, AssetKind, Holding, InvAccount, InvKind, InvTaxType, Security } from '../types';
+import type { AssetClass, AssetKind, Holding, InvAccount, InvKind, InvTaxType, Person, Security } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import { allocationFor, gainLoss, holdingValue, summarize } from '../lib/investments';
 import { applyPrices, fetchPrices, PER_MINUTE } from '../lib/prices';
@@ -86,7 +86,17 @@ function HoldingForm({ account, securities, classes, onDone }: { account: InvAcc
   );
 }
 
-function AccountBlock({ s, holdings, securities, classes }: { s: ReturnType<typeof summarize>['accounts'][number]; holdings: Holding[]; securities: Security[]; classes: AssetClass[] }) {
+/** Who owns an account. Retirement accounts need one: RMD ages, conversions, and the Roth planner depend on it. */
+function OwnerSelect({ value, people, onChange }: { value: number | null | undefined; people: Person[]; onChange: (id: number | null) => void }) {
+  return (
+    <select aria-label="Owner" value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}>
+      <option value="">Joint / none</option>
+      {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+    </select>
+  );
+}
+
+function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnType<typeof summarize>['accounts'][number]; holdings: Holding[]; securities: Security[]; classes: AssetClass[]; people: Person[] }) {
   const a = s.account;
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(true);
@@ -104,7 +114,11 @@ function AccountBlock({ s, holdings, securities, classes }: { s: ReturnType<type
               <option value="roth">Roth</option>
             </select>
           )}
+          <label className="row" style={{ display: 'inline-flex', marginLeft: 6 }}>Owner <OwnerSelect value={a.personId} people={people} onChange={(id) => db.invAccounts.update(a.id!, { personId: id })} /></label>
           {a.closed && <span className="badge">closed</span>}
+          {(a.kind === 'ira' || a.kind === '401k') && a.personId == null && people.length > 0 && !a.closed && (
+            <div className="warn">No owner set: the Roth planner counts this as {people[0]?.name ?? 'the first person'}’s. Pick an owner.</div>
+          )}
         </div>
         <div className="row">
           <strong>{formatCents(s.total)}</strong>
@@ -170,6 +184,7 @@ export default function InvestmentsPage() {
   const holdings = useLiveQuery(() => db.holdings.toArray(), []) ?? [];
   const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
   const classes = useLiveQuery(() => db.assetClasses.toArray(), []) ?? [];
+  const people = useLiveQuery(() => db.people.toArray(), []) ?? [];
   const apiKey = (useLiveQuery(() => db.settings.get('priceApiKey'), []) as { value?: string } | undefined)?.value ?? '';
 
   const p = useMemo(() => ({ accounts, holdings, securities, assetClasses: classes }), [accounts, holdings, securities, classes]);
@@ -187,6 +202,7 @@ export default function InvestmentsPage() {
   const [nm, setNm] = useState('');
   const [kind, setKind] = useState<InvKind>('brokerage');
   const [cash, setCash] = useState(0);
+  const [owner, setOwner] = useState<number | null>(null);
   const [keyText, setKeyText] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -237,7 +253,7 @@ export default function InvestmentsPage() {
       <h2>Accounts</h2>
       {sum.accounts.length === 0 && <p className="muted">Add your brokerage, IRA, 401(k), and 529 accounts, then their holdings.</p>}
       {KIND_ORDER.flatMap((k) => sum.accounts.filter((s) => s.account.kind === k)).map((s) => (
-        <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} />
+        <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} people={people} />
       ))}
 
       <div className="card">
@@ -249,6 +265,7 @@ export default function InvestmentsPage() {
               {KIND_ORDER.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
             </select>
           </label>
+          <label className="f">Owner<OwnerSelect value={owner} people={people} onChange={setOwner} /></label>
           <MoneyField label="Uninvested cash" cents={cash} onChange={setCash} />
         </div>
         <div className="row" style={{ marginTop: 6 }}>
@@ -256,9 +273,10 @@ export default function InvestmentsPage() {
             className="primary"
             onClick={async () => {
               if (!nm.trim()) return;
-              await db.invAccounts.add({ name: nm.trim(), kind, taxType: defaultTax(kind), cashCents: cash, annualContributionCents: 0, contributionGrowthPct: 0, linkToIncome: false });
+              await db.invAccounts.add({ name: nm.trim(), kind, taxType: defaultTax(kind), personId: owner, cashCents: cash, annualContributionCents: 0, contributionGrowthPct: 0, linkToIncome: false });
               setNm('');
               setCash(0);
+              setOwner(null);
             }}
           >Add account</button>
         </div>

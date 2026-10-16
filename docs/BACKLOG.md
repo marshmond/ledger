@@ -250,3 +250,45 @@ Requested 2026-10-13, for both spouses. Details being clarified.
     - **Common stock:** link to a ticker (price from Investments, manual or refreshed). Future vests use the current price; an optional actual vest price overrides it and sets the cost basis. Per-vest choice of **held in a brokerage account** (new holding at the vest price) or **sold immediately** (cash income, no holding).
     - Both types: past vests this year are entered too; withholding rate set per person (default 22% federal supplemental plus Social Security/Medicare/MA) compared with actual liability; vest income counts as wages (FICA, wage-base cap).
     - Still open: for cash vests, whether any payout is contingent (escrow/holdback) and should be flagged "at risk".
+
+---
+
+## New feature: cost basis and realized gains (Investments)
+
+Requested 2026-10-15. Not built; waiting on answers to clarifying questions.
+
+- [ ] **Update cost basis** on a holding (Investments tab).
+- [ ] **Log completed transactions (sales)** so realized gains year to date can be tracked.
+  - Open questions: single basis per holding or tax lots; how a sale picks which shares (average cost, FIFO, specific lots); short- vs long-term gains (needs purchase dates); whether a sale reduces the holding's shares and adds proceeds to the account's cash; whether to also log buys; whether the YTD figure feeds the Income/Roth tax estimates.
+  - **Decisions (owner, 2026-10-15):**
+    - Cost basis is tracked by **tax lots** (date, shares, cost per lot). Taxable (brokerage) accounts show holdings at lot level; existing holdings become one lot the owner can split/edit.
+    - Basis is editable (per lot).
+    - **Sale method is chosen per sale**: a default method (FIFO, highest cost, or average cost) with the option to pick specific lots. Selling shares sells the associated lot(s) within the Investments tab.
+    - **Qualified accounts** (IRA, 401(k), Roth, 529): selling a position does NOT trigger any tax calculation (and needs no lot-level tracking).
+    - Logging a sale **reduces the holding's shares** and **feeds the tax estimates** (realized gains YTD count in the Income tab estimate; short vs long term from lot dates).
+    - **Buys are logged too** (each buy creates a lot with date and cost; reinvested dividends included).
+    - Open: whether net sale proceeds are added to the account's cash balance (not selected, so default is no unless the owner says otherwise); wash sales are not modeled unless asked.
+
+---
+
+## New feature: HSA account type
+
+Requested 2026-10-15. Not built (owner said wait). Details being clarified.
+
+- [ ] **Ability to categorize an account as an HSA** (Investments tab).
+  - **Decisions (owner, 2026-10-15):**
+    - HSA is its **own investment account type** (holds cash and investments; shows in allocation and net worth).
+    - **Contributions link to the Income tab**: payroll HSA saving plus employer HSA money flow into the account in projections (within the yearly limit), like the 401(k) link.
+    - **Counts in the Roth planner** as a tax-free bucket for medical costs in retirement.
+    - **Track qualified medical withdrawals**: log each withdrawal as qualified (tax-free) or not (taxed, plus penalty before 65).
+    - **Included in Projections**, growing with its holdings' assumed returns.
+    - Open: how to treat HSA spending in the Roth planner (a yearly medical-cost figure it covers tax-free), and owner per person (self vs family coverage already exists on the Income tab).
+
+---
+
+## Gap: account owner (Investments)
+
+Reported 2026-10-15. The data model has an owner on investment accounts (`InvAccount.personId`), but the Investments tab has no way to set it. The Roth planner depends on it (it assigns each IRA/401(k)/Roth to a person for RMD ages and conversions, and tells the owner to "set the owner on the Investments tab"; unowned accounts are counted as the first person's).
+
+- [x] (built 2026-10-15) Add an **Owner** picker (people from the Income tab, plus "Joint/none") when creating an account and on each account card, editable later.
+- [x] (built 2026-10-15) Show the owner on the account card; warn on retirement accounts with no owner.
