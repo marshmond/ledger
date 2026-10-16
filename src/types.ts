@@ -239,8 +239,8 @@ export interface TaxSettings {
 
 // ---- Investments (Phase 4) ----
 
-export type InvKind = 'brokerage' | 'ira' | '401k' | '529';
-export type InvTaxType = 'taxable' | 'traditional' | 'roth' | '529';
+export type InvKind = 'brokerage' | 'ira' | '401k' | '529' | 'hsa';
+export type InvTaxType = 'taxable' | 'traditional' | 'roth' | '529' | 'hsa';
 
 export interface InvAccount {
   id?: number;
@@ -255,7 +255,7 @@ export interface InvAccount {
   annualContributionCents: number;
   /** Yearly increase in the contribution, e.g. 3 = 3% more each year. */
   contributionGrowthPct: number;
-  /** 401(k) only: take contributions from the Income model (your deferrals + employer match). */
+  /** 401(k) and HSA: take contributions from the Income model (your deferrals + employer match / HSA saving + employer HSA money). */
   linkToIncome: boolean;
   closed?: boolean;
 }
@@ -426,4 +426,81 @@ export interface LoanEvent {
   monthly?: boolean;
   endDate?: string | null;
   note?: string;
+}
+
+// ---- Paycheck calculator ----
+
+/** A saved what-if for one person's pay. Editing it never changes the real setup on the Income tab. */
+export interface PayScenario {
+  id?: number;
+  name: string;
+  personId: number;
+  year: number;
+  /** Salary, schedule, deductions, match, and withholding for the scenario (a copy, or built from scratch). */
+  profile: IncomeProfile;
+  bonuses: { month: number; grossCents: number; label: string }[];
+  /** Include the other person's real income (and your Income tab tax settings) when estimating the household's yearly tax. */
+  includeSpouse: boolean;
+  startedFrom: 'income' | 'blank';
+  updatedAt: string;
+}
+
+/** Money taken out of an HSA. Qualified (medical) withdrawals are tax-free; others are taxed, plus a 20% penalty before 65. */
+export interface HsaWithdrawal {
+  id?: number;
+  accountId: number;
+  date: string;
+  amountCents: number;
+  qualified: boolean;
+  note: string;
+  /** How much of it was taken out of the account's cash balance when logged (restored if deleted). */
+  fromCashCents: number;
+}
+
+// ---- Cost basis and realized gains ----
+
+/** One purchase of a security in a taxable account. A holding's shares and cost basis are the sum of its lots. */
+export interface TaxLot {
+  id?: number;
+  holdingId: number;
+  accountId: number;
+  securityId: number;
+  /** null = date unknown (treated as long-term). */
+  acquiredDate: string | null;
+  shares: number;
+  /** Total cost for the lot, in cents (not per share). */
+  costBasisCents: number;
+  source: 'opening' | 'buy' | 'reinvest' | 'rsu' | 'manual';
+}
+
+export type SaleMethod = 'fifo' | 'lifo' | 'hifo' | 'average' | 'specific';
+
+export interface SaleLot {
+  lotId: number;
+  shares: number;
+  basisCents: number;
+  acquiredDate: string | null;
+  longTerm: boolean;
+}
+
+/** A completed sale. Sales in taxable accounts have a gain or loss; sales in IRAs, 401(k)s, Roths, HSAs, and 529s do not. */
+export interface Sale {
+  id?: number;
+  accountId: number;
+  securityId: number;
+  date: string;
+  shares: number;
+  /** Net of fees. */
+  proceedsCents: number;
+  feesCents: number;
+  method: SaleMethod;
+  taxable: boolean;
+  lots: SaleLot[];
+  basisCents: number;
+  gainCents: number;
+  shortTermCents: number;
+  longTermCents: number;
+  /** Proceeds were added to the account's cash balance. */
+  toCashCents: number;
+  note: string;
 }

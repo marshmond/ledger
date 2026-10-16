@@ -1,6 +1,7 @@
 import { TAX_2026 } from '../data/taxYears';
 import { RETIREMENT_RULES_2026, rmdStartAge } from '../data/retirementTax';
-import type { AssetClass, Holding, IncomeProfile, InvAccount, Person, RetirementSettings, Security } from '../types';
+import type { AssetClass, Holding, IncomeProfile, InvAccount, Person, RetirementSettings, Sale, Security } from '../types';
+import { netForTax, realizedFor } from './lots';
 import type { IncomeModel } from './income';
 import { holdingValue } from './investments';
 import { DEFAULT_RETIREMENT } from './retirement';
@@ -22,6 +23,8 @@ export interface RothSettings {
   perPerson: { personId: number; retireYear: number | null; ssAnnualCents: number; ssClaimAge: number; iraBasisCents: number }[];
   other: OtherIncome[];
   aca: { on: boolean; benchmarkCents: number; premiumGrowthPct: number };
+  /** Medical costs per year in retirement (today's dollars) that the HSA pays tax-free while it lasts. */
+  hsaMedicalCents: number;
   conversionTaxFrom: 'outside' | 'conversion';
   endTaxRatePct: number;
   heirTaxRatePct: number;
@@ -42,6 +45,7 @@ export const DEFAULT_ROTH: RothSettings = {
   perPerson: [],
   other: [],
   aca: { on: false, benchmarkCents: 0, premiumGrowthPct: 5 },
+  hsaMedicalCents: 0,
   conversionTaxFrom: 'outside',
   endTaxRatePct: 24,
   heirTaxRatePct: 24,
@@ -59,6 +63,8 @@ export interface RothSources {
   securities: Security[];
   classes: AssetClass[];
   retirement: Partial<RetirementSettings> | undefined;
+  /** Logged sales: gains realized so far this year count in the plan's first year. */
+  sales?: Sale[];
   /** Saved Projections inflation, used as the starting inflation assumption. */
   projectionInflationPct?: number;
 }
@@ -73,6 +79,7 @@ export interface BuiltPlan {
   balances: { name: string; ira: number; k401: number; roth: number }[];
   taxable: number;
   taxableBasis: number;
+  hsa: number;
   estReturn: { trad: number; roth: number; taxable: number };
   estVol: number;
   retireDefault: number;
@@ -105,6 +112,7 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
   const bal = people.map(() => ({ ira: 0, k401: 0, roth: 0 }));
   let taxable = 0;
   let taxableBasis = 0;
+  let hsa = 0;
   const unowned: string[] = [];
   const missingPrice = new Set<string>();
   for (const a of open) {
@@ -113,6 +121,10 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
     for (const h of src.holdings.filter((x) => x.accountId === a.id)) {
       const sec = secById.get(h.securityId);
       if (sec && sec.priceCents === null) missingPrice.add(sec.ticker);
+    }
+    if (a.taxType === 'hsa') {
+      hsa += v;
+      continue;
     }
     if (a.taxType === 'taxable') {
       taxable += v;
@@ -134,7 +146,7 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
   const vols: { w: number; v: number }[] = [];
   for (const a of open) {
     if (a.taxType === '529') continue;
-    const key = a.taxType === 'traditional' ? 'trad' : a.taxType === 'roth' ? 'roth' : 'taxable';
+    const key = a.taxType === 'traditional' ? 'trad' : a.taxType === 'roth' || a.taxType === 'hsa' ? 'roth' : 'taxable';
     for (const h of src.holdings.filter((x) => x.accountId === a.id)) {
       const sec = secById.get(h.securityId);
       const cls = sec ? classById.get(sec.assetClassId) : undefined;
@@ -189,6 +201,14 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
     if (y >= year0) extraWages[y] = (extraWages[y] ?? 0) + r.grossCents;
   }
 
+  const hsaContrib = src.income.years.reduce((t, y) => t + y.contributions.hsa + y.contributions.employerHsa, 0);
+  if (hsa > 0 && s.hsaMedicalCents <= 0) notes.push('You have an HSA. Enter yearly medical costs in retirement under Assumptions so it can pay them tax-free; otherwise it just grows.');
+
+  const realized = realizedFor(src.sales ?? [], year0);
+  const g = netForTax(realized);
+  const extraGains = realized.count > 0 ? { [year0]: { stcg: g.stcgCents, ltcg: g.ltcgCents, lossDeduction: g.lossDeductionCents } } : undefined;
+  if (realized.count > 0) notes.push(`Gains realized so far in ${year0} (${realized.count} sale${realized.count === 1 ? '' : 's'}) are counted in this year’s income.`);
+
   const input: PlanInput | null =
     planPeople.length === 0
       ? null
@@ -200,6 +220,7 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
           taxableBasisCents: taxableBasis,
           other: s.other,
           extraWages,
+          extraGains,
           spendingCents: spending,
           inflationPct: s.inflationPct,
           wageGrowthPct: s.wageGrowthPct,
@@ -208,6 +229,7 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
           yieldPct: s.yieldPct,
           yieldOrdinaryPct: s.yieldOrdinaryPct,
           aca: s.aca,
+          hsa: hsa > 0 || hsaContrib > 0 ? { balanceCents: hsa, contribCents: hsaContrib, medicalCents: s.hsaMedicalCents } : undefined,
           conversionTaxFrom: s.conversionTaxFrom,
           endTaxRatePct: s.endTaxRatePct,
           heirTaxRatePct: s.heirTaxRatePct,
@@ -222,6 +244,7 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
     balances: planPeople.map((p) => ({ name: p.name, ira: p.ira, k401: p.k401, roth: p.roth })),
     taxable,
     taxableBasis,
+    hsa,
     estReturn,
     estVol,
     retireDefault,

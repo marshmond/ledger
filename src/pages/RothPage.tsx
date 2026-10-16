@@ -110,6 +110,7 @@ export default function RothPage() {
   const holdings = useLiveQuery(() => db.holdings.toArray(), []) ?? [];
   const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
   const classes = useLiveQuery(() => db.assetClasses.toArray(), []) ?? [];
+  const sales = useLiveQuery(() => db.sales.toArray(), []) ?? [];
   const savedRet = useLiveQuery(() => db.settings.get('retirement'), []);
   const savedProj = useLiveQuery(() => db.settings.get('projection'), []);
   const saved = useLiveQuery(() => db.settings.get('rothPlan'), []);
@@ -122,9 +123,9 @@ export default function RothPage() {
     [year0, people, profiles, bonuses, taxSettings, rsuVests, securities],
   );
   const built = useMemo(
-    () => buildPlanInput({ year0, people, profiles, income, accounts, holdings, securities, classes, retirement: savedRet?.value as never, projectionInflationPct: (savedProj?.value as { inflationPct?: number } | undefined)?.inflationPct }, s),
+    () => buildPlanInput({ year0, people, profiles, income, accounts, holdings, securities, classes, sales, retirement: savedRet?.value as never, projectionInflationPct: (savedProj?.value as { inflationPct?: number } | undefined)?.inflationPct }, s),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [year0, people, profiles, income, accounts, holdings, securities, classes, savedRet, savedProj, saved],
+    [year0, people, profiles, income, accounts, holdings, securities, classes, sales, savedRet, savedProj, saved],
   );
   const input: PlanInput | null = built.input;
   const strategies: Strategy[] = useMemo(() => s.strategies ?? (input ? starterStrategies(input) : []), [s.strategies, input]);
@@ -220,6 +221,16 @@ export default function RothPage() {
                 </tbody></table>
                 <p className="muted">Conversion taxes are paid from here first.</p>
               </div>
+              {(built.hsa > 0 || (input.hsa?.contribCents ?? 0) > 0) && (
+                <div className="card">
+                  <strong>Health savings account</strong>
+                  <table><tbody>
+                    <tr><td>Balance</td><td className="num">{cell(built.hsa)}</td></tr>
+                    <tr><td>Saved per year while working</td><td className="num">{cell(input.hsa?.contribCents ?? 0)}</td></tr>
+                  </tbody></table>
+                  <p className="muted">Pays medical costs tax-free in retirement (set the yearly amount under Assumptions).</p>
+                </div>
+              )}
             </div>
             {built.notes.map((n) => <p key={n} className="muted">{n}</p>)}
             <h3>Other income</h3>
@@ -230,6 +241,7 @@ export default function RothPage() {
             <div className="grid">
               <NumField label="Plan through the year the younger person turns" value={s.planAge} step={1} onChange={(n) => setS({ planAge: Math.round(n) })} />
               <MoneyField label={`Spending in retirement per year, today’s $ (blank = Retirement tab)`} cents={s.spendingCents ?? 0} onChange={(c) => setS({ spendingCents: c || null })} />
+              {(built.hsa > 0 || (input.hsa?.contribCents ?? 0) > 0) && <MoneyField label="Medical costs the HSA pays per year in retirement, today’s $" cents={s.hsaMedicalCents} onChange={(c) => setS({ hsaMedicalCents: c })} />}
               <NumField label="Inflation %" value={s.inflationPct} step={0.1} onChange={(n) => setS({ inflationPct: n })} />
               <NumField label="Wage growth %" value={s.wageGrowthPct} step={0.1} onChange={(n) => setS({ wageGrowthPct: n })} />
               <NumField label={`Return, traditional % (estimate ${built.estReturn.trad.toFixed(1)})`} value={s.returnPct.trad ?? built.estReturn.trad} step={0.1} onChange={(n) => setS({ returnPct: { ...s.returnPct, trad: n } })} />

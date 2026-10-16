@@ -21,7 +21,7 @@ const wealth = (i: PlanInput, s: Strategy) => {
   const r = simulatePlan(i, s);
   return { r, total: r.summary.endWealth + r.summary.lifetimeCost };
 };
-const initial = (i: PlanInput) => i.people.reduce((a, p) => a + p.ira + p.k401 + p.roth, 0) + i.taxableCents;
+const initial = (i: PlanInput) => i.people.reduce((a, p) => a + p.ira + p.k401 + p.roth, 0) + i.taxableCents + (i.hsa?.balanceCents ?? 0);
 
 describe('plan horizon and dates', () => {
   it('runs until the youngest person reaches the plan age', () => {
@@ -113,6 +113,35 @@ describe('conversions', () => {
     const r = simulatePlan(i, strat({ kind: 'fixed', fixedCents: $(50000), fromYear: 2026, toYear: 2030 }));
     expect(r.rows[0].conversion).toBe($(50000));
     expect(r.rows[4].conversion).toBe(Math.round($(50000) * Math.pow(1.025, 4)));
+  });
+});
+
+describe('health savings account', () => {
+  it('is part of what is left, and money is conserved with no growth or spending', () => {
+    const i = flat({ hsa: { balanceCents: $(40000), contribCents: 0, medicalCents: 0 } });
+    const { total, r } = wealth(i, NO_CONVERSION(2026, 2030));
+    expect(r.summary.endHsa).toBe($(40000));
+    expect(Math.abs(total - initial(i))).toBeLessThan(100);
+  });
+  it('pays medical costs tax-free once everyone has retired, lowering what is drawn from other accounts', () => {
+    const people = [person({ ira: $(900000), retireYear: 2026 })];
+    const base = flat({ spendingCents: $(60000), planAge: 70, people });
+    const withHsa = { ...base, hsa: { balanceCents: $(30000), contribCents: 0, medicalCents: $(10000) } };
+    const a = simulatePlan(base, NO_CONVERSION(2026, 2030));
+    const b = simulatePlan(withHsa, NO_CONVERSION(2026, 2030));
+    expect(b.rows[0].hsaDraw).toBe($(10000));
+    expect(b.rows[0].hsa).toBe($(20000));
+    expect(b.rows[0].agi).toBeLessThan(a.rows[0].agi);
+    expect(b.rows[3].hsaDraw).toBe(0);
+    const spent = b.rows.reduce((x, row) => x + row.spending, 0);
+    expect(Math.abs(b.summary.endWealth + b.summary.lifetimeCost + spent - initial(withHsa))).toBeLessThan(100);
+  });
+  it('grows with contributions while someone is still working, and counts for heirs after their tax rate', () => {
+    const i = flat({ planAge: 70, people: [person({ ira: $(100000), retireYear: 2030 })], hsa: { balanceCents: 0, contribCents: $(5000), medicalCents: 0 }, heirTaxRatePct: 24 });
+    const r = simulatePlan(i, NO_CONVERSION(2026, 2032));
+    expect(r.rows.find((x) => x.year === 2029)!.hsa).toBe($(5000) * 4);
+    expect(r.rows.find((x) => x.year === 2030)!.hsa).toBe($(5000) * 4);
+    expect(r.summary.heirs).toBe(Math.round(($(100000) + $(20000)) * 0.76) + i.taxableCents);
   });
 });
 

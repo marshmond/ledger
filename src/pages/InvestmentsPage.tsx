@@ -8,9 +8,12 @@ import { applyPrices, fetchPrices, PER_MINUTE } from '../lib/prices';
 import { AllocationBar, compactUSD, type AllocItem } from './charts';
 import { MoneyField, NumField } from './fields';
 import PriceCell from './PriceCell';
+import HsaLog from './HsaLog';
+import { LotsPanel, RealizedSection, TradePanel } from './TradePanels';
+import { addLot, ensureLots, isTaxable, setHoldingBasis } from '../lib/lots';
 
-const KIND_LABEL: Record<InvKind, string> = { brokerage: 'Brokerage', ira: 'IRA', '401k': '401(k)', '529': '529' };
-const KIND_ORDER: InvKind[] = ['brokerage', 'ira', '401k', '529'];
+const KIND_LABEL: Record<InvKind, string> = { brokerage: 'Brokerage', ira: 'IRA', '401k': '401(k)', '529': '529', hsa: 'HSA' };
+const KIND_ORDER: InvKind[] = ['brokerage', 'ira', '401k', 'hsa', '529'];
 const ASSET_KINDS: [AssetKind, string][] = [
   ['equity', 'Stocks'],
   ['bond', 'Bonds'],
@@ -20,7 +23,7 @@ const ASSET_KINDS: [AssetKind, string][] = [
   ['other', 'Other'],
 ];
 
-const defaultTax = (k: InvKind): InvTaxType => (k === 'brokerage' ? 'taxable' : k === '529' ? '529' : 'traditional');
+const defaultTax = (k: InvKind): InvTaxType => (k === 'brokerage' ? 'taxable' : k === '529' ? '529' : k === 'hsa' ? 'hsa' : 'traditional');
 
 function HoldingForm({ account, securities, classes, onDone }: { account: InvAccount; securities: Security[]; classes: AssetClass[]; onDone: () => void }) {
   const [ticker, setTicker] = useState('');
@@ -29,6 +32,7 @@ function HoldingForm({ account, securities, classes, onDone }: { account: InvAcc
   const [name, setName] = useState('');
   const [classId, setClassId] = useState('');
   const [price, setPrice] = useState(0);
+  const [bought, setBought] = useState('');
   const [err, setErr] = useState('');
   const existing = securities.find((s) => s.ticker.toUpperCase() === ticker.trim().toUpperCase());
   const isNew = ticker.trim() !== '' && !existing;
@@ -51,7 +55,8 @@ function HoldingForm({ account, securities, classes, onDone }: { account: InvAcc
         priceSource: price > 0 ? 'manual' : null,
       });
     }
-    await db.holdings.add({ accountId: account.id!, securityId: secId!, shares: n, costBasisCents: basis > 0 ? basis : null });
+    // Taxable accounts get a tax lot (with the purchase date); other accounts just gain shares.
+    await addLot(db, { accountId: account.id!, securityId: secId!, acquiredDate: bought || null, shares: n, costBasisCents: basis, source: 'manual' });
     onDone();
   }
 
@@ -63,6 +68,7 @@ function HoldingForm({ account, securities, classes, onDone }: { account: InvAcc
         </label>
         <label className="f">Shares<input value={shares} onChange={(e) => setShares(e.target.value)} inputMode="decimal" placeholder="0" /></label>
         <MoneyField label="Total cost basis (optional)" cents={basis} onChange={setBasis} />
+        {isTaxable(account) && <label className="f">Purchase date (optional)<input type="date" value={bought} onChange={(e) => setBought(e.target.value)} /></label>}
         {isNew && (
           <>
             <label className="f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Vanguard Total Stock Market" /></label>
@@ -100,8 +106,17 @@ function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnT
   const a = s.account;
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(true);
+  const [panel, setPanel] = useState<{ holdingId: number; mode: 'lots' | 'buy' | 'sell' } | null>(null);
+  const taxable = isTaxable(a);
   const mine = holdings.filter((h) => h.accountId === a.id);
   const secById = new Map(securities.map((x) => [x.id!, x]));
+  const lotIds = useLiveQuery(() => db.taxLots.where('accountId').equals(a.id!).toArray(), [a.id]);
+  // Holdings in taxable accounts are tracked by lot: give any holding without one an opening lot.
+  useEffect(() => {
+    if (!taxable || !lotIds) return;
+    for (const h of mine) if (!lotIds.some((l) => l.holdingId === h.id)) ensureLots(db, h.id!);
+  }, [taxable, lotIds, mine.map((h) => h.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const panelHolding = panel ? mine.find((h) => h.id === panel.holdingId) : undefined;
 
   return (
     <div className="card">
@@ -134,7 +149,7 @@ function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnT
           {s.missingPrices.length > 0 && <p className="warn">No price yet: {s.missingPrices.join(', ')}. Refresh prices or enter one below.</p>}
           {mine.length > 0 && (
             <div className="scroll-x"><table>
-              <thead><tr><th>Holding</th><th className="num">Shares</th><th className="num">Price</th><th className="num">Value</th><th className="num hide-sm">Gain / loss</th><th></th></tr></thead>
+              <thead><tr><th>Holding</th><th className="num">Shares</th><th className="num">Price</th><th className="num">Value</th><th className="num hide-sm">Cost basis</th><th className="num hide-sm">Gain / loss</th><th></th></tr></thead>
               <tbody>
                 {mine.map((h) => {
                   const sec = secById.get(h.securityId);
@@ -143,19 +158,34 @@ function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnT
                     <tr key={h.id}>
                       <td>{sec?.ticker}<div className="muted">{sec?.name} · {classes.find((c) => c.id === sec?.assetClassId)?.name}</div></td>
                       <td className="num">
-                        <input style={{ width: 90, textAlign: 'right' }} inputMode="decimal" defaultValue={h.shares} key={`${h.id}-${h.shares}`}
-                          onBlur={(e) => { const n = Number(e.target.value); if (n > 0 && n !== h.shares) db.holdings.update(h.id!, { shares: n }); else e.target.value = String(h.shares); }} />
+                        {taxable ? (
+                          <span title="Shares follow the tax lots">{Math.round(h.shares * 1e6) / 1e6}</span>
+                        ) : (
+                          <input style={{ width: 90, textAlign: 'right' }} inputMode="decimal" defaultValue={h.shares} key={`${h.id}-${h.shares}`}
+                            onBlur={(e) => { const n = Number(e.target.value); if (n > 0 && n !== h.shares) db.holdings.update(h.id!, { shares: n }); else e.target.value = String(h.shares); }} />
+                        )}
                       </td>
                       <td className="num">{sec ? <PriceCell key={`${sec.id}-${sec.priceCents}`} sec={sec} /> : null}</td>
                       <td className="num">{formatCents(holdingValue(h, sec))}</td>
+                      <td className="num hide-sm">
+                        {taxable ? formatCents(h.costBasisCents ?? 0) : <MoneyField key={`${h.id}-${h.costBasisCents}`} cents={h.costBasisCents ?? 0} width={100} onChange={(c) => setHoldingBasis(db, h.id!, c > 0 ? c : null)} />}
+                      </td>
                       <td className={`num hide-sm ${gl === null ? 'muted' : gl < 0 ? 'neg' : 'pos'}`}>{gl === null ? '—' : formatCents(gl)}</td>
-                      <td><button className="link danger" onClick={() => confirm(`Remove ${sec?.ticker} from ${a.name}?`) && db.holdings.delete(h.id!)}>remove</button></td>
+                      <td>
+                        {taxable && <button className="link" onClick={() => setPanel(panel !== null && panel.holdingId === h.id && panel.mode === 'lots' ? null : { holdingId: h.id!, mode: 'lots' })}>lots</button>}{' '}
+                        <button className="link" onClick={() => setPanel({ holdingId: h.id!, mode: 'buy' })}>buy</button>{' '}
+                        <button className="link" onClick={() => setPanel({ holdingId: h.id!, mode: 'sell' })}>sell</button>{' '}
+                        <button className="link danger" onClick={async () => { if (!confirm(`Remove ${sec?.ticker} from ${a.name}? (To record a sale, use sell instead.)`)) return; await db.taxLots.where('holdingId').equals(h.id!).delete(); await db.holdings.delete(h.id!); }}>remove</button>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table></div>
           )}
+          {panel && panelHolding && (panel.mode === 'lots'
+            ? <LotsPanel holding={panelHolding} security={secById.get(panelHolding.securityId)} onClose={() => setPanel(null)} />
+            : <TradePanel key={`${panel.mode}-${panelHolding.id}`} mode={panel.mode} account={a} holding={panelHolding} security={secById.get(panelHolding.securityId)} onClose={() => setPanel(null)} />)}
           {adding ? (
             <HoldingForm account={a} securities={securities} classes={classes} onDone={() => setAdding(false)} />
           ) : (
@@ -172,6 +202,7 @@ function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnT
               >delete account</button>
             </div>
           )}
+          {a.kind === 'hsa' && <HsaLog account={a} people={people} />}
         </>
       )}
     </div>
@@ -281,6 +312,8 @@ export default function InvestmentsPage() {
           >Add account</button>
         </div>
       </div>
+
+      <RealizedSection accounts={accounts} securities={securities} />
 
       <h2>Prices</h2>
       <div className="card">

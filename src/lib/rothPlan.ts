@@ -49,6 +49,8 @@ export interface PlanInput {
   other: OtherIncome[];
   /** Extra wages by calendar year (RSU vests), taxed as ordinary income. */
   extraWages: Record<number, number>;
+  /** Gains already realized in a year (from logged sales), netted for tax: short-term is ordinary income, long-term is taxed at 0/15/20%. */
+  extraGains?: Record<number, { stcg: number; ltcg: number; lossDeduction: number }>;
   /** Yearly spending in today's dollars, after tax, NOT including ACA premiums (they are added). */
   spendingCents: number;
   inflationPct: number;
@@ -59,6 +61,8 @@ export interface PlanInput {
   yieldOrdinaryPct: number;
   aca: { on: boolean; benchmarkCents: number; premiumGrowthPct: number };
   conversionTaxFrom: 'outside' | 'conversion';
+  /** Health savings account: grows tax-free, is added to while someone works, and pays qualified medical costs tax-free in retirement. */
+  hsa?: { balanceCents: number; contribCents: number; medicalCents: number };
   /** Rates used to value what is left at the end of the plan. */
   endTaxRatePct: number;
   heirTaxRatePct: number;
@@ -98,6 +102,8 @@ export interface YearRow {
   fromTaxable: number;
   fromTrad: number;
   fromRoth: number;
+  hsaDraw: number;
+  hsa: number;
   agi: number;
   fed: number;
   niit: number;
@@ -126,6 +132,7 @@ export interface PlanSummary {
   acaNet: number;
   endTrad: number;
   endRoth: number;
+  endHsa: number;
   endTaxable: number;
   endWealth: number;
   endWealthReal: number;
@@ -187,6 +194,7 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
   const warnings: string[] = [];
   const ps: Person[] = inp.people.map((p) => ({ ira: p.ira, k401: p.k401, roth: p.roth, basis: Math.min(p.iraBasisCents, p.ira), prevEnd: p.ira + p.k401 }));
   const tx = { bal: inp.taxableCents, basis: Math.min(inp.taxableBasisCents, inp.taxableCents) };
+  let hsaBal = inp.hsa?.balanceCents ?? 0;
   const hist = new Map<number, number>();
   let firstBaseAgi: number | null = null;
 
@@ -253,14 +261,15 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
     const benchmark = acaOn ? Math.round(inp.aca.benchmarkCents * growth(inp.aca.premiumGrowthPct, t)) : 0;
     const gainFrac = tx.bal > 0 ? Math.max(0, 1 - tx.basis / tx.bal) : 0;
     const magiAt = (y: number) => hist.get(y) ?? firstBaseAgi ?? 0;
+    const eg = inp.extraGains?.[Y] ?? { stcg: 0, ltcg: 0, lossDeduction: 0 };
 
     interface Ev { fed: FedResult; ma: number; irmaa: number; aca: { subsidy: number; net: number }; agiAca: number; costs: number }
     const evalYear = (conv: number[], wTax: number, wTrad: number[]): Ev => {
       const tradTaxable = wTrad.reduce((a, v, i) => a + Math.round(v * frac[i]), 0) + conv.reduce((a, v, i) => a + Math.round(v * frac[i]), 0);
-      const ordinary = wages + otherTaxable + yieldOrd + rmdTaxable + tradTaxable;
+      const ordinary = wages + otherTaxable + yieldOrd + rmdTaxable + tradTaxable + eg.stcg - eg.lossDeduction;
       const gain = Math.round(wTax * gainFrac);
-      const pref = yieldQual + gain;
-      const fed = federalTax(env, { ordinary, preferential: pref, investIncome: yieldTotal + gain, ss, n65 });
+      const pref = yieldQual + gain + eg.ltcg;
+      const fed = federalTax(env, { ordinary, preferential: pref, investIncome: yieldTotal + gain + eg.stcg + eg.ltcg, ss, n65 });
       const ma = maTax(env, ordinary + pref, n65);
       const irmaa = nMedicare > 0 ? irmaaCost(env, magiAt(Y - 2), nMedicare) : 0;
       const agiAca = fed.agi + (ss - fed.ssTaxable);
@@ -271,7 +280,9 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
     const zeros = Array<number>(n).fill(0);
     const base = evalYear(zeros, 0, zeros);
     if (firstBaseAgi === null) firstBaseAgi = base.fed.agi;
-    const fixedCash = fullyRetired ? ss + otherCash + rmd : 0;
+    // The HSA pays qualified medical costs tax-free once everyone has retired.
+    const hsaDraw = fullyRetired ? Math.min(hsaBal, Math.round((inp.hsa?.medicalCents ?? 0) * c)) : 0;
+    const fixedCash = fullyRetired ? ss + otherCash + rmd + hsaDraw : 0;
 
     // Where withdrawals come from: taxable account, then traditional IRAs (pro rata), then Roth.
     const allocate = (conv: number[], total: number) => {
@@ -393,6 +404,7 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
       ps[i].prevEnd = ps[i].ira + ps[i].k401;
     });
 
+    hsaBal = Math.round((hsaBal - hsaDraw) * (1 + rRoth)) + (fullyRetired ? 0 : Math.round((inp.hsa?.contribCents ?? 0) * wg));
     hist.set(Y, ev.fed.agi);
     sum.converted += convSum;
     sum.fed += ev.fed.total;
@@ -404,7 +416,7 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
     if (opts.rows !== false) {
       rows.push({
         year: Y, ages, wages, ss, ssTaxable: ev.fed.ssTaxable, other: otherTaxable, rmd, conversion: convSum, convTaxable,
-        fromTaxable: alloc.wTax, fromTrad: alloc.wTrad.reduce((a, b) => a + b, 0), fromRoth: alloc.wRoth,
+        fromTaxable: alloc.wTax, fromTrad: alloc.wTrad.reduce((a, b) => a + b, 0), fromRoth: alloc.wRoth, hsaDraw, hsa: hsaBal,
         agi: ev.fed.agi, fed: ev.fed.incomeTax, niit: ev.fed.niit, ma: ev.ma, irmaa: ev.irmaa, acaNet: ev.aca.net, acaSubsidy: ev.aca.subsidy,
         spending, marginal: ev.fed.marginalRate,
         trad: ps.reduce((a, p) => a + p.ira + p.k401, 0), roth: ps.reduce((a, p) => a + p.roth, 0), taxable: tx.bal, unmet: Math.round(alloc.unmet),
@@ -414,9 +426,10 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
 
   const endTrad = ps.reduce((a, p) => a + p.ira + p.k401, 0);
   const endRoth = ps.reduce((a, p) => a + p.roth, 0);
-  const endWealth = endTrad + endRoth + tx.bal;
-  const ownAfterTax = Math.round(endTrad * (1 - inp.endTaxRatePct / 100)) + endRoth + tx.bal;
-  const heirs = Math.round(endTrad * (1 - inp.heirTaxRatePct / 100)) + endRoth + tx.bal;
+  const endWealth = endTrad + endRoth + hsaBal + tx.bal;
+  const ownAfterTax = Math.round(endTrad * (1 - inp.endTaxRatePct / 100)) + endRoth + hsaBal + tx.bal;
+  // An HSA left to someone other than a spouse is taxable to them like traditional money.
+  const heirs = Math.round((endTrad + hsaBal) * (1 - inp.heirTaxRatePct / 100)) + endRoth + tx.bal;
   if (failedYear !== null) warnings.push(`The money runs out in ${failedYear}: spending and taxes cannot be paid after that.`);
   return {
     rows,
@@ -430,7 +443,7 @@ export function simulatePlan(inp: PlanInput, strat: Strategy, opts: RunOptions =
       ma: sum.ma,
       irmaa: sum.irmaa,
       acaNet: sum.aca,
-      endTrad, endRoth, endTaxable: tx.bal, endWealth,
+      endTrad, endRoth, endHsa: hsaBal, endTaxable: tx.bal, endWealth,
       endWealthReal: Math.round(endWealth / lastC),
       ownAfterTax,
       heirs,

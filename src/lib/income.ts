@@ -130,6 +130,10 @@ export function buildIncomeModel(
   bonuses: Bonus[],
   settings?: TaxSettings,
   rsu?: { vests: RsuVest[]; securities: Security[] },
+  /** HSA withdrawals that were not for medical costs: added to income, with the penalty on top. */
+  hsa?: { taxableCents: number; penaltyCents: number },
+  /** Realized capital gains for the year, netted for tax (see netForTax in lots.ts). */
+  gains?: { stcgCents: number; ltcgCents: number; lossDeductionCents: number },
 ): IncomeModel {
   const { tables, source } = resolveTables(year, settings);
   const vests = resolveVests(rsu?.vests ?? [], rsu?.securities ?? []);
@@ -143,7 +147,9 @@ export function buildIncomeModel(
     tableSource: source,
     people,
     years,
-    household: tables && years.length ? householdTax(years, settings ?? DEFAULT_SETTINGS(year), tables) : null,
+    household: tables && years.length
+      ? householdTax(years, { ...(settings ?? DEFAULT_SETTINGS(year)), otherIncomeCents: (settings?.otherIncomeCents ?? 0) + (hsa?.taxableCents ?? 0) }, tables, { hsaPenaltyCents: hsa?.penaltyCents ?? 0, stcgCents: gains?.stcgCents, ltcgCents: gains?.ltcgCents, lossDeductionCents: gains?.lossDeductionCents })
+      : null,
     vests,
     missingProfiles: people.filter((p) => !mine.some((m) => m.personId === p.id)),
   };

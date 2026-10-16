@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { DeductionItem, DeductionType, IncomeProfile, MatchConfig, PayDay, Person } from '../types';
 import { esppOn, hsaOn, newDeduction, payDaysOf } from '../lib/income';
 import Collapsible, { useCollapsed } from './Collapsible';
@@ -51,15 +51,24 @@ export default function ProfileEditor({
   onSave,
   onCopyPrev,
   onDelete,
+  deleteLabel = 'remove this year',
+  live = false,
 }: {
   person: Person;
   profile: IncomeProfile;
   onSave: (p: IncomeProfile) => void;
   onCopyPrev?: () => void;
   onDelete: () => void;
+  deleteLabel?: string;
+  /** Apply every change at once (no Save button): used by the paycheck calculator. */
+  live?: boolean;
 }) {
   const [d, setD] = useState<IncomeProfile>(profile);
   const dirty = JSON.stringify(d) !== JSON.stringify(profile);
+  useEffect(() => {
+    if (live && JSON.stringify(d) !== JSON.stringify(profile)) onSave(d);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d, live]);
   // Merge onto the latest draft (not the one captured at render), so two quick edits can never overwrite each other.
   const set = (patch: Partial<IncomeProfile>) => setD((prev) => ({ ...prev, ...patch }));
   const setDed = (id: string, patch: Partial<DeductionItem>) =>
@@ -89,11 +98,11 @@ export default function ProfileEditor({
       <div className="row spread">
         <button className="collapse-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{person.name}: {d.year}</strong>
-          {dirty && <span className="badge pending">unsaved</span>}
+          {dirty && !live && <span className="badge pending">unsaved</span>}
         </button>
         <div className="row">
           {onCopyPrev && <button className="link" onClick={onCopyPrev}>copy from {d.year - 1}</button>}
-          <button className="link danger" onClick={onDelete}>remove this year</button>
+          <button className="link danger" onClick={onDelete}>{deleteLabel}</button>
         </div>
       </div>
 
@@ -320,10 +329,10 @@ export default function ProfileEditor({
           <p className="muted">Withholding only affects paycheck take-home. The yearly tax owed is calculated separately below, and the difference shows as an expected refund or amount due.</p>
         </Collapsible>
 
-        <div className="row" style={{ marginTop: 10 }}>
+        {!live && <div className="row" style={{ marginTop: 10 }}>
           <button className="primary" disabled={!dirty} onClick={() => onSave(d)}>{dirty ? 'Save changes' : 'Saved'}</button>
           {dirty && <button onClick={() => setD(profile)}>Discard</button>}
-        </div>
+        </div>}
       </div>
     </div>
   );

@@ -29,12 +29,17 @@ export function toClassAssumptions(classes: AssetClass[]): ClassAssumption[] {
   return classes.map((c) => ({ id: c.id!, name: c.name, kind: c.kind, mu: c.expectedReturnPct / 100, sigma: c.volatilityPct / 100 }));
 }
 
-/** First-year contribution for an account: from the income model when linked (401k), else the amount you entered. */
+/** First-year contribution for an account: from the income model when linked (401k, HSA), else the amount you entered. */
 export function baseContribution(a: InvAccount, incomeYears: PersonYear[]): { cents: number; note?: string } {
   if (a.kind === '401k' && a.linkToIncome) {
     const py = incomeYears.find((y) => y.personId === a.personId);
     if (!py) return { cents: 0, note: 'Linked to income, but no income model found for this person and year' };
     return { cents: py.contributions.k401Pretax + py.contributions.k401Roth + py.contributions.employerMatch };
+  }
+  if (a.kind === 'hsa' && a.linkToIncome) {
+    const py = incomeYears.find((y) => y.personId === a.personId);
+    if (!py) return { cents: 0, note: 'Linked to income, but no income model found for this person and year' };
+    return { cents: py.contributions.hsa + py.contributions.employerHsa };
   }
   return { cents: a.annualContributionCents };
 }

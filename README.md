@@ -12,7 +12,8 @@ to Twelve Data using your own key.
 | **Transactions** | Every transaction from every account in one place: filter by account, date range, category, payee/memo, and amount (greater than, less than, between), sort by any column, edit or delete rows, bulk-change category/status, export the filtered list to CSV, and save filters |
 | **Budget** | Envelope ("every dollar has a job") budget: Ready to Assign, rollover, overspending rules, credit-card payment lines, funding for existing card debt |
 | **Income** | Salary, bonuses (entered by month), RSU vests (cash at a set price, or tied to a stock with held/sold choice), 401(k) pre-tax/Roth, employer match, HSA/FSA/ESPP and other deductions, with annual caps applied paycheck by paycheck; federal (married filing jointly) and Massachusetts tax vs withholding |
-| **Investments** | Brokerage, IRA, 401(k), and 529 accounts with holdings, per-holding asset class, allocation, and optional price refresh |
+| **Paycheck** | Paycheck calculator: copy a person's Income setup (or start blank), change salary, bonuses, and deductions, see one paycheck gross-to-net and the whole year, save scenarios and compare them side by side. Never changes your real setup |
+| **Investments** | Brokerage, IRA, 401(k), HSA, and 529 accounts with an owner, holdings, per-holding asset class, allocation, and optional price refresh. Taxable accounts track tax lots: edit cost basis and purchase dates, log buys and sales (choose FIFO, highest cost, average cost, or specific lots), and see realized gains by year, which feed the Income tab's tax estimate. HSAs log qualified and non-qualified withdrawals |
 | **Projections** | Long-term growth with contributions: steady-return path and Monte Carlo ranges, today's or future dollars |
 | **Retirement** | Does the money last? Spending vs savings, other income, windfalls, sustainable spending |
 | **Goals** | Contribution needed for goals like college (529) |

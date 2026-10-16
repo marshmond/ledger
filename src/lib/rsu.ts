@@ -1,5 +1,6 @@
 import type { FinanceDB } from '../db';
-import type { Holding, RsuVest, Security } from '../types';
+import type { RsuVest, Security } from '../types';
+import { addLot } from './lots';
 import type { PersonYear } from './payroll';
 
 /**
@@ -84,16 +85,9 @@ export async function recordHeldVest(d: FinanceDB, vestId: number, outcome: Vest
   if (v.kind !== 'stock' || v.afterVest !== 'held') return 'not-held';
   if (v.recorded) return 'already';
   if (!v.securityId || !v.accountId) return 'missing';
-  await d.transaction('rw', d.holdings, d.rsuVests, async () => {
-    const cur = await d.holdings.where('accountId').equals(v.accountId!).filter((h) => h.securityId === v.securityId).first();
-    if (cur) {
-      await d.holdings.update(cur.id!, {
-        shares: cur.shares + outcome.sharesKept,
-        costBasisCents: (cur.costBasisCents ?? 0) + outcome.basisCents,
-      } as Partial<Holding>);
-    } else {
-      await d.holdings.add({ accountId: v.accountId!, securityId: v.securityId!, shares: outcome.sharesKept, costBasisCents: outcome.basisCents });
-    }
+  await d.transaction('rw', [d.holdings, d.taxLots, d.invAccounts, d.rsuVests], async () => {
+    // A taxable account gets a lot dated on the vest; other accounts just get more shares.
+    await addLot(d, { accountId: v.accountId!, securityId: v.securityId!, acquiredDate: v.date, shares: outcome.sharesKept, costBasisCents: outcome.basisCents, source: 'rsu' });
     await d.rsuVests.update(vestId, { recorded: true });
   });
   return 'recorded';

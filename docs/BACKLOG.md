@@ -4,6 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-16: paycheck calculator, HSA accounts, and cost basis / realized gains were BUILT ("go")
+
+Verified with 380 automated tests and a browser walkthrough (new scenario from a copy, live edit, compare; HSA account and withdrawal; lots, buy, sale with FIFO, undo, tax effect on the Income tab; phone layout).
+
+Judgment calls (please review):
+1. **Paycheck calculator** copies are independent of the Income tab (editing a scenario never changes the real setup). Scenario edits apply immediately (no Save button). The household yearly tax uses the other person's real income (optional) and your Income tab's tax settings. RSU vests are not part of a scenario (add bonuses to model a lump sum).
+2. **HSA** is its own account type. A withdrawal logged as "not qualified" is added to other income on the Income tab with a 20% penalty if the owner is under 65 (no known owner or birth year assumes under 65). Death/disability exceptions are not modeled. Logging a withdrawal takes it out of the account's cash when cash is available. The Roth planner treats the HSA as a tax-free bucket that pays the "medical costs per year in retirement" you enter once everyone has retired; a leftover HSA is taxed at your heirs' rate for heirs.
+3. **Tax lots:** existing taxable holdings become one "opening" lot with the recorded basis (or $0 if none was recorded) and an unknown purchase date, which counts as long-term. Fix the date and cost in the lots panel. Taxable holdings' share counts follow the lots (edit lots, not the share box). Adding shares to a taxable holding adds a lot (merged into the same holding).
+4. **Sales:** the default method is remembered (FIFO to start); "pick specific lots" is per sale. Average cost allocates in proportion over all lots, and each lot's own date decides short vs long term. Proceeds go to cash only if you tick the box (same for buys). Wash sales and the carried-forward part of a capital loss are not modeled. A net loss deducts up to $3,000 against other income.
+5. **Realized gains** feed the Income tab (short-term as ordinary income; long-term stacked at 0/15/20% using the 2026 thresholds for every year; 3.8% NIIT above $250,000; MA taxes them at 5%) and the first year of the Roth planner.
+6. **Qualified accounts** (IRA, 401(k), Roth, HSA, 529): a sale only lowers the holding, with no gain or lots. You can edit the holding's total cost basis there.
+7. **Held RSU vests** in a taxable account now create a tax lot dated on the vest.
+
+Still open: dividend/interest income tracking (reinvested dividends create lots but the dividend itself is not counted as income), wash sales, the capital-loss carryforward, cost basis for inherited/gifted shares, importing broker lot data.
+
 ## STATUS 2026-10-14: the Roth conversion planner and RSU vesting (last two sections of this file) were BUILT ("build all")
 
 Verified with 318 automated tests and a browser walkthrough (entering cash and stock vests, editing a vest price, recording held shares, running the planner and the simulations, phone layout).
@@ -257,8 +272,8 @@ Requested 2026-10-13, for both spouses. Details being clarified.
 
 Requested 2026-10-15. Not built; waiting on answers to clarifying questions.
 
-- [ ] **Update cost basis** on a holding (Investments tab).
-- [ ] **Log completed transactions (sales)** so realized gains year to date can be tracked.
+- [x] (built 2026-10-16) **Update cost basis** on a holding (Investments tab).
+- [x] (built 2026-10-16) **Log completed transactions (sales)** so realized gains year to date can be tracked.
   - Open questions: single basis per holding or tax lots; how a sale picks which shares (average cost, FIFO, specific lots); short- vs long-term gains (needs purchase dates); whether a sale reduces the holding's shares and adds proceeds to the account's cash; whether to also log buys; whether the YTD figure feeds the Income/Roth tax estimates.
   - **Decisions (owner, 2026-10-15):**
     - Cost basis is tracked by **tax lots** (date, shares, cost per lot). Taxable (brokerage) accounts show holdings at lot level; existing holdings become one lot the owner can split/edit.
@@ -275,7 +290,7 @@ Requested 2026-10-15. Not built; waiting on answers to clarifying questions.
 
 Requested 2026-10-15. Not built (owner said wait). Details being clarified.
 
-- [ ] **Ability to categorize an account as an HSA** (Investments tab).
+- [x] (built 2026-10-16) **Ability to categorize an account as an HSA** (Investments tab).
   - **Decisions (owner, 2026-10-15):**
     - HSA is its **own investment account type** (holds cash and investments; shows in allocation and net worth).
     - **Contributions link to the Income tab**: payroll HSA saving plus employer HSA money flow into the account in projections (within the yearly limit), like the 401(k) link.
@@ -292,3 +307,17 @@ Reported 2026-10-15. The data model has an owner on investment accounts (`InvAcc
 
 - [x] (built 2026-10-15) Add an **Owner** picker (people from the Income tab, plus "Joint/none") when creating an account and on each account card, editable later.
 - [x] (built 2026-10-15) Show the owner on the account card; warn on retirement accounts with no owner.
+
+---
+
+## New feature: paycheck calculator
+
+Requested 2026-10-16. Not built; waiting on clarifying answers.
+
+- [x] (built 2026-10-16) A calculator for a single paycheck, with the option to **carry over existing deductions** from the Income tab's setup, **or enter new deductions manually**.
+  - **Decisions (owner, 2026-10-16):**
+    - Purpose: what-if on a new salary or raise; try different deductions (401(k), HSA, insurance, etc.).
+    - Carry over: pick a person and year from the Income tab; copy their salary, pay schedule, deductions, and withholding into the calculator as an editable starting point (editing never changes the real setup). Or start blank and enter deductions manually.
+    - Scope: one paycheck's gross-to-net breakdown plus the year (annual totals, when caps like Social Security and the 401(k) limit are reached, federal and MA liability vs withholding).
+    - Scenarios can be saved, named, and compared side by side (e.g. current vs. new job).
+    - Not selected: checking against a real pay stub; one-off bonus/vest net (bonuses can still be entered in the scenario).

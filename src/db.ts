@@ -9,17 +9,21 @@ import type {
   CategoryGroup,
   Goal,
   Holding,
+  HsaWithdrawal,
   ImportBatch,
   IncomeProfile,
   InvAccount,
   Loan,
   LoanEvent,
   LoanRateChange,
+  PayScenario,
   Person,
   RsuVest,
   RecurringLog,
   RecurringRule,
+  Sale,
   Security,
+  TaxLot,
   TaxSettings,
   Txn,
   Windfall,
@@ -49,6 +53,10 @@ export class FinanceDB extends Dexie {
   loanRates!: Table<LoanRateChange, number>;
   loanEvents!: Table<LoanEvent, number>;
   rsuVests!: Table<RsuVest, number>;
+  payScenarios!: Table<PayScenario, number>;
+  hsaWithdrawals!: Table<HsaWithdrawal, number>;
+  taxLots!: Table<TaxLot, number>;
+  sales!: Table<Sale, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -100,6 +108,16 @@ export class FinanceDB extends Dexie {
     });
     this.version(7).stores({
       rsuVests: '++id, personId, date',
+    });
+    this.version(8).stores({
+      payScenarios: '++id, personId',
+    });
+    this.version(9).stores({
+      hsaWithdrawals: '++id, accountId, date',
+    });
+    this.version(10).stores({
+      taxLots: '++id, holdingId, accountId',
+      sales: '++id, accountId, date',
     });
   }
 }

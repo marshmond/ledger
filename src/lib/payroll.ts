@@ -3,6 +3,7 @@ import type { Bonus, DeductionItem, DeductionType, IncomeProfile, Person, TaxSet
 import { addDays, monthPayDate } from './dates';
 import { daysBetween } from './money';
 import { occurrencesBetween } from './schedule';
+import { RETIREMENT_RULES_2026 } from '../data/retirementTax';
 import type { ResolvedVest } from './rsu';
 
 /**
@@ -408,6 +409,13 @@ export interface HouseholdTax {
     credits: number;
     incomeTax: number;
     addlMedicareLiability: number;
+    /** 20% penalty on HSA withdrawals that were not for medical costs (owner under 65). */
+    hsaPenalty: number;
+    /** Realized capital gains for the year (after netting losses) and the tax on the long-term part and the 3.8% net investment income tax. */
+    shortTermGains: number;
+    longTermGains: number;
+    capitalGainsTax: number;
+    niit: number;
     totalLiability: number;
     withheld: number;
     /** Positive = refund, negative = you owe. */
@@ -429,23 +437,45 @@ export interface HouseholdTax {
   pfmlTotal: number;
 }
 
-export function householdTax(years: PersonYear[], s: TaxSettings, t: TaxTables): HouseholdTax {
+export interface HouseholdExtras {
+  hsaPenaltyCents?: number;
+  /** Realized gains, already netted: short-term is taxed as ordinary income, long-term at 0/15/20%. */
+  stcgCents?: number;
+  ltcgCents?: number;
+  /** Net capital loss deducted against other income (up to $3,000). */
+  lossDeductionCents?: number;
+}
+
+export function householdTax(years: PersonYear[], s: TaxSettings, t: TaxTables, extra: HouseholdExtras = {}): HouseholdTax {
   const sum = (f: (p: PersonYear) => number) => years.reduce((a, p) => a + f(p), 0);
 
   const fedWages = sum((p) => p.totals.fedTaxable);
-  const gross = fedWages + s.otherIncomeCents;
+  const stcg = extra.stcgCents ?? 0;
+  const ltcg = extra.ltcgCents ?? 0;
+  const lossDed = extra.lossDeductionCents ?? 0;
+  const gross = fedWages + s.otherIncomeCents + stcg - lossDed + ltcg;
   const std = t.stdDeductionMFJ;
   const usedItemized = s.itemizedDeductionCents > std;
   const deduction = usedItemized ? s.itemizedDeductionCents : std;
   const taxable = Math.max(0, gross - deduction);
-  const before = bracketTax(taxable, t.fedBracketsMFJ);
+  // Long-term gains sit on top of ordinary income and are taxed at 0%, 15%, or 20%.
+  const prefIncome = Math.min(ltcg, taxable);
+  const ordTaxable = taxable - prefIncome;
+  const z = RETIREMENT_RULES_2026.ltcg0Top;
+  const f15 = RETIREMENT_RULES_2026.ltcg15Top;
+  const amt15 = Math.max(0, Math.min(ordTaxable + prefIncome, f15) - Math.max(ordTaxable, z));
+  const amt20 = Math.max(0, ordTaxable + prefIncome - Math.max(ordTaxable, f15));
+  const capitalGainsTax = Math.round(amt15 * 0.15 + amt20 * 0.2);
+  const niit = Math.round(RETIREMENT_RULES_2026.niitRate * Math.max(0, Math.min(stcg + ltcg, gross - RETIREMENT_RULES_2026.niitThreshold)));
+  const before = bracketTax(ordTaxable, t.fedBracketsMFJ) + capitalGainsTax;
   const incomeTax = Math.max(0, before - s.federalCreditsCents);
   const medicareWages = sum((p) => p.totals.ficaTaxable);
   const addlLiability = Math.round(Math.max(0, medicareWages - t.addlMedicareThresholdMFJ) * t.addlMedicareRate);
-  const fedLiability = incomeTax + addlLiability;
+  const hsaPenalty = extra.hsaPenaltyCents ?? 0;
+  const fedLiability = incomeTax + addlLiability + hsaPenalty + niit;
   const fedWithheld = sum((p) => p.totals.fedWithholding + p.totals.addlMedicare);
 
-  const maWages = sum((p) => p.totals.stateTaxable) + s.otherIncomeCents;
+  const maWages = sum((p) => p.totals.stateTaxable) + s.otherIncomeCents + stcg + ltcg - lossDed;
   const exemptions = t.ma.personalExemptionMFJ + s.maDependents * t.ma.dependentExemption;
   const ficaDeduction = years.reduce(
     (a, p) => a + Math.min(t.ma.ficaDeductionCapPerSpouse, p.totals.socialSecurity + p.totals.medicare + p.totals.addlMedicare),
@@ -468,6 +498,11 @@ export function householdTax(years: PersonYear[], s: TaxSettings, t: TaxTables):
       credits: s.federalCreditsCents,
       incomeTax,
       addlMedicareLiability: addlLiability,
+      hsaPenalty,
+      shortTermGains: stcg,
+      longTermGains: ltcg,
+      capitalGainsTax,
+      niit,
       totalLiability: fedLiability,
       withheld: fedWithheld,
       balance: fedWithheld - fedLiability,

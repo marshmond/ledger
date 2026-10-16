@@ -11,6 +11,8 @@ import ProfileEditor from './ProfileEditor';
 import { MoneyField, NumField } from './fields';
 import Collapsible from './Collapsible';
 import RsuSection from './RsuSection';
+import { hsaYearImpact } from '../lib/hsa';
+import { netForTax, realizedFor } from '../lib/lots';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const monthName = (m: number) => monthLabel(`2026-${String(m).padStart(2, '0')}`).split(' ')[0];
@@ -46,9 +48,17 @@ export default function IncomePage() {
   const rsuVests = useLiveQuery(() => db.rsuVests.toArray(), []) ?? [];
   const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
   const invAccounts = useLiveQuery(() => db.invAccounts.toArray(), []) ?? [];
+  const hsaWithdrawals = useLiveQuery(() => db.hsaWithdrawals.toArray(), []) ?? [];
+  const sales = useLiveQuery(() => db.sales.toArray(), []) ?? [];
   const settings = allSettings.find((s) => s.year === year);
 
-  const model = useMemo(() => buildIncomeModel(year, people, profiles, bonuses, settings, { vests: rsuVests, securities }), [year, people, profiles, bonuses, settings, rsuVests, securities]);
+  const hsaImpact = useMemo(() => hsaYearImpact(hsaWithdrawals, invAccounts, people, year), [hsaWithdrawals, invAccounts, people, year]);
+  const realized = useMemo(() => realizedFor(sales, year), [sales, year]);
+  const gains = useMemo(() => netForTax(realized), [realized]);
+  const model = useMemo(
+    () => buildIncomeModel(year, people, profiles, bonuses, settings, { vests: rsuVests, securities }, { taxableCents: hsaImpact.taxableCents, penaltyCents: hsaImpact.penaltyCents }, gains),
+    [year, people, profiles, bonuses, settings, rsuVests, securities, hsaImpact, gains],
+  );
   const yearsWithData = [...new Set([...profiles.map((p) => p.year), thisYear, thisYear + 1])].sort();
 
   const [newName, setNewName] = useState('');
@@ -265,11 +275,14 @@ export default function IncomePage() {
               <strong>Federal income tax</strong>
               <table><tbody>
                 <tr><td>Wages (after pre-tax items)</td><td className="num">{formatCents(hh.federal.wages)}</td></tr>
-                {hh.federal.otherIncome > 0 && <tr><td>Other income</td><td className="num">{formatCents(hh.federal.otherIncome)}</td></tr>}
+                {hh.federal.otherIncome > 0 && <tr><td>Other income{hsaImpact.taxableCents > 0 && <span className="muted"> (incl. {formatCents(hsaImpact.taxableCents)} HSA withdrawals not for medical costs)</span>}</td><td className="num">{formatCents(hh.federal.otherIncome)}</td></tr>}
                 <tr><td>{hh.federal.usedItemized ? 'Itemized' : 'Standard'} deduction</td><td className="num">−{formatCents(hh.federal.deduction)}</td></tr>
                 <tr><td>Taxable income</td><td className="num">{formatCents(hh.federal.taxableIncome)}</td></tr>
+                {realized.count > 0 && <tr><td className="muted">Sales this year: {formatCents(realized.shortTermCents)} short-term, {formatCents(realized.longTermCents)} long-term{gains.lossDeductionCents > 0 && ` (loss deduction ${formatCents(gains.lossDeductionCents)})`}</td><td /></tr>}
                 <tr><td>Tax {hh.federal.credits > 0 && `(after ${formatCents(hh.federal.credits)} credits)`}</td><td className="num">{formatCents(hh.federal.incomeTax)}</td></tr>
                 {hh.federal.addlMedicareLiability > 0 && <tr><td>Additional Medicare</td><td className="num">{formatCents(hh.federal.addlMedicareLiability)}</td></tr>}
+                {hh.federal.hsaPenalty > 0 && <tr><td>HSA 20% penalty</td><td className="num">{formatCents(hh.federal.hsaPenalty)}</td></tr>}
+                {hh.federal.niit > 0 && <tr><td>Net investment income tax (3.8%)</td><td className="num">{formatCents(hh.federal.niit)}</td></tr>}
                 <tr><td><strong>Total owed</strong></td><td className="num"><strong>{formatCents(hh.federal.totalLiability)}</strong></td></tr>
                 <tr><td>Withheld from paychecks</td><td className="num">{formatCents(hh.federal.withheld)}</td></tr>
                 <tr><td><strong>{hh.federal.balance >= 0 ? 'Expected refund' : 'Expected amount due'}</strong></td><td className={`num ${hh.federal.balance >= 0 ? 'pos' : 'neg'}`}><strong>{formatCents(Math.abs(hh.federal.balance))}</strong></td></tr>

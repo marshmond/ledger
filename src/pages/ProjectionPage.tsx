@@ -115,14 +115,14 @@ export default function ProjectionPage() {
       <h2>Contributions</h2>
       <p className="muted">
         Yearly amounts you expect to add, in dollars of the first year. They rise by the growth % each year; at 0% the amount stays flat,
-        which shrinks in today’s dollars, so set it near your expected raises. 401(k)s can follow your{' '}
+        which shrinks in today’s dollars, so set it near your expected raises. 401(k)s and HSAs can follow your{' '}
         <Link to="/income">Income</Link> model (your deferrals plus employer match for {year0}).
       </p>
       <table>
         <thead><tr><th>Account</th><th className="num">Per year</th><th className="num">Grows %/yr</th><th className="hide-sm">Source</th></tr></thead>
         <tbody>
           {open.map((a) => {
-            const linked = a.kind === '401k' && a.linkToIncome;
+            const linked = (a.kind === '401k' || a.kind === 'hsa') && a.linkToIncome;
             const base = baseContribution(a, incomeModel.years);
             return (
               <tr key={a.id}>
@@ -132,7 +132,7 @@ export default function ProjectionPage() {
                 </td>
                 <td className="num"><NumField value={a.contributionGrowthPct} step={0.5} width={70} onChange={(v) => db.invAccounts.update(a.id!, { contributionGrowthPct: v })} /></td>
                 <td className="hide-sm">
-                  {a.kind === '401k' ? (
+                  {a.kind === '401k' || a.kind === 'hsa' ? (
                     <div className="row">
                       <label className="row"><input type="checkbox" checked={a.linkToIncome} onChange={(e) => db.invAccounts.update(a.id!, { linkToIncome: e.target.checked })} />From income model</label>
                       {a.linkToIncome && (
