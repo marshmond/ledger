@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <!-- Apply a saved Light/Dark choice before first paint (no flash). "Device" stores nothing. -->
     <script>try{var t=localStorage.getItem("ledger-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}</script>
+    <script>try{var p=JSON.parse(localStorage.getItem("ledger-palette-vars")||"null");if(p){var th=localStorage.getItem("ledger-theme");var dk=th==="dark"||(th!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var v=dk?p.dark:p.light;for(var k in v){document.documentElement.style.setProperty(k,v[k])}}}catch(e){}</script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1f6feb" />
     <meta name="description" content="Personal finance and investment planning. Your data stays on your device." />

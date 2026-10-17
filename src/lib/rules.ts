@@ -8,9 +8,9 @@ import { daysBetween } from './money';
  * quick-add form; suggestions come from how you categorized the same payee before. Nothing is changed without your say-so.
  */
 
-/** Lowercase, drop punctuation and long reference numbers, so "WHOLEFDS #1234" and "Whole Foods" compare sensibly. */
+/** Lowercase, drop punctuation and store numbers, so "WHOLEFDS #1234" and "Whole Foods" compare sensibly. */
 export function normPayee(p: string): string {
-  return p.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\b\d{3,}\b/g, ' ').replace(/\s+/g, ' ').trim();
+  return p.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\b\d+\b/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** The rule that applies to a payee: its text must appear in the payee; the longest match wins, then the oldest rule. */

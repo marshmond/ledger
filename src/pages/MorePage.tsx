@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import ThemeToggle from './ThemeToggle';
+import AppearanceCard from './AppearanceCard';
 
 /** Settings and housekeeping that do not belong to a daily workflow. */
 export default function MorePage() {
@@ -11,17 +11,23 @@ export default function MorePage() {
     <>
       <h1>More</h1>
 
-      <div className="card">
-        <strong>Appearance</strong>
-        <p className="muted">Device follows your phone or computer setting. Light and Dark override it on this device.</p>
-        <ThemeToggle />
-      </div>
+      <AppearanceCard />
 
       <div className="card">
         <div className="row spread"><strong>Backup and restore</strong><Link to="/backup">Open →</Link></div>
         <p className="muted">
           Your data lives only in this browser. {age === null ? 'You have not backed it up yet.' : age === 0 ? 'Last backup: today.' : `Last backup: ${age} day${age === 1 ? '' : 's'} ago.`}
         </p>
+      </div>
+
+      <div className="card">
+        <div className="row spread"><strong>Year in review</strong><Link to="/review">Open →</Link></div>
+        <p className="muted">A one-page look back at the year: net worth, spending, saving, taxes, and highlights.</p>
+      </div>
+
+      <div className="card">
+        <div className="row spread"><strong>If something happens to me</strong><Link to="/guide">Open →</Link></div>
+        <p className="muted">A printable guide for your family: who to call, where papers are, and what accounts and insurance you have. No passwords.</p>
       </div>
 
       <div className="card">

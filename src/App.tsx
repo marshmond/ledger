@@ -4,6 +4,12 @@ import HomePage from './pages/HomePage';
 import MorePage from './pages/MorePage';
 import NetWorthPage from './pages/NetWorthPage';
 import RulesPage from './pages/RulesPage';
+import ReportsPage from './pages/ReportsPage';
+import ForecastPage from './pages/ForecastPage';
+import PayoffPage from './pages/PayoffPage';
+import ProtectionPage from './pages/ProtectionPage';
+import GuidePage from './pages/GuidePage';
+import ReviewPage from './pages/ReviewPage';
 import TaxPackagePage from './pages/TaxPackagePage';
 import TaxPlanPage from './pages/TaxPlanPage';
 import AccountsPage from './pages/AccountsPage';
@@ -40,14 +46,20 @@ export default function App() {
         <Route path="/projections" element={<ProjectionPage />} />
         <Route path="/retirement" element={<RetirementPage />} />
         <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/protection" element={<ProtectionPage />} />
         <Route path="/roth" element={<RothPage />} />
+        <Route path="/payoff" element={<PayoffPage />} />
         <Route path="/debt" element={<DebtPage />} />
         <Route path="/scheduled" element={<ScheduledPage />} />
+        <Route path="/forecast" element={<ForecastPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/rules" element={<RulesPage />} />
         <Route path="/import" element={<ImportPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/backup" element={<BackupPage />} />
         <Route path="/more" element={<MorePage />} />
+        <Route path="/review" element={<ReviewPage />} />
+        <Route path="/guide" element={<GuidePage />} />
         <Route path="/taxpackage" element={<TaxPackagePage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>

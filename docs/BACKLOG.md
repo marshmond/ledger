@@ -4,6 +4,23 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-20: cash-flow forecast, spending reports, debt payoff, "if something happens" guide, protection check, year in review, collapsible sidebar groups, and color palettes BUILT
+
+Verified with 576 automated tests and browser checks of every new page (desktop and phone width).
+
+Judgment calls (please review):
+1. **Forecast:** starts from checking (and, optionally, savings). Everyday spending is the average of the last three full months, leaving out items posted from Scheduled and loan interest/escrow categories (forecast separately), and is editable. Transfers in scheduled rules are ignored (card payments would double-count card spending; loan payments come from the loan schedules). Tax due is placed on April 15 and refunds on March 15 of next year. A low-balance alert on Home looks 90 days ahead.
+2. **Reports:** 13 months of data ending at the month you pick; income is whatever lands in income categories (or uncategorized money in), so it is only as complete as your entries.
+3. **Payoff:** a mortgage is left out of the plan by default; card APRs and minimums are entered by you (a minimum of 2% or $25 is assumed until you do); loans use their next scheduled payment and current rate. "Extra vs invest" compares final money at the end of the original term, with an optional tax drag on investment returns.
+4. **Protection:** guidelines only: life need = income x years + all debts + education goals (optionally minus savings); disability = 60% of pay; umbrella = net worth rounded up to $1M steps; emergency fund target 6 months (one earner) or 4 (two). Policies are entered by you (employer coverage included) and stored in settings, so they are in backups.
+5. **Guide:** stores contacts, document locations, notes per account, and free text in settings (in backups). It warns not to store passwords. Balances are hidden by default so a printout shows less.
+6. **Year in review:** net worth change uses saved monthly points (the last point of the previous year as the start when available).
+7. **Sidebar:** each group's name collapses and expands its pages; the choice is remembered per device.
+8. **Palettes:** Classic (original) plus four presets and a custom palette (12 colors, light and dark separately). The palette and mode are stored per device in the browser (not in backups). Charts keep their own validated series colors.
+9. Payee matching now ignores store numbers of any length ("WHOLE FOODS #12" = "WHOLE FOODS #99").
+
+Still open: Social Security claiming planner and survivor scenarios, cross-device sync, broker lot import, whole-plan scenarios, guided setup/demo mode, dividend/interest income tracking, rebalancing and asset location.
+
 ## STATUS 2026-10-17 (later): all six "larger scope" features BUILT ("go")
 
 Verified with 472 automated tests and browser checks (net worth + property, tax planning page, Home alerts and Coming up, rules and quick add, tax package, phone layout of every new page).

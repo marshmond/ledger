@@ -6,7 +6,7 @@ to Twelve Data using your own key.
 
 ## What it does
 
-**Finding your way around.** On a computer there is a sidebar with five groups: **Home** (net worth, what needs attention, coming-up dates, this month, recent activity), **Money** (Accounts, Transactions, Budget, Scheduled, Rules, Import, Categories), **Invest** (Net worth, Investments, Debt), **Plan** (Income, Tax planning, Paycheck, Projections, Retirement, Goals, Roth), and **More** (Settings, Tax package, Backup). On a phone the same five groups are a tab bar at the bottom, with each group's pages as a scrolling row at the top. The Home screen's "Coming up" card lists key dates (RSU vests, tax payment deadlines, required distributions, bills, loan payments) and can download them as a calendar file for your phone. Press **Ctrl+K** (or **/**) to search pages, accounts, holdings, loans, and transactions from anywhere, and use the **+** button to add a transaction or jump to logging a trade.
+**Finding your way around.** On a computer there is a sidebar with five groups: **Home** (net worth, what needs attention, coming-up dates, this month, recent activity), **Money** (Accounts, Transactions, Budget, Scheduled, Forecast, Reports, Rules, Import, Categories), **Invest** (Net worth, Investments, Payoff, Debt), **Plan** (Income, Tax planning, Paycheck, Projections, Retirement, Goals, Protection, Roth), and **More** (Settings, Year in review, If something happens, Tax package, Backup). Click a group's name in the sidebar to collapse or expand it. On a phone the same five groups are a tab bar at the bottom, with each group's pages as a scrolling row at the top. The Home screen's "Coming up" card lists key dates (RSU vests, tax payment deadlines, required distributions, bills, loan payments) and can download them as a calendar file for your phone. Press **Ctrl+K** (or **/**) to search pages, accounts, holdings, loans, and transactions from anywhere, and use the **+** button to add a transaction or jump to logging a trade.
 
 | Page | Purpose |
 |---|---|
@@ -14,6 +14,12 @@ to Twelve Data using your own key.
 | **Transactions** | Every transaction from every account in one place: filter by account, date range, category, payee/memo, and amount (greater than, less than, between), sort by any column, edit or delete rows, bulk-change category/status, export the filtered list to CSV, and save filters |
 | **Budget** | Envelope ("every dollar has a job") budget: Ready to Assign, rollover, overspending rules, credit-card payment lines, funding for existing card debt |
 | **Income** | Salary, bonuses (entered by month), RSU vests (cash at a set price, or tied to a stock with held/sold choice), 401(k) pre-tax/Roth, employer match, HSA/FSA/ESPP and other deductions, with annual caps applied paycheck by paycheck; federal (married filing jointly) and Massachusetts tax vs withholding |
+| **Forecast** | Cash-flow forecast: your checking and savings balance day by day for up to two years, from paychecks, scheduled bills, loan payments, taxes due or refunds, one-off items, and an estimate of everyday spending; warns when cash would dip below a level you set |
+| **Reports** | Spending reports: monthly totals, saving rate, category trends and comparisons (vs last month, last year, the 3-month average), what jumped, and top payees, with CSV export |
+| **Payoff** | Debt payoff planner: minimum vs avalanche vs snowball across your cards and loans, a refinance break-even calculator, and extra mortgage payments vs investing |
+| **Protection** | Emergency-fund runway and rough guidelines for life, disability, and umbrella insurance against policies you enter (including employer coverage) |
+| **Year in review** | One printable page: net worth change, income and spending, saving, taxes, investing, debt, and plain-language highlights |
+| **If something happens** | A printable guide for your family: contacts, where papers are, your accounts, loans, property, insurance, and bills, and first steps. Never put passwords in it |
 | **Net worth** | Net worth now and by month (a point is saved automatically each month), with your home and other property (values you enter, with history and equity against your mortgage/HELOC) |
 | **Tax planning** | Year-end dashboard: projected federal/MA tax, bracket room, withholding vs. what you will owe (with extra-withholding or estimated-payment suggestions and a safe-harbor check), tax-loss harvesting from your lots with the tax saved, and a before-December-31 checklist |
 | **Rules** | Payee rules that categorize (and rename) transactions on import and in quick add, rules the app suggests from your history, and repeating charges it notices that you can add to Scheduled |
@@ -29,7 +35,7 @@ to Twelve Data using your own key.
 | **Import** | CSV import with duplicate protection and undo |
 | **Backup** | Encrypted export/restore |
 
-The **Light / Dark / Device** button at the end of the top bar switches the theme (Device follows your phone or computer setting). Sections on the Income, Transactions, and Debt screens can be collapsed, and the app remembers what you collapsed on each device.
+Under **More, Settings** you can choose Light / Dark / Device and a color palette (Calm teal, Deep navy and gold, Forest green and stone, Slate and indigo, or your own colors picked from a color map, with warnings if text would be hard to read). Both are remembered on each device. Sections on the Income, Transactions, and Debt screens can be collapsed, and the app remembers what you collapsed on each device.
 
 Everything is a planning aid, not tax, legal, or investment advice. Return assumptions are yours to set and are not predictions.
 

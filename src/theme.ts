@@ -4,6 +4,8 @@
  * index.html applies the saved choice before first paint so there is no flash of the wrong theme.
  */
 
+import { applyPalette, loadPalette } from './palette';
+
 export type Theme = 'device' | 'light' | 'dark';
 
 export const THEME_KEY = 'ledger-theme';
@@ -49,8 +51,11 @@ export function applyTheme(t: Theme): void {
   if (t === 'device') root.removeAttribute('data-theme');
   else root.setAttribute('data-theme', t);
   const deviceDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
-  const color = isDark(t, deviceDark) ? THEME_COLOR.dark : THEME_COLOR.light;
+  const dark = isDark(t, deviceDark);
+  const color = dark ? THEME_COLOR.dark : THEME_COLOR.light;
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', color));
+  // A chosen color palette (Calm teal, a custom one, ...) overrides the colors for the light or dark mode now in effect.
+  applyPalette(loadPalette(), dark);
 }
 
 /** Call once at startup: applies the saved theme and re-syncs when the device setting changes while on "Device". */

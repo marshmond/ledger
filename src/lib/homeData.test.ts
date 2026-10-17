@@ -79,6 +79,15 @@ describe('tax and year-end alerts', () => {
   });
 });
 
+describe('cash forecast alert', () => {
+  it('warns when the balance would fall below the warning level', () => {
+    const a = computeAlerts({ ...base, forecastLow: { date: '2026-11-20', balanceCents: $(300), thresholdCents: $(1000) } });
+    expect(a[0]).toMatchObject({ id: 'forecast', level: 'warn', to: '/forecast' });
+    expect(a[0].title).toBe('Cash may drop to $300.00 on 2026-11-20');
+    expect(computeAlerts({ ...base, forecastLow: null })).toEqual([]);
+  });
+});
+
 describe('spending snapshot', () => {
   const cats: Category[] = [
     { id: 1, groupId: 1, name: 'Groceries', kind: 'expense' },

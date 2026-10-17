@@ -36,6 +36,8 @@ export const GROUPS: NavGroup[] = [
       { to: '/transactions', label: 'Transactions', keywords: 'history spending search filter export csv' },
       { to: '/budget', label: 'Budget', keywords: 'envelope categories assign ready to assign' },
       { to: '/scheduled', label: 'Scheduled', keywords: 'recurring bills upcoming' },
+      { to: '/forecast', label: 'Forecast', keywords: 'cash flow projection balance low afford bills paychecks months' },
+      { to: '/reports', label: 'Reports', keywords: 'spending trends categories payees savings rate month compare' },
       { to: '/rules', label: 'Rules', keywords: 'payee auto categorize recurring detect repeating subscriptions' },
       { to: '/import', label: 'Import', keywords: 'csv bank statement upload' },
       { to: '/categories', label: 'Categories', keywords: 'groups rename' },
@@ -49,6 +51,7 @@ export const GROUPS: NavGroup[] = [
     items: [
       { to: '/networth', label: 'Net worth', keywords: 'assets home value equity property history chart' },
       { to: '/investments', label: 'Investments', keywords: 'brokerage ira 401k hsa 529 holdings lots cost basis sell buy realized gains prices' },
+      { to: '/payoff', label: 'Payoff', keywords: 'debt payoff avalanche snowball credit card refinance break-even extra payment invest' },
       { to: '/debt', label: 'Debt', keywords: 'mortgage heloc loan amortization payoff net worth' },
     ],
   },
@@ -64,6 +67,7 @@ export const GROUPS: NavGroup[] = [
       { to: '/projections', label: 'Projections', keywords: 'growth monte carlo future' },
       { to: '/retirement', label: 'Retirement', keywords: 'withdrawal spending last windfall' },
       { to: '/goals', label: 'Goals', keywords: 'college 529 savings' },
+      { to: '/protection', label: 'Protection', keywords: 'insurance life disability umbrella emergency fund runway coverage gap' },
       { to: '/roth', label: 'Roth', keywords: 'conversion rmd irmaa aca bracket' },
     ],
   },
@@ -74,6 +78,8 @@ export const GROUPS: NavGroup[] = [
     to: '/more',
     items: [
       { to: '/more', label: 'Settings', keywords: 'more appearance theme dark about shortcuts' },
+      { to: '/review', label: 'Year in review', keywords: 'annual summary highlights net worth savings rate taxes year' },
+      { to: '/guide', label: 'If something happens', keywords: 'emergency guide spouse family contacts documents will beneficiaries where things are' },
       { to: '/taxpackage', label: 'Tax package', keywords: 'cpa accountant preparer 1099 w-2 8949 export pdf csv tax time' },
       { to: '/backup', label: 'Backup', keywords: 'export restore encrypted data' },
     ],

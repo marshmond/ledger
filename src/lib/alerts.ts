@@ -36,6 +36,8 @@ export interface AlertInput {
   estimatedDue?: { date: string; amountCents: number } | null;
   /** Losses sitting in taxable lots that could be harvested. */
   harvestableCents?: number;
+  /** The lowest point of the cash forecast, when it falls below your warning level in the next 90 days. */
+  forecastLow?: { date: string; balanceCents: number; thresholdCents: number } | null;
   /** Year-end checklist items that still need action. */
   yearEndTodo?: number;
 }
@@ -70,6 +72,10 @@ export function computeAlerts(i: AlertInput): Alert[] {
       to: '/income',
       actionLabel: 'See the estimate',
     });
+  }
+
+  if (i.forecastLow) {
+    out.push({ id: 'forecast', level: 'warn', title: `Cash may drop to ${formatCents(i.forecastLow.balanceCents)} on ${i.forecastLow.date}`, detail: `That is below your ${formatCents(i.forecastLow.thresholdCents)} warning level.`, to: '/forecast', actionLabel: 'See the forecast' });
   }
 
   if (i.scheduledDue > 0) {

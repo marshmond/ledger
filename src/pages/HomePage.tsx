@@ -18,6 +18,8 @@ import { estimatedDueDates } from '../lib/taxPlan';
 import { valueAgeDays } from '../lib/property';
 import { useTaxPlanData } from './useTaxPlanData';
 import ComingUp from './ComingUp';
+import { loadForecast } from '../lib/forecastLive';
+import { addDays } from '../lib/dates';
 
 /** The landing page: where you stand, what needs attention, and where to go next. */
 export default function HomePage() {
@@ -59,6 +61,7 @@ export default function HomePage() {
     [year, people, profiles, bonuses, taxSettings, vests, securities, hsa, gains],
   );
 
+  const forecast = useLiveQuery(() => loadForecast(db, today), [today]);
   const plan = useTaxPlanData(year);
   const nextEstimated = estimatedDueDates(year).find((d) => d >= today) ?? null;
   const overspent = (budget?.rows ?? []).filter((r) => r.kind === 'category' && r.available < 0).map((r) => r.name);
@@ -70,6 +73,7 @@ export default function HomePage() {
     estimatedDue: nextEstimated && plan.wp ? { date: nextEstimated, amountCents: plan.wp.estimatedPaymentCents } : null,
     harvestableCents: plan.candidates.reduce((s, c) => s + c.lossCents, 0),
     yearEndTodo: plan.checklist.filter((c) => c.status === 'todo').length,
+    forecastLow: forecast?.result.firstBelow && forecast.result.firstBelow.date <= addDays(today, 90) ? { ...forecast.result.firstBelow, thresholdCents: forecast.settings.thresholdCents } : null,
   });
   const recent = [...txns].filter((t) => !t.transferTxnId).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 6);
   const acctName = (id: number) => accounts.find((a) => a.id === id)?.name ?? '';
@@ -169,6 +173,10 @@ export default function HomePage() {
         <div className="card">
           <strong>Quick links</strong>
           <ul className="plain links">
+            <li><Link to="/forecast">Cash-flow forecast</Link></li>
+            <li><Link to="/reports">Spending reports</Link></li>
+            <li><Link to="/payoff">Debt payoff planner</Link></li>
+            <li><Link to="/protection">Protection check</Link></li>
             <li><Link to="/taxplan">Tax planning</Link></li>
             <li><Link to="/taxpackage">Tax package for your preparer</Link></li>
             <li><Link to="/paycheck">Paycheck calculator</Link></li>
