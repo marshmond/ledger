@@ -83,7 +83,7 @@ describe('HSA withdrawals survive a backup', () => {
   it('round trip', async () => {
     await d.hsaWithdrawals.add(w(1, '2026-03-01', 250, true));
     const file = await exportAll(d);
-    expect(file.version).toBe(10);
+    expect(file.version).toBe(12);
     await d.hsaWithdrawals.clear();
     await importAll(d, file);
     expect(await d.hsaWithdrawals.count()).toBe(1);

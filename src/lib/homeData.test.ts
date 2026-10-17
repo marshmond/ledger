@@ -56,6 +56,29 @@ describe('alerts', () => {
   });
 });
 
+describe('tax and year-end alerts', () => {
+  it('warns about an estimated payment due within 30 days only when there is a shortfall', () => {
+    const due = { date: '2026-11-10', amountCents: $(2400) };
+    expect(computeAlerts({ ...base, estimatedDue: due })[0]).toMatchObject({ id: 'estimated', level: 'warn', to: '/taxplan' });
+    expect(computeAlerts({ ...base, estimatedDue: { ...due, amountCents: 0 } })).toEqual([]);
+    expect(computeAlerts({ ...base, estimatedDue: { ...due, date: '2027-01-15' } })).toEqual([]);
+    expect(computeAlerts({ ...base, estimatedDue: { ...due, date: '2026-10-01' } })).toEqual([]);
+  });
+  it('shows the year-end checklist and harvesting only near the end of the year', () => {
+    const late = computeAlerts({ ...base, yearEndTodo: 3, harvestableCents: $(2500) });
+    expect(late.map((a) => a.id)).toEqual(['yearend', 'harvest']);
+    expect(late[0].title).toBe('3 year-end items to review');
+    const early = computeAlerts({ ...base, today: '2026-06-01', lastBackup: '2026-05-20T00:00:00Z', yearEndTodo: 3, harvestableCents: $(2500) });
+    expect(early).toEqual([]);
+    expect(computeAlerts({ ...base, harvestableCents: $(500) })).toEqual([]);
+  });
+  it('asks for a fresh property value', () => {
+    const a = computeAlerts({ ...base, propertyStale: ['Our house'] });
+    expect(a[0]).toMatchObject({ id: 'property', to: '/networth' });
+    expect(a[0].title).toBe('Update the value of Our house');
+  });
+});
+
 describe('spending snapshot', () => {
   const cats: Category[] = [
     { id: 1, groupId: 1, name: 'Groceries', kind: 'expense' },
@@ -91,7 +114,7 @@ describe('net worth', () => {
   const txn = (accountId: number, amt: number): Txn => ({ accountId, date: '2026-02-01', amountCents: $(amt), payee: '', memo: '', status: 'cleared', categoryId: null });
   it('adds cash and investments and subtracts cards and loans', () => {
     const n = computeNetWorth([acct(1, 'checking', 1000), acct(2, 'savings', 5000), acct(3, 'credit_card', -400)], [txn(1, -100), txn(3, -50)], $(20000), [{ owedCents: $(100000) }]);
-    expect(n).toEqual({ cash: $(5900), investments: $(20000), cards: -$(450), loans: -$(100000), total: $(5900) + $(20000) - $(450) - $(100000) });
+    expect(n).toEqual({ cash: $(5900), investments: $(20000), property: 0, cards: -$(450), loans: -$(100000), total: $(5900) + $(20000) - $(450) - $(100000) });
   });
   it('counts a loan once when it is tied to a ledger account', () => {
     const accounts = [acct(1, 'checking', 1000), acct(2, 'loan', -90000)];

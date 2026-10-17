@@ -16,8 +16,12 @@ import type {
   Loan,
   LoanEvent,
   LoanRateChange,
+  NetWorthSnapshot,
   PayScenario,
+  PayeeRule,
   Person,
+  Property,
+  PropertyValue,
   RsuVest,
   RecurringLog,
   RecurringRule,
@@ -57,6 +61,10 @@ export class FinanceDB extends Dexie {
   hsaWithdrawals!: Table<HsaWithdrawal, number>;
   taxLots!: Table<TaxLot, number>;
   sales!: Table<Sale, number>;
+  properties!: Table<Property, number>;
+  propertyValues!: Table<PropertyValue, number>;
+  netWorthSnapshots!: Table<NetWorthSnapshot, number>;
+  payeeRules!: Table<PayeeRule, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -118,6 +126,14 @@ export class FinanceDB extends Dexie {
     this.version(10).stores({
       taxLots: '++id, holdingId, accountId',
       sales: '++id, accountId, date',
+    });
+    this.version(11).stores({
+      properties: '++id',
+      propertyValues: '++id, propertyId, date',
+      netWorthSnapshots: '++id, date',
+    });
+    this.version(12).stores({
+      payeeRules: '++id',
     });
   }
 }

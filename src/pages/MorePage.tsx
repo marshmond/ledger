@@ -25,6 +25,11 @@ export default function MorePage() {
       </div>
 
       <div className="card">
+        <div className="row spread"><strong>Tax package</strong><Link to="/taxpackage">Open →</Link></div>
+        <p className="muted">Pay, RSU income, sales by lot, HSA activity, and mortgage interest for your tax preparer, to print or download.</p>
+      </div>
+
+      <div className="card">
         <strong>Shortcuts</strong>
         <ul className="plain">
           <li><kbd>Ctrl</kbd> + <kbd>K</kbd> or <kbd>/</kbd> opens search from anywhere.</li>

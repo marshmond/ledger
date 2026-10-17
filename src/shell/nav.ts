@@ -36,6 +36,7 @@ export const GROUPS: NavGroup[] = [
       { to: '/transactions', label: 'Transactions', keywords: 'history spending search filter export csv' },
       { to: '/budget', label: 'Budget', keywords: 'envelope categories assign ready to assign' },
       { to: '/scheduled', label: 'Scheduled', keywords: 'recurring bills upcoming' },
+      { to: '/rules', label: 'Rules', keywords: 'payee auto categorize recurring detect repeating subscriptions' },
       { to: '/import', label: 'Import', keywords: 'csv bank statement upload' },
       { to: '/categories', label: 'Categories', keywords: 'groups rename' },
     ],
@@ -44,8 +45,9 @@ export const GROUPS: NavGroup[] = [
     id: 'invest',
     label: 'Invest',
     icon: '↗',
-    to: '/investments',
+    to: '/networth',
     items: [
+      { to: '/networth', label: 'Net worth', keywords: 'assets home value equity property history chart' },
       { to: '/investments', label: 'Investments', keywords: 'brokerage ira 401k hsa 529 holdings lots cost basis sell buy realized gains prices' },
       { to: '/debt', label: 'Debt', keywords: 'mortgage heloc loan amortization payoff net worth' },
     ],
@@ -57,6 +59,7 @@ export const GROUPS: NavGroup[] = [
     to: '/income',
     items: [
       { to: '/income', label: 'Income', keywords: 'salary tax withholding 401k bonus rsu payroll deductions' },
+      { to: '/taxplan', label: 'Tax planning', keywords: 'year end bracket room withholding estimated payments harvest loss checklist' },
       { to: '/paycheck', label: 'Paycheck', keywords: 'calculator take-home scenario raise offer' },
       { to: '/projections', label: 'Projections', keywords: 'growth monte carlo future' },
       { to: '/retirement', label: 'Retirement', keywords: 'withdrawal spending last windfall' },
@@ -71,6 +74,7 @@ export const GROUPS: NavGroup[] = [
     to: '/more',
     items: [
       { to: '/more', label: 'Settings', keywords: 'more appearance theme dark about shortcuts' },
+      { to: '/taxpackage', label: 'Tax package', keywords: 'cpa accountant preparer 1099 w-2 8949 export pdf csv tax time' },
       { to: '/backup', label: 'Backup', keywords: 'export restore encrypted data' },
     ],
   },

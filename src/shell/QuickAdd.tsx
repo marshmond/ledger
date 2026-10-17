@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import TxnForm from '../pages/TxnForm';
+import QuickTxn from './QuickTxn';
 import Modal from './Modal';
 
 /** A floating "+" for the things you do most: add a transaction from anywhere, or jump straight to logging a trade. */
@@ -11,8 +11,6 @@ export default function QuickAdd() {
   const accounts = (useLiveQuery(() => db.accounts.toArray(), []) ?? []).filter((a) => !a.closed && a.kind !== 'loan');
   const [menu, setMenu] = useState(false);
   const [form, setForm] = useState(false);
-  const [acct, setAcct] = useState('');
-  const account = accounts.find((a) => String(a.id) === acct) ?? accounts[0];
 
   const go = (to: string) => {
     setMenu(false);
@@ -34,18 +32,7 @@ export default function QuickAdd() {
       </div>
       {form && (
         <Modal title="Add a transaction" onClose={() => setForm(false)} wide>
-          {accounts.length === 0 ? (
-            <p className="muted">Add an account first, on the Accounts page.</p>
-          ) : (
-            <>
-              <label className="f" style={{ maxWidth: 320 }}>Account
-                <select value={account ? String(account.id) : ''} onChange={(e) => setAcct(e.target.value)}>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
-              </label>
-              {account && <TxnForm key={account.id} account={account} onDone={() => setForm(false)} />}
-            </>
-          )}
+          <QuickTxn key={accounts.length} accounts={accounts} onDone={() => setForm(false)} />
         </Modal>
       )}
     </>

@@ -4,6 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { dueInstances } from '../lib/schedule';
 import { todayISO } from '../lib/money';
+import { loadNetWorth } from '../lib/netWorthLive';
+import { saveMonthlySnapshot } from '../lib/snapshots';
 import ThemeToggle from '../pages/ThemeToggle';
 import { GROUPS, crumbsFor, groupForPath } from './nav';
 import QuickAdd from './QuickAdd';
@@ -20,7 +22,15 @@ export default function Shell({ children }: { children: ReactNode }) {
   const accountId = accountMatch?.params.id ? Number(accountMatch.params.id) : null;
   const account = useLiveQuery(() => (accountId ? db.accounts.get(accountId) : undefined), [accountId]);
   const dueCount = useLiveQuery(async () => (await dueInstances(db, todayISO(), 7)).length, []) ?? 0;
+  const nw = useLiveQuery(() => loadNetWorth(db, todayISO()), []);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Net worth history: this month's point follows the latest figures (saved shortly after they settle).
+  useEffect(() => {
+    if (!nw) return;
+    const t = setTimeout(() => { saveMonthlySnapshot(db, todayISO(), nw).catch(() => undefined); }, 2500);
+    return () => clearTimeout(t);
+  }, [nw?.total, nw?.cash, nw?.investments, nw?.property, nw?.cards, nw?.loans]); // eslint-disable-line react-hooks/exhaustive-deps
   const crumbs = crumbsFor(loc.pathname, account?.name);
 
   // Ctrl/Cmd+K, or "/" when not typing, opens search.

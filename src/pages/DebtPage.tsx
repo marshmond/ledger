@@ -7,6 +7,7 @@ import { addMonths, monthOf } from '../lib/dates';
 import { balanceAt, loanView, nextRow } from '../lib/loanSchedule';
 import { summarize } from '../lib/investments';
 import { computeNetWorth } from '../lib/netWorth';
+import { propertyTotal } from '../lib/property';
 import Collapsible from './Collapsible';
 import LoanCard, { KIND_NAMES } from './LoanCard';
 
@@ -39,6 +40,8 @@ export default function DebtPage() {
   const holdings = useLiveQuery(() => db.holdings.toArray(), []) ?? [];
   const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
   const assetClasses = useLiveQuery(() => db.assetClasses.toArray(), []) ?? [];
+  const props = useLiveQuery(() => db.properties.toArray(), []) ?? [];
+  const propValues = useLiveQuery(() => db.propertyValues.toArray(), []) ?? [];
 
   const [name, setName] = useState('');
   const [kind, setKind] = useState<LoanKind>('mortgage');
@@ -70,8 +73,9 @@ export default function DebtPage() {
         txns,
         summarize({ accounts: invAccounts, holdings, securities, assetClasses }).total,
         actual.map((v) => ({ ledgerAccountId: v.loan.ledgerAccountId, owedCents: balanceAt(v.view.schedule, today) })),
+        propertyTotal(props, propValues, today),
       ),
-    [accounts, txns, actual, invAccounts, holdings, securities, assetClasses, today],
+    [accounts, txns, actual, invAccounts, holdings, securities, assetClasses, today, props, propValues],
   );
 
   async function add() {

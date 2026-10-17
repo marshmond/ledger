@@ -5,6 +5,7 @@ import type { Account, Category, CategoryGroup, Split, Txn, TxnStatus } from '..
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { validateSplits } from '../lib/ledger';
 import { convertToTransfer, createTransfer, updateTxn } from '../lib/transfers';
+import { recentPayees, suggestCategory } from '../lib/rules';
 
 interface Props {
   account: Account;
@@ -46,6 +47,8 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+  const history = useLiveQuery(() => db.txns.toArray(), []) ?? [];
+  const rules = useLiveQuery(() => db.payeeRules.toArray(), []) ?? [];
 
   const isTransfer = !!editing?.transferTxnId;
   const [date, setDate] = useState(editing?.date ?? todayISO());
@@ -65,6 +68,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
       : [{ cat: '', amt: '' }, { cat: '', amt: '' }],
   );
   const [error, setError] = useState('');
+  const [hint, setHint] = useState('');
 
   const total = parseAmountToCents(amount);
   const splitTotal = splits.reduce((s, r) => s + (parseAmountToCents(r.amt) ?? 0), 0);
@@ -133,7 +137,23 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
       <div className="grid">
         <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {!isTransfer && (
-          <label className="f">Payee<input value={payee} onChange={(e) => setPayee(e.target.value)} /></label>
+          <label className="f">Payee
+            <input
+              list="txn-payees"
+              value={payee}
+              onChange={(e) => setPayee(e.target.value)}
+              onBlur={() => {
+                // A new transaction with no category yet: fill it in from your rules or how you filed this payee before.
+                if (editing || choice !== '' || splitOn) return;
+                const s = suggestCategory(history, rules, payee, account.id);
+                if (s?.categoryId) {
+                  setChoice(String(s.categoryId));
+                  setHint(s.source === 'rule' ? 'Category filled in from your rule.' : 'Category filled in from how you filed this payee before.');
+                }
+              }}
+            />
+            <datalist id="txn-payees">{recentPayees(history).map((p) => <option key={p} value={p} />)}</datalist>
+          </label>
         )}
         <label className="f">Type
           <select value={dir} onChange={(e) => setDir(e.target.value as 'out' | 'in')}>
@@ -173,6 +193,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
           )}
         </div>
       )}
+      {hint && !isTransfer && <p className="muted">{hint}</p>}
       {isTransfer && <p className="muted">Transfer with {accounts.find((a) => a.id === otherAccountId)?.name ?? 'another account'}. The other side stays in sync.</p>}
       {choice === 'transfer' && !isTransfer && (
         <p className="muted">The matching entry on the other account is posted automatically (or linked, if you already entered it).</p>

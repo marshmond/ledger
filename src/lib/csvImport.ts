@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { matchRule } from './rules';
 import type { FinanceDB } from '../db';
 import type { ImportBatch, Txn } from '../types';
 import { daysBetween, parseAmountToCents } from './money';
@@ -178,7 +179,8 @@ export async function commitImport(
   rows: ClassifiedRow[],
   opts: { includeBeforeOpening?: boolean } = {},
 ): Promise<ImportBatch> {
-  return d.transaction('rw', d.txns, d.importBatches, async () => {
+  return d.transaction('rw', d.txns, d.importBatches, d.payeeRules, async () => {
+    const rules = await d.payeeRules.toArray();
     const batch: ImportBatch = {
       accountId,
       filename,
@@ -190,14 +192,16 @@ export async function commitImport(
     batch.id = batchId;
     for (const r of rows) {
       if (r.cls === 'new' || (r.cls === 'before_opening' && opts.includeBeforeOpening)) {
+        // Your payee rules categorize (and can rename) imported rows.
+        const rule = matchRule(rules, r.payee, accountId);
         const t: Txn = {
           accountId,
           date: r.date,
           amountCents: r.amountCents,
-          payee: r.payee,
+          payee: rule?.rename?.trim() ? rule.rename.trim() : r.payee,
           memo: '',
           status: 'cleared',
-          categoryId: null,
+          categoryId: rule?.categoryId ?? null,
           fingerprint: r.fingerprint,
           externalId: r.externalId,
           importBatchId: batchId,

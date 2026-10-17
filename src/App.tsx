@@ -2,6 +2,10 @@ import { Route, Routes } from 'react-router-dom';
 import Shell from './shell/Shell';
 import HomePage from './pages/HomePage';
 import MorePage from './pages/MorePage';
+import NetWorthPage from './pages/NetWorthPage';
+import RulesPage from './pages/RulesPage';
+import TaxPackagePage from './pages/TaxPackagePage';
+import TaxPlanPage from './pages/TaxPlanPage';
 import AccountsPage from './pages/AccountsPage';
 import LedgerPage from './pages/LedgerPage';
 import CategoriesPage from './pages/CategoriesPage';
@@ -29,7 +33,9 @@ export default function App() {
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/budget" element={<BudgetPage />} />
         <Route path="/income" element={<IncomePage />} />
+        <Route path="/taxplan" element={<TaxPlanPage />} />
         <Route path="/paycheck" element={<PaycheckPage />} />
+        <Route path="/networth" element={<NetWorthPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />
         <Route path="/projections" element={<ProjectionPage />} />
         <Route path="/retirement" element={<RetirementPage />} />
@@ -37,10 +43,12 @@ export default function App() {
         <Route path="/roth" element={<RothPage />} />
         <Route path="/debt" element={<DebtPage />} />
         <Route path="/scheduled" element={<ScheduledPage />} />
+        <Route path="/rules" element={<RulesPage />} />
         <Route path="/import" element={<ImportPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/backup" element={<BackupPage />} />
         <Route path="/more" element={<MorePage />} />
+        <Route path="/taxpackage" element={<TaxPackagePage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </Shell>

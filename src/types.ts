@@ -504,3 +504,50 @@ export interface Sale {
   toCashCents: number;
   note: string;
 }
+
+// ---- Net worth: property and history ----
+
+/** Something you own that is not in an account: your home, a car, land. Its value is whatever you last entered. */
+export interface Property {
+  id?: number;
+  name: string;
+  kind: 'home' | 'vehicle' | 'other';
+  /** Loans (mortgage, HELOC) secured by it, so equity can be shown. */
+  loanIds: number[];
+  /** Left out of net worth (sold, or you would rather not count it). */
+  excluded?: boolean;
+}
+
+export interface PropertyValue {
+  id?: number;
+  propertyId: number;
+  date: string;
+  valueCents: number;
+  note: string;
+}
+
+/** One point on the net worth chart. The app saves one a month automatically; the latest view in a month is kept. */
+export interface NetWorthSnapshot {
+  id?: number;
+  date: string;
+  cashCents: number;
+  investmentsCents: number;
+  propertyCents: number;
+  /** Negative = owed. */
+  cardsCents: number;
+  loansCents: number;
+  totalCents: number;
+}
+
+// ---- Payee rules ----
+
+/** If a transaction's payee contains `pattern`, give it this category (and optionally a cleaner payee name). */
+export interface PayeeRule {
+  id?: number;
+  pattern: string;
+  categoryId: number | null;
+  /** Rename the payee to this when the rule applies (e.g. "AMZN Mktp US*2K4" becomes "Amazon"). */
+  rename?: string;
+  /** Only for this account (blank = any). */
+  accountId?: number | null;
+}

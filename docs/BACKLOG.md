@@ -4,6 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-17 (later): all six "larger scope" features BUILT ("go")
+
+Verified with 472 automated tests and browser checks (net worth + property, tax planning page, Home alerts and Coming up, rules and quick add, tax package, phone layout of every new page).
+
+Judgment calls (please review):
+1. **Net worth history:** one point per month, updated automatically whenever the app is open (the month's last view is kept). Past months cannot be recomputed, so earlier points are added by hand (total only). Property is only what you enter; a value over a year old raises an alert. Home value is counted in net worth; mortgage/HELOC equity needs the loans ticked on the property.
+2. **Tax planning:** estimates use the Income tab's settings plus sales and HSA withdrawals. The safe-harbor test compares total withholding with the smaller of 90% of this year's tax and 100% (110% if income is over $150,000) of last year's. Suggested extra withholding is spread over the remaining paychecks (one person at a time). Loss harvesting shows the tax saved by re-running the estimate with the selected lots sold; wash-sale risk is flagged when the same security is in an IRA/401(k)/HSA. The checklist's RMD estimate uses today's traditional balance, not last year-end.
+3. **Alerts** (Home): backup, overspending, owing at tax time, estimated payment within 30 days, scheduled items due, accounts with no owner, missing/stale prices, lots missing cost or date, vests within 30 days, property value over a year old; and in the last 75 days of the year: year-end checklist and harvestable losses.
+4. **Calendar:** a snapshot .ics (re-download to refresh), not a live subscription. Items: vests, estimated tax dates (only when you are on track to owe), RMD deadline, Dec 31 year-end reminder, pay-cap dates, scheduled items (next 60 days), next loan payments. Money/tax items include a reminder the day before.
+5. **Rules:** a rule applies to a payee that contains its text (longest wins). Rules categorize and can rename on import; the quick-add and full transaction forms fill a category from rules or from how you filed that payee at least twice before (60% majority). Suggested rules need 3+ transactions, 90% the same category. Repeating charges need 3+ occurrences, regular spacing, similar amounts, and not already scheduled; stopped ones are skipped.
+6. **Quick add** now opens a fast form (payee suggestions, amount, category, save and add another); splits, transfers, and memos are one click away.
+7. **Tax package:** projected pay/withholding from the Income tab (use W-2 figures when you have them); sales by lot only for taxable accounts; mortgage interest from the loan schedule (simple monthly interest), not a 1098. PDF is the browser's print dialog ("Save as PDF"); CSV per table.
+
+Still open: Social Security claiming planner and survivor scenarios, cross-device sync, broker lot import, whole-plan scenarios, guided setup/demo mode, dividend/interest income tracking.
+
 ## STATUS 2026-10-17: navigation and Home redesign BUILT (before the larger features below)
 
 The 15-link top banner was replaced by an information architecture: Home / Money / Invest / Plan / More. Desktop: grouped sidebar; phone: bottom tab bar plus a scrolling row of the section's pages. Added: Home screen (net worth, ranked "needs attention" alerts, this month's spending, recent transactions, goals, quick links), global search (Ctrl+K or /), quick-add button (add a transaction from anywhere; shortcuts to trades, paycheck scenario, scheduled item), breadcrumbs, in-page tabs on Investments (Accounts / Realized gains / Prices & assumptions), a Settings page under More. Accounts moved from "/" to "/accounts"; every other address is unchanged.
@@ -336,10 +351,10 @@ Requested 2026-10-16. Not built; waiting on clarifying answers.
 
 Requested 2026-10-17. Not built; waiting for the owner's go-ahead. Everything below was selected.
 
-- [ ] **Year-end tax planning dashboard.** Bracket room and projected federal/MA tax for the year; withholding vs. estimated payments (on track to owe or be refunded, with W-4 / quarterly payment suggestions); tax-loss harvesting from tax lots (losses available, tax saved, 30-day rebuy warning); year-end checklist (401(k)/HSA room, Roth conversion room, RSU timing, charitable gifts, RMDs due).
-- [ ] **Net worth over time + home screen.** Monthly automatic snapshots (cash, investments, home value, debts) with a history chart; home value and equity (value entered and updated over time); goal progress and next actions on one page; spending snapshot (this month's budget status and recent transactions).
-- [ ] **Today screen with alerts.** A ranked list of what needs attention across the app (bills due, overspent categories, withholding gap, upcoming RMD or RSU vest, IRMAA/ACA cliff proximity, stale prices, overdue backup).
-- [ ] **Calendar export.** Key dates (RSU vests, RMDs, estimated-tax due dates, cap dates, scheduled items) as an .ics file for the phone calendar.
-- [ ] **Quick capture and rules.** One-tap add-transaction screen, payee rules that auto-categorize (including on import), and recurring-charge detection.
-- [ ] **Tax-time package for the CPA.** One export (PDF and CSV set): wages and withholding, realized gains by lot, HSA activity, RSU income.
+- [x] (built 2026-10-17) **Year-end tax planning dashboard.** Bracket room and projected federal/MA tax for the year; withholding vs. estimated payments (on track to owe or be refunded, with W-4 / quarterly payment suggestions); tax-loss harvesting from tax lots (losses available, tax saved, 30-day rebuy warning); year-end checklist (401(k)/HSA room, Roth conversion room, RSU timing, charitable gifts, RMDs due).
+- [x] (built 2026-10-17) **Net worth over time + home screen.** Monthly automatic snapshots (cash, investments, home value, debts) with a history chart; home value and equity (value entered and updated over time); goal progress and next actions on one page; spending snapshot (this month's budget status and recent transactions).
+- [x] (built 2026-10-17) **Today screen with alerts.** A ranked list of what needs attention across the app (bills due, overspent categories, withholding gap, upcoming RMD or RSU vest, IRMAA/ACA cliff proximity, stale prices, overdue backup).
+- [x] (built 2026-10-17) **Calendar export.** Key dates (RSU vests, RMDs, estimated-tax due dates, cap dates, scheduled items) as an .ics file for the phone calendar.
+- [x] (built 2026-10-17) **Quick capture and rules.** One-tap add-transaction screen, payee rules that auto-categorize (including on import), and recurring-charge detection.
+- [x] (built 2026-10-17) **Tax-time package for the CPA.** One export (PDF and CSV set): wages and withholding, realized gains by lot, HSA activity, RSU income.
 - Not selected for now: cross-device sync, guided setup/demo mode, Social Security claiming and survivor scenarios, broker lot import, whole-plan scenarios.

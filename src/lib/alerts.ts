@@ -30,6 +30,14 @@ export interface AlertInput {
   /** Federal refund (+) or amount due (-) this year, if the income model can compute it. */
   federalBalanceCents?: number | null;
   priceStaleDays?: number;
+  /** Names of properties whose value has not been updated in over a year. */
+  propertyStale?: string[];
+  /** The next estimated-tax due date and the federal shortfall, when you are on track to owe. */
+  estimatedDue?: { date: string; amountCents: number } | null;
+  /** Losses sitting in taxable lots that could be harvested. */
+  harvestableCents?: number;
+  /** Year-end checklist items that still need action. */
+  yearEndTodo?: number;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -102,6 +110,23 @@ export function computeAlerts(i: AlertInput): Alert[] {
   const soon = i.vests.filter((v) => v.date >= i.today && daysBetween(v.date, i.today) <= 30).sort((a, b) => a.date.localeCompare(b.date));
   if (soon.length > 0) {
     out.push({ id: 'vest', level: 'info', title: `${plural(soon.length, 'RSU vest')} in the next 30 days`, detail: `Next: ${soon[0].date}${soon[0].grant ? ` (${soon[0].grant})` : ''}. It counts as wages and may change your tax picture.`, to: '/income', actionLabel: 'See vests' });
+  }
+
+  if (i.estimatedDue && i.estimatedDue.amountCents > 0 && daysBetween(i.estimatedDue.date, i.today) >= 0 && daysBetween(i.estimatedDue.date, i.today) <= 30) {
+    out.push({ id: 'estimated', level: 'warn', title: `Estimated tax payment due ${i.estimatedDue.date}`, detail: `You are on track to owe about ${formatCents(i.estimatedDue.amountCents)} beyond withholding.`, to: '/taxplan', actionLabel: 'See options' });
+  }
+
+  const daysLeft = daysBetween(`${i.today.slice(0, 4)}-12-31`, i.today);
+  if (i.yearEndTodo && i.yearEndTodo > 0 && daysLeft <= 75) {
+    out.push({ id: 'yearend', level: 'info', title: `${plural(i.yearEndTodo, 'year-end item')} to review`, detail: `${daysLeft} days left in the year to use retirement and HSA room, take required distributions, and plan conversions.`, to: '/taxplan', actionLabel: 'Open the checklist' });
+  }
+
+  if ((i.harvestableCents ?? 0) >= 100000 && daysLeft <= 75) {
+    out.push({ id: 'harvest', level: 'info', title: `${formatCents(i.harvestableCents!)} of losses could be harvested`, detail: 'Selling lots that are below cost can offset gains and lower this year’s tax.', to: '/taxplan', actionLabel: 'See candidates' });
+  }
+
+  if (i.propertyStale && i.propertyStale.length > 0) {
+    out.push({ id: 'property', level: 'info', title: `Update the value of ${list(i.propertyStale)}`, detail: 'The last value is over a year old, so net worth may be off.', to: '/networth', actionLabel: 'Update value' });
   }
 
   const rank = (a: Alert) => (a.level === 'warn' ? 0 : 1);
