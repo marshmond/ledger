@@ -6,6 +6,7 @@ import { formatCents, todayISO } from '../lib/money';
 import { addMonths, monthOf } from '../lib/dates';
 import { balanceAt, loanView, nextRow } from '../lib/loanSchedule';
 import { summarize } from '../lib/investments';
+import { computeNetWorth } from '../lib/netWorth';
 import Collapsible from './Collapsible';
 import LoanCard, { KIND_NAMES } from './LoanCard';
 
@@ -62,19 +63,16 @@ export default function DebtPage() {
   const interestThisYear = actual.reduce((s, v) => s + v.view.schedule.rows.filter((r) => r.date.startsWith(thisYear)).reduce((a, r) => a + r.interest, 0), 0);
 
   // Net worth. Loans tied to a ledger account are counted once, from the ledger; the rest from their schedule.
-  const net = useMemo(() => {
-    const bal = (id: number) => {
-      const a = accounts.find((x) => x.id === id);
-      return a ? a.openingBalanceCents + txns.filter((t) => t.accountId === id).reduce((s, t) => s + t.amountCents, 0) : 0;
-    };
-    const sumKind = (k: string) => accounts.filter((a) => a.kind === k).reduce((s, a) => s + bal(a.id!), 0);
-    const cash = sumKind('checking') + sumKind('savings');
-    const cards = sumKind('credit_card'); // negative
-    const ledgerLoans = sumKind('loan'); // negative
-    const unlinked = actual.filter((v) => !v.loan.ledgerAccountId || !accounts.some((a) => a.id === v.loan.ledgerAccountId)).reduce((s, v) => s - balanceAt(v.view.schedule, today), 0);
-    const investments = summarize({ accounts: invAccounts, holdings, securities, assetClasses }).total;
-    return { cash, investments, cards, loans: ledgerLoans + unlinked, total: cash + investments + cards + ledgerLoans + unlinked };
-  }, [accounts, txns, actual, invAccounts, holdings, securities, assetClasses, today]);
+  const net = useMemo(
+    () =>
+      computeNetWorth(
+        accounts,
+        txns,
+        summarize({ accounts: invAccounts, holdings, securities, assetClasses }).total,
+        actual.map((v) => ({ ledgerAccountId: v.loan.ledgerAccountId, owedCents: balanceAt(v.view.schedule, today) })),
+      ),
+    [accounts, txns, actual, invAccounts, holdings, securities, assetClasses, today],
+  );
 
   async function add() {
     const nm = name.trim() || KIND_NAMES[kind];

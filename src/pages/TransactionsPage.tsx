@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useSearchParams } from 'react-router-dom';
 import { db } from '../db';
 import type { Txn, TxnStatus } from '../types';
 import { formatCents, todayISO } from '../lib/money';
@@ -43,7 +44,9 @@ export default function TransactionsPage() {
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const saved = useLiveQuery(() => listSavedFilters(db), []) ?? [];
 
-  const [filter, setFilterState] = useState<TxnFilter>(EMPTY_FILTER);
+  const [searchParams] = useSearchParams();
+  const startText = searchParams.get('q') ?? '';
+  const [filter, setFilterState] = useState<TxnFilter>(() => ({ ...EMPTY_FILTER, text: startText }));
   const [sort, setSortState] = useState<Sort>(DEFAULT_SORT);
   const [preset, setPreset] = useState<DatePreset | 'custom'>('all');
   const [page, setPage] = useState(0);
@@ -56,6 +59,8 @@ export default function TransactionsPage() {
   const [msg, setMsg] = useState('');
   const narrow = typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
 
+  // Arriving from search while already on this page: apply the new text.
+  useEffect(() => { if (startText) { setFilterState((f) => ({ ...f, text: startText })); setPage(0); } }, [startText]);
   const setFilter = (f: TxnFilter) => { setFilterState(f); setPage(0); };
   const patch = (p: Partial<TxnFilter>) => setFilter({ ...filter, ...p });
   const setSort = (s: Sort) => { setSortState(s); setPage(0); };
@@ -321,7 +326,7 @@ export default function TransactionsPage() {
               </tr>
             ))}
             {pageRows.length === 0 && (
-              <tr><td colSpan={8} className="muted">{txns.length === 0 ? <>No transactions yet. Add some from an account on the <Link to="/">Accounts</Link> tab, or use Import.</> : 'No transactions match these filters.'}</td></tr>
+              <tr><td colSpan={8} className="muted">{txns.length === 0 ? <>No transactions yet. Add some from an account on the <Link to="/accounts">Accounts</Link> tab, or use Import.</> : 'No transactions match these filters.'}</td></tr>
             )}
           </tbody>
         </table>

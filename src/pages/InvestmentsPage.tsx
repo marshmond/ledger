@@ -9,6 +9,7 @@ import { AllocationBar, compactUSD, type AllocItem } from './charts';
 import { MoneyField, NumField } from './fields';
 import PriceCell from './PriceCell';
 import HsaLog from './HsaLog';
+import PageTabs from './PageTabs';
 import { LotsPanel, RealizedSection, TradePanel } from './TradePanels';
 import { addLot, ensureLots, isTaxable, setHoldingBasis } from '../lib/lots';
 
@@ -259,6 +260,14 @@ export default function InvestmentsPage() {
   return (
     <>
       <h1>Investments</h1>
+      <PageTabs
+        id="investments"
+        tabs={[
+          {
+            id: 'accounts',
+            label: 'Accounts',
+            content: (
+              <>
 
       <div className="viz">
         <div className="muted">Total investments</div>
@@ -312,9 +321,15 @@ export default function InvestmentsPage() {
           >Add account</button>
         </div>
       </div>
-
-      <RealizedSection accounts={accounts} securities={securities} />
-
+              </>
+            ),
+          },
+          { id: 'gains', label: 'Realized gains', content: <RealizedSection accounts={accounts} securities={securities} /> },
+          {
+            id: 'prices',
+            label: 'Prices & assumptions',
+            content: (
+              <>
       <h2>Prices</h2>
       <div className="card">
         <div className="row">
@@ -391,6 +406,11 @@ export default function InvestmentsPage() {
         <button onClick={async () => { if (newClass.trim()) { await db.assetClasses.add({ name: newClass.trim(), kind: 'other', expectedReturnPct: 5, volatilityPct: 15 }); setNewClass(''); } }}>Add class</button>
       </div>
       <p className="muted">The “kind” sets how classes move together in the simulation (stocks move with stocks, bonds less so). Allocation colors follow each class’s position in this list.</p>
+              </>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }

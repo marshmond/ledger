@@ -4,6 +4,14 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-17: navigation and Home redesign BUILT (before the larger features below)
+
+The 15-link top banner was replaced by an information architecture: Home / Money / Invest / Plan / More. Desktop: grouped sidebar; phone: bottom tab bar plus a scrolling row of the section's pages. Added: Home screen (net worth, ranked "needs attention" alerts, this month's spending, recent transactions, goals, quick links), global search (Ctrl+K or /), quick-add button (add a transaction from anywhere; shortcuts to trades, paycheck scenario, scheduled item), breadcrumbs, in-page tabs on Investments (Accounts / Realized gains / Prices & assumptions), a Settings page under More. Accounts moved from "/" to "/accounts"; every other address is unchanged.
+
+Judgment calls: Import and Categories sit under Money; Income and Paycheck sit under Plan (with the planners) rather than their own group; the phone tab bar has five tabs; keyboard shortcuts are limited to search; the Home net worth excludes property until home value is added (next item in the queue).
+
+The larger features (net worth history + home value, tax planning dashboard, alerts/Today expansion, calendar export, quick capture + rules, tax-time package) are still queued under "Larger scope" below; Home and alerts are the first slice of them.
+
 ## STATUS 2026-10-16: paycheck calculator, HSA accounts, and cost basis / realized gains were BUILT ("go")
 
 Verified with 380 automated tests and a browser walkthrough (new scenario from a copy, live edit, compare; HSA account and withdrawal; lots, buy, sale with FIFO, undo, tax effect on the Income tab; phone layout).
@@ -321,3 +329,17 @@ Requested 2026-10-16. Not built; waiting on clarifying answers.
     - Scope: one paycheck's gross-to-net breakdown plus the year (annual totals, when caps like Social Security and the 401(k) limit are reached, federal and MA liability vs withholding).
     - Scenarios can be saved, named, and compared side by side (e.g. current vs. new job).
     - Not selected: checking against a real pay stub; one-off bonus/vest net (bonuses can still be entered in the scenario).
+
+---
+
+## Larger scope: tax planning, net worth, and usability features
+
+Requested 2026-10-17. Not built; waiting for the owner's go-ahead. Everything below was selected.
+
+- [ ] **Year-end tax planning dashboard.** Bracket room and projected federal/MA tax for the year; withholding vs. estimated payments (on track to owe or be refunded, with W-4 / quarterly payment suggestions); tax-loss harvesting from tax lots (losses available, tax saved, 30-day rebuy warning); year-end checklist (401(k)/HSA room, Roth conversion room, RSU timing, charitable gifts, RMDs due).
+- [ ] **Net worth over time + home screen.** Monthly automatic snapshots (cash, investments, home value, debts) with a history chart; home value and equity (value entered and updated over time); goal progress and next actions on one page; spending snapshot (this month's budget status and recent transactions).
+- [ ] **Today screen with alerts.** A ranked list of what needs attention across the app (bills due, overspent categories, withholding gap, upcoming RMD or RSU vest, IRMAA/ACA cliff proximity, stale prices, overdue backup).
+- [ ] **Calendar export.** Key dates (RSU vests, RMDs, estimated-tax due dates, cap dates, scheduled items) as an .ics file for the phone calendar.
+- [ ] **Quick capture and rules.** One-tap add-transaction screen, payee rules that auto-categorize (including on import), and recurring-charge detection.
+- [ ] **Tax-time package for the CPA.** One export (PDF and CSV set): wages and withholding, realized gains by lot, HSA activity, RSU income.
+- Not selected for now: cross-device sync, guided setup/demo mode, Social Security claiming and survivor scenarios, broker lot import, whole-plan scenarios.

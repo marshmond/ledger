@@ -6,7 +6,9 @@ to Twelve Data using your own key.
 
 ## What it does
 
-| Tab | Purpose |
+**Finding your way around.** On a computer there is a sidebar with five groups: **Home** (net worth, what needs attention, this month, recent activity), **Money** (Accounts, Transactions, Budget, Scheduled, Import, Categories), **Invest** (Investments, Debt), **Plan** (Income, Paycheck, Projections, Retirement, Goals, Roth), and **More** (Backup, settings). On a phone the same five groups are a tab bar at the bottom, with each group's pages as a scrolling row at the top. Press **Ctrl+K** (or **/**) to search pages, accounts, holdings, loans, and transactions from anywhere, and use the **+** button to add a transaction or jump to logging a trade.
+
+| Page | Purpose |
 |---|---|
 | **Accounts** | Checking, savings, and credit cards with starting balances; ledger with categories, splits, pending/cleared/reconciled; transfers (a card payment entered from either side creates the matching entry); reconcile to a statement |
 | **Transactions** | Every transaction from every account in one place: filter by account, date range, category, payee/memo, and amount (greater than, less than, between), sort by any column, edit or delete rows, bulk-change category/status, export the filtered list to CSV, and save filters |

@@ -50,7 +50,7 @@ export default function LedgerPage() {
     <>
       <div className="row spread">
         <h1>{account.name}</h1>
-        <span className="row"><Link to="/transactions">All transactions</Link><Link to="/">← Accounts</Link></span>
+        <span className="row"><Link to="/transactions">All transactions</Link><Link to="/accounts">← Accounts</Link></span>
       </div>
       <div className="card row spread">
         <span>{isCard ? 'Owed' : 'Balance'}: <strong className={balance < 0 ? 'neg' : ''}>{formatCents(isCard ? -balance : balance)}</strong></span>
