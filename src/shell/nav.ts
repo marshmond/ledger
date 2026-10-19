@@ -38,7 +38,7 @@ export const GROUPS: NavGroup[] = [
       { to: '/budget', label: 'Budget', keywords: 'envelope categories assign ready to assign' },
       { to: '/scheduled', label: 'Scheduled', keywords: 'recurring bills upcoming' },
       { to: '/forecast', label: 'Forecast', keywords: 'cash flow projection balance low afford bills paychecks months' },
-      { to: '/reports', label: 'Reports', keywords: 'spending trends categories payees savings rate month compare' },
+      { to: '/reports', label: 'Reports', keywords: 'spending trends categories payees savings rate month compare sankey flow diagram where money goes income gross net' },
       { to: '/rules', label: 'Rules', keywords: 'payee auto categorize recurring detect repeating subscriptions' },
       { to: '/import', label: 'Import', keywords: 'csv bank statement upload' },
       { to: '/categories', label: 'Categories', keywords: 'groups rename' },

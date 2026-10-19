@@ -4,6 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-19 (later): flow (Sankey) diagram and one-open-at-a-time sidebar BUILT
+
+Verified with 667 automated tests and browser checks (numbers hand-checked against test transactions, filters, custom dates, gross view, phone width).
+
+Judgment calls (please review):
+1. **Where:** a "Flow diagram" tab on Reports (the existing reports are the "Trends" tab).
+2. **Counted:** every expense category, plus the principal part of loan, mortgage, and HELOC payments (they are transfers to the loan account, shown as "Loan principal"). Left out: credit card payments and moves to savings or investments. Card spending counts through its categories.
+3. **Left over:** income minus spending shown as "Saved". If any category or account is switched off it is called "Left over" with a warning, since it is no longer true savings. If spending exceeds income, a "Drawn from savings" bar feeds the diagram instead.
+4. **Periods:** "Last 3/6/12 months" are the whole months before this one; "This month" and "This year so far" run through today; "All time" starts at your first transaction; custom dates are inclusive and can be entered in either order.
+5. **Gross view:** pay, taxes, and deductions come from your Income setup (the paycheck model), not from deposits, so they can differ from what reached your accounts. Spending still comes from your accounts. Taxes are withholding (federal incl. additional Medicare, Social Security and Medicare, state and family leave); deductions are listed by name (401(k), HSA, and so on). Years without a pay setup show a message.
+6. **Account filter:** limits income and spending to the accounts you leave on; it does not affect the gross-view pay.
+7. **Phone:** the diagram keeps about 200px per column so labels stay readable, so it scrolls sideways inside its box (with a hint).
+8. **Sidebar (desktop):** all groups start collapsed and only one stays open at a time; the open one is remembered per device.
+9. **Saved views (flow diagram):** a named view remembers net or gross, the period preset, groups or categories, and what is switched OFF (categories and accounts). Storing what is off means categories and accounts you add later appear in your saved views. Custom dates are not part of a view; they are remembered separately, with everything else, as what the page showed last time on this device. Views live in settings, so they are in backups and sync between devices.
+
 ## STATUS 2026-10-19: device sync BUILT (via a private GitHub repo)
 
 Verified with 645 automated tests (two simulated devices through an in-memory remote, plus the GitHub client against a fake fetch) and browser checks. NOT yet tried against real GitHub: do the first real sync with a throwaway repo.

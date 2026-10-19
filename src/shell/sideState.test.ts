@@ -1,28 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { loadClosedGroups, saveClosedGroups, toggleGroup } from './sideState';
+import { loadOpenGroup, saveOpenGroup, toggleGroup } from './sideState';
 
 const store = () => {
   const m = new Map<string, string>();
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
 };
 
-describe('collapsed sidebar groups', () => {
-  it('toggles a group closed and open', () => {
-    expect(toggleGroup([], 'money')).toEqual(['money']);
-    expect(toggleGroup(['money', 'plan'], 'money')).toEqual(['plan']);
+describe('sidebar groups (one open at a time)', () => {
+  it('opening a group closes the one that was open, and clicking the open one closes it', () => {
+    expect(toggleGroup(null, 'money')).toBe('money');
+    expect(toggleGroup('money', 'invest')).toBe('invest');
+    expect(toggleGroup('invest', 'invest')).toBeNull();
   });
-  it('remembers the choice', () => {
+  it('starts collapsed and remembers the choice', () => {
     const s = store();
-    expect(loadClosedGroups(s)).toEqual([]);
-    saveClosedGroups(['invest', 'plan'], s);
-    expect(loadClosedGroups(s)).toEqual(['invest', 'plan']);
+    expect(loadOpenGroup(s)).toBeNull();
+    saveOpenGroup('invest', s);
+    expect(loadOpenGroup(s)).toBe('invest');
+    saveOpenGroup(null, s);
+    expect(loadOpenGroup(s)).toBeNull();
   });
-  it('ignores damaged storage and blocked storage', () => {
-    expect(loadClosedGroups({ getItem: () => 'not json', setItem: () => undefined })).toEqual([]);
-    expect(loadClosedGroups({ getItem: () => '{"a":1}', setItem: () => undefined })).toEqual([]);
-    expect(loadClosedGroups({ getItem: () => '[1,"money"]', setItem: () => undefined })).toEqual(['money']);
+  it('ignores blocked storage', () => {
     const blocked = { getItem: () => { throw new Error('x'); }, setItem: () => { throw new Error('x'); } };
-    expect(loadClosedGroups(blocked)).toEqual([]);
-    expect(() => saveClosedGroups(['a'], blocked)).not.toThrow();
+    expect(loadOpenGroup(blocked)).toBeNull();
+    expect(() => saveOpenGroup('money', blocked)).not.toThrow();
   });
 });

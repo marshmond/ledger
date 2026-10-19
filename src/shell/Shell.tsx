@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useMatch } from 'react-router-dom';
-import { loadClosedGroups, saveClosedGroups, toggleGroup } from './sideState';
+import { loadOpenGroup, saveOpenGroup, toggleGroup } from './sideState';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { dueInstances } from '../lib/schedule';
@@ -25,8 +25,8 @@ export default function Shell({ children }: { children: ReactNode }) {
   const dueCount = useLiveQuery(async () => (await dueInstances(db, todayISO(), 7)).length, []) ?? 0;
   const nw = useLiveQuery(() => loadNetWorth(db, todayISO()), []);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [closed, setClosed] = useState<string[]>(() => loadClosedGroups());
-  const toggle = (id: string) => setClosed((cur) => { const next = toggleGroup(cur, id); saveClosedGroups(next); return next; });
+  const [open, setOpen] = useState<string | null>(() => loadOpenGroup());
+  const toggle = (id: string) => setOpen((cur) => { const next = toggleGroup(cur, id); saveOpenGroup(next); return next; });
 
   // Net worth history: this month's point follows the latest figures (saved shortly after they settle).
   useEffect(() => {
@@ -71,15 +71,15 @@ export default function Shell({ children }: { children: ReactNode }) {
             ) : (
               <>
                 <button
-                  className={`side-head ${closed.includes(g.id) ? 'closed' : ''} ${group.id === g.id ? 'has-active' : ''}`}
-                  aria-expanded={!closed.includes(g.id)}
+                  className={`side-head ${open === g.id ? '' : 'closed'} ${group.id === g.id ? 'has-active' : ''}`}
+                  aria-expanded={open === g.id}
                   aria-controls={`side-${g.id}`}
                   onClick={() => toggle(g.id)}
                 >
                   <span>{g.label}</span>
                   <span className="chev" aria-hidden="true">▾</span>
                 </button>
-                {!closed.includes(g.id) && (
+                {open === g.id && (
                   <div className="side-items" id={`side-${g.id}`}>
                     {g.items.filter((i) => !(g.id === 'more' && i.to === '/more')).map((i) => (
                       <NavLink key={i.to} to={i.to} className={({ isActive }) => `side-link ${isActive || inLedger(i.to) ? 'active' : ''}`} end>{i.label}{badge(i.to)}</NavLink>

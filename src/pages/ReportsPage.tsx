@@ -7,6 +7,8 @@ import { categoryCsv, categoryStats, compareTotals, jumps, lastMonths, savingsRa
 import { downloadText } from '../lib/download';
 import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
+import PageTabs from './PageTabs';
+import FlowPanel from './FlowPanel';
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 const pct = (f: number) => `${f >= 0 ? '+' : '−'}${Math.abs(Math.round(f * 100))}%`;
@@ -23,8 +25,17 @@ function Delta({ now, then, label }: { now: number; then: number | null; label: 
   );
 }
 
-/** Where the money went: monthly totals, category trends, what jumped, and top payees. */
+/** Where the money went: a flow diagram, and month-by-month totals, category trends, what jumped, and top payees. */
 export default function ReportsPage() {
+  return (
+    <>
+      <h1>Reports</h1>
+      <PageTabs id="reports" tabs={[{ id: 'trends', label: 'Trends', content: <Trends /> }, { id: 'flow', label: 'Flow diagram', content: <FlowPanel /> }]} />
+    </>
+  );
+}
+
+function Trends() {
   const thisMonth = todayISO().slice(0, 7);
   const [end, setEnd] = useState(thisMonth);
   const [payeeRange, setPayeeRange] = useState<'month' | 'year'>('month');
@@ -46,7 +57,7 @@ export default function ReportsPage() {
   return (
     <>
       <div className="row spread">
-        <h1>Spending reports</h1>
+        <h2 style={{ margin: 0 }}>Spending by month</h2>
         <label className="row">Through<select value={end} onChange={(e) => setEnd(e.target.value)}>{options.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}</select></label>
       </div>
       <p className="muted">Where your money went, from the transactions in your accounts. Transfers between accounts are left out; refunds reduce spending.</p>
