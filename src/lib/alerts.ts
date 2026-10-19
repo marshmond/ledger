@@ -36,6 +36,8 @@ export interface AlertInput {
   estimatedDue?: { date: string; amountCents: number } | null;
   /** Losses sitting in taxable lots that could be harvested. */
   harvestableCents?: number;
+  /** Monthly check-in steps still open (only passed late in the month). */
+  checkinLeft?: number;
   /** The lowest point of the cash forecast, when it falls below your warning level in the next 90 days. */
   forecastLow?: { date: string; balanceCents: number; thresholdCents: number } | null;
   /** Year-end checklist items that still need action. */
@@ -72,6 +74,10 @@ export function computeAlerts(i: AlertInput): Alert[] {
       to: '/income',
       actionLabel: 'See the estimate',
     });
+  }
+
+  if (i.checkinLeft && i.checkinLeft > 0) {
+    out.push({ id: 'checkin', level: 'info', title: `${plural(i.checkinLeft, 'step')} left in this month’s check-in`, detail: 'A few minutes keeps your records accurate.', to: '/checkin', actionLabel: 'Open the check-in' });
   }
 
   if (i.forecastLow) {

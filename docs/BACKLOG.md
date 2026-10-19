@@ -4,6 +4,29 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-19: device sync BUILT (via a private GitHub repo)
+
+Verified with 645 automated tests (two simulated devices through an in-memory remote, plus the GitHub client against a fake fetch) and browser checks. NOT yet tried against real GitHub: do the first real sync with a throwaway repo.
+
+Judgment calls (please review):
+1. **Where:** one encrypted file (`ledger-sync.bin`) at the root of a private repo you create. Gzip, then AES-GCM with a passphrase (PBKDF2). You create a fine-grained token limited to that repo (Contents: read and write); it and the passphrase are stored in this browser only. The app refuses a public repo.
+2. **Merge:** per record, last edit wins (each record now has an `updatedAt`). Deletions are detected against the ids at the last sync and win unless the record was edited afterwards. Both-sides edits are listed on the Sync page (last 50). Budget lines, net worth months, tax settings per year, and scheduled-item log entries are collapsed to one per natural key if two devices made them at once.
+3. **Ids:** new records now get time-based ids (about 1.8e15) so two devices cannot collide. Existing small ids are unchanged. The second device must REPLACE its data with the synced copy when it connects (small ids would collide otherwise).
+4. **Not synced:** the price-data key (per device) and appearance/palette (per device, already in localStorage).
+5. **Restoring a backup** on a synced device re-stamps everything so it wins, and deletes anything not in the backup on all devices (the restore confirmation says so).
+6. **Timing:** on open, on return to the app, when back online, 8 seconds after a change, and every 5 minutes while open. Clock differences between devices could pick the wrong "later" edit if clocks are badly off.
+7. Deletion markers are kept 365 days; a device offline longer could bring back something deleted elsewhere.
+
+## STATUS 2026-10-17 (latest): monthly check-in, "Can I afford it?", budget targets, and charitable giving BUILT ("build: 1, 2, 3, 7")
+
+Verified with 626 automated tests and browser checks (desktop and 375px phone width, no horizontal overflow). Database is now version 13; backups are version 13.
+
+Judgment calls (please review):
+1. **Targets:** monthly = assign a set amount; by date = remaining divided by months left, rounded up; yearly = next occurrence. When money is short, the soonest-due target is funded first.
+2. **Giving:** gifts of shares assume a 15% long-term capital-gains rate for tax avoided. The 60% (cash) and 30% (shares) of income limits and carryforwards are not modeled. Gifts feed the Tax package and can set your itemized deduction in Tax planning.
+3. **Afford it:** standard guidelines (28% housing, 36% total debt with 43% as a hard limit, car costs 15 to 20% of income and payment under 10%, 3 to 6 months of cash left over, a PMI note under 20% down). Rent vs buy ignores the mortgage-interest and property-tax deductions.
+4. **Check-in:** the budget step counts as done when nothing is overspent and unassigned money is under $50. Prices older than 10 days, property values older than a year, and a backup older than 30 days count as to-do. Your own ticks are saved per month in settings. Home nudges you from the 25th if steps remain.
+
 ## STATUS 2026-10-20: cash-flow forecast, spending reports, debt payoff, "if something happens" guide, protection check, year in review, collapsible sidebar groups, and color palettes BUILT
 
 Verified with 576 automated tests and browser checks of every new page (desktop and phone width).

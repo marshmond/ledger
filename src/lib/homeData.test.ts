@@ -79,6 +79,15 @@ describe('tax and year-end alerts', () => {
   });
 });
 
+describe('check-in alert', () => {
+  it('nudges when steps are left late in the month', () => {
+    const a = computeAlerts({ ...base, checkinLeft: 2 });
+    expect(a[0]).toMatchObject({ id: 'checkin', level: 'info', to: '/checkin' });
+    expect(a[0].title).toBe('2 steps left in this month’s check-in');
+    expect(computeAlerts({ ...base, checkinLeft: 0 })).toEqual([]);
+  });
+});
+
 describe('cash forecast alert', () => {
   it('warns when the balance would fall below the warning level', () => {
     const a = computeAlerts({ ...base, forecastLow: { date: '2026-11-20', balanceCents: $(300), thresholdCents: $(1000) } });

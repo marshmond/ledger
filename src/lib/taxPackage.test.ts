@@ -44,7 +44,7 @@ const get = (id: string) => sections.find((s) => s.id === id)!;
 
 describe('tax package', () => {
   it('has the sections a preparer asks for', () => {
-    expect(sections.map((s) => s.id)).toEqual(['wages', 'rsu', 'sales', 'hsa', 'loans', 'estimate']);
+    expect(sections.map((s) => s.id)).toEqual(['wages', 'rsu', 'sales', 'hsa', 'loans', 'gifts', 'estimate']);
   });
   it('pay and withholding match the payroll projection', () => {
     const row = get('wages').rows[0];

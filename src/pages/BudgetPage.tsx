@@ -7,6 +7,8 @@ import { monthLabel, monthOf } from '../lib/dates';
 import { buildIncomeModel } from '../lib/income';
 import { monthlyNet } from '../lib/payroll';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { planFunding, targetNeed } from '../lib/budgetTargets';
+import BudgetTargets from './BudgetTargets';
 
 function Assigned({ month, row }: { month: string; row: BudgetRow }) {
   return (
@@ -51,6 +53,7 @@ export default function BudgetPage() {
   }, [month]);
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+  const targets = useLiveQuery(() => db.budgetTargets.toArray(), []) ?? [];
 
   if (!budget) return <p className="muted">Loading…</p>;
 
@@ -58,12 +61,32 @@ export default function BudgetPage() {
   const payRows = budget.rows.filter((r) => r.kind === 'payment');
   const overspent = budget.rows.filter((r) => r.available < 0 && r.kind === 'category');
 
+  // Targets: how much each category still needs this month to be on track.
+  const needs = targets.flatMap((t) => {
+    const row = budget.rows.find((r) => r.kind === 'category' && r.categoryId === t.categoryId);
+    return row ? [targetNeed(t, row, month, formatCents)] : [];
+  });
+  const needOf = (r: BudgetRow) => needs.filter((n) => n.target.categoryId === r.categoryId);
+  const plan = planFunding(needs, rta);
+  const fundTargets = async () => {
+    for (const a of plan.adds) {
+      const row = budget.rows.find((r) => r.kind === 'category' && r.categoryId === a.categoryId);
+      if (row) await setAssignment(db, month, row.key, row.assigned + a.addCents);
+    }
+    setNote(plan.adds.length ? `Funded ${plan.adds.length} target${plan.adds.length === 1 ? '' : 's'} with ${formatCents(plan.totalAddCents)}.` : 'Nothing to fund.');
+  };
+
   const cover = (r: BudgetRow) => setAssignment(db, month, r.key, r.assigned - r.available);
 
   const renderRow = (r: BudgetRow) => (
     <tr key={r.key}>
       <td>
         {r.name}
+        {r.kind === 'category' && needOf(r).map((n) => (
+          <div key={n.target.id} className={n.funded ? 'muted' : 'warn'} style={{ fontSize: '0.8rem' }}>
+            {n.description}: {n.funded ? 'funded ✓' : <>needs {formatCents(n.needCents)} this month{' '}<button className="link" onClick={() => setAssignment(db, month, r.key, r.assigned + n.needCents)}>fund</button></>}
+          </div>
+        ))}
         {r.kind === 'payment' && (() => {
           const u = budget.unfunded.find((x) => `p${x.accountId}` === r.key);
           return u ? (
@@ -120,6 +143,18 @@ export default function BudgetPage() {
         </div>
       </div>
 
+      {needs.length > 0 && (
+        <div className={`card row spread ${plan.totalNeedCents > 0 ? '' : 'rta-pos'}`}>
+          <div>
+            <strong>Targets</strong>
+            <div className="muted">
+              {plan.totalNeedCents === 0 ? 'Every target is funded for this month.' : `${formatCents(plan.totalNeedCents)} still needed this month to stay on track${plan.shortCents > 0 ? `; Ready to Assign covers ${formatCents(plan.totalAddCents)}, so ${formatCents(plan.shortCents)} is short` : ''}.`}
+            </div>
+          </div>
+          {plan.totalNeedCents > 0 && <button className="primary" disabled={plan.totalAddCents === 0} onClick={fundTargets}>{plan.shortCents > 0 ? 'Fund what I can' : 'Fund all targets'}</button>}
+        </div>
+      )}
+
       {forecast && forecast.net > 0 && (
         <p className="muted">
           Projected take-home for {monthLabel(month)} from your <Link to="/income">Income</Link> model: <strong>{formatCents(forecast.net)}</strong> across {forecast.checks} paycheck{forecast.checks === 1 ? '' : 's'}.
@@ -166,6 +201,7 @@ export default function BudgetPage() {
       {cats.filter((c) => c.kind !== 'income').length === 0 && (
         <p className="muted">No categories yet. <Link to="/categories">Add some</Link>.</p>
       )}
+      <BudgetTargets targets={targets} groups={groups} cats={cats} needs={needs} month={month} />
       <p className="muted">
         Income categories (and uncategorized deposits) feed Ready to Assign. Mark a category as income on the{' '}
         <Link to="/categories">Categories</Link> page.

@@ -2,15 +2,19 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App';
-import { seedIfEmpty } from './db';
+import { db, seedIfEmpty } from './db';
+import { startAutoSync } from './lib/sync/auto';
+import { installTracking } from './lib/sync/track';
 import './styles.css';
 import { startPwa } from './pwa';
 import { initTheme } from './theme';
 
+installTracking(db);
 initTheme();
 startPwa();
 
 seedIfEmpty().finally(() => {
+  startAutoSync();
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <HashRouter>

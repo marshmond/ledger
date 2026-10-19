@@ -32,6 +32,7 @@ export const GROUPS: NavGroup[] = [
     icon: '$',
     to: '/accounts',
     items: [
+      { to: '/checkin', label: 'Check-in', keywords: 'monthly routine checklist chores month end review' },
       { to: '/accounts', label: 'Accounts', keywords: 'checking savings credit card balances ledger' },
       { to: '/transactions', label: 'Transactions', keywords: 'history spending search filter export csv' },
       { to: '/budget', label: 'Budget', keywords: 'envelope categories assign ready to assign' },
@@ -63,6 +64,8 @@ export const GROUPS: NavGroup[] = [
     items: [
       { to: '/income', label: 'Income', keywords: 'salary tax withholding 401k bonus rsu payroll deductions' },
       { to: '/taxplan', label: 'Tax planning', keywords: 'year end bracket room withholding estimated payments harvest loss checklist' },
+      { to: '/giving', label: 'Giving', keywords: 'charity donations gifts deduction bunching donor advised fund appreciated shares' },
+      { to: '/afford', label: 'Afford it', keywords: 'can i afford house car purchase mortgage down payment rent vs buy affordability' },
       { to: '/paycheck', label: 'Paycheck', keywords: 'calculator take-home scenario raise offer' },
       { to: '/projections', label: 'Projections', keywords: 'growth monte carlo future' },
       { to: '/retirement', label: 'Retirement', keywords: 'withdrawal spending last windfall' },
@@ -81,6 +84,7 @@ export const GROUPS: NavGroup[] = [
       { to: '/review', label: 'Year in review', keywords: 'annual summary highlights net worth savings rate taxes year' },
       { to: '/guide', label: 'If something happens', keywords: 'emergency guide spouse family contacts documents will beneficiaries where things are' },
       { to: '/taxpackage', label: 'Tax package', keywords: 'cpa accountant preparer 1099 w-2 8949 export pdf csv tax time' },
+      { to: '/sync', label: 'Sync devices', keywords: 'phone computer desktop mobile github keep in step two devices same data' },
       { to: '/backup', label: 'Backup', keywords: 'export restore encrypted data' },
     ],
   },

@@ -18,6 +18,11 @@ to Twelve Data using your own key.
 | **Reports** | Spending reports: monthly totals, saving rate, category trends and comparisons (vs last month, last year, the 3-month average), what jumped, and top payees, with CSV export |
 | **Payoff** | Debt payoff planner: minimum vs avalanche vs snowball across your cards and loans, a refinance break-even calculator, and extra mortgage payments vs investing |
 | **Protection** | Emergency-fund runway and rough guidelines for life, disability, and umbrella insurance against policies you enter (including employer coverage) |
+| **Check-in** | A monthly routine on Home: scheduled items, categorizing, pending items, balances vs your bank, budget, targets, prices, home value, forecast, and backup. Most steps tick themselves; a streak counts months in a row |
+| **Afford it** | Can I afford a house, car, or other purchase? Payment, housing and debt ratios, cash needed, the most you could afford, the hit to your cash forecast, and rent vs buy |
+| **Giving** | Charitable gifts (cash, shares, other) with receipts, the tax value of each, whether itemizing pays, bunching advice, and the paperwork to keep. Feeds the Tax package |
+| **Budget targets** | On Budget: set a target per category (monthly, by a date, or yearly); each shows what it needs this month and one button funds them, soonest due first |
+| **Sync devices** | Keeps your phone and computer in step through one encrypted file in a private GitHub repository you own. Merges changes record by record (the later edit wins), shows what was overwritten, and syncs on open, on return, and after you change something |
 | **Year in review** | One printable page: net worth change, income and spending, saving, taxes, investing, debt, and plain-language highlights |
 | **If something happens** | A printable guide for your family: contacts, where papers are, your accounts, loans, property, insurance, and bills, and first steps. Never put passwords in it |
 | **Net worth** | Net worth now and by month (a point is saved automatically each month), with your home and other property (values you enter, with history and equity against your mortgage/HELOC) |

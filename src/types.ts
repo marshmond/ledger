@@ -551,3 +551,35 @@ export interface PayeeRule {
   /** Only for this account (blank = any). */
   accountId?: number | null;
 }
+
+// ---- Budget targets and giving ----
+
+/** A funding goal for a budget category: set aside a set amount every month, or save up an amount by a date (or every year in a given month). */
+export interface BudgetTarget {
+  id?: number;
+  categoryId: number;
+  kind: 'monthly' | 'by_date' | 'yearly';
+  amountCents: number;
+  /** 'by_date': the month the money is needed, as 'YYYY-MM'. */
+  dueMonth?: string;
+  /** 'yearly': the month of the year (1-12) the bill comes due. */
+  dueMonthOfYear?: number;
+  note?: string;
+}
+
+/** A gift to a charity. Gifts of stock are deductible at their market value, and the gain is never taxed. */
+export interface Donation {
+  id?: number;
+  date: string;
+  charity: string;
+  kind: 'cash' | 'stock' | 'other';
+  /** Cash given, or the fair market value of what was given. */
+  amountCents: number;
+  /** Stock and other property: what you originally paid, so the gain that is not taxed can be shown. */
+  basisCents?: number;
+  /** Stock given: held more than a year (only then is the full market value deductible). */
+  longTerm?: boolean;
+  /** You have the charity's written acknowledgment (needed for gifts of $250 or more). */
+  receipt?: boolean;
+  note: string;
+}

@@ -5,8 +5,10 @@ import type {
   AssetClass,
   Assignment,
   Bonus,
+  BudgetTarget,
   Category,
   CategoryGroup,
+  Donation,
   Goal,
   Holding,
   HsaWithdrawal,
@@ -65,6 +67,8 @@ export class FinanceDB extends Dexie {
   propertyValues!: Table<PropertyValue, number>;
   netWorthSnapshots!: Table<NetWorthSnapshot, number>;
   payeeRules!: Table<PayeeRule, number>;
+  budgetTargets!: Table<BudgetTarget, number>;
+  donations!: Table<Donation, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -134,6 +138,10 @@ export class FinanceDB extends Dexie {
     });
     this.version(12).stores({
       payeeRules: '++id',
+    });
+    this.version(13).stores({
+      budgetTargets: '++id, categoryId',
+      donations: '++id, date',
     });
   }
 }

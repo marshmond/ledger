@@ -10,6 +10,10 @@ import PayoffPage from './pages/PayoffPage';
 import ProtectionPage from './pages/ProtectionPage';
 import GuidePage from './pages/GuidePage';
 import ReviewPage from './pages/ReviewPage';
+import GivingPage from './pages/GivingPage';
+import AffordPage from './pages/AffordPage';
+import CheckinPage from './pages/CheckinPage';
+import SyncPage from './pages/SyncPage';
 import TaxPackagePage from './pages/TaxPackagePage';
 import TaxPlanPage from './pages/TaxPlanPage';
 import AccountsPage from './pages/AccountsPage';
@@ -34,12 +38,16 @@ export default function App() {
     <Shell>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/checkin" element={<CheckinPage />} />
+        <Route path="/sync" element={<SyncPage />} />
         <Route path="/accounts" element={<AccountsPage />} />
         <Route path="/account/:id" element={<LedgerPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/budget" element={<BudgetPage />} />
         <Route path="/income" element={<IncomePage />} />
         <Route path="/taxplan" element={<TaxPlanPage />} />
+        <Route path="/afford" element={<AffordPage />} />
+        <Route path="/giving" element={<GivingPage />} />
         <Route path="/paycheck" element={<PaycheckPage />} />
         <Route path="/networth" element={<NetWorthPage />} />
         <Route path="/investments" element={<InvestmentsPage />} />

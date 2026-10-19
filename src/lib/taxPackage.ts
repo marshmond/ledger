@@ -1,4 +1,4 @@
-import type { HsaWithdrawal, InvAccount, Loan, Person, Sale, Security } from '../types';
+import type { Donation, HsaWithdrawal, InvAccount, Loan, Person, Sale, Security } from '../types';
 import type { HouseholdTax, PersonYear } from './payroll';
 import type { ResolvedVest } from './rsu';
 import type { LoanView } from './loanSchedule';
@@ -35,6 +35,7 @@ export interface PackageInput {
   invAccounts: InvAccount[];
   hsaWithdrawals: HsaWithdrawal[];
   loans: { loan: Loan; view: LoanView }[];
+  donations?: Donation[];
 }
 
 const nameOf = (people: Person[], id: number) => people.find((p) => p.id === id)?.name ?? 'Person';
@@ -114,6 +115,16 @@ export function buildTaxPackage(i: PackageInput): Section[] {
     headers: ['Loan', 'Interest', 'Principal', 'Payments'],
     rows: loanRows,
     moneyCols: [1, 2],
+  });
+
+  const gifts = (i.donations ?? []).filter((d) => d.date.startsWith(`${i.year}-`)).sort((a, b) => a.date.localeCompare(b.date));
+  out.push({
+    id: 'gifts',
+    title: 'Charitable gifts (Schedule A, Form 8283)',
+    note: 'Keep the charity’s written acknowledgment for any gift of $250 or more. Property over $500 in total goes on Form 8283.',
+    headers: ['Date', 'Charity', 'Type', 'Value', 'Cost basis', 'Holding period', 'Receipt on file'],
+    rows: gifts.map((d) => [d.date, d.charity, d.kind === 'cash' ? 'Cash' : d.kind === 'stock' ? 'Stock' : 'Other property', d.amountCents, d.basisCents ?? 0, d.kind === 'cash' ? '' : d.longTerm === false ? 'Short-term' : 'Long-term', d.receipt ? 'Yes' : 'No']),
+    moneyCols: [3, 4],
   });
 
   const h = i.household;

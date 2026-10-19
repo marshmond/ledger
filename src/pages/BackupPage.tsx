@@ -3,6 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { decryptText, encryptText, exportAll, importAll, type BackupFile } from '../lib/backup';
 import { storageStatus, type StorageStatus } from '../pwa';
+import { readConfig } from '../lib/sync/auto';
+import { touchAll } from '../lib/sync/track';
+import { Link } from 'react-router-dom';
 
 /** Backups older than this trigger a reminder on the Accounts page. */
 export const BACKUP_STALE_DAYS = 30;
@@ -56,10 +59,11 @@ export default function BackupPage() {
     setErr('');
     if (!f) return;
     if (!pass) return setErr('Enter the passphrase used for this backup first.');
-    if (!confirm('This REPLACES all data in this browser with the backup. Continue?')) return;
+    if (!confirm(readConfig() ? 'This REPLACES all data in this browser with the backup, and because sync is on it will replace the data on your other devices too. Continue?' : 'This REPLACES all data in this browser with the backup. Continue?')) return;
     try {
       const data = JSON.parse(await decryptText(await f.text(), pass)) as BackupFile;
       await importAll(db, data);
+      if (readConfig()) await touchAll(db); // so the restored data wins when this device syncs
       setMsg('Backup restored.');
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -97,9 +101,8 @@ export default function BackupPage() {
       <div className="card">
         <strong>Using it on your phone and your computer</strong>
         <p className="muted">
-          Each device keeps its own copy of your data. To move data between them, export a backup on one and restore it on the other
-          (a restore replaces what is on that device, so restore onto the device you are <em>not</em> entering data on, or always make the computer your
-          main copy and treat the phone as a viewer). The price-data key is never included in backups and stays on each device.
+          Each device keeps its own copy of your data. To keep them in step automatically, turn on <Link to="/sync">Sync devices</Link>. Without it, move data by exporting a backup
+          on one device and restoring it on the other (a restore replaces what is on that device). The price-data key is never included in backups or sync and stays on each device.
         </p>
       </div>
 

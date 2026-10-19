@@ -25,16 +25,17 @@ export default function TaxPackagePage() {
   const loans = useLiveQuery(() => db.loans.toArray(), []) ?? [];
   const rates = useLiveQuery(() => db.loanRates.toArray(), []) ?? [];
   const events = useLiveQuery(() => db.loanEvents.toArray(), []) ?? [];
+  const donations = useLiveQuery(() => db.donations.toArray(), []) ?? [];
 
   const sections = useMemo(() => {
     const impact = hsaYearImpact(hsaW, invAccounts, people, year);
     const gains = netForTax(realizedFor(sales, year));
     const model = buildIncomeModel(year, people, profiles, bonuses, settings.find((s) => s.year === year), { vests, securities }, { taxableCents: impact.taxableCents, penaltyCents: impact.penaltyCents }, gains);
     return buildTaxPackage({
-      year, people, years: model.years, household: model.household, vests: model.vests, sales, securities, invAccounts, hsaWithdrawals: hsaW,
+      year, people, years: model.years, household: model.household, vests: model.vests, sales, securities, invAccounts, hsaWithdrawals: hsaW, donations,
       loans: loans.map((l) => ({ loan: l, view: loanView(l, rates.filter((r) => r.loanId === l.id), events.filter((e) => e.loanId === l.id)) })),
     });
-  }, [year, people, profiles, bonuses, settings, vests, securities, invAccounts, sales, hsaW, loans, rates, events]);
+  }, [year, people, profiles, bonuses, settings, vests, securities, invAccounts, sales, hsaW, loans, rates, events, donations]);
 
   const years = [...new Set([...profiles.map((p) => p.year), ...sales.map((s) => Number(s.date.slice(0, 4))), thisYear, thisYear - 1])].sort((a, b) => b - a);
   const withRows = sections.filter((s) => s.rows.length > 0);

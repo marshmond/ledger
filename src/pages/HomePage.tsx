@@ -18,6 +18,7 @@ import { estimatedDueDates } from '../lib/taxPlan';
 import { valueAgeDays } from '../lib/property';
 import { useTaxPlanData } from './useTaxPlanData';
 import ComingUp from './ComingUp';
+import { useCheckin } from './useCheckin';
 import { loadForecast } from '../lib/forecastLive';
 import { addDays } from '../lib/dates';
 
@@ -62,6 +63,7 @@ export default function HomePage() {
   );
 
   const forecast = useLiveQuery(() => loadForecast(db, today), [today]);
+  const checkin = useCheckin();
   const plan = useTaxPlanData(year);
   const nextEstimated = estimatedDueDates(year).find((d) => d >= today) ?? null;
   const overspent = (budget?.rows ?? []).filter((r) => r.kind === 'category' && r.available < 0).map((r) => r.name);
@@ -73,6 +75,7 @@ export default function HomePage() {
     estimatedDue: nextEstimated && plan.wp ? { date: nextEstimated, amountCents: plan.wp.estimatedPaymentCents } : null,
     harvestableCents: plan.candidates.reduce((s, c) => s + c.lossCents, 0),
     yearEndTodo: plan.checklist.filter((c) => c.status === 'todo').length,
+    checkinLeft: checkin.ready && !checkin.progress.complete && Number(today.slice(8, 10)) >= 25 ? checkin.progress.left : 0,
     forecastLow: forecast?.result.firstBelow && forecast.result.firstBelow.date <= addDays(today, 90) ? { ...forecast.result.firstBelow, thresholdCents: forecast.settings.thresholdCents } : null,
   });
   const recent = [...txns].filter((t) => !t.transferTxnId).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 6);
@@ -160,6 +163,14 @@ export default function HomePage() {
         </div>
       </div>
 
+      {checkin.ready && checkin.progress.total > 0 && (
+        <div className="card">
+          <div className="row spread"><strong>Monthly check-in</strong><Link to="/checkin">{checkin.progress.complete ? 'Done ✓' : 'Open →'}</Link></div>
+          <div className="progress" role="progressbar" aria-valuenow={checkin.progress.done} aria-valuemin={0} aria-valuemax={checkin.progress.total}><div style={{ width: `${Math.round((checkin.progress.done / checkin.progress.total) * 100)}%` }} /></div>
+          <div className="muted">{checkin.progress.complete ? `All ${checkin.progress.total} steps done this month.` : `${checkin.progress.done} of ${checkin.progress.total} done. Next: ${checkin.steps.find((s) => s.status === 'todo')?.title ?? ''}.`}{checkin.streak > 1 && ` ${checkin.streak} months in a row.`}</div>
+        </div>
+      )}
+
       <ComingUp />
 
       <div className="grid2">
@@ -173,6 +184,8 @@ export default function HomePage() {
         <div className="card">
           <strong>Quick links</strong>
           <ul className="plain links">
+            <li><Link to="/afford">Can I afford it?</Link></li>
+            <li><Link to="/giving">Charitable giving</Link></li>
             <li><Link to="/forecast">Cash-flow forecast</Link></li>
             <li><Link to="/reports">Spending reports</Link></li>
             <li><Link to="/payoff">Debt payoff planner</Link></li>
