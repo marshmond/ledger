@@ -7,6 +7,7 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { finalizeReconcile, reconcileCheck, type ReconcileResult } from '../lib/ledger';
 import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
 import TxnForm from './TxnForm';
+import CreditLimit from './CreditLimit';
 
 export default function LedgerPage() {
   const id = Number(useParams().id);
@@ -57,6 +58,8 @@ export default function LedgerPage() {
         <span className="muted">Cleared: {formatCents(isCard ? -(balance - pendingTotal) : balance - pendingTotal)} · Pending: {formatCents(pendingTotal)}</span>
         <span className="muted">Opening {formatCents(isCard ? -account.openingBalanceCents : account.openingBalanceCents)} on {account.openingDate}</span>
       </div>
+
+      {account.kind === 'credit_card' && <CreditLimit account={account} balance={balance} />}
 
       {myCandidates.length > 0 && (
         <div className="card">

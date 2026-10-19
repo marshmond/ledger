@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { AccountKind } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { creditStatus, parseLimit } from '../lib/credit';
 import { BACKUP_STALE_DAYS } from './BackupPage';
 
 const KIND_LABEL: Record<AccountKind, string> = {
@@ -32,6 +33,7 @@ export default function AccountsPage() {
   const [kind, setKind] = useState<AccountKind>('checking');
   const [balance, setBalance] = useState('');
   const [date, setDate] = useState(todayISO());
+  const [limit, setLimit] = useState('');
   const [error, setError] = useState('');
 
   async function add() {
@@ -41,9 +43,12 @@ export default function AccountsPage() {
     if (cents === null) return setError('Starting balance is not a valid amount');
     // For cards the user types what they owe (positive); we store debt as negative.
     const signed = kind === 'credit_card' ? -Math.abs(cents) : cents;
-    await db.accounts.add({ name: name.trim(), kind, openingBalanceCents: signed, openingDate: date });
+    const lim = kind === 'credit_card' ? parseLimit(limit) : { cents: undefined };
+    if ('error' in lim) return setError(`Credit limit: ${lim.error}`);
+    await db.accounts.add({ name: name.trim(), kind, openingBalanceCents: signed, openingDate: date, ...(lim.cents ? { creditLimitCents: lim.cents } : {}) });
     setName('');
     setBalance('');
+    setLimit('');
   }
 
   const total = (kinds: AccountKind[]) =>
@@ -62,6 +67,7 @@ export default function AccountsPage() {
         <div className="card row spread">
           <span>Cash (checking + savings): <strong>{formatCents(total(['checking', 'savings']))}</strong></span>
           <span>Card debt: <strong className="neg">{formatCents(total(['credit_card']))}</strong></span>
+          {(data ?? []).some((x) => !x.a.closed && x.a.creditLimitCents) && <span>Credit left: <strong>{formatCents((data ?? []).filter((x) => !x.a.closed && x.a.kind === 'credit_card').reduce((s, x) => s + (creditStatus(x.balance, x.a.creditLimitCents)?.available ?? 0), 0))}</strong></span>}
           {(data ?? []).some((x) => x.a.kind === 'loan') && <span>Loans: <strong className="neg">{formatCents(total(['loan']))}</strong></span>}
           <span>Net: <strong>{formatCents(total(['checking', 'savings', 'credit_card', 'loan']))}</strong></span>
         </div>
@@ -76,7 +82,10 @@ export default function AccountsPage() {
               <tbody>
                 {list.map(({ a, balance }) => (
                   <tr key={a.id}>
-                    <td><Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}</td>
+                    <td>
+                      <Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}
+                      {a.kind === 'credit_card' && (() => { const s = creditStatus(balance, a.creditLimitCents); return s ? <div className="muted" style={{ fontSize: '0.85rem' }}>Credit left <span className={s.level === 'over' ? 'neg' : s.level === 'high' ? 'warn' : ''}>{formatCents(s.available)}</span> of {formatCents(s.limit)} ({Math.round(s.usedPct)}% used)</div> : null; })()}
+                    </td>
                     <td className={`num ${balance < 0 ? 'neg' : ''}`}>{formatCents(balance)}</td>
                   </tr>
                 ))}
@@ -98,6 +107,7 @@ export default function AccountsPage() {
           <label className="f">{kind === 'credit_card' ? 'Amount currently owed' : 'Starting balance'}
             <input value={balance} onChange={(e) => setBalance(e.target.value)} inputMode="decimal" placeholder="0.00" />
           </label>
+          {kind === 'credit_card' && <label className="f">Credit limit (optional)<input value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" placeholder="e.g. 5000" /></label>}
           <label className="f">As of<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         </div>
         <div className="row" style={{ marginTop: 8 }}>

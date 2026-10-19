@@ -1,4 +1,5 @@
 import type { FinanceDB } from '../db';
+import { SETUP_CATEGORY_ID, isSetupAlloc } from './setupCategory';
 import type { Account, Assignment, Category, Txn } from '../types';
 import { allocations } from './ledger';
 import { endOfMonth, monthOf, monthRange, nextMonth, prevMonth } from './dates';
@@ -68,7 +69,7 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
   const cashAccts = new Set(accounts.filter((a) => a.kind !== 'credit_card' && a.kind !== 'loan').map((a) => a.id!));
   const cardIds = new Set(cards.map((c) => c.id!));
   const payIds = new Set(debtAccts.map((c) => c.id!));
-  const expense = categories.filter((c) => c.kind !== 'income');
+  const expense = categories.filter((c) => c.kind !== 'income' && c.id !== SETUP_CATEGORY_ID);
   const expenseIds = new Set(expense.map((c) => c.id!));
   const incomeIds = new Set(categories.filter((c) => c.kind === 'income').map((c) => c.id!));
 
@@ -109,6 +110,7 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
         continue;
       }
       for (const s of allocations(t)) {
+        if (isSetupAlloc(s)) continue; // balances entered to get started: not income, not spending
         if (s.categoryId !== null && incomeIds.has(s.categoryId)) {
           income += s.amountCents;
         } else if (s.categoryId !== null && expenseIds.has(s.categoryId)) {

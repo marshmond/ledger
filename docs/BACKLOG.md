@@ -4,6 +4,27 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-19 (final): "Initial setup" category BUILT
+
+Verified with 706 automated tests and a browser walk-through (balances, Home, Budget, Reports, Flow).
+
+Judgment calls (please review):
+1. **What it is:** a built-in category "Initial setup" in a "System" group, created at startup if missing, with fixed ids so each device makes the identical records (nothing doubles on sync). It cannot be renamed or deleted, and the group has no "add category" box. It appears in every category dropdown under "System".
+2. **Counts as money, not as activity:** entries filed under it change the account's balance, net worth, cash, and Ready to Assign (like an opening balance would), and a card balance entered this way shows as owed and unfunded on the budget.
+3. **Left out of:** income and spending in Reports, Year in review, Protection (spending runway), Home's monthly spending and its transaction count, the budget's categories, income, and uncategorized count, the forecast's everyday-spending estimate, retirement's trailing spending, payee rule suggestions, and repeating-charge detection. It still appears in the Transactions list, account ledgers, and CSV export, because they are real entries.
+4. **Flow diagram:** left out by default, with a checkbox ("Include Initial setup entries") that shows positive entries as "Initial setup (money in)" and negative as "Initial setup (money out)". The checkbox is part of saved views.
+5. **Splits:** a split line filed under it is ignored the same way.
+6. Not built: a one-click "set this account's balance to match my bank" helper that would create the entry for you.
+
+## STATUS 2026-10-19 (latest): saved color themes and credit limits BUILT
+
+Verified with 692 automated tests and browser checks (themes: save, update, switch, copy code, import, bad code; credit limit: set, change, over the limit, no limit).
+
+Judgment calls (please review):
+1. **Saved themes:** the library (name, light and dark colors) lives in settings, so it is in backups and syncs between devices; which theme is active stays per device (localStorage), as before. Up to 20 themes; names unique (case-insensitive), up to 40 characters. Picking a saved theme copies its colors into the active palette, so a change made to that theme on another device appears here the next time you pick it. "Update" saves edits back; "Save as new" makes another. Deleting a saved theme keeps its colors on until you pick something else.
+2. **Theme codes:** "ledger-theme-1:" followed by the name and 24 colors, encoded as text. An imported theme that clashes with a name gets "(2)", "(3)", and so on, and becomes the active theme.
+3. **Credit limit:** optional, on credit card accounts only (set when adding the card, or from the card's page). Credit left = limit minus what you owe; a card in credit adds to it. 75% or more of the limit shows as a warning and over the limit in red, with a plain note about the usual 30% guideline. Accounts shows each card's credit left and a total.
+
 ## STATUS 2026-10-19 (later): flow (Sankey) diagram and one-open-at-a-time sidebar BUILT
 
 Verified with 667 automated tests and browser checks (numbers hand-checked against test transactions, filters, custom dates, gross view, phone width).

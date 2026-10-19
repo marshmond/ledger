@@ -49,23 +49,25 @@ export default function FlowPanel() {
   // Accounts are remembered as the ones switched OFF, so an account you add later is counted and a deleted one cannot hide anything.
   const [acctOff, setAcctOff] = useState<Set<number>>(new Set(last?.accountsOff ?? []));
   const [activeId, setActiveId] = useState<string | null>(last?.activeId ?? null);
+  const [includeSetup, setIncludeSetup] = useState(!!last?.includeSetup);
   const [sel, setSel] = useState<{ kind: 'node' | 'link'; id: string } | null>(null);
 
   useEffect(() => {
     try {
-      localStorage.setItem(LAST_KEY, JSON.stringify({ view, preset, detail, off: [...off], accountsOff: [...acctOff], customStart: cStart, customEnd: cEnd, activeId }));
+      localStorage.setItem(LAST_KEY, JSON.stringify({ view, preset, detail, off: [...off], accountsOff: [...acctOff], includeSetup, customStart: cStart, customEnd: cEnd, activeId }));
     } catch { /* storage unavailable: the page just opens fresh next time */ }
-  }, [view, preset, detail, off, acctOff, cStart, cEnd, activeId]);
+  }, [view, preset, detail, off, acctOff, includeSetup, cStart, cEnd, activeId]);
   const accountIds = accounts.map((a) => a.id!);
   const idKey = accountIds.join();
   const acctOn = useMemo(() => accountsFromOff(accountIds, [...acctOff]), [idKey, acctOff]); // eslint-disable-line react-hooks/exhaustive-deps
-  const current: FlowViewState = { view, preset, detail, off: [...off], accountsOff: [...acctOff] };
+  const current: FlowViewState = { view, preset, detail, off: [...off], accountsOff: [...acctOff], ...(includeSetup ? { includeSetup: true } : {}) };
   const applyView = (v: FlowViewState) => {
     setView(v.view);
     setPreset(v.preset);
     setDetail(v.detail);
     setOff(new Set(v.off));
     setAcctOff(new Set(v.accountsOff));
+    setIncludeSetup(!!v.includeSetup);
   };
 
   const earliest = useMemo(() => txns.reduce<string | undefined>((m, t) => (!m || t.date < m ? t.date : m), undefined), [txns]);
@@ -81,8 +83,8 @@ export default function FlowPanel() {
 
   const tree = useMemo(() => filterTree(categories, groups), [categories, groups]);
   const graph = useMemo(
-    () => buildFlow({ txns, accounts, categories, groups, start: range.start, end: range.end, accountIds: acctOn, off, detail, pay }),
-    [txns, accounts, categories, groups, range, acctOn, off, detail, pay],
+    () => buildFlow({ txns, accounts, categories, groups, start: range.start, end: range.end, accountIds: acctOn, off, detail, pay, includeSetup }),
+    [txns, accounts, categories, groups, range, acctOn, off, detail, pay, includeSetup],
   );
 
   // Draw at the width of the box, but never so narrow that labels collide (about 200px per column; it scrolls sideways on a phone).
@@ -203,6 +205,7 @@ export default function FlowPanel() {
       <Collapsible id="flow.cats" title={`Categories${off.size ? ` (${off.size} off)` : ''}`} defaultOpen={false}
         right={<span className="row"><button className="link" onClick={() => setOff(new Set())}>all on</button></span>}>
         <p className="muted">Switch a category or a whole group off to leave it out. Spending and “left over” update to match.</p>
+        <label className="chk" style={{ marginBottom: 8 }}><input type="checkbox" checked={includeSetup} onChange={(e) => setIncludeSetup(e.target.checked)} /> Include “Initial setup” entries (balances you entered to get started; normally left out)</label>
         {view === 'net' && (
           <fieldset className="checks wrap" style={{ border: 'none', padding: 0, margin: '0 0 10px' }}>
             <legend><strong>Income</strong></legend>

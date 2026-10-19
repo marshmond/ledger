@@ -2,6 +2,7 @@ import type { Category, Txn } from '../types';
 import { allocations } from './ledger';
 import { normPayee } from './rules';
 import { addMonths } from './dates';
+import { isSetupAlloc, isSetupTxn } from './setupCategory';
 
 /**
  * Spending reports from the ledger: month-by-month totals, category trends, where spending jumped, and top payees.
@@ -39,6 +40,7 @@ export function spendingMatrix(txns: Txn[], categories: Category[], months: stri
     const i = idx.get(t.date.slice(0, 7));
     if (i === undefined || t.transferTxnId) continue;
     for (const s of allocations(t)) {
+      if (isSetupAlloc(s)) continue;
       const cat = s.categoryId == null ? undefined : catById.get(s.categoryId);
       if (cat?.kind === 'income' || (!cat && s.amountCents > 0)) {
         income[i] += s.amountCents;
@@ -106,7 +108,7 @@ export function topPayees(txns: Txn[], categories: Category[], from: string, to:
   const income = new Set(categories.filter((c) => c.kind === 'income').map((c) => c.id!));
   const groups = new Map<string, PayeeTotal>();
   for (const t of txns) {
-    if (t.transferTxnId || t.date < from || t.date > to || t.amountCents >= 0) continue;
+    if (t.transferTxnId || t.date < from || t.date > to || t.amountCents >= 0 || isSetupTxn(t)) continue;
     if (t.categoryId != null && income.has(t.categoryId)) continue;
     const key = normPayee(t.payee) || '(no payee)';
     const g = groups.get(key) ?? { payee: t.payee.trim() || '(no payee)', cents: 0, count: 0 };

@@ -15,6 +15,8 @@ export interface FlowViewState {
   off: string[];
   /** Ids of accounts switched off. */
   accountsOff: number[];
+  /** Show entries filed under Initial setup (off unless chosen). */
+  includeSetup?: boolean;
 }
 
 export interface SavedFlowView extends FlowViewState {
@@ -35,11 +37,12 @@ export function sameState(a: FlowViewState, b: FlowViewState): boolean {
     a.preset === b.preset &&
     a.detail === b.detail &&
     JSON.stringify(sortedStr(a.off)) === JSON.stringify(sortedStr(b.off)) &&
-    JSON.stringify(sortedNum(a.accountsOff)) === JSON.stringify(sortedNum(b.accountsOff))
+    JSON.stringify(sortedNum(a.accountsOff)) === JSON.stringify(sortedNum(b.accountsOff)) &&
+    !!a.includeSetup === !!b.includeSetup
   );
 }
 
-export const stateOf = (v: FlowViewState): FlowViewState => ({ view: v.view, preset: v.preset, detail: v.detail, off: [...v.off], accountsOff: [...v.accountsOff] });
+export const stateOf = (v: FlowViewState): FlowViewState => ({ view: v.view, preset: v.preset, detail: v.detail, off: [...v.off], accountsOff: [...v.accountsOff], ...(v.includeSetup ? { includeSetup: true } : {}) });
 
 /** The accounts to count, given the ones switched off. Null means all of them. An account added since is counted. */
 export function accountsFromOff(allIds: number[], off: number[]): Set<number> | null {
@@ -59,7 +62,7 @@ function parseState(r: unknown): FlowViewState | null {
   if (o.detail !== 'groups' && o.detail !== 'categories') return null;
   const strs = Array.isArray(o.off) ? o.off.filter((x): x is string => typeof x === 'string') : [];
   const nums = Array.isArray(o.accountsOff) ? o.accountsOff.filter((x): x is number => typeof x === 'number') : [];
-  return { view: o.view, preset: o.preset as RangePreset, detail: o.detail, off: strs, accountsOff: nums };
+  return { view: o.view, preset: o.preset as RangePreset, detail: o.detail, off: strs, accountsOff: nums, ...(o.includeSetup === true ? { includeSetup: true } : {}) };
 }
 
 /** Reads what was stored, ignoring anything damaged. */

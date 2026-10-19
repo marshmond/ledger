@@ -1,4 +1,5 @@
 import type { Account, Category, RetirementSettings, Txn, Windfall } from '../types';
+import { isSetupAlloc, isSetupTxn } from './setupCategory';
 import { monthOf, prevMonth } from './dates';
 import { allocations } from './ledger';
 import { bisectMax, runPool, steadyPool, type PoolInput, type PoolResult } from './pool';
@@ -158,7 +159,7 @@ export function trailingAnnualSpending(
   const incomeIds = new Set(categories.filter((c) => c.kind === 'income').map((c) => c.id!));
   const window: string[] = [];
   for (let m = prevMonth(monthOf(today)); window.length < months; m = prevMonth(m)) window.push(m);
-  const earliestTxn = txns.reduce((m, t) => (monthOf(t.date) < m ? monthOf(t.date) : m), monthOf(today));
+  const earliestTxn = txns.reduce((m, t) => (isSetupTxn(t) || monthOf(t.date) >= m ? m : monthOf(t.date)), monthOf(today));
   const earliestAcct = accounts.reduce((m, a) => (monthOf(a.openingDate) < m ? monthOf(a.openingDate) : m), monthOf(today));
   const start = earliestTxn < earliestAcct ? earliestTxn : earliestAcct;
   const used = window.filter((m) => m > start); // months fully after the first activity
@@ -168,6 +169,7 @@ export function trailingAnnualSpending(
   for (const t of txns) {
     if (t.transferTxnId || !inWindow.has(monthOf(t.date))) continue;
     for (const a of allocations(t)) {
+      if (isSetupAlloc(a)) continue;
       if (a.categoryId !== null && incomeIds.has(a.categoryId)) continue;
       if (a.categoryId === null && a.amountCents > 0) continue; // uncategorized deposits are income
       spend -= a.amountCents;

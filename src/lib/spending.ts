@@ -1,5 +1,6 @@
 import type { Category, Txn } from '../types';
 import { allocations } from './ledger';
+import { isSetupAlloc, isSetupTxn } from './setupCategory';
 
 /** This month's spending and income from the ledger. Transfers are left out (they move money, they do not spend it). */
 
@@ -18,9 +19,10 @@ export function spendingSnapshot(txns: Txn[], categories: Category[], month: str
   let income = 0;
   let count = 0;
   for (const t of txns) {
-    if (!t.date.startsWith(month) || t.transferTxnId) continue;
+    if (!t.date.startsWith(month) || t.transferTxnId || isSetupTxn(t)) continue;
     count++;
     for (const s of allocations(t)) {
+      if (isSetupAlloc(s)) continue;
       const cat = s.categoryId == null ? undefined : catById.get(s.categoryId);
       if (cat?.kind === 'income' || (!cat && s.amountCents > 0)) {
         income += s.amountCents;

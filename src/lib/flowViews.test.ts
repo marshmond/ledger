@@ -68,3 +68,16 @@ describe('reading stored data', () => {
     expect(s).toEqual({ ...base, off: ['a'] });
   });
 });
+
+describe('initial setup in a view', () => {
+  it('is off unless chosen, and is part of what a view remembers', () => {
+    const on = { ...base, includeSetup: true };
+    expect(sameState(base, { ...base, includeSetup: false })).toBe(true);
+    expect(sameState(base, on)).toBe(false);
+    expect(stateOf(on).includeSetup).toBe(true);
+    expect('includeSetup' in stateOf(base)).toBe(false);
+    const [v] = parseViews([{ ...on, id: 'a', name: 'With setup' }]);
+    expect(v.includeSetup).toBe(true);
+    expect(parseLast({ ...on })?.includeSetup).toBe(true);
+  });
+});

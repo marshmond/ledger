@@ -1,4 +1,5 @@
 import type { FinanceDB } from '../db';
+import { isSetupTxn } from './setupCategory';
 import type { Frequency, PayeeRule, RecurringRule, Txn } from '../types';
 import { addDays, addMonths } from './dates';
 import { daysBetween } from './money';
@@ -44,7 +45,7 @@ export function suggestCategory(txns: Txn[], rules: PayeeRule[], payee: string, 
   const counts = new Map<number, number>();
   let total = 0;
   for (const t of txns) {
-    if (t.transferTxnId || t.splits?.length || t.categoryId == null || normPayee(t.payee) !== key) continue;
+    if (t.transferTxnId || t.splits?.length || t.categoryId == null || isSetupTxn(t) || normPayee(t.payee) !== key) continue;
     counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
     total++;
   }
@@ -99,7 +100,7 @@ export interface RuleSuggestion {
 export function suggestRules(txns: Txn[], rules: PayeeRule[]): RuleSuggestion[] {
   const byPayee = new Map<string, { name: string; cats: Map<number, number>; total: number }>();
   for (const t of txns) {
-    if (t.transferTxnId || t.splits?.length || !t.payee.trim()) continue;
+    if (t.transferTxnId || t.splits?.length || !t.payee.trim() || isSetupTxn(t)) continue;
     const k = normPayee(t.payee);
     if (!k) continue;
     const g = byPayee.get(k) ?? { name: t.payee.trim(), cats: new Map(), total: 0 };
@@ -154,7 +155,7 @@ const nextAfter = (last: string, f: Frequency): string => (f === 'weekly' ? addD
 export function detectRecurring(txns: Txn[], scheduled: RecurringRule[], today: string): RecurringGuess[] {
   const groups = new Map<string, Txn[]>();
   for (const t of txns) {
-    if (t.transferTxnId || !t.payee.trim()) continue;
+    if (t.transferTxnId || !t.payee.trim() || isSetupTxn(t)) continue;
     const k = `${t.accountId}|${normPayee(t.payee)}`;
     if (!normPayee(t.payee)) continue;
     groups.set(k, [...(groups.get(k) ?? []), t]);

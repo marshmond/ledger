@@ -11,6 +11,8 @@ export interface Account {
   openingBalanceCents: number;
   openingDate: string;
   closed?: boolean;
+  /** Credit cards only: the card's limit, if you want to see how much credit is left. */
+  creditLimitCents?: number;
 }
 
 export interface CategoryGroup {

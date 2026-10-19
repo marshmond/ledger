@@ -107,6 +107,8 @@ export interface PaletteChoice {
   id: PaletteId;
   /** Your own colors, for light and dark (used when id is 'custom'). */
   custom?: { light: Colors; dark: Colors };
+  /** The saved theme these colors came from (see lib/savedThemes.ts), so it can be updated. */
+  savedId?: string;
 }
 
 export const DEFAULT_CHOICE: PaletteChoice = { id: 'classic' };
@@ -208,7 +210,7 @@ export const PALETTE_VARS_KEY = 'ledger-palette-vars';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-function validColors(c: unknown): c is Colors {
+export function validColors(c: unknown): c is Colors {
   if (!c || typeof c !== 'object') return false;
   return COLOR_ROLES.every((r) => typeof (c as Record<string, unknown>)[r.key] === 'string' && isHex((c as Record<string, string>)[r.key]));
 }
@@ -221,7 +223,8 @@ export function parseChoice(raw: unknown): PaletteChoice {
     const id = (o as { id?: unknown }).id;
     if (id === 'custom') {
       const c = (o as { custom?: { light?: unknown; dark?: unknown } }).custom;
-      return c && validColors(c.light) && validColors(c.dark) ? { id: 'custom', custom: { light: c.light, dark: c.dark } } : DEFAULT_CHOICE;
+      const savedId = (o as { savedId?: unknown }).savedId;
+      return c && validColors(c.light) && validColors(c.dark) ? { id: 'custom', custom: { light: c.light, dark: c.dark }, ...(typeof savedId === 'string' ? { savedId } : {}) } : DEFAULT_CHOICE;
     }
     return PRESETS.some((p) => p.id === id) ? { id: id as PresetId } : DEFAULT_CHOICE;
   } catch {

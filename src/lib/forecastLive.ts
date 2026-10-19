@@ -1,4 +1,5 @@
 import type { FinanceDB } from '../db';
+import { isSetupAlloc, isSetupTxn } from './setupCategory';
 import type { Category, Txn } from '../types';
 import { allocations } from './ledger';
 import { ledgerBalance } from './netWorth';
@@ -39,10 +40,11 @@ export function estimateEveryday(txns: Txn[], categories: Category[], today: str
   const seen = months.map(() => false);
   for (const t of txns) {
     const i = months.indexOf(t.date.slice(0, 7));
-    if (i < 0 || t.transferTxnId) continue;
+    if (i < 0 || t.transferTxnId || isSetupTxn(t)) continue;
     seen[i] = true;
     if (t.recurringId) continue;
     for (const s of allocations(t)) {
+      if (isSetupAlloc(s)) continue;
       if (s.categoryId != null && (income.has(s.categoryId) || skip.has(s.categoryId))) continue;
       if (s.categoryId == null && s.amountCents > 0) continue;
       totals[i] -= s.amountCents;

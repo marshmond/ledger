@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SETUP_CATEGORY_ID } from '../lib/setupCategory';
 import { db } from '../db';
 import type { BudgetTarget, Category, CategoryGroup } from '../types';
 import { formatCents } from '../lib/money';
@@ -54,7 +55,7 @@ export default function BudgetTargets({ targets, groups, cats, needs, month }: {
         <label className="f">Category
           <select value={catId} onChange={(e) => setCatId(e.target.value)}>
             <option value="">Choose…</option>
-            {groups.map((g) => <optgroup key={g.id} label={g.name}>{cats.filter((c) => c.groupId === g.id && c.kind !== 'income' && !c.hidden).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>)}
+            {groups.map((g) => <optgroup key={g.id} label={g.name}>{cats.filter((c) => c.groupId === g.id && c.kind !== 'income' && !c.hidden && c.id !== SETUP_CATEGORY_ID).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>)}
           </select>
         </label>
         <label className="f">Type

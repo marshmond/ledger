@@ -1,6 +1,7 @@
 import type { Account, Category, CategoryGroup, Txn } from '../types';
 import { allocations } from './ledger';
 import type { PersonYear } from './payroll';
+import { SETUP_CATEGORY_ID, isSetupAlloc } from './setupCategory';
 
 /**
  * Where the money came from and where it went, as a flow diagram (a Sankey). Pure: builds the nodes and links; layout is in flowLayout.ts.
@@ -35,6 +36,8 @@ export interface FlowInput {
   /** Filter keys switched off (see `catKey`, UNCATEGORIZED, LOAN_PRINCIPAL, OTHER_INCOME). */
   off?: Set<string>;
   detail: FlowDetail;
+  /** Show entries filed under Initial setup (balances entered to get started). Left out unless asked for. */
+  includeSetup?: boolean;
   /** When given, draws the gross view with this pay. */
   pay?: PaySummary | null;
 }
@@ -67,6 +70,8 @@ export interface FlowGraph {
 export const UNCATEGORIZED = 'unc';
 export const LOAN_PRINCIPAL = 'loan';
 export const OTHER_INCOME = 'uin';
+export const SETUP_IN = 'setup-in';
+export const SETUP_OUT = 'setup-out';
 export const catKey = (id: number) => `c${id}`;
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)', 'var(--s6)', 'var(--s7)', 'var(--s8)'];
@@ -107,6 +112,12 @@ function aggregate(i: FlowInput) {
       continue;
     }
     for (const s of allocations(t)) {
+      if (isSetupAlloc(s)) {
+        if (!i.includeSetup) continue;
+        if (s.amountCents > 0) add(income, SETUP_IN, { label: 'Initial setup (money in)', group: '', groupLabel: '' }, s.amountCents);
+        else add(spend, SETUP_OUT, { label: 'Initial setup (money out)', group: SETUP_OUT, groupLabel: 'Initial setup' }, -s.amountCents);
+        continue;
+      }
       const cat = s.categoryId == null ? undefined : catById.get(s.categoryId);
       if (cat?.kind === 'income') add(income, catKey(cat.id!), { label: cat.name, group: '', groupLabel: '' }, s.amountCents);
       else if (!cat && s.amountCents > 0) add(income, OTHER_INCOME, { label: 'Other income (uncategorized)', group: '', groupLabel: '' }, s.amountCents);
@@ -256,10 +267,10 @@ export function filterTree(categories: Category[], groups: CategoryGroup[]): Fil
   income.push({ key: OTHER_INCOME, label: 'Other income (uncategorized)' });
   const out: FilterTree['groups'] = [];
   for (const g of groups) {
-    const items = categories.filter((c) => c.kind !== 'income' && c.groupId === g.id).map((c) => ({ key: catKey(c.id!), label: c.name }));
+    const items = categories.filter((c) => c.kind !== 'income' && c.id !== SETUP_CATEGORY_ID && c.groupId === g.id).map((c) => ({ key: catKey(c.id!), label: c.name }));
     if (items.length) out.push({ id: `g${g.id}`, label: g.name, items });
   }
-  const loose = categories.filter((c) => c.kind !== 'income' && !groups.some((g) => g.id === c.groupId)).map((c) => ({ key: catKey(c.id!), label: c.name }));
+  const loose = categories.filter((c) => c.kind !== 'income' && c.id !== SETUP_CATEGORY_ID && !groups.some((g) => g.id === c.groupId)).map((c) => ({ key: catKey(c.id!), label: c.name }));
   if (loose.length) out.push({ id: 'gx', label: 'Other', items: loose });
   out.push({ id: 'special', label: 'Other spending', items: [{ key: LOAN_PRINCIPAL, label: 'Loan principal' }, { key: UNCATEGORIZED, label: 'Uncategorized' }] });
   return { income, groups: out };

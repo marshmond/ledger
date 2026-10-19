@@ -5,6 +5,7 @@ import App from './App';
 import { db, seedIfEmpty } from './db';
 import { startAutoSync } from './lib/sync/auto';
 import { installTracking } from './lib/sync/track';
+import { ensureSetupCategory } from './lib/setupCategory';
 import './styles.css';
 import { startPwa } from './pwa';
 import { initTheme } from './theme';
@@ -13,7 +14,7 @@ installTracking(db);
 initTheme();
 startPwa();
 
-seedIfEmpty().finally(() => {
+seedIfEmpty().then(() => ensureSetupCategory(db)).catch(() => undefined).finally(() => {
   startAutoSync();
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
