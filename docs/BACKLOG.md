@@ -4,6 +4,14 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-20 (latest): split remaining amount and account renaming BUILT
+
+Type check clean and 708 automated tests pass. Checked in the browser (desktop and phone width): split states (empty, partial, exact, over), rename on both tabs including duplicate rejection and the new name in the Investments allocation dropdown.
+
+1. **Split form:** shows "Allocated $25.00 · Left to allocate $75.00 (of $100.00)" (amber until it reaches $0.00, then green; "Over by $X" if too much). It shows as soon as Split is chosen, and asks for the charge amount first if that is empty.
+2. **Rename accounts:** a "rename" link next to the name on each account's page (Accounts tab) and on each card in Investments. Names must be non-empty, 60 characters or fewer, and not match another account of the same kind (case-insensitive). Everything refers to accounts by id, so history, budget, and reports follow the new name.
+3. Not built: renaming loans from the Debt tab's loan cards (loans renamed from their ledger page only).
+
 ## STATUS 2026-10-20: targets can be set on the budget line itself BUILT
 
 Verified with 708 automated tests and a browser walk-through (set, fund, edit, remove, empty-save message, phone width).

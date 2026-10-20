@@ -8,6 +8,7 @@ import { finalizeReconcile, reconcileCheck, type ReconcileResult } from '../lib/
 import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
 import TxnForm from './TxnForm';
 import CreditLimit from './CreditLimit';
+import RenameAccount from './RenameAccount';
 
 export default function LedgerPage() {
   const id = Number(useParams().id);
@@ -50,7 +51,7 @@ export default function LedgerPage() {
   return (
     <>
       <div className="row spread">
-        <h1>{account.name}</h1>
+        <RenameAccount table="accounts" id={id} name={account.name} taken={accounts.filter((a) => a.id !== id).map((a) => a.name)} heading />
         <span className="row"><Link to="/transactions">All transactions</Link><Link to="/accounts">← Accounts</Link></span>
       </div>
       <div className="card row spread">

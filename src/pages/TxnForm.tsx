@@ -216,9 +216,16 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
           ))}
           <div className="row">
             <button onClick={() => setSplits([...splits, { cat: '', amt: '' }])}>+ category</button>
-            <span className={splitTotal === Math.abs(total ?? 0) ? 'ok' : 'warn'}>
-              Split {formatCents(splitTotal)} of {formatCents(Math.abs(total ?? 0))}
-            </span>
+            {total === null || total === 0 ? (
+              <span className="warn">Enter the amount above, then split it</span>
+            ) : (
+              <span className={splitTotal === Math.abs(total) ? 'ok' : 'warn'}>
+                Allocated {formatCents(splitTotal)} · {splitTotal > Math.abs(total)
+                  ? `Over by ${formatCents(splitTotal - Math.abs(total))}`
+                  : `Left to allocate ${formatCents(Math.abs(total) - splitTotal)}`}{' '}
+                (of {formatCents(Math.abs(total))})
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -10,6 +10,7 @@ import { MoneyField, NumField } from './fields';
 import PriceCell from './PriceCell';
 import HsaLog from './HsaLog';
 import PageTabs from './PageTabs';
+import RenameAccount from './RenameAccount';
 import { LotsPanel, RealizedSection, TradePanel } from './TradePanels';
 import { addLot, ensureLots, isTaxable, setHoldingBasis } from '../lib/lots';
 
@@ -103,7 +104,7 @@ function OwnerSelect({ value, people, onChange }: { value: number | null | undef
   );
 }
 
-function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnType<typeof summarize>['accounts'][number]; holdings: Holding[]; securities: Security[]; classes: AssetClass[]; people: Person[] }) {
+function AccountBlock({ s, holdings, securities, classes, people, otherNames }: { s: ReturnType<typeof summarize>['accounts'][number]; holdings: Holding[]; securities: Security[]; classes: AssetClass[]; people: Person[]; otherNames: string[] }) {
   const a = s.account;
   const [adding, setAdding] = useState(false);
   const [open, setOpen] = useState(true);
@@ -123,7 +124,7 @@ function AccountBlock({ s, holdings, securities, classes, people }: { s: ReturnT
     <div className="card">
       <div className="row spread">
         <div>
-          <strong>{a.name}</strong> <span className="badge">{KIND_LABEL[a.kind]}</span>{' '}
+          <RenameAccount table="invAccounts" id={a.id!} name={a.name} taken={otherNames} /> <span className="badge">{KIND_LABEL[a.kind]}</span>{' '}
           {(a.kind === 'ira' || a.kind === '401k') && (
             <select value={a.taxType} onChange={(e) => db.invAccounts.update(a.id!, { taxType: e.target.value as InvTaxType })}>
               <option value="traditional">Traditional</option>
@@ -293,7 +294,7 @@ export default function InvestmentsPage() {
       <h2>Accounts</h2>
       {sum.accounts.length === 0 && <p className="muted">Add your brokerage, IRA, 401(k), and 529 accounts, then their holdings.</p>}
       {KIND_ORDER.flatMap((k) => sum.accounts.filter((s) => s.account.kind === k)).map((s) => (
-        <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} people={people} />
+        <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} people={people} otherNames={sum.accounts.filter((o) => o.account.id !== s.account.id).map((o) => o.account.name)} />
       ))}
 
       <div className="card">
