@@ -95,4 +95,32 @@ export function planFunding(needs: TargetNeed[], readyCents: number): FundingPla
   return { adds, totalNeedCents: total, totalAddCents: added, shortCents: total - added };
 }
 
+export interface TargetForm {
+  id?: number;
+  categoryId: number;
+  kind: BudgetTarget['kind'];
+  amountCents: number;
+  /** 'YYYY-MM', for "an amount by a date". */
+  dueMonth?: string;
+  /** 1 to 12, for a yearly bill. */
+  monthOfYear?: number;
+}
+
+/** A target from what was typed into the form, or the plain-language reason it is not ready. Only the fields the kind needs are kept. */
+export function makeTarget(f: TargetForm): { target: BudgetTarget } | { error: string } {
+  if (!f.amountCents || f.amountCents <= 0) return { error: 'Enter the amount.' };
+  const t: BudgetTarget = { categoryId: f.categoryId, kind: f.kind, amountCents: Math.round(f.amountCents) };
+  if (f.id !== undefined) t.id = f.id;
+  if (f.kind === 'by_date') {
+    if (!f.dueMonth || !/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(f.dueMonth)) return { error: 'Choose the month the money is needed by.' };
+    t.dueMonth = f.dueMonth;
+  }
+  if (f.kind === 'yearly') {
+    const m = Math.round(f.monthOfYear ?? 0);
+    if (m < 1 || m > 12) return { error: 'Choose the month of the year the bill comes due.' };
+    t.dueMonthOfYear = m;
+  }
+  return { target: t };
+}
+
 export { addMonths };

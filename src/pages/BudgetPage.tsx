@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -9,6 +9,7 @@ import { monthlyNet } from '../lib/payroll';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { planFunding, targetNeed } from '../lib/budgetTargets';
 import BudgetTargets from './BudgetTargets';
+import InlineTarget from './InlineTarget';
 
 function Assigned({ month, row }: { month: string; row: BudgetRow }) {
   return (
@@ -35,6 +36,7 @@ function Assigned({ month, row }: { month: string; row: BudgetRow }) {
 export default function BudgetPage() {
   const [month, setMonth] = useState(monthOf(todayISO()));
   const [note, setNote] = useState('');
+  const [editingTarget, setEditingTarget] = useState<{ categoryId: number; targetId?: number } | null>(null);
   const budget = useLiveQuery(() => loadBudget(db, month), [month]);
   const forecast = useLiveQuery(async () => {
     const year = Number(month.slice(0, 4));
@@ -79,14 +81,19 @@ export default function BudgetPage() {
   const cover = (r: BudgetRow) => setAssignment(db, month, r.key, r.assigned - r.available);
 
   const renderRow = (r: BudgetRow) => (
-    <tr key={r.key}>
+    <Fragment key={r.key}>
+    <tr>
       <td>
         {r.name}
         {r.kind === 'category' && needOf(r).map((n) => (
           <div key={n.target.id} className={n.funded ? 'muted' : 'warn'} style={{ fontSize: '0.8rem' }}>
-            {n.description}: {n.funded ? 'funded ✓' : <>needs {formatCents(n.needCents)} this month{' '}<button className="link" onClick={() => setAssignment(db, month, r.key, r.assigned + n.needCents)}>fund</button></>}
+            Target {n.description}: {n.funded ? 'funded ✓' : <>needs {formatCents(n.needCents)} this month{' '}<button className="link" onClick={() => setAssignment(db, month, r.key, r.assigned + n.needCents)}>fund</button></>}{' '}
+            <button className="link" onClick={() => setEditingTarget({ categoryId: r.categoryId!, targetId: n.target.id })}>edit</button>
           </div>
         ))}
+        {r.kind === 'category' && needOf(r).length === 0 && editingTarget?.categoryId !== r.categoryId && (
+          <div><button className="link" style={{ fontSize: '0.8rem' }} onClick={() => setEditingTarget({ categoryId: r.categoryId! })}>+ set a target</button></div>
+        )}
         {r.kind === 'payment' && (() => {
           const u = budget.unfunded.find((x) => `p${x.accountId}` === r.key);
           return u ? (
@@ -108,6 +115,12 @@ export default function BudgetPage() {
         )}
       </td>
     </tr>
+    {r.kind === 'category' && editingTarget && editingTarget.categoryId === r.categoryId && (
+      <tr><td colSpan={4}>
+        <InlineTarget key={`${r.categoryId}-${editingTarget.targetId ?? 'new'}`} categoryId={r.categoryId!} existing={targets.find((t) => t.id === editingTarget.targetId)} month={month} onClose={() => setEditingTarget(null)} />
+      </td></tr>
+    )}
+    </Fragment>
   );
 
   const head = (

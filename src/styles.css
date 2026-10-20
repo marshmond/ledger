@@ -286,3 +286,5 @@ kbd { font: inherit; font-size: 0.7rem; border: 1px solid var(--line); border-ra
 
 .progress { height: 8px; margin: 8px 0; background: var(--line); border-radius: 4px; overflow: hidden; }
 .progress > div { height: 100%; background: var(--pos); border-radius: 4px; transition: width 0.2s; }
+
+.inline-target { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin: 4px 0 8px; }

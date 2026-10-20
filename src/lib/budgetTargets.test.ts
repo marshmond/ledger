@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { monthsBetween, nextDueMonth, planFunding, targetNeed } from './budgetTargets';
+import { makeTarget, monthsBetween, nextDueMonth, planFunding, targetNeed } from './budgetTargets';
 import type { BudgetTarget } from '../types';
 
 const $ = (n: number) => Math.round(n * 100);
@@ -87,5 +87,21 @@ describe('funding the targets', () => {
     expect(planFunding(needs, 0).adds).toEqual([]);
     expect(planFunding(needs, -500).totalAddCents).toBe(0);
     expect(planFunding([targetNeed(monthly(10), row(0, 10), '2026-10')], $(100)).adds).toEqual([]);
+  });
+});
+
+describe('building a target from the form', () => {
+  it('keeps only what the kind needs', () => {
+    expect(makeTarget({ categoryId: 5, kind: 'monthly', amountCents: 240000, dueMonth: '2026-12', monthOfYear: 4 })).toEqual({ target: { categoryId: 5, kind: 'monthly', amountCents: 240000 } });
+    expect(makeTarget({ categoryId: 5, kind: 'by_date', amountCents: 120000, dueMonth: '2026-12' })).toEqual({ target: { categoryId: 5, kind: 'by_date', amountCents: 120000, dueMonth: '2026-12' } });
+    expect(makeTarget({ id: 9, categoryId: 5, kind: 'yearly', amountCents: 90000, monthOfYear: 4.4 })).toEqual({ target: { id: 9, categoryId: 5, kind: 'yearly', amountCents: 90000, dueMonthOfYear: 4 } });
+  });
+  it('says what is missing', () => {
+    expect(makeTarget({ categoryId: 5, kind: 'monthly', amountCents: 0 })).toEqual({ error: 'Enter the amount.' });
+    expect(makeTarget({ categoryId: 5, kind: 'monthly', amountCents: -5 })).toEqual({ error: 'Enter the amount.' });
+    expect(makeTarget({ categoryId: 5, kind: 'by_date', amountCents: 100 })).toEqual({ error: 'Choose the month the money is needed by.' });
+    expect(makeTarget({ categoryId: 5, kind: 'by_date', amountCents: 100, dueMonth: '2026-13' })).toEqual({ error: 'Choose the month the money is needed by.' });
+    expect(makeTarget({ categoryId: 5, kind: 'yearly', amountCents: 100, monthOfYear: 13 })).toEqual({ error: 'Choose the month of the year the bill comes due.' });
+    expect(makeTarget({ categoryId: 5, kind: 'yearly', amountCents: 100 })).toEqual({ error: 'Choose the month of the year the bill comes due.' });
   });
 });

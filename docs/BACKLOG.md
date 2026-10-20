@@ -4,6 +4,16 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-20: targets can be set on the budget line itself BUILT
+
+Verified with 708 automated tests and a browser walk-through (set, fund, edit, remove, empty-save message, phone width).
+
+Judgment calls (please review):
+1. **Where:** each category line on Budget has "+ set a target" (and "edit" once it has one) that opens a small form right under the line. The Targets section at the bottom still lists every target and can add them too.
+2. **Monthly means "set aside another":** a monthly target of $2,400 shows "needs $2,400 this month" until you have assigned $2,400 this month (money left over from earlier months does not count toward it). YNAB's other monthly style, "refill up to $X" (top up what is left), is NOT built; say if you want it.
+3. **One target per category from the line:** the inline form edits one target per category (like YNAB). The bottom section can still add a second one.
+4. The amount is read when you press Save (or Enter), so you do not have to click out of the box first.
+
 ## STATUS 2026-10-19 (final): "Initial setup" category BUILT
 
 Verified with 706 automated tests and a browser walk-through (balances, Home, Budget, Reports, Flow).
