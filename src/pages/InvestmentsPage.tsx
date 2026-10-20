@@ -380,12 +380,13 @@ export default function InvestmentsPage() {
 
       <h2>Asset class assumptions</h2>
       <p className="muted">
-        These drive every projection. They are <strong>assumptions you control, not predictions</strong>: average yearly return and how bumpy it is
-        (volatility). A holding takes the class you assign it, so a target-date fund can be its own class. Nominal returns (before inflation); the
-        projection can show today’s dollars.
+        These drive every projection. They are <strong>assumptions you control, not predictions</strong>: the yearly return and how bumpy it is
+        (volatility). A holding takes the class you assign it, so a target-date fund can be its own class. Returns are <strong>compound (geometric)
+        and nominal</strong>: what a dollar actually grew by per year over the long run, before inflation (the figure published as CAGR). Do not enter
+        the simple yearly average (arithmetic mean), which is higher and would overstate growth. The projection can show today’s dollars.
       </p>
       <table>
-        <thead><tr><th>Class</th><th>Kind</th><th className="num">Avg return %</th><th className="num">Volatility %</th><th></th></tr></thead>
+        <thead><tr><th>Class</th><th>Kind</th><th className="num">Compound return %</th><th className="num">Volatility %</th><th></th></tr></thead>
         <tbody>
           {classes.map((c) => (
             <tr key={c.id}>

@@ -6,6 +6,7 @@ import { applyPrices, fetchPrice, fetchPrices } from './prices';
 import {
   choleskyWithFallback,
   cholesky,
+  lognormalFromGeometric,
   mulberry32,
   probAtLeast,
   realTargetToNominal,
@@ -191,11 +192,24 @@ describe('projection engine', () => {
     expect(mc.p50[25]).toBeLessThan(mc.mean[25]);
   });
 
-  it('the simulated average matches the steady path (unbiased draws)', () => {
-    const inp = input([account({ contribution: () => $(6000) })], 10);
+  it('the typical (median) simulated outcome tracks the steady path, since the input is a compound return', () => {
+    const inp = input([account()], 10);
     const mc = runMonteCarlo(inp, 30000, 11);
     const st = steadyPath(inp);
-    expect(Math.abs(mc.mean[10] / st.total[10] - 1)).toBeLessThan(0.03);
+    expect(Math.abs(mc.p50[10] / st.total[10] - 1)).toBeLessThan(0.03);
+    // The average outcome is pulled above the typical one by the lucky futures.
+    expect(mc.mean[10]).toBeGreaterThan(st.total[10]);
+  });
+
+  it('lognormalFromGeometric: median growth is the compound return, and the yearly spread is the stated volatility', () => {
+    for (const [g, sd] of [[0.0882, 0.1792], [0.0372, 0.0472], [0.0887, 0.2769], [0, 0], [0.03, 0.01]]) {
+      const { lnMu, lnS } = lognormalFromGeometric(g, sd);
+      expect(Math.exp(lnMu) - 1).toBeCloseTo(g, 10);
+      const mean = Math.exp(lnMu + (lnS * lnS) / 2);
+      const sdOut = Math.sqrt((Math.exp(lnS * lnS) - 1) * Math.exp(2 * lnMu + lnS * lnS));
+      expect(sdOut).toBeCloseTo(sd, 8);
+      expect(mean - 1).toBeGreaterThanOrEqual(g - 1e-12); // arithmetic average is never below the compound return
+    }
   });
 
   it('losses are bounded: a portfolio can never go below zero', () => {
@@ -280,7 +294,7 @@ describe('investments persistence', () => {
     const d = new FinanceDB('inv-1');
     await seedAssetClassesIfEmpty(d);
     await seedAssetClassesIfEmpty(d);
-    expect(await d.assetClasses.count()).toBe(7);
+    expect(await d.assetClasses.count()).toBe(10);
     await d.invAccounts.add(acct({ name: 'B' }));
     await d.settings.put({ key: 'priceApiKey', value: 'SECRET' });
     await d.settings.put({ key: 'projection', value: { years: 20 } });
@@ -292,7 +306,7 @@ describe('investments persistence', () => {
     await d2.settings.put({ key: 'priceApiKey', value: 'LOCAL-KEY' });
     await importAll(d2, JSON.parse(JSON.stringify(data)));
     expect(await d2.invAccounts.count()).toBe(1);
-    expect(await d2.assetClasses.count()).toBe(7);
+    expect(await d2.assetClasses.count()).toBe(10);
     expect((await d2.settings.get('projection'))?.value).toEqual({ years: 20 });
     expect((await d2.settings.get('priceApiKey'))?.value).toBe('LOCAL-KEY'); // restore keeps this device's key
   });

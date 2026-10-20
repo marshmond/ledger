@@ -207,7 +207,7 @@ export default function ProjectionPage() {
           <div className="card">
             <strong>How to read this</strong>
             <ul className="muted">
-              <li><strong>Median vs steady path.</strong> The orange steady path assumes every year earns exactly the average. Real returns bounce around, and a big loss hurts more than an equal gain helps, so the typical (median) outcome lands below the steady path. That gap is normal.</li>
+              <li><strong>Median vs steady path.</strong> The orange steady path assumes every year earns exactly the compound return you entered for each asset class. That figure already includes the cost of ups and downs, so the typical (median) simulated outcome should land close to the steady path. A gap of a few percent is normal: contributions and withdrawals land at different times, and a mix of classes can compound a little differently from the average of its parts.</li>
               <li><strong>The bands.</strong> The darker band holds the middle half of simulated futures; the lighter band holds 80% of them. About one future in ten ends below the lower edge, and one in ten above the upper.</li>
               <li><strong>What is assumed.</strong> Each account keeps its current mix (rebalanced yearly). Contributions arrive evenly through the year. Asset classes move together in realistic ways (stocks with stocks, bonds less so).</li>
               <li><strong>What is not modeled.</strong> Fees, taxes, and market conditions that change over time. Withdrawals in retirement are modeled on the <Link to="/retirement">Retirement</Link> page, and college-type goals on <Link to="/goals">Goals</Link>.</li>

@@ -269,7 +269,7 @@ export interface AssetClass {
   id?: number;
   name: string;
   kind: AssetKind;
-  /** Average (arithmetic) nominal return per year, in percent. */
+  /** Long-run compound (geometric, CAGR) nominal return per year, in percent. */
   expectedReturnPct: number;
   /** Standard deviation of yearly returns, in percent. */
   volatilityPct: number;

@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { DEFAULT_CLASSES } from './lib/assetClassUpdate';
 import type {
   Account,
   AppSetting,
@@ -168,18 +169,13 @@ export async function seedIfEmpty(d: FinanceDB = db) {
   }
 }
 
-/** Default asset classes. Return/volatility are editable ASSUMPTIONS, not predictions. */
-const DEFAULT_CLASSES: Omit<AssetClass, 'id'>[] = [
-  { name: 'US stocks', kind: 'equity', expectedReturnPct: 7, volatilityPct: 16 },
-  { name: 'International stocks', kind: 'equity', expectedReturnPct: 7, volatilityPct: 18 },
-  { name: 'Bonds', kind: 'bond', expectedReturnPct: 4, volatilityPct: 6 },
-  { name: 'Real estate (REITs)', kind: 'real_estate', expectedReturnPct: 6.5, volatilityPct: 17 },
-  { name: 'Balanced / target-date', kind: 'balanced', expectedReturnPct: 6, volatilityPct: 11 },
-  { name: 'Cash', kind: 'cash', expectedReturnPct: 3, volatilityPct: 1 },
-  { name: 'Other', kind: 'other', expectedReturnPct: 5, volatilityPct: 15 },
-];
-
+/** Default asset classes (compound nominal returns; see lib/assetClassUpdate). Return/volatility are editable ASSUMPTIONS, not predictions. */
 export async function seedAssetClassesIfEmpty(d: FinanceDB = db) {
-  if ((await d.assetClasses.count()) > 0) return;
-  await d.assetClasses.bulkAdd(DEFAULT_CLASSES);
+  // One transaction for the check and the insert, so two callers at once (React's dev mode runs effects twice) cannot both seed.
+  await d.transaction('rw', d.assetClasses, async () => {
+    if ((await d.assetClasses.count()) > 0) return;
+    // Classes with a fixed id go in last: inserting one first would push the automatic ids up into the fixed ones.
+    await d.assetClasses.bulkAdd(DEFAULT_CLASSES.filter((c) => c.id === undefined) as AssetClass[]);
+    await d.assetClasses.bulkAdd(DEFAULT_CLASSES.filter((c) => c.id !== undefined) as AssetClass[]);
+  });
 }

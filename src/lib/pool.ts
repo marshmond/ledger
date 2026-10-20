@@ -1,4 +1,4 @@
-import { choleskyWithFallback, mulberry32, normalSampler, type ClassAssumption } from './projection';
+import { choleskyWithFallback, lognormalFromGeometric, mulberry32, normalSampler, type ClassAssumption } from './projection';
 
 /**
  * A single pool of money with signed yearly cash flows (contributions in, withdrawals out) and a mix that can change
@@ -48,10 +48,9 @@ export function runPool(inp: PoolInput, sims = 5000, seed = 1, percentiles = tru
   const lnMu = new Float64Array(n);
   const lnS = new Float64Array(n);
   classes.forEach((c, i) => {
-    const m = Math.max(0.01, 1 + c.mu);
-    const s2 = Math.log(1 + (c.sigma * c.sigma) / (m * m));
-    lnS[i] = Math.sqrt(s2);
-    lnMu[i] = Math.log(m) - s2 / 2;
+    const p = lognormalFromGeometric(c.mu, c.sigma);
+    lnS[i] = p.lnS;
+    lnMu[i] = p.lnMu;
   });
 
   const W: Float64Array[] = [new Float64Array(n)];

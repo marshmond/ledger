@@ -4,6 +4,18 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-20 (newest): asset class assumptions updated to compound (geometric) returns BUILT
+
+Verified with 718 automated tests (including the update on a database holding the old defaults and two seeds at once) and a browser check of the migration and the table. The figures are the ones you supplied; I did not verify them against a source.
+
+Judgment calls (please review):
+1. **Meaning of the return column:** it is now the compound (geometric, CAGR) nominal return. The steady path grows at it. The Monte Carlo draws (Projections, Retirement, Goals, and the Roth planner's simulations) are centred so the typical (median) outcome tracks it; each yearly draw averages a little above it, as it should. Before this, the column was an arithmetic average, and the simulation's median ran below the steady path. The note on Projections and the Investments table heading say so.
+2. **Classes:** US stocks, International stocks, Bonds and REITs became US large cap, Intl developed, US aggregate bonds and US REITs (same records, so holdings keep their class). Added US small cap, Emerging markets and High-yield bonds. Balanced / target-date, Cash and Other were not in your table and keep their old numbers (6%, 3%, 5%), which are now read as compound returns.
+3. **Existing data:** updated once, only for classes still at the old defaults; an edited class is left alone, and a class you delete afterwards does not return. The three new classes have fixed ids so synced devices do not double up. They sit at the end of the list.
+4. **High-yield bonds** are the "bond" kind, the closest the app has, so the simulation treats them as moving mostly apart from stocks. Real high-yield bonds fall with stocks more than that. A new "high-yield" kind with its own correlations is not built.
+5. **Mixed portfolios:** the steady path uses the weighted average of the class compound returns. A rebalanced mix can compound slightly higher, so the steady path is a little conservative.
+6. Also fixed: seeding the default classes twice at once (React dev mode does this) could fail or leave extras; the check and insert now happen in one transaction.
+
 ## STATUS 2026-10-20 (latest): split remaining amount and account renaming BUILT
 
 Type check clean and 708 automated tests pass. Checked in the browser (desktop and phone width): split states (empty, partial, exact, over), rename on both tabs including duplicate rejection and the new name in the Investments allocation dropdown.

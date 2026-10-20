@@ -4,23 +4,40 @@ import type { AssetKind, InvKind } from '../types';
  * Long-term projection engine. Pure functions, all money in cents, all rates as fractions.
  *
  * Model:
- *  - Each asset class has an average (arithmetic) yearly return `mu` and a yearly volatility `sigma`.
+ *  - Each asset class has a long-run compound (geometric) yearly return `mu` and a yearly volatility `sigma`.
  *  - Each account holds a fixed mix of asset classes (rebalanced yearly) taken from its current holdings.
  *  - Contributions arrive evenly through the year, modelled as mid-year: bal' = (bal + c/2) * (1 + r) + c/2.
- *  - Steady path: every year earns exactly the mix's average return (the "expected" path).
- *  - Monte Carlo: yearly returns are drawn from a lognormal distribution per class (mean mu, volatility sigma,
+ *  - Steady path: every year earns exactly the mix's compound return (the "expected" path).
+ *  - Monte Carlo: yearly returns are drawn from a lognormal distribution per class (compound return mu, volatility sigma,
  *    never worse than -100%) with correlations between classes, many times, to show the range of outcomes.
  *
- * Why the Monte Carlo MEDIAN sits below the steady path: a -20% year then a +25% year does not net out to +5%.
- * Volatility drags the typical (median) outcome below the average-return path. This is real, not a bug.
+ * Because `mu` is already a compound return, the volatility drag (a -20% year then a +25% year does not net out to +5%) is built
+ * into it. The simulation is centred so its typical (median) outcome tracks the steady path; the spread around it is what
+ * volatility adds. (Each yearly draw therefore averages a little above `mu`.) The mix's own compound return can land a bit above
+ * the weighted average of its classes because rebalancing between classes that do not move together earns a diversification gain,
+ * so the steady path is, if anything, slightly conservative for a mixed portfolio.
  *
  * All inputs are assumptions. Nothing here predicts returns.
  */
+
+/**
+ * Parameters of the yearly lognormal return for a class whose long-run COMPOUND (geometric) return is `g` and whose yearly
+ * volatility (standard deviation of the yearly return) is `sigma`. The log of the growth factor is centred on ln(1+g), so the typical
+ * (median) path compounds at about `g`; the arithmetic average then comes out a little higher, as it should.
+ *
+ * Solving mean = (1+g)·e^(s²/2) and sd = mean·sqrt(e^(s²) − 1) for s gives u = e^(s²) = (1 + sqrt(1 + 4σ²/(1+g)²)) / 2.
+ */
+export function lognormalFromGeometric(g: number, sigma: number): { lnMu: number; lnS: number } {
+  const G = Math.max(0.01, 1 + g);
+  const u = (1 + Math.sqrt(1 + (4 * sigma * sigma) / (G * G))) / 2;
+  return { lnMu: Math.log(G), lnS: Math.sqrt(Math.log(u)) };
+}
 
 export interface ClassAssumption {
   id: number;
   name: string;
   kind: AssetKind;
+  /** Long-run compound (geometric) nominal return per year, as a fraction. */
   mu: number;
   sigma: number;
 }
@@ -208,14 +225,13 @@ export function runMonteCarlo(inp: ProjInput, sims = 5000, seed = 1): McResult {
   const n = classes.length;
   const classIndex = new Map(classes.map((c, i) => [c.id, i]));
 
-  // Lognormal parameters per class: mean (1+mu), volatility sigma.
+  // Lognormal parameters per class: compound return mu (the typical path), volatility sigma.
   const lnMu = new Float64Array(n);
   const lnS = new Float64Array(n);
   classes.forEach((c, i) => {
-    const m = Math.max(0.01, 1 + c.mu);
-    const s2 = Math.log(1 + (c.sigma * c.sigma) / (m * m));
-    lnS[i] = Math.sqrt(s2);
-    lnMu[i] = Math.log(m) - s2 / 2;
+    const p = lognormalFromGeometric(c.mu, c.sigma);
+    lnS[i] = p.lnS;
+    lnMu[i] = p.lnMu;
   });
 
   // Per-account weight vectors over class indices, and contribution tables.

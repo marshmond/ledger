@@ -1,7 +1,7 @@
 import type { TaxTables } from '../data/taxYears';
 import { rmdFactor, rmdStartAge, type RetirementTaxRules } from '../data/retirementTax';
 import { acaCliffIncome, acaNet, federalTax, irmaaCost, makeEnv, maTax, bracketTop, type FedResult, type TaxEnv } from './rothTax';
-import { mulberry32, normalSampler } from './projection';
+import { lognormalFromGeometric, mulberry32, normalSampler } from './projection';
 
 /**
  * Roth conversion planner. Simulates the household year by year (taxes computed exactly each year) under a conversion
@@ -171,11 +171,10 @@ interface Person {
   prevEnd: number;
 }
 
-/** Returns for one year, from a standard-normal draw: lognormal with the given mean and volatility. */
-export function lognormalReturn(meanPct: number, volPct: number, z: number): number {
-  const m = 1 + meanPct / 100;
-  const s2 = Math.log(1 + (volPct / 100) ** 2 / (m * m));
-  return Math.exp(Math.log(m) - s2 / 2 + Math.sqrt(s2) * z) - 1;
+/** Returns for one year, from a standard-normal draw: lognormal with the given compound (geometric) return and volatility. */
+export function lognormalReturn(geometricPct: number, volPct: number, z: number): number {
+  const { lnMu, lnS } = lognormalFromGeometric(geometricPct / 100, volPct / 100);
+  return Math.exp(lnMu + lnS * z) - 1;
 }
 
 export interface RunOptions {
