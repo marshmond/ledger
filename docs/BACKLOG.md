@@ -4,7 +4,26 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-21 (newest): year-by-year tables for the savings-through-retirement lines BUILT ("go")
+## STATUS 2026-10-21 (newest): RSU grants with a generated vesting schedule BUILT ("go")
+
+Verified with 748 automated tests (20 new) and a browser check (desktop and 375px: your 2/2/26 quarterly example, even fill, editing one row's shares and price, a stock grant with a new ticker and no price key). The browser check used invented test data, not yours. Database is now version 14; backups are version 14 (older backups still restore). NOT tried: the live price lookup against Twelve Data (the tests use a fake response), and changing a grant's schedule after shares are entered in the browser (covered by tests only).
+
+Judgment calls (please review):
+1. **Where:** Income tab, Stock awards (RSUs): a new "Grants with a vesting schedule" card above the existing form, which is now titled "Add a single vest (one-off or already vested)" and works exactly as before. Existing vests are untouched.
+2. **Dates:** one every period after the start date, on the same day of the month (2/2/26 quarterly: 5/2, 8/2, 11/2, 2/2/27 ...), for the whole length (16 dates for 4 years quarterly). A day a month does not have falls on that month's last day, counted from the start date (Jan 31 monthly: Feb 28, Mar 31). Length is whole years, 1 to 10.
+3. **Cliff (optional):** the first vest is on the cliff date and regular dates continue after it. A cliff that is not on a regular date still gets its own vest. The first vest after a cliff normally covers everything earned so far, so you enter a bigger number of shares there; the app does not work that out.
+4. **Worksheet:** a table of the dates; type shares on a row to make that vest (zero or blank removes it), or "Fill evenly" from a total (whole totals split into whole shares with the extras on the earliest vests; replaces what is typed, after a confirmation). A price box on each row overrides the grant price for that vest (cash) or is the actual vest price (stock). Blank returns to the grant price.
+5. **Vests are real vest rows:** a row exists once it has shares, linked to the grant. Taxes, alerts, the calendar, held-share lots, forecast and the Roth planner see ordinary vests. Vests with no shares do not exist, so nothing shows up with zero value.
+6. **Cash grants:** one price per share on the grant. If you change it, vests that were using the old price follow; a vest with its own price keeps it.
+7. **Stock grants:** type the ticker. A ticker the app does not know creates a holding vehicle in the first stock asset class (change it on the Investments tab). The price is looked up once when the grant is saved if the vehicle has no price yet, and the "refresh price" link on the grant looks it up again. It uses your own Twelve Data key on this device; with no key the price stays manual and the screen says so. The price is the stock's current price, used to value future vests until you type the actual vest price on that row. The ticker symbol is sent to Twelve Data, as in the Investments refresh. Sold or held, and the brokerage account, are set once on the grant.
+8. **Changing a grant:** name, kind, stock, after-vest and account changes carry to its vests, except vests already added to holdings (they keep where they went). Changing the start date, length, frequency, or cliff keeps shares and prices on dates that still exist and removes vests that no longer fall on a date, after a confirmation that lists them. Vests already in holdings are never removed or changed by the worksheet; they show "in holdings".
+9. **Deleting a grant** deletes its vests, except those already in holdings, which stay as single vests.
+10. **Sync and backup:** grants are a new table, tracked for sync and in backups. A stock grant refers to its security and account by id.
+11. A new stock vehicle created by a grant is created on this device; if the other device has its own copy of the same ticker, you may end up with two (the existing Investments page has the same issue).
+
+Not built: ages, generating a worksheet from an existing set of vests, a quarterly "vest on the 15th" style rule other than the start date's day, vesting percentages per date (you type shares), and the "at risk" cash flag.
+
+## STATUS 2026-10-21: year-by-year tables for the savings-through-retirement lines BUILT ("go")
 
 Verified with 728 automated tests (9 new) and a browser check (desktop and 375px: all three lines, today's and future dollars, the money-runs-out year, a by-hand check that a row adds up to the cent). The browser check used invented test data, not yours. Not checked in the browser: the CSV download itself (the CSV text is covered by tests).
 

@@ -7,6 +7,7 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { recordHeldVest, vestOutcome, vestProblem, type ResolvedVest } from '../lib/rsu';
 import { NumField } from './fields';
 import Collapsible from './Collapsible';
+import RsuGrants from './RsuGrants';
 
 const SOURCE_TEXT = { deal: 'deal price', actual: 'actual vest price', current: 'current price', none: 'no price' } as const;
 
@@ -127,8 +128,10 @@ export default function RsuSection({
         Choose <strong>cash</strong> if the award pays out in cash at a set price per share, or <strong>common stock</strong> if it vests as shares.
       </p>
 
+      <RsuGrants people={people} vests={vests} securities={securities} invAccounts={invAccounts} />
+
       <div className="card">
-        <strong>{editing ? 'Edit vest' : 'Add a vest'}</strong>
+        <strong>{editing ? 'Edit vest' : 'Add a single vest (one-off or already vested)'}</strong>
         <div className="row" style={{ marginTop: 6 }}>
           <label className="f">Person
             <select value={draft.personId ?? ''} onChange={(e) => set({ personId: Number(e.target.value) })}>

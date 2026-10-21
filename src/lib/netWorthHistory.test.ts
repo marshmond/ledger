@@ -99,7 +99,7 @@ describe('net worth history', () => {
     await d.propertyValues.add(pv(pid, '2026-05-01', 300000));
     await snapshotNow(d, '2026-10-17');
     const file = await exportAll(d);
-    expect(file.version).toBe(13);
+    expect(file.version).toBe(14);
     await Promise.all([d.properties.clear(), d.propertyValues.clear(), d.netWorthSnapshots.clear()]);
     await importAll(d, file);
     expect(await d.properties.count()).toBe(1);

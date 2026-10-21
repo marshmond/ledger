@@ -25,6 +25,7 @@ import type {
   Person,
   Property,
   PropertyValue,
+  RsuGrant,
   RsuVest,
   RecurringLog,
   RecurringRule,
@@ -60,6 +61,7 @@ export class FinanceDB extends Dexie {
   loanRates!: Table<LoanRateChange, number>;
   loanEvents!: Table<LoanEvent, number>;
   rsuVests!: Table<RsuVest, number>;
+  rsuGrants!: Table<RsuGrant, number>;
   payScenarios!: Table<PayScenario, number>;
   hsaWithdrawals!: Table<HsaWithdrawal, number>;
   taxLots!: Table<TaxLot, number>;
@@ -143,6 +145,10 @@ export class FinanceDB extends Dexie {
     this.version(13).stores({
       budgetTargets: '++id, categoryId',
       donations: '++id, date',
+    });
+    this.version(14).stores({
+      rsuGrants: '++id, personId',
+      rsuVests: '++id, personId, date, grantId',
     });
   }
 }

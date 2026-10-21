@@ -206,11 +206,39 @@ export interface Bonus {
  * One RSU vest. 'cash' awards pay out in cash at a fixed (synthetic or deal) price per share, so there is no ticker.
  * 'stock' awards vest as shares of a security: the value uses the security's price unless the actual vest price is known.
  */
+export type VestFrequency = 'monthly' | 'quarterly' | 'semiannual' | 'annual';
+
+/**
+ * An RSU grant whose vest dates are worked out from a start date and a schedule. The vests themselves are ordinary RsuVest rows
+ * (linked by grantId) that exist once shares are entered, so everything that reads vests works unchanged.
+ */
+export interface RsuGrant {
+  id?: number;
+  personId: number;
+  name: string;
+  /** First day of the agreement (YYYY-MM-DD); vests fall on this day of the month. */
+  startDate: string;
+  frequency: VestFrequency;
+  /** Length of the agreement in whole years. */
+  years: number;
+  /** Optional: the first vest is this many months after the start (the regular schedule continues from the start date). */
+  cliffMonths?: number | null;
+  kind: 'cash' | 'stock';
+  /** Cash grants: the synthetic price per share every vest uses unless it has its own. */
+  priceCents?: number | null;
+  /** Stock grants: the security (found or created from the ticker). */
+  securityId?: number | null;
+  afterVest?: 'held' | 'sold';
+  accountId?: number | null;
+}
+
 export interface RsuVest {
   id?: number;
   personId: number;
   date: string;
   grant: string;
+  /** Set when the vest belongs to a generated grant (see RsuGrant). */
+  grantId?: number | null;
   kind: 'cash' | 'stock';
   shares: number;
   /** Cash: the synthetic price per share (required). Stock: the actual price on the vest date, once known (optional). */
