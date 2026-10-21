@@ -11,6 +11,7 @@ import { toReal } from '../lib/projection';
 import { loanView, paymentsInYear } from '../lib/loanSchedule';
 import { FanChart, compactUSD } from './charts';
 import { MoneyField, NumField, PercentField } from './fields';
+import ScenarioTable from './ScenarioTable';
 
 export default function RetirementPage() {
   const today = todayISO();
@@ -326,6 +327,8 @@ export default function RetirementPage() {
           <div className="row">
             <button onClick={() => setSeed(seed + 1)}>Re-run with new random draws</button>
           </div>
+
+          <ScenarioTable result={result} year0={year0} inflation={infl} sims={rs.sims} />
 
           <h2>Chance your money is still there</h2>
           <table>

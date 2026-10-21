@@ -72,13 +72,27 @@ export interface RetirementModel {
   spendingNominal: (t: number) => number;
   /** Amount withdrawn from the portfolio in period t (nominal, after streams, grossed up for tax). */
   withdrawal: (t: number) => number;
+  /** The pieces of period t's cash flow (nominal cents, all >= 0). While working only contributions, windfalls apply. */
+  parts: (t: number) => FlowParts;
 }
 
-/** Builds the pool for a given yearly spending level (today's dollars, cents). */
+export interface FlowParts {
+  contributions: number;
+  /** Other retirement income that goes toward spending (never more than spending). */
+  otherIncome: number;
+  windfallIn: number;
+  spending: number;
+  loanPayments: number;
+  /** Tax on withdrawals: the gross-up of spending and loan payments not covered by other income. */
+  tax: number;
+  windfallOut: number;
+}
+
 /** Income streams are entered per month but stored and projected per year (monthly x 12). */
 export const monthlyToAnnualCents = (monthlyCents: number): number => Math.round(monthlyCents * 12);
 export const annualToMonthlyCents = (annualCents: number): number => Math.round(annualCents / 12);
 
+/** Builds the pool for a given yearly spending level (today's dollars, cents). */
 export function buildRetirementModel(inp: RetirementInput, spendingCents = inp.settings.spendingCents): RetirementModel {
   const { year0, settings: s, inflation } = inp;
   const retireIdx = Math.max(0, s.retireYear - year0);
@@ -106,7 +120,17 @@ export function buildRetirementModel(inp: RetirementInput, spendingCents = inp.s
     weightsAt: (t) => (t > retireIdx ? after : before),
     flowAt: (t) => (t > retireIdx ? -withdrawal(t) : contributions(t)) + wf(t),
   };
-  return { pool, horizon, retireIdx, spendingNominal, withdrawal };
+  const parts = (t: number): FlowParts => {
+    const w = wf(t);
+    const windfallIn = Math.max(0, w);
+    const windfallOut = Math.max(0, -w);
+    if (t <= retireIdx) return { contributions: contributions(t), otherIncome: 0, windfallIn, spending: 0, loanPayments: 0, tax: 0, windfallOut };
+    const spend = spendingNominal(t);
+    const otherIncome = Math.min(streamsAt(t), spend);
+    const loanPayments = debt(t);
+    return { contributions: 0, otherIncome, windfallIn, spending: spend, loanPayments, tax: withdrawal(t) - (spend - otherIncome + loanPayments), windfallOut };
+  };
+  return { pool, horizon, retireIdx, spendingNominal, withdrawal, parts };
 }
 
 export interface RetirementResult {

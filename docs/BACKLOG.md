@@ -4,16 +4,23 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## QUEUED 2026-10-21: scenario cash-flow tables under "Savings through retirement" (decisions made, NOT built, waiting for "go")
+## STATUS 2026-10-21 (newest): year-by-year tables for the savings-through-retirement lines BUILT ("go")
 
-Decisions from the owner's answers:
-1. **Source:** the chart's own lines (10th percentile, median, 90th percentile of the balance in each year). Growth in a year is implied: end balance minus start balance minus that year's net flow. It is not one simulated life.
-2. **Columns:** year and years into retirement (ages are not stored in the app; ask if birth years should be added); money in (contributions while working, Social Security and other income, windfalls in); money out (spending, tax on withdrawals, loan payments if switched on, windfalls out); growth, start and end balance, and withdrawal rate as a percent of the start balance.
-3. **Layout:** one table under the chart with three buttons (10th / Median / 90th) and a today's-dollars vs future-dollars switch.
-4. **Export:** a CSV download of the table currently shown.
-Notes for the build: the yearly flows are the same in every simulated future (only returns differ), so the in/out columns match across the three tables except after the money runs out, where withdrawals stop. The 10th percentile line may hit $0, so rows after that point need a clear "money ran out" display rather than silent zeros.
+Verified with 728 automated tests (9 new) and a browser check (desktop and 375px: all three lines, today's and future dollars, the money-runs-out year, a by-hand check that a row adds up to the cent). The browser check used invented test data, not yours. Not checked in the browser: the CSV download itself (the CSV text is covered by tests).
 
-## STATUS 2026-10-21 (newest): Retirement tab: typed confidence percent and monthly Social Security BUILT
+Judgment calls (please review):
+1. **Chart lines, not one life:** each table is the chart's 10th percentile, median, or 90th percentile line (in each year the simulated futures are sorted and that one is read off), as you chose. The plan's flows (contributions, other income, spending, loan payments, tax, windfalls) are the same in every future, so only growth and balances differ between the three tables. Growth is what bridges one year's line to the next, so start + net flow + growth = end on every row.
+2. **Today's dollars:** each year is divided by that year's inflation factor and the start balance by last year's (like the chart), so the growth column is labeled "Growth after inflation" there. Future dollars show nominal figures.
+3. **Money running out:** the year it runs out shows the planned amounts (marked "money ran out"; growth is blank because the planned amount was not fully paid, and its withdrawal rate can top 100%). Later years show a zero balance and blank flows ("ran out earlier"). A note above the table names the year.
+4. **Other income above spending** is capped at spending and the excess is not added to savings. This is how the existing model already worked; the table now shows it.
+5. **Tax column** is the gross-up on withdrawals: (spending + loan payments, less other income) divided by (1 - tax rate), minus what it covers.
+6. **Years, not ages:** rows say "working" or "retirement year N". The app does not store birth years.
+7. **CSV download** exports the table as shown (the chosen line and dollars), dollars to the cent, blanks where the money had run out.
+8. Internal: the retirement model now exposes the pieces of each year's cash flow (`parts`); the numbers it simulates are unchanged.
+
+Not built: ages, a version that follows one real simulated future, and a printable layout.
+
+## STATUS 2026-10-21: Retirement tab: typed confidence percent and monthly Social Security BUILT
 
 Verified with 719 automated tests and a browser check (desktop and 375px: clearing and typing in the box, saved across a reload, 0 and 150, adding a $2,500 monthly benefit). The browser check used invented test data in the preview browser, not yours.
 
