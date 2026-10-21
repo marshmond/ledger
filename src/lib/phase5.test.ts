@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { bisectMax, bisectMin, runPool, steadyPool, type PoolInput } from './pool';
 import { steadyPath, runMonteCarlo, type ClassAssumption, type ProjAccount } from './projection';
 import {
+  annualToMonthlyCents,
+  monthlyToAnnualCents,
   blendMix,
   buildRetirementModel,
   DEFAULT_RETIREMENT,
@@ -129,6 +131,16 @@ describe('retirement planning', () => {
     expect(m.horizon).toBe(24);
     expect(m.withdrawal(5)).toBeCloseTo(($(100000) * 1.025 ** 5) / 0.8, 2); // before the stream starts
     expect(m.withdrawal(9)).toBeCloseTo((($(100000) - $(30000)) * 1.025 ** 9) / 0.8, 2); // 2035 includes the stream
+  });
+
+  it('a monthly benefit entered as $2,500 reduces withdrawals by $30,000 a year', () => {
+    expect(monthlyToAnnualCents($(2500))).toBe($(30000));
+    expect(annualToMonthlyCents($(30000))).toBe($(2500));
+    const inp = input({
+      settings: { ...DEFAULT_RETIREMENT(2026), retireYear: 2030, planYears: 20, spendingCents: $(100000), taxRatePct: 0, sims: 100,
+        streams: [{ id: 's', label: 'Social Security', annualCents: monthlyToAnnualCents($(2500)), startYear: 2034 }] },
+    });
+    expect(buildRetirementModel(inp).withdrawal(9)).toBeCloseTo(($(100000) - $(30000)) * 1.025 ** 9, 2);
   });
 
   it('before retirement the flow is contributions; after, it is negative', () => {

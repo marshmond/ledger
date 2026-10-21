@@ -1,6 +1,42 @@
 import { useState } from 'react';
 import { parseAmountToCents } from '../lib/money';
 
+/** A typed-in percent (min to max): any text is allowed while typing; the value is checked and kept within range when you click away. */
+export function PercentField({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  width,
+}: {
+  label?: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+  width?: number;
+}) {
+  const [text, setText] = useState(String(value));
+  const input = (
+    <input
+      style={{ width }}
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      onBlur={() => {
+        const n = Number(text.trim());
+        if (text.trim() === '' || !Number.isFinite(n)) return setText(String(value));
+        const v = Math.min(max, Math.max(min, n));
+        setText(String(v));
+        if (v !== value) onChange(v);
+      }}
+    />
+  );
+  return label ? <label className="f">{label}{input}</label> : input;
+}
+
 /** A dollars input that commits integer cents on blur and shows a hint if the text is not a valid amount. */
 export function MoneyField({
   label,

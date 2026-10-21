@@ -4,7 +4,28 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-20 (newest): asset class assumptions updated to compound (geometric) returns BUILT
+## QUEUED 2026-10-21: scenario cash-flow tables under "Savings through retirement" (decisions made, NOT built, waiting for "go")
+
+Decisions from the owner's answers:
+1. **Source:** the chart's own lines (10th percentile, median, 90th percentile of the balance in each year). Growth in a year is implied: end balance minus start balance minus that year's net flow. It is not one simulated life.
+2. **Columns:** year and years into retirement (ages are not stored in the app; ask if birth years should be added); money in (contributions while working, Social Security and other income, windfalls in); money out (spending, tax on withdrawals, loan payments if switched on, windfalls out); growth, start and end balance, and withdrawal rate as a percent of the start balance.
+3. **Layout:** one table under the chart with three buttons (10th / Median / 90th) and a today's-dollars vs future-dollars switch.
+4. **Export:** a CSV download of the table currently shown.
+Notes for the build: the yearly flows are the same in every simulated future (only returns differ), so the in/out columns match across the three tables except after the money runs out, where withdrawals stop. The 10th percentile line may hit $0, so rows after that point need a clear "money ran out" display rather than silent zeros.
+
+## STATUS 2026-10-21 (newest): Retirement tab: typed confidence percent and monthly Social Security BUILT
+
+Verified with 719 automated tests and a browser check (desktop and 375px: clearing and typing in the box, saved across a reload, 0 and 150, adding a $2,500 monthly benefit). The browser check used invented test data in the preview browser, not yours.
+
+Judgment calls (please review):
+1. **"Want the money to last in (% of futures)":** you can now clear the box and type any number. The limit is applied when you click away or press Enter: 0 to 99 (a higher number becomes 99; empty or non-numeric text goes back to the last good value). The old box forced 50 to 99 on every keystroke, which caused the snapping you saw.
+2. **0% as a goal** is allowed as you asked; it means any result counts as success, so "Find spending that lasts" at 0% will return a very large number.
+3. **Social Security (Other retirement income) is entered per month.** It is stored and projected per year (monthly x 12, in today's dollars), so nothing in the projection engine, database, backups, or sync changed, and entries you already had are untouched. The list now shows each one as a monthly amount (yearly / 12, rounded to the cent), so an old entry whose yearly amount is not a multiple of 12 cents may show a cent off.
+4. This applies to all items in that section (pensions, rental income), not only Social Security.
+
+Not built: the Roth planner's own "other income" list still asks for a yearly amount.
+
+## STATUS 2026-10-20: asset class assumptions updated to compound (geometric) returns BUILT
 
 Verified with 718 automated tests (including the update on a database holding the old defaults and two seeds at once) and a browser check of the migration and the table. The figures are the ones you supplied; I did not verify them against a source.
 

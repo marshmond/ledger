@@ -75,6 +75,10 @@ export interface RetirementModel {
 }
 
 /** Builds the pool for a given yearly spending level (today's dollars, cents). */
+/** Income streams are entered per month but stored and projected per year (monthly x 12). */
+export const monthlyToAnnualCents = (monthlyCents: number): number => Math.round(monthlyCents * 12);
+export const annualToMonthlyCents = (annualCents: number): number => Math.round(annualCents / 12);
+
 export function buildRetirementModel(inp: RetirementInput, spendingCents = inp.settings.spendingCents): RetirementModel {
   const { year0, settings: s, inflation } = inp;
   const retireIdx = Math.max(0, s.retireYear - year0);

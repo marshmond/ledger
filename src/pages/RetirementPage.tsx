@@ -6,11 +6,11 @@ import type { IncomeStream, RetirementSettings, Windfall } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import { buildIncomeModel } from '../lib/income';
 import { buildProjection, DEFAULT_PROJECTION, type ProjectionSettings } from '../lib/projectionInput';
-import { DEFAULT_RETIREMENT, planRetirement, sustainableSpending, trailingAnnualSpending, type RetirementInput } from '../lib/retirement';
+import { DEFAULT_RETIREMENT, annualToMonthlyCents, monthlyToAnnualCents, planRetirement, sustainableSpending, trailingAnnualSpending, type RetirementInput } from '../lib/retirement';
 import { toReal } from '../lib/projection';
 import { loanView, paymentsInYear } from '../lib/loanSchedule';
 import { FanChart, compactUSD } from './charts';
-import { MoneyField, NumField } from './fields';
+import { MoneyField, NumField, PercentField } from './fields';
 
 export default function RetirementPage() {
   const today = todayISO();
@@ -134,7 +134,7 @@ export default function RetirementPage() {
           <NumField label="Years of retirement to fund" value={rs.planYears} step={1} onChange={(v) => setR({ planYears: Math.min(60, Math.max(1, Math.round(v))) })} />
           <MoneyField key={`sp${rs.spendingCents}`} label="Yearly spending in retirement" cents={rs.spendingCents} onChange={(c) => setR({ spendingCents: c })} />
           <NumField label="Tax on withdrawals (%)" value={rs.taxRatePct} step={1} onChange={(v) => setR({ taxRatePct: Math.min(60, Math.max(0, v)) })} />
-          <NumField label="Want the money to last in (% of futures)" value={rs.targetConfidencePct} step={5} onChange={(v) => setR({ targetConfidencePct: Math.min(99, Math.max(50, v)) })} />
+          <PercentField label="Want the money to last in (% of futures)" value={rs.targetConfidencePct} min={0} max={99} onChange={(v) => setR({ targetConfidencePct: v })} />
           <label className="f">Simulations
             <select value={rs.sims} onChange={(e) => setR({ sims: Number(e.target.value) })}>
               <option value={1000}>1,000 (fast)</option><option value={5000}>5,000</option><option value={20000}>20,000</option>
@@ -166,14 +166,14 @@ export default function RetirementPage() {
       </div>
 
       <h2>Other retirement income</h2>
-      <p className="muted">Social Security, pensions, rental income: what you expect to receive, per year, in today’s dollars and after tax. It reduces what the portfolio must pay.</p>
+      <p className="muted">Social Security, pensions, rental income: what you expect to receive, per month, in today’s dollars and after tax. It reduces what the portfolio must pay.</p>
       {rs.streams.length > 0 && (
         <table>
           <tbody>
             {rs.streams.map((x) => (
               <tr key={x.id}>
                 <td>{x.label}</td>
-                <td className="num pos">{formatCents(x.annualCents)}/yr</td>
+                <td className="num pos">{formatCents(annualToMonthlyCents(x.annualCents))}/mo</td>
                 <td>from {x.startYear}{x.endYear ? ` to ${x.endYear}` : ''}</td>
                 <td><button className="link danger" onClick={() => setR({ streams: rs.streams.filter((s) => s.id !== x.id) })}>remove</button></td>
               </tr>
@@ -183,13 +183,13 @@ export default function RetirementPage() {
       )}
       <div className="row">
         <label className="f">Name<input value={sLabel} onChange={(e) => setSLabel(e.target.value)} /></label>
-        <MoneyField label="Per year (today's $)" cents={sAmt} onChange={setSAmt} width={120} />
+        <MoneyField label="Per month (today's $)" cents={sAmt} onChange={setSAmt} width={120} />
         <NumField label="Starts (year)" value={sStart} step={1} width={90} onChange={(v) => setSStart(Math.round(v))} />
         <NumField label="Ends (optional)" value={sEnd} step={1} width={90} onChange={(v) => setSEnd(Math.round(v))} />
         <button
           disabled={sAmt <= 0}
           onClick={async () => {
-            const x: IncomeStream = { id: crypto.randomUUID(), label: sLabel.trim() || 'Income', annualCents: sAmt, startYear: sStart, endYear: sEnd > 0 ? sEnd : null };
+            const x: IncomeStream = { id: crypto.randomUUID(), label: sLabel.trim() || 'Income', annualCents: monthlyToAnnualCents(sAmt), startYear: sStart, endYear: sEnd > 0 ? sEnd : null };
             await setR({ streams: [...rs.streams, x] });
             setSAmt(0);
           }}
