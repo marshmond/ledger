@@ -75,7 +75,10 @@ export interface PayEvent {
   addlMedicare: number;
   stateWithholding: number;
   pfml: number;
+  /** Cash that reaches you. A vest you keep as shares has none: see keptValue. */
   net: number;
+  /** Held RSU vests: the after-tax value of the shares kept, in dollars (not cash, so not part of net). */
+  keptValue?: number;
   notes: string[];
 }
 
@@ -313,8 +316,10 @@ export function simulatePerson(
     const dedTotal = Object.values(ded).reduce((a, b) => a + b, 0);
     let net = gross - dedTotal - fedWithholding - socialSecurity - medicare - addlMedicare - stateWithholding - pfml;
     // Shares you keep are not cash: the tax comes out of the vest (sell-to-cover) and the rest stays as stock.
+    let keptValue: number | undefined;
     if (s.kept) {
       notes.push('Net amount kept as shares, not paid as cash');
+      keptValue = Math.max(0, net);
       net = 0;
     }
     if (net < 0) notes.push('Deductions and taxes exceed this paycheck');
@@ -336,6 +341,7 @@ export function simulatePerson(
       stateWithholding,
       pfml,
       net,
+      keptValue,
       notes,
     });
   }

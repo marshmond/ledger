@@ -107,7 +107,7 @@ function OwnerSelect({ value, people, onChange }: { value: number | null | undef
 function AccountBlock({ s, holdings, securities, classes, people, otherNames }: { s: ReturnType<typeof summarize>['accounts'][number]; holdings: Holding[]; securities: Security[]; classes: AssetClass[]; people: Person[]; otherNames: string[] }) {
   const a = s.account;
   const [adding, setAdding] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState<{ holdingId: number; mode: 'lots' | 'buy' | 'sell' } | null>(null);
   const taxable = isTaxable(a);
   const mine = holdings.filter((h) => h.accountId === a.id);
@@ -291,12 +291,6 @@ export default function InvestmentsPage() {
       </div>
       <AllocationBar title={scope === 'all' ? 'Allocation by asset class: all accounts' : `Allocation by asset class: ${accounts.find((a) => a.id === scope)?.name}`} items={items} />
 
-      <h2>Accounts</h2>
-      {sum.accounts.length === 0 && <p className="muted">Add your brokerage, IRA, 401(k), and 529 accounts, then their holdings.</p>}
-      {KIND_ORDER.flatMap((k) => sum.accounts.filter((s) => s.account.kind === k)).map((s) => (
-        <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} people={people} otherNames={sum.accounts.filter((o) => o.account.id !== s.account.id).map((o) => o.account.name)} />
-      ))}
-
       <div className="card">
         <strong>Add account</strong>
         <div className="grid" style={{ marginTop: 6 }}>
@@ -322,6 +316,13 @@ export default function InvestmentsPage() {
           >Add account</button>
         </div>
       </div>
+
+      <h2>Accounts</h2>
+      {sum.accounts.length === 0 && <p className="muted">Add your brokerage, IRA, 401(k), and 529 accounts, then their holdings.</p>}
+      {KIND_ORDER.flatMap((k) => sum.accounts.filter((s) => s.account.kind === k)).map((s) => (
+        <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} people={people} otherNames={sum.accounts.filter((o) => o.account.id !== s.account.id).map((o) => o.account.name)} />
+      ))}
+
               </>
             ),
           },

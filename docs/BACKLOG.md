@@ -4,7 +4,30 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-21 (newest): RSU grants with a generated vesting schedule BUILT ("go")
+## STATUS 2026-10-21 (newest): Investments tab: accounts start collapsed, Add account moved up BUILT
+
+Checked in the browser (desktop and 375px): order, collapsed on load, expanding, no sideways scroll. No new automated tests (layout only); the existing 757 still pass.
+
+Judgment calls (please review):
+1. **Collapsed:** each account shows its name, type, owner, and total, with "show" to open it (holdings, cash, buy and sell). It starts collapsed every time the page opens; opening one is not remembered. The uninvested cash box and "Invested" figure are inside the opened account, so they are hidden until you open it.
+2. **Add account** now sits right under the allocation chart, above the Accounts list.
+3. Not built: a "show all / hide all" button, or remembering which accounts you left open.
+
+## STATUS 2026-10-21: held RSU vests shown in dollars, whole shares into the account BUILT
+
+Verified with 753 automated tests (11 new or changed, 24 + 2 in the RSU file) and a browser check (desktop and 375px: a 33-share held vest at $50: after-tax value, the paycheck detail row, "add to holdings", the resulting holding, lot, basis, and account cash). The browser check used invented data, not yours.
+
+Judgment calls (please review):
+1. **Dollars, not shares, in the tables:** the vest table's "After tax" column now shows the after-tax value in dollars for held vests, with "N shares to the account, $X cash" under it. The paycheck detail row keeps Net at $0.00 (it is not cash) and adds "$X kept as shares" under it. Take-home totals, the cash forecast, the budget's expected pay, and Afford it still count cash only, so shares are not treated as spendable money.
+2. **Whole shares:** the shares added to the account are the after-tax shares rounded down to a whole number (a tiny allowance stops float noise from rounding a whole number down).
+3. **Cost basis:** the lot (taxable account) or holding (IRA, 401(k), HSA, 529) gets the whole shares times the vest price, and adds to what the holding already has. The leftover cash is not part of the basis. Every vest is its own lot (dated on the vest, source "RSU", with its own basis), even two vests on the same day; the holding's shares and basis are always the sum of its lots, and shares already in the holding before keep their basis as their own "opening" lot. Held vests can only be sent to a brokerage account (the pickers list nothing else), which always tracks lots; the IRA-style path in the code (holding only, no lots) cannot be reached from the screens.
+4. **Leftover part of a share:** its dollar value is added to the same account's uninvested cash when you press "add to holdings", as a broker would pay cash for a partial share. A vest too small for one share adds only the cash. It does not touch your checking forecast.
+5. **Already-recorded vests are left as recorded** (fractional shares and full basis). Nothing in your accounts changes.
+6. If the company really rounds the sold shares up instead (so the cash is lower), set the withholding rates on the Income tab to match; the app still assumes the tax comes out of the vest.
+
+Not built: a one-time round-down of vests already recorded, and showing kept value in the Roth planner or retirement pages (they already use vest value from the model).
+
+## STATUS 2026-10-21: RSU grants with a generated vesting schedule BUILT ("go")
 
 Verified with 748 automated tests (20 new) and a browser check (desktop and 375px: your 2/2/26 quarterly example, even fill, editing one row's shares and price, a stock grant with a new ticker and no price key). The browser check used invented test data, not yours. Database is now version 14; backups are version 14 (older backups still restore). NOT tried: the live price lookup against Twelve Data (the tests use a fake response), and changing a grant's schedule after shares are entered in the browser (covered by tests only).
 

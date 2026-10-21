@@ -239,7 +239,12 @@ export default function RsuSection({
                     <td className="num"><VestPrice key={`${v.id}-${v.priceCents}`} r={r} /></td>
                     <td className="num">{r.warning ? <span className="warn">no value</span> : formatCents(r.grossCents)}</td>
                     <td className="num">
-                      {r.grossCents === 0 || !inYear ? '—' : held ? `${o.sharesKept.toFixed(3)} sh` : formatCents(o.netCashCents)}
+                      {r.grossCents === 0 || !inYear ? '—' : held ? formatCents(o.keptValueCents) : formatCents(o.netCashCents)}
+                      {held && inYear && r.grossCents > 0 && (
+                        <div className="muted" style={{ fontSize: '0.75rem' }}>
+                          {o.sharesKept} share{o.sharesKept === 1 ? '' : 's'} to the account{o.leftoverCents > 0 ? `, ${formatCents(o.leftoverCents)} cash` : ''}
+                        </div>
+                      )}
                       {!inYear && <div className="muted" style={{ fontSize: '0.75rem' }}>pick {v.date.slice(0, 4)} above</div>}
                       {missingProfile(r) && <div className="warn" style={{ fontSize: '0.75rem' }}>no {v.date.slice(0, 4)} income setup: not in tax totals</div>}
                     </td>
@@ -254,7 +259,7 @@ export default function RsuSection({
                           title="Add the shares you kept (after the tax is covered by selling shares) to the account’s holdings"
                           onClick={async () => {
                             const res = await recordHeldVest(db, v.id!, o);
-                            setMsg(res === 'recorded' ? `Added ${o.sharesKept.toFixed(3)} shares to holdings` : 'Could not record this vest');
+                            setMsg(res === 'recorded' ? `Added ${o.sharesKept} share${o.sharesKept === 1 ? '' : 's'} to holdings${o.leftoverCents > 0 ? ` and ${formatCents(o.leftoverCents)} cash to the account` : ''}` : 'Could not record this vest');
                           }}
                         >add to holdings</button>
                       )}{' '}
@@ -270,8 +275,9 @@ export default function RsuSection({
       )}
       {model.vests.some((r) => r.warning) && <p className="warn">Vests with no price are left out of your income until they have one.</p>}
       <p className="muted">
-        Held stock: the tax is assumed to be covered by selling shares on the vest date, so you keep the net shares and the cost basis is the net value.
-        “Add to holdings” puts them in the account once the vest date has passed. Before that they are projections only.
+        Held stock: the tax is assumed to be covered by selling shares on the vest date. You keep the net value, shown in dollars here and in the paycheck
+        detail (it is not counted as spendable cash). “Add to holdings” puts the whole shares in the account, with the vest price as their cost basis, and the
+        value of the leftover part of a share as cash in the same account, once the vest date has passed. Before that they are projections only.
       </p>
     </Collapsible>
   );

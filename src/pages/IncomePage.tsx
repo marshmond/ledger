@@ -354,7 +354,10 @@ export default function IncomePage() {
                             <td className="num">{formatCents(e.medicare + e.addlMedicare)}</td>
                             <td className="num">{formatCents(e.stateWithholding)}</td>
                             <td className="num">{formatCents(e.pfml)}</td>
-                            <td className="num"><strong>{formatCents(e.net)}</strong></td>
+                            <td className="num">
+                              <strong>{formatCents(e.net)}</strong>
+                              {e.keptValue !== undefined && <div className="muted" style={{ fontSize: '0.75rem' }}>{formatCents(e.keptValue)} kept as shares</div>}
+                            </td>
                           </tr>
                         );
                       })}

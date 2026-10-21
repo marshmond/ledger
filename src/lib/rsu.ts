@@ -48,15 +48,21 @@ export interface VestOutcome {
   taxWithheldCents: number;
   /** Cash that reaches you (cash vests, and stock that is sold at once): the vest's net pay. */
   netCashCents: number;
-  /** Stock kept after the tax is covered by selling shares (held vests only). */
+  /** Whole shares kept after the tax is covered by selling shares (held vests only; a part of a share is paid out as cash instead). */
   sharesKept: number;
+  /** Cost basis of the whole shares kept: shares times the vest price. */
   basisCents: number;
+  /** Held vests: the after-tax value in dollars (whole shares plus the leftover cash). Not spendable cash. */
+  keptValueCents: number;
+  /** Held vests: what is left of the after-tax value after the whole shares, added to the account as cash. */
+  leftoverCents: number;
 }
 
 /**
  * What a vest turns into after tax. For held stock the tax is assumed to be covered by selling shares at the vest price
- * (sell-to-cover), so you keep the shares worth the net amount. If the company withholds differently, set the withholding
- * rates on the Income tab to match the real figures.
+ * (sell-to-cover), so you keep the shares worth the net amount, rounded down to whole shares; the value of the leftover
+ * part of a share stays in the account as cash. If the company withholds differently, set the withholding rates on the
+ * Income tab to match the real figures.
  */
 export function vestOutcome(r: ResolvedVest, year: PersonYear | undefined): VestOutcome {
   const ev = year?.events.find((e) => e.kind === 'rsu' && e.vestId === r.vest.id);
@@ -65,13 +71,18 @@ export function vestOutcome(r: ResolvedVest, year: PersonYear | undefined): Vest
   const net = Math.max(0, gross - tax);
   const held = r.vest.kind === 'stock' && r.vest.afterVest === 'held';
   const frac = gross > 0 ? net / gross : 0;
+  // The small allowance keeps 70 x 0.7 style float errors from rounding a whole number of shares down.
+  const sharesKept = held && r.priceCents ? Math.floor(r.vest.shares * frac + 1e-9) : 0;
+  const basis = held && r.priceCents ? Math.min(net, Math.round(sharesKept * r.priceCents)) : 0;
   return {
     vest: r.vest,
     grossCents: gross,
     taxWithheldCents: tax,
     netCashCents: held ? 0 : net,
-    sharesKept: held ? r.vest.shares * frac : 0,
-    basisCents: held ? net : 0,
+    sharesKept,
+    basisCents: basis,
+    keptValueCents: held ? net : 0,
+    leftoverCents: held ? net - basis : 0,
   };
 }
 
@@ -86,8 +97,15 @@ export async function recordHeldVest(d: FinanceDB, vestId: number, outcome: Vest
   if (v.recorded) return 'already';
   if (!v.securityId || !v.accountId) return 'missing';
   await d.transaction('rw', [d.holdings, d.taxLots, d.invAccounts, d.rsuVests], async () => {
-    // A taxable account gets a lot dated on the vest; other accounts just get more shares.
-    await addLot(d, { accountId: v.accountId!, securityId: v.securityId!, acquiredDate: v.date, shares: outcome.sharesKept, costBasisCents: outcome.basisCents, source: 'rsu' });
+    // A taxable account gets a lot dated on the vest; other accounts just get more shares. Whole shares only.
+    if (outcome.sharesKept > 0) {
+      await addLot(d, { accountId: v.accountId!, securityId: v.securityId!, acquiredDate: v.date, shares: outcome.sharesKept, costBasisCents: outcome.basisCents, source: 'rsu' });
+    }
+    // The value of the leftover part of a share is paid into the account as cash.
+    if (outcome.leftoverCents > 0) {
+      const acct = await d.invAccounts.get(v.accountId!);
+      if (acct) await d.invAccounts.update(acct.id!, { cashCents: (acct.cashCents ?? 0) + outcome.leftoverCents });
+    }
     await d.rsuVests.update(vestId, { recorded: true });
   });
   return 'recorded';
