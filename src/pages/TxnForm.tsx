@@ -4,8 +4,9 @@ import { db } from '../db';
 import type { Account, Category, CategoryGroup, Split, Txn, TxnStatus } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { validateSplits } from '../lib/ledger';
-import { convertToTransfer, createTransfer, updateTxn } from '../lib/transfers';
+import { convertToTransfer, createTransfer, moveTxn, updateTxn } from '../lib/transfers';
 import { recentPayees, suggestCategory } from '../lib/rules';
+import AmountInput from './AmountInput';
 
 interface Props {
   account: Account;
@@ -69,6 +70,12 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   );
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
+  // When editing, the account can be changed (an entry made on the wrong account). The one it is on now is always offered.
+  const [acctId, setAcctId] = useState(String(account.id));
+  const moving = !!editing && acctId !== String(account.id);
+  const current = accounts.find((a) => String(a.id) === acctId) ?? account;
+  const choices = accounts.filter((a) => a.id === account.id || (!a.closed && a.kind !== 'loan'));
+  const reconciledMove = moving && editing?.status === 'reconciled' && status === 'reconciled';
 
   const total = parseAmountToCents(amount);
   const splitTotal = splits.reduce((s, r) => s + (parseAmountToCents(r.amt) ?? 0), 0);
@@ -81,10 +88,14 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
     const signed = dir === 'out' ? -abs : abs;
     const wantsTransfer = choice === 'transfer';
     if (wantsTransfer && !isTransfer && !other) return setError('Choose the other account for the transfer');
+    if (moving && isTransfer && acctId === String(otherAccountId)) return setError('A transfer needs two different accounts');
+    if (moving && wantsTransfer && !isTransfer && other === acctId) return setError('A transfer needs two different accounts');
+    if (reconciledMove && !confirm(`This transaction is reconciled. Moving it to ${current.name} changes the reconciled balance of both accounts, and it goes back to Cleared so you can reconcile again. Move it?`)) return;
 
     try {
       if (isTransfer && editing) {
         await updateTxn(db, editing.id!, { date, memo, status, amountCents: signed });
+        if (moving) await moveTxn(db, editing.id!, Number(acctId));
       } else {
         let splitData: Split[] | undefined;
         if (splitOn && !wantsTransfer) {
@@ -105,6 +116,8 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             categoryId: wantsTransfer || splitData ? null : choice ? Number(choice) : null,
             splits: splitData,
           });
+          // Move first, so a transfer made in the same edit is set up against the new account.
+          if (moving) await moveTxn(db, editing.id!, Number(acctId));
           if (wantsTransfer) await convertToTransfer(db, editing.id!, Number(other));
         } else if (wantsTransfer) {
           const [from, to] = dir === 'out' ? [account.id!, Number(other)] : [Number(other), account.id!];
@@ -128,13 +141,20 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
     }
   }
 
-  const liability = account.kind === 'credit_card' || account.kind === 'loan';
+  const liability = current.kind === 'credit_card' || current.kind === 'loan';
   const incomeWord = liability ? 'Payment / credit (+)' : 'Inflow (+)';
-  const outWord = account.kind === 'credit_card' ? 'Charge (−)' : account.kind === 'loan' ? 'Interest / added to balance (−)' : 'Outflow (−)';
+  const outWord = current.kind === 'credit_card' ? 'Charge (−)' : current.kind === 'loan' ? 'Interest / added to balance (−)' : 'Outflow (−)';
 
   return (
     <div className="card">
       <div className="grid">
+        {editing && (
+          <label className="f">Account
+            <select value={acctId} onChange={(e) => setAcctId(e.target.value)}>
+              {choices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </label>
+        )}
         <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {!isTransfer && (
           <label className="f">Payee
@@ -161,7 +181,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             <option value="in">{incomeWord}</option>
           </select>
         </label>
-        <label className="f">Amount<input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /></label>
+        <label className="f">Amount<AmountInput value={amount} onChange={setAmount} /></label>
         <label className="f">Status
           <select value={status} onChange={(e) => setStatus(e.target.value as TxnStatus)}>
             <option value="pending">Pending</option>
@@ -182,7 +202,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             <label className="f">{dir === 'out' ? 'To account' : 'From account'}
               <select value={other} onChange={(e) => setOther(e.target.value)}>
                 <option value="">Choose…</option>
-                {accounts.filter((a) => a.id !== account.id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {accounts.filter((a) => a.id !== current.id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </label>
           )}
@@ -193,6 +213,8 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
           )}
         </div>
       )}
+      {moving && <p className="muted">Saving moves this {isTransfer ? 'side of the transfer' : 'transaction'} from {account.name} to {current.name}.</p>}
+      {reconciledMove && <p className="warn">This transaction is reconciled. Moving it changes the reconciled balance of both accounts, and it goes back to Cleared.</p>}
       {hint && !isTransfer && <p className="muted">{hint}</p>}
       {isTransfer && <p className="muted">Transfer with {accounts.find((a) => a.id === otherAccountId)?.name ?? 'another account'}. The other side stays in sync.</p>}
       {choice === 'transfer' && !isTransfer && (
@@ -204,12 +226,11 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
           {splits.map((r, i) => (
             <div className="row" key={i} style={{ marginBottom: 4 }}>
               <CategorySelect groups={groups} cats={cats} value={r.cat} onChange={(v) => setSplits(splits.map((x, j) => (j === i ? { ...x, cat: v } : x)))} />
-              <input
+              <AmountInput
                 style={{ width: 110 }}
-                inputMode="decimal"
-                placeholder="0.00"
+                label={`Amount for split ${i + 1}`}
                 value={r.amt}
-                onChange={(e) => setSplits(splits.map((x, j) => (j === i ? { ...x, amt: e.target.value } : x)))}
+                onChange={(t) => setSplits(splits.map((x, j) => (j === i ? { ...x, amt: t } : x)))}
               />
               {splits.length > 2 && <button className="link danger" onClick={() => setSplits(splits.filter((_, j) => j !== i))}>remove</button>}
             </div>

@@ -156,6 +156,33 @@ export async function updateTxn(d: FinanceDB, id: number, patch: Partial<Txn>) {
   });
 }
 
+/**
+ * Moves a transaction to another account (for an entry made on the wrong account). Everything else about it stays.
+ * A transfer can move either side; the two sides cannot end up on the same account, and both payees are renamed to name
+ * the new account. A reconciled transaction goes back to cleared, because the reconciled balances of both accounts change.
+ * The bank's id and dedupe key are kept so a re-import into the old account does not add it again; the link to the import
+ * that created it is dropped so undoing that import does not remove an entry that now lives on another account.
+ */
+export async function moveTxn(d: FinanceDB, id: number, newAccountId: number): Promise<'moved' | 'same'> {
+  return d.transaction('rw', d.txns, d.accounts, async () => {
+    const t = await d.txns.get(id);
+    if (!t) throw new Error('Transaction not found');
+    if (t.accountId === newAccountId) return 'same';
+    if (!(await d.accounts.get(newAccountId))) throw new Error('Account not found');
+    const other = t.transferTxnId ? await d.txns.get(t.transferTxnId) : undefined;
+    if (other && other.accountId === newAccountId) throw new Error('A transfer needs two different accounts');
+
+    const patch: Partial<Txn> = { accountId: newAccountId, importBatchId: null };
+    if (t.status === 'reconciled') patch.status = 'cleared';
+    if (other) {
+      patch.payee = `Transfer ${t.amountCents < 0 ? 'to' : 'from'} ${await name(d, other.accountId)}`;
+      await d.txns.update(other.id!, { payee: `Transfer ${other.amountCents < 0 ? 'to' : 'from'} ${await name(d, newAccountId)}` });
+    }
+    await d.txns.update(id, patch);
+    return 'moved';
+  });
+}
+
 /** Deletes a transaction; deleting one half of a transfer deletes the other. */
 export async function deleteTxn(d: FinanceDB, id: number) {
   await d.transaction('rw', d.txns, async () => {

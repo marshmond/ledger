@@ -4,7 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-21 (newest): Investments tab: accounts start collapsed, Add account moved up BUILT
+## STATUS 2026-10-24 (newest): move a transaction's account, keystroke-style amounts, primary payment account BUILT ("go")
+
+Verified with 778 automated tests (21 new) and a browser check (desktop and 375px) using invented data: real keystrokes 1, 2, 4, 5 gave 0.01, 0.12, 1.24, 12.45; Backspace; saving with Enter; Quick add starting on the primary account; moving an ordinary, a reconciled, and a transfer transaction; the same-account error; the Settings switch off and on. NOT checked: typing on a real phone keyboard (the entry reads the whole text of the box, not individual keys, to work with phone keyboards, but I could only test with a computer keyboard).
+
+Judgment calls (please review):
+1. **Account on edit:** an "Account" box on the edit form (ledger and the all-transactions page). Offers open non-loan accounts plus the one it is on now. The Type labels (Charge, Inflow and so on) follow the chosen account's kind. Everything else on the transaction stays, and balances, budget, and reports follow because they read the transactions.
+2. **Transfers:** either side can move. Both payees are renamed to name the right accounts ("Transfer to Test Savings"). Putting both sides on one account is refused. A transfer made in the same edit is set up against the new account.
+3. **Reconciled:** a warning shows on the form and a confirmation is asked on Save. The moved entry goes back to Cleared (for a transfer, only the side that moved; the other side keeps its status because its own account's balance did not change).
+4. **Imported transactions:** a moved one keeps its bank id and duplicate check, so importing the same file into the old account does not add it again. It is no longer tied to the import batch, so undoing that import will not delete an entry that now lives on another account. It also means the same bank row imported into the NEW account would not be recognised as a duplicate.
+5. **Keystroke amounts:** digits shift in from the right, Backspace removes the last, with thousands commas (1,200.50). A typed decimal point or minus sign is ignored (1, 2, ., 4, 5 still gives 12.45, but typing 12.5 gives 1.25, so with this on, type the cents). Pasting a whole amount (12.45 or $1,200.50) works. The inflow/outflow choice stays separate. It is a per-device switch in More (default on), applies to the amount boxes in add, edit, Quick add and split amounts, and nothing else. Editing an existing transaction shows its amount in the box; typing a digit shifts it left, so clear it with Backspace first.
+6. **Primary account:** "Make this my primary payment account" on the account's page (with a "primary" badge on the Accounts list); shared between devices and in backups. Quick add starts on it; with none set (or if it is closed or deleted) it falls back to the account you used last, then the first, as before. Loans and closed accounts cannot be primary.
+
+Not built: a primary choice per device, and keystroke entry for other money boxes (budget, loans, and so on).
+
+## STATUS 2026-10-21: Investments tab: accounts start collapsed, Add account moved up BUILT
 
 Checked in the browser (desktop and 375px): order, collapsed on load, expanding, no sideways scroll. No new automated tests (layout only); the existing 757 still pass.
 

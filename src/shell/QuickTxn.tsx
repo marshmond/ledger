@@ -5,6 +5,8 @@ import type { Account } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { recentPayees, suggestCategory } from '../lib/rules';
 import TxnForm from '../pages/TxnForm';
+import AmountInput from '../pages/AmountInput';
+import { pickPrimary } from '../lib/primaryAccount';
 
 const LAST_KEY = 'ledger-quick-account';
 const lastAccount = (): string => {
@@ -15,13 +17,18 @@ const lastAccount = (): string => {
  * The fast way to log a purchase: payee (with suggestions), amount, category (filled in from your rules and history), and Save.
  * Splits, transfers, and memos are one click away in the full form.
  */
-export default function QuickTxn({ accounts, onDone }: { accounts: Account[]; onDone: () => void }) {
+export default function QuickTxn({ accounts, primaryId, onDone }: { accounts: Account[]; primaryId?: number | null; onDone: () => void }) {
   const txns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
   const rules = useLiveQuery(() => db.payeeRules.toArray(), []) ?? [];
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
 
-  const [acct, setAcct] = useState(() => (accounts.some((a) => String(a.id) === lastAccount()) ? lastAccount() : String(accounts[0]?.id ?? '')));
+  // Your primary payment account first; without one, the account you used last, then the first one.
+  const [acct, setAcct] = useState(() => {
+    const primary = pickPrimary(accounts, primaryId);
+    if (primary) return String(primary.id);
+    return accounts.some((a) => String(a.id) === lastAccount()) ? lastAccount() : String(accounts[0]?.id ?? '');
+  });
   const [payee, setPayee] = useState('');
   const [amount, setAmount] = useState('');
   const [dir, setDir] = useState<'out' | 'in'>('out');
@@ -80,7 +87,7 @@ export default function QuickTxn({ accounts, onDone }: { accounts: Account[]; on
       </label>
       <div className="row">
         <label className="f" style={{ flex: 1 }}>Amount
-          <input className="bigamt" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" onKeyDown={(e) => e.key === 'Enter' && save(false)} />
+          <AmountInput className="bigamt" value={amount} onChange={setAmount} onEnter={() => save(false)} />
         </label>
         <div className="seg" role="group" aria-label="Direction">
           <button className={dir === 'out' ? 'on' : ''} onClick={() => setDir('out')}>Spent</button>

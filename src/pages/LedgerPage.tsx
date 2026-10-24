@@ -9,6 +9,7 @@ import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn 
 import TxnForm from './TxnForm';
 import CreditLimit from './CreditLimit';
 import RenameAccount from './RenameAccount';
+import { canBePrimary, getPrimaryAccountId, setPrimaryAccountId } from '../lib/primaryAccount';
 
 export default function LedgerPage() {
   const id = Number(useParams().id);
@@ -19,6 +20,7 @@ export default function LedgerPage() {
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const allTxns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
   const candidates = useLiveQuery(() => findTransferCandidates(db), [allTxns.length]) ?? [];
+  const primaryId = useLiveQuery(() => getPrimaryAccountId(db), []);
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Txn | null>(null);
@@ -59,6 +61,23 @@ export default function LedgerPage() {
         <span className="muted">Cleared: {formatCents(isCard ? -(balance - pendingTotal) : balance - pendingTotal)} · Pending: {formatCents(pendingTotal)}</span>
         <span className="muted">Opening {formatCents(isCard ? -account.openingBalanceCents : account.openingBalanceCents)} on {account.openingDate}</span>
       </div>
+
+      {canBePrimary(account) && (
+        <div className="row" style={{ margin: '6px 0' }}>
+          {primaryId === id ? (
+            <>
+              <span className="badge">Primary payment account</span>
+              <span className="muted">Quick add starts here.</span>
+              <button className="link" onClick={() => setPrimaryAccountId(db, null)}>remove</button>
+            </>
+          ) : (
+            <>
+              <button className="link" onClick={() => setPrimaryAccountId(db, id)}>Make this my primary payment account</button>
+              <span className="muted">The account Quick add starts on.</span>
+            </>
+          )}
+        </div>
+      )}
 
       {account.kind === 'credit_card' && <CreditLimit account={account} balance={balance} />}
 

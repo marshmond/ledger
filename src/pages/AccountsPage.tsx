@@ -5,6 +5,7 @@ import { db } from '../db';
 import type { AccountKind } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { creditStatus, parseLimit } from '../lib/credit';
+import { canBePrimary, getPrimaryAccountId } from '../lib/primaryAccount';
 import { BACKUP_STALE_DAYS } from './BackupPage';
 
 const KIND_LABEL: Record<AccountKind, string> = {
@@ -26,6 +27,7 @@ export default function AccountsPage() {
     }));
   });
 
+  const primaryId = useLiveQuery(() => getPrimaryAccountId(db), []);
   const lastBackup = (useLiveQuery(() => db.settings.get('lastBackup'), []) as { value?: string } | undefined)?.value;
   const hasData = (data?.length ?? 0) > 0;
   const backupAge = lastBackup ? Math.floor((Date.now() - Date.parse(lastBackup)) / 86400000) : null;
@@ -84,6 +86,7 @@ export default function AccountsPage() {
                   <tr key={a.id}>
                     <td>
                       <Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}
+                      {primaryId === a.id && canBePrimary(a) && <span className="badge" title="Quick add starts on this account"> primary</span>}
                       {a.kind === 'credit_card' && (() => { const s = creditStatus(balance, a.creditLimitCents); return s ? <div className="muted" style={{ fontSize: '0.85rem' }}>Credit left <span className={s.level === 'over' ? 'neg' : s.level === 'high' ? 'warn' : ''}>{formatCents(s.available)}</span> of {formatCents(s.limit)} ({Math.round(s.usedPct)}% used)</div> : null; })()}
                     </td>
                     <td className={`num ${balance < 0 ? 'neg' : ''}`}>{formatCents(balance)}</td>

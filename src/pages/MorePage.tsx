@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import AppearanceCard from './AppearanceCard';
+import AmountEntryCard from './AmountEntryCard';
 
 /** Settings and housekeeping that do not belong to a daily workflow. */
 export default function MorePage() {
@@ -12,6 +13,8 @@ export default function MorePage() {
       <h1>More</h1>
 
       <AppearanceCard />
+
+      <AmountEntryCard />
 
       <div className="card">
         <div className="row spread"><strong>Backup and restore</strong><Link to="/backup">Open →</Link></div>

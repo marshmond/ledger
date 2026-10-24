@@ -10,7 +10,7 @@ to Twelve Data using your own key.
 
 | Page | Purpose |
 |---|---|
-| **Accounts** | Checking, savings, and credit cards with starting balances; ledger with categories, splits, pending/cleared/reconciled; transfers (a card payment entered from either side creates the matching entry); reconcile to a statement |
+| **Accounts** | Checking, savings, and credit cards with starting balances; ledger with categories, splits, pending/cleared/reconciled; transfers (a card payment entered from either side creates the matching entry); an entry made on the wrong account can be moved to another when editing; a primary payment account that the quick add button starts on; amounts can be typed without a decimal point (1, 2, 4, 5 makes 12.45; switch in More); reconcile to a statement |
 | **Transactions** | Every transaction from every account in one place: filter by account, date range, category, payee/memo, and amount (greater than, less than, between), sort by any column, edit or delete rows, bulk-change category/status, export the filtered list to CSV, and save filters |
 | **Budget** | Envelope ("every dollar has a job") budget: Ready to Assign, rollover, overspending rules, credit-card payment lines, funding for existing card debt |
 | **Income** | Salary, bonuses (entered by month), RSU vests (cash at a set price, or tied to a stock with held/sold choice; enter a grant once with its start date, how often it vests, and its length, and the app works out the vest dates for you to fill in with shares), 401(k) pre-tax/Roth, employer match, HSA/FSA/ESPP and other deductions, with annual caps applied paycheck by paycheck; federal (married filing jointly) and Massachusetts tax vs withholding |

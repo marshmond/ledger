@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import QuickTxn from './QuickTxn';
+import { getPrimaryAccountId } from '../lib/primaryAccount';
 import Modal from './Modal';
 
 /** A floating "+" for the things you do most: add a transaction from anywhere, or jump straight to logging a trade. */
 export default function QuickAdd() {
   const nav = useNavigate();
   const accounts = (useLiveQuery(() => db.accounts.toArray(), []) ?? []).filter((a) => !a.closed && a.kind !== 'loan');
+  const primaryId = useLiveQuery(() => getPrimaryAccountId(db), []);
   const [menu, setMenu] = useState(false);
   const [form, setForm] = useState(false);
 
@@ -32,7 +34,7 @@ export default function QuickAdd() {
       </div>
       {form && (
         <Modal title="Add a transaction" onClose={() => setForm(false)} wide>
-          <QuickTxn key={accounts.length} accounts={accounts} onDone={() => setForm(false)} />
+          <QuickTxn key={`${accounts.length}-${primaryId ?? ''}`} accounts={accounts} primaryId={primaryId} onDone={() => setForm(false)} />
         </Modal>
       )}
     </>
