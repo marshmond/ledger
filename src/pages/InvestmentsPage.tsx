@@ -240,6 +240,7 @@ export default function InvestmentsPage() {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [newClass, setNewClass] = useState('');
+  const [jump, setJump] = useState({ tab: 'prices', n: 0 });
 
   async function refresh() {
     if (!apiKey) return setStatus('Save your API key first.');
@@ -263,6 +264,7 @@ export default function InvestmentsPage() {
       <h1>Investments</h1>
       <PageTabs
         id="investments"
+        jumpTo={jump}
         tabs={[
           {
             id: 'accounts',
@@ -317,7 +319,16 @@ export default function InvestmentsPage() {
         </div>
       </div>
 
-      <h2>Accounts</h2>
+      <div className="row spread">
+        <h2>Accounts</h2>
+        <button className="primary" disabled={busy} onClick={refresh}>Refresh prices</button>
+      </div>
+      {status && (
+        <p className={status.startsWith('Updated') || status.startsWith('Key saved') ? 'ok' : 'muted'}>
+          {status}
+          {!apiKey && status.startsWith('Save your API key') && <> <button className="link" onClick={() => setJump((j) => ({ tab: 'prices', n: j.n + 1 }))}>Go to Prices &amp; assumptions</button></>}
+        </p>
+      )}
       {sum.accounts.length === 0 && <p className="muted">Add your brokerage, IRA, 401(k), and 529 accounts, then their holdings.</p>}
       {KIND_ORDER.flatMap((k) => sum.accounts.filter((s) => s.account.kind === k)).map((s) => (
         <AccountBlock key={s.account.id} s={s} holdings={holdings} securities={securities} classes={classes} people={people} otherNames={sum.accounts.filter((o) => o.account.id !== s.account.id).map((o) => o.account.name)} />

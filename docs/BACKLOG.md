@@ -4,6 +4,18 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-26 (newest): "Refresh prices" button on the Investments > Accounts subtab BUILT ("go")
+
+Verified with 778 automated tests (none new; the change is layout and wiring) and a browser check (desktop and 375px, no sideways scroll). Checked: the button next to the "Accounts" heading, the no-key message, and the link jumping to Prices & assumptions. NOT checked: a real price lookup, because no Twelve Data key was available in the test browser. The button runs the same code as the existing one, so I expect it to behave the same, but I did not see it fetch.
+
+Judgment calls (please review):
+1. **Placement:** right of the "Accounts" heading, above the account list.
+2. **Same action as before:** one shared refresh, same messages, greyed out while running. The message appears under the heading. It is shared with the Prices & assumptions page, so the same status text shows on both.
+3. **No key:** "Save your API key first." plus a "Go to Prices & assumptions" link. That link changes the remembered tab for the Investments page, like clicking the tab yourself.
+4. The old button on Prices & assumptions stays.
+
+Not built: a "prices as of" date next to the button.
+
 ## STATUS 2026-10-24 (newest): move a transaction's account, keystroke-style amounts, primary payment account BUILT ("go")
 
 Verified with 778 automated tests (21 new) and a browser check (desktop and 375px) using invented data: real keystrokes 1, 2, 4, 5 gave 0.01, 0.12, 1.24, 12.45; Backspace; saving with Enter; Quick add starting on the primary account; moving an ordinary, a reconciled, and a transfer transaction; the same-account error; the Settings switch off and on. NOT checked: typing on a real phone keyboard (the entry reads the whole text of the box, not individual keys, to work with phone keyboards, but I could only test with a computer keyboard).

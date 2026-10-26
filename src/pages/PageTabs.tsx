@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 const KEY = 'ledger-tabs';
 
@@ -24,11 +24,15 @@ export interface TabDef {
 }
 
 /** Tabs inside a long page, so it is a few short views instead of one long scroll. Remembers the last tab per page on this device. */
-export default function PageTabs({ id, tabs }: { id: string; tabs: TabDef[] }) {
+export default function PageTabs({ id, tabs, jumpTo }: { id: string; tabs: TabDef[]; jumpTo?: { tab: string; n: number } }) {
   const [cur, setCur] = useState<string>(() => {
     const saved = read(id);
     return tabs.some((t) => t.id === saved) ? (saved as string) : tabs[0].id;
   });
+  // A page can ask for a tab (a link inside it); `n` changes with each request so the same tab can be asked for twice.
+  useEffect(() => {
+    if (jumpTo && jumpTo.n > 0 && tabs.some((t) => t.id === jumpTo.tab)) { setCur(jumpTo.tab); write(id, jumpTo.tab); }
+  }, [jumpTo?.n]); // eslint-disable-line react-hooks/exhaustive-deps
   const active = tabs.find((t) => t.id === cur) ?? tabs[0];
   return (
     <>
