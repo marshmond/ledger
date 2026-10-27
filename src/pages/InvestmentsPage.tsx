@@ -13,6 +13,7 @@ import PageTabs from './PageTabs';
 import RenameAccount from './RenameAccount';
 import { LotsPanel, RealizedSection, TradePanel } from './TradePanels';
 import { addLot, ensureLots, isTaxable, setHoldingBasis } from '../lib/lots';
+import { PageHeader } from '../ui/components';
 
 const KIND_LABEL: Record<InvKind, string> = { brokerage: 'Brokerage', ira: 'IRA', '401k': '401(k)', '529': '529', hsa: 'HSA' };
 const KIND_ORDER: InvKind[] = ['brokerage', 'ira', '401k', 'hsa', '529'];
@@ -261,7 +262,7 @@ export default function InvestmentsPage() {
 
   return (
     <>
-      <h1>Investments</h1>
+      <PageHeader title="Investments" description="Accounts, holdings, trades, and assumptions." />
       <PageTabs
         id="investments"
         jumpTo={jump}

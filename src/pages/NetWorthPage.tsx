@@ -10,6 +10,7 @@ import { changeOver, snapshotOf, sortedSnapshots } from '../lib/snapshots';
 import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
+import { PageHeader } from '../ui/components';
 
 const KIND_LABEL: Record<Property['kind'], string> = { home: 'Home', vehicle: 'Vehicle', other: 'Other property' };
 
@@ -99,7 +100,7 @@ export default function NetWorthPage() {
 
   return (
     <>
-      <h1>Net worth</h1>
+      <PageHeader title="Net worth" description="What you own and owe, now and over time." />
       {nw && (
         <div className="viz">
           <div className="muted">Net worth today</div>

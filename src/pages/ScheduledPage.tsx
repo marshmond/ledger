@@ -4,6 +4,7 @@ import { db } from '../db';
 import type { Frequency, RecurringRule } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { deleteRule, dueInstances, postInstance, skipInstance, type DueInstance } from '../lib/schedule';
+import { PageHeader } from '../ui/components';
 
 const FREQ: Record<Frequency, string> = {
   weekly: 'Weekly',
@@ -146,11 +147,8 @@ export default function ScheduledPage() {
 
   return (
     <>
-      <h1>Scheduled</h1>
-      <p className="muted">
-        Recurring items show up here as they come due (up to {LOOKAHEAD_DAYS} days ahead). Nothing is posted until you approve it, and you
-        can change the date or amount first. Approved items land in the ledger as pending, marked “scheduled”.
-      </p>
+      <PageHeader title="Scheduled" description="Recurring items you approve before they post." about={<>Recurring items show up here as they come due (up to {LOOKAHEAD_DAYS} days ahead). Nothing is posted until you approve it, and you
+        can change the date or amount first. Approved items land in the ledger as pending, marked “scheduled”.</>} />
 
       <h2>Due now</h2>
       {due && due.length === 0 && <p className="muted">Nothing due.</p>}

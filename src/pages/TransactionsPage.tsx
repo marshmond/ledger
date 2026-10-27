@@ -7,11 +7,13 @@ import type { Txn, TxnStatus } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import { deleteTxn } from '../lib/transfers';
 import {
-  DEFAULT_SORT, EMPTY_FILTER, activeFilterCount, applyFilter, buildRows, presetRange, sortRows, toCsv, totals, visibleSelection,
+  DEFAULT_SORT, EMPTY_FILTER, applyFilter, buildRows, presetRange, sortRows, toCsv, totals, visibleSelection,
   type AmountOp, type CatSel, type DatePreset, type Sort, type SortKey, type TxnFilter,
 } from '../lib/txnQuery';
 import { bulkDelete, bulkSetCategory, bulkSetStatus, deleteSavedFilter, listSavedFilters, saveFilter } from '../lib/txnBulk';
-import Collapsible from './Collapsible';
+import { EmptyState, PageHeader, signedCents } from '../ui/components';
+import { useToast } from '../ui/Toast';
+import { openAddTransaction } from '../shell/QuickAdd';
 import { MoneyField } from './fields';
 import TxnForm from './TxnForm';
 
@@ -38,7 +40,8 @@ function download(name: string, text: string) {
 }
 
 export default function TransactionsPage() {
-  const txns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
+  const txnsLoaded = useLiveQuery(() => db.txns.toArray(), []);
+  const txns = txnsLoaded ?? [];
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
@@ -56,8 +59,14 @@ export default function TransactionsPage() {
   const [bulkCat, setBulkCat] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
   const [saveName, setSaveName] = useState('');
-  const [msg, setMsg] = useState('');
-  const narrow = typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
+  const [panel, setPanel] = useState(false);
+  const toast = useToast();
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => document.querySelectorAll('details.pick[open]').forEach((d) => { if (!d.contains(e.target as Node)) d.removeAttribute('open'); });
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
 
   // Arriving from search while already on this page: apply the new text.
   useEffect(() => { if (startText) { setFilterState((f) => ({ ...f, text: startText })); setPage(0); } }, [startText]);
@@ -75,178 +84,211 @@ export default function TransactionsPage() {
   // Only rows inside the current filter can be acted on: a row hidden by a filter change is never touched by a bulk action.
   const selIds = useMemo(() => visibleSelection(sel, filtered), [sel, filtered]);
   const allPageSelected = pageRows.length > 0 && pageRows.every((r) => sel.has(r.txn.id!));
-  const nActive = activeFilterCount(filter);
 
   const toggle = (id: number) => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };
   const toggleList = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const clickSort = (key: SortKey, first: 'asc' | 'desc') => setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: first });
 
-  async function doBulk(kind: 'category' | 'status' | 'delete') {
+  async function doBulk(kind: 'category' | 'delete') {
     if (selIds.length === 0) return;
-    setMsg('');
     if (kind === 'delete') {
       if (!confirm(`Delete ${selIds.length} selected transaction(s)? Deleting one side of a transfer also deletes the other side.`)) return;
       const n = await bulkDelete(db, selIds);
-      setMsg(`Deleted ${n} transaction(s).`);
+      toast(`Deleted ${n} transaction${n === 1 ? '' : 's'}.`);
       setSel(new Set());
     } else if (kind === 'category') {
       const label = bulkCat === 'none' ? 'Uncategorized' : categories.find((c) => String(c.id) === bulkCat)?.name ?? '';
       if (!confirm(`Set the category to "${label}" on ${selIds.length} transaction(s)? Split transactions are replaced by this single category; transfers are skipped.`)) return;
       const r = await bulkSetCategory(db, selIds, bulkCat === 'none' ? null : Number(bulkCat));
-      setMsg(`Updated ${r.updated} transaction(s).${r.skippedTransfers ? ` Skipped ${r.skippedTransfers} transfer(s).` : ''}${r.splitsCleared ? ` Replaced ${r.splitsCleared} split(s).` : ''}`);
+      toast(`Updated ${r.updated} transaction${r.updated === 1 ? '' : 's'}.${r.skippedTransfers ? ` Skipped ${r.skippedTransfers} transfer(s).` : ''}${r.splitsCleared ? ` Replaced ${r.splitsCleared} split(s).` : ''}`);
       setBulkCat('');
-      setSel(new Set());
-    } else {
-      const n = await bulkSetStatus(db, selIds, bulkStatus as TxnStatus);
-      setMsg(`Marked ${n} transaction(s) ${bulkStatus}.`);
-      setBulkStatus('');
       setSel(new Set());
     }
   }
 
   const accountOf = (t: Txn) => accounts.find((a) => a.id === t.accountId);
 
+  // What is filtering the list, as removable chips. The search box shows its own text, so it gets no chip.
+  const chips: { key: string; label: string; clear: () => void }[] = [];
+  if (filter.accountIds.length) chips.push({ key: 'acct', label: filter.accountIds.length === 1 ? accounts.find((a) => a.id === filter.accountIds[0])?.name ?? '1 account' : `${filter.accountIds.length} accounts`, clear: () => patch({ accountIds: [] }) });
+  if (filter.from || filter.to) chips.push({ key: 'date', label: `${filter.from || 'start'} to ${filter.to || 'today'}`, clear: () => { setPreset('all'); patch({ from: '', to: '' }); } });
+  if (filter.categories.length) chips.push({ key: 'cat', label: filter.categories.length === 1 ? 'Category: 1' : `Categories: ${filter.categories.length}`, clear: () => patch({ categories: [] }) });
+  if (filter.amountOp !== 'any') chips.push({ key: 'amt', label: amountLabel(filter), clear: () => patch({ amountOp: 'any', amountA: 0, amountB: 0 }) });
+  if (filter.statuses.length) chips.push({ key: 'status', label: `Status: ${filter.statuses.join(', ')}`, clear: () => patch({ statuses: [] }) });
+  if (filter.hideTransfers) chips.push({ key: 'xfer', label: 'Transfers hidden', clear: () => patch({ hideTransfers: false }) });
+  if (filter.uncategorizedOnly) chips.push({ key: 'uncat', label: 'Uncategorized only', clear: () => patch({ uncategorizedOnly: false }) });
+  if (filter.pendingOnly) chips.push({ key: 'pend', label: 'Pending only', clear: () => patch({ pendingOnly: false }) });
+  const clearAll = () => { setPreset('all'); setFilter(EMPTY_FILTER); };
+
+  const setBulkStatusWithUndo = async () => {
+    const status = bulkStatus as TxnStatus;
+    const ids = selIds;
+    // Remember each row's old status so Undo can put it back exactly.
+    const before = new Map<TxnStatus, number[]>();
+    for (const id of ids) {
+      const t = txns.find((x) => x.id === id);
+      if (t) before.set(t.status, [...(before.get(t.status) ?? []), id]);
+    }
+    const n = await bulkSetStatus(db, ids, status);
+    setBulkStatus('');
+    setSel(new Set());
+    toast(`Marked ${n} transaction${n === 1 ? '' : 's'} ${status}.`, async () => {
+      for (const [old, group] of before) await bulkSetStatus(db, group, old);
+    });
+  };
+
   return (
     <>
-      <div className="row spread">
-        <h1>Transactions</h1>
-        <span className="muted">{txns.length.toLocaleString()} total across {accounts.length} account(s)</span>
-      </div>
+      <PageHeader
+        title="Transactions"
+        description={`Every transaction from every account in one place. ${txns.length.toLocaleString()} across ${accounts.length} account${accounts.length === 1 ? '' : 's'}.`}
+        actions={<button className="primary" onClick={openAddTransaction}>Add transaction</button>}
+      />
 
-      <Collapsible
-        id="tx.filters"
-        title={<>Filters {nActive > 0 && <span className="badge">{nActive} active</span>}</>}
-        defaultOpen={!narrow}
-        right={nActive > 0 ? <button className="link" onClick={() => { setPreset('all'); setFilter(EMPTY_FILTER); }}>clear all filters</button> : undefined}
-      >
-        <div className="grid">
-          <details className="pick">
-            <summary>Accounts: {filter.accountIds.length ? `${filter.accountIds.length} selected` : 'all'}</summary>
+      <div className="toolbar">
+        <label className="grow">
+          <span className="sr-only">Search payee or memo</span>
+          <input type="search" value={filter.text} onChange={(e) => patch({ text: e.target.value })} placeholder="Search payee or memo" />
+        </label>
+        <label>
+          <span className="sr-only">Date</span>
+          <select value={preset} onChange={(e) => { const p = e.target.value as DatePreset | 'custom'; setPreset(p); if (p === 'custom') setPanel(true); else patch(presetRange(p, todayISO())); }}>
+            {PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </label>
+        <details className="pick">
+          <summary>{filter.accountIds.length ? `Accounts (${filter.accountIds.length})` : 'All accounts'}</summary>
+          <div className="pick-pop">
             {accounts.map((a) => (
               <label className="chk" key={a.id}><input type="checkbox" checked={filter.accountIds.includes(a.id!)} onChange={() => patch({ accountIds: toggleList(filter.accountIds, a.id!) })} />{a.name}</label>
             ))}
-          </details>
+            {accounts.length === 0 && <div className="muted" style={{ padding: 8 }}>No accounts yet.</div>}
+          </div>
+        </details>
+        <button className="filter-btn" aria-expanded={panel} aria-controls="txn-filter-panel" onClick={() => setPanel(!panel)}>
+          Filters {chips.length > 0 && <span className="count">{chips.length}</span>}
+        </button>
+        <label className="sort-sm">
+          <span className="sr-only">Sort by</span>
+          <select value={`${sort.key}:${sort.dir}`} onChange={(e) => { const [key, dir] = e.target.value.split(':'); setSort({ key: key as SortKey, dir: dir as 'asc' | 'desc' }); }}>
+            {COLS.flatMap((c) => [
+              <option key={`${c.key}:asc`} value={`${c.key}:asc`}>Sort: {c.label} ↑</option>,
+              <option key={`${c.key}:desc`} value={`${c.key}:desc`}>Sort: {c.label} ↓</option>,
+            ])}
+          </select>
+        </label>
+      </div>
 
-          <details className="pick">
-            <summary>Categories: {filter.categories.length ? `${filter.categories.length} selected` : 'all'}</summary>
-            <label className="chk"><input type="checkbox" checked={filter.categories.includes('uncategorized')} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, 'uncategorized') })} />Uncategorized</label>
-            <label className="chk"><input type="checkbox" checked={filter.categories.includes('transfer')} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, 'transfer') })} />Transfers</label>
-            {groups.map((g) => (
-              <div key={g.id}>
-                <div className="muted" style={{ marginTop: 4 }}>{g.name}</div>
-                {categories.filter((c) => c.groupId === g.id).map((c) => (
-                  <label className="chk" key={c.id}><input type="checkbox" checked={filter.categories.includes(c.id!)} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, c.id!) })} />{c.name}</label>
+      {panel && (
+        <div className="filter-panel" id="txn-filter-panel">
+          <div className="grid">
+            <details className="pick">
+              <summary>{filter.categories.length ? `Categories (${filter.categories.length})` : 'All categories'}</summary>
+              <div className="pick-pop">
+                <label className="chk"><input type="checkbox" checked={filter.categories.includes('uncategorized')} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, 'uncategorized') })} />Uncategorized</label>
+                <label className="chk"><input type="checkbox" checked={filter.categories.includes('transfer')} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, 'transfer') })} />Transfers</label>
+                {groups.map((g) => (
+                  <div key={g.id}>
+                    <div className="grp">{g.name}</div>
+                    {categories.filter((c) => c.groupId === g.id).map((c) => (
+                      <label className="chk" key={c.id}><input type="checkbox" checked={filter.categories.includes(c.id!)} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, c.id!) })} />{c.name}</label>
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
-          </details>
+            </details>
+            <label className="f">From<input type="date" value={filter.from} onChange={(e) => { setPreset('custom'); patch({ from: e.target.value }); }} /></label>
+            <label className="f">To<input type="date" value={filter.to} onChange={(e) => { setPreset('custom'); patch({ to: e.target.value }); }} /></label>
+            <label className="f">Amount
+              <select value={filter.amountOp} onChange={(e) => patch({ amountOp: e.target.value as AmountOp })}>
+                <option value="any">Any amount</option>
+                <option value="gt">Greater than</option>
+                <option value="lt">Less than</option>
+                <option value="eq">Exactly</option>
+                <option value="between">Between</option>
+              </select>
+            </label>
+            {filter.amountOp !== 'any' && (
+              <>
+                <MoneyField key={`a-${filter.amountOp}`} label={filter.amountOp === 'between' ? 'From amount' : 'Amount'} cents={filter.amountA} onChange={(c) => patch({ amountA: c })} />
+                {filter.amountOp === 'between' && <MoneyField key="b" label="To amount" cents={filter.amountB} onChange={(c) => patch({ amountB: c })} />}
+                <label className="f">Compare by
+                  <select value={filter.amountMode} onChange={(e) => patch({ amountMode: e.target.value as 'absolute' | 'signed' })}>
+                    <option value="absolute">Size (ignore in/out)</option>
+                    <option value="signed">In (+) and out (−) as entered</option>
+                  </select>
+                </label>
+              </>
+            )}
+          </div>
 
-          <label className="f">Payee or memo contains
-            <input value={filter.text} onChange={(e) => patch({ text: e.target.value })} placeholder="e.g. costco" />
-          </label>
+          <div>
+            <h3>Show only</h3>
+            <div className="row">
+              {STATUSES.map((s) => (
+                <label className="chk" key={s}><input type="checkbox" checked={filter.statuses.includes(s)} onChange={() => patch({ statuses: toggleList(filter.statuses, s) })} />{s}</label>
+              ))}
+              <label className="chk"><input type="checkbox" checked={filter.uncategorizedOnly} onChange={(e) => patch({ uncategorizedOnly: e.target.checked })} />Uncategorized only</label>
+              <label className="chk"><input type="checkbox" checked={filter.pendingOnly} onChange={(e) => patch({ pendingOnly: e.target.checked })} />Pending only</label>
+              <label className="chk"><input type="checkbox" checked={filter.hideTransfers} onChange={(e) => patch({ hideTransfers: e.target.checked })} />Hide transfers</label>
+            </div>
+          </div>
 
-          <label className="f">Date
-            <select value={preset} onChange={(e) => { const p = e.target.value as DatePreset | 'custom'; setPreset(p); if (p !== 'custom') patch(presetRange(p, todayISO())); }}>
-              {PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </label>
-          <label className="f">From<input type="date" value={filter.from} onChange={(e) => { setPreset('custom'); patch({ from: e.target.value }); }} /></label>
-          <label className="f">To<input type="date" value={filter.to} onChange={(e) => { setPreset('custom'); patch({ to: e.target.value }); }} /></label>
-
-          <label className="f">Amount
-            <select value={filter.amountOp} onChange={(e) => patch({ amountOp: e.target.value as AmountOp })}>
-              <option value="any">Any amount</option>
-              <option value="gt">Greater than</option>
-              <option value="lt">Less than</option>
-              <option value="eq">Exactly</option>
-              <option value="between">Between</option>
-            </select>
-          </label>
-          {filter.amountOp !== 'any' && (
-            <>
-              <MoneyField key={`a-${filter.amountOp}`} label={filter.amountOp === 'between' ? 'From amount' : 'Amount'} cents={filter.amountA} onChange={(c) => patch({ amountA: c })} />
-              {filter.amountOp === 'between' && <MoneyField key="b" label="To amount" cents={filter.amountB} onChange={(c) => patch({ amountB: c })} />}
-              <label className="f">Compare by
-                <select value={filter.amountMode} onChange={(e) => patch({ amountMode: e.target.value as 'absolute' | 'signed' })}>
-                  <option value="absolute">Size (ignore in/out)</option>
-                  <option value="signed">In (+) and out (−) as entered</option>
+          <div>
+            <h3>Saved filters</h3>
+            <div className="row">
+              <select
+                aria-label="Apply a saved filter"
+                value=""
+                onChange={(e) => {
+                  const f = saved.find((x) => x.id === e.target.value);
+                  if (!f) return;
+                  setPreset('custom');
+                  setFilter(f.filter);
+                  setSortState(f.sort);
+                }}
+              >
+                <option value="">{saved.length ? 'Apply a saved filter…' : 'None saved yet'}</option>
+                {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+              <input aria-label="Name for this filter" placeholder="Name this filter" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
+              <button
+                disabled={!saveName.trim()}
+                onClick={async () => { await saveFilter(db, saveName, filter, sort); toast(`Saved filter “${saveName.trim()}”.`); setSaveName(''); }}
+              >Save current filter</button>
+              {saved.length > 0 && (
+                <select aria-label="Delete a saved filter" value="" onChange={async (e) => { const f = saved.find((x) => x.id === e.target.value); if (f && confirm(`Delete saved filter "${f.name}"?`)) await deleteSavedFilter(db, f.id); }}>
+                  <option value="">Delete a saved filter…</option>
+                  {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
-              </label>
-            </>
-          )}
+              )}
+            </div>
+          </div>
         </div>
+      )}
 
-        <div className="row" style={{ marginTop: 8 }}>
-          <span className="muted">Status:</span>
-          {STATUSES.map((s) => (
-            <label className="chk" key={s}><input type="checkbox" checked={filter.statuses.includes(s)} onChange={() => patch({ statuses: toggleList(filter.statuses, s) })} />{s}</label>
+      {chips.length > 0 && (
+        <div className="chips" aria-label="Active filters">
+          {chips.map((c) => (
+            <span className="chip" key={c.key}>{c.label}<button aria-label={`Remove filter: ${c.label}`} onClick={c.clear}>×</button></span>
           ))}
-          <span className="muted" style={{ marginLeft: 8 }}>Quick:</span>
-          <label className="chk"><input type="checkbox" checked={filter.uncategorizedOnly} onChange={(e) => patch({ uncategorizedOnly: e.target.checked })} />Uncategorized only</label>
-          <label className="chk"><input type="checkbox" checked={filter.pendingOnly} onChange={(e) => patch({ pendingOnly: e.target.checked })} />Pending only</label>
-          <label className="chk"><input type="checkbox" checked={filter.hideTransfers} onChange={(e) => patch({ hideTransfers: e.target.checked })} />Hide transfers</label>
+          <button className="link" onClick={clearAll}>Clear all</button>
         </div>
-
-        <div className="row" style={{ marginTop: 8 }}>
-          <label className="row">Saved filters
-            <select
-              value=""
-              onChange={(e) => {
-                const f = saved.find((x) => x.id === e.target.value);
-                if (!f) return;
-                setPreset('custom');
-                setFilter(f.filter);
-                setSortState(f.sort);
-              }}
-            >
-              <option value="">{saved.length ? 'Choose…' : 'none saved yet'}</option>
-              {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          </label>
-          <input placeholder="Name this filter" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
-          <button
-            disabled={!saveName.trim()}
-            onClick={async () => { await saveFilter(db, saveName, filter, sort); setMsg(`Saved filter "${saveName.trim()}".`); setSaveName(''); }}
-          >Save current filter</button>
-          {saved.length > 0 && (
-            <select value="" onChange={async (e) => { const f = saved.find((x) => x.id === e.target.value); if (f && confirm(`Delete saved filter "${f.name}"?`)) await deleteSavedFilter(db, f.id); }}>
-              <option value="">Delete a saved filter…</option>
-              {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          )}
-        </div>
-      </Collapsible>
+      )}
 
       <div className="tiles">
         <div className="tile"><div className="muted">Showing</div><div className="v">{tot.count.toLocaleString()}</div></div>
         <div className="tile"><div className="muted">Money out</div><div className="v neg">{formatCents(tot.outCents)}</div></div>
-        <div className="tile"><div className="muted">Money in</div><div className="v pos">{formatCents(tot.inCents)}</div></div>
-        <div className="tile"><div className="muted">Net</div><div className={`v ${tot.netCents < 0 ? 'neg' : 'pos'}`}>{formatCents(tot.netCents)}</div></div>
+        <div className="tile"><div className="muted">Money in</div><div className="v pos">{signedCents(tot.inCents)}</div></div>
+        <div className="tile"><div className="muted">Net</div><div className={`v ${tot.netCents < 0 ? 'neg' : 'pos'}`}>{signedCents(tot.netCents)}</div></div>
       </div>
       {tot.transfers > 0 && <p className="muted">Totals include {tot.transfers} transfer row(s), which move money between your own accounts. Use “Hide transfers” to leave them out.</p>}
-
-      <div className="row spread">
-        <div className="row">
-          <button disabled={sorted.length === 0} onClick={() => download(`transactions-${todayISO()}.csv`, toCsv(sorted, categories))}>Export {sorted.length.toLocaleString()} to CSV</button>
-          <label className="row">Per page
-            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}>
-              {[50, 100, 250, 500].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-        </div>
-        <div className="row">
-          <button disabled={cur === 0} onClick={() => setPage(cur - 1)}>‹ Prev</button>
-          <span className="muted">Page {cur + 1} of {pages}</span>
-          <button disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next ›</button>
-        </div>
-      </div>
-      {msg && <p className="ok">{msg}</p>}
 
       {selIds.length > 0 && (
         <div className="card bulk">
           <div className="row">
             <strong>{selIds.length} selected</strong>
-            <select value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
+            <select aria-label="Set category" value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
               <option value="">Set category…</option>
               <option value="none">Uncategorized</option>
               {groups.map((g) => (
@@ -256,13 +298,13 @@ export default function TransactionsPage() {
               ))}
             </select>
             <button disabled={!bulkCat} onClick={() => doBulk('category')}>Apply category</button>
-            <select value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
+            <select aria-label="Set status" value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
               <option value="">Set status…</option>
               {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <button disabled={!bulkStatus} onClick={() => doBulk('status')}>Apply status</button>
+            <button disabled={!bulkStatus} onClick={setBulkStatusWithUndo}>Apply status</button>
             <button className="danger" onClick={() => doBulk('delete')}>Delete selected</button>
-            <button className="link" onClick={() => setSel(new Set())}>clear selection</button>
+            <button className="link" onClick={() => setSel(new Set())}>Clear selection</button>
           </div>
         </div>
       )}
@@ -277,11 +319,11 @@ export default function TransactionsPage() {
         />
       )}
 
-      <div style={{ overflowX: 'auto' }}>
-        <table>
+      <div className="txn-wrap">
+        <table className="txn-table">
           <thead>
             <tr>
-              <th style={{ width: 28 }}>
+              <th className="c-sel">
                 <input
                   type="checkbox"
                   aria-label="Select all on this page"
@@ -290,53 +332,89 @@ export default function TransactionsPage() {
                 />
               </th>
               {COLS.map((c) => (
-                <th key={c.key} className={c.cls} aria-sort={sort.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <th key={c.key} className={`c-${c.key === 'account' ? 'acct' : c.key === 'category' ? 'cat' : c.key === 'amount' ? 'amt' : c.key} ${c.cls ?? ''}`} aria-sort={sort.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
                   <button className="collapse-btn" onClick={() => clickSort(c.key, c.first)} title={`Sort by ${c.label.toLowerCase()}`}>
                     {c.label} <span aria-hidden="true">{sort.key === c.key ? (sort.dir === 'asc' ? '▲' : '▼') : ''}</span>
                   </button>
                 </th>
               ))}
-              <th className="hide-sm">Status</th>
-              <th></th>
+              <th className="c-status">Status</th>
+              <th className="c-act"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             {pageRows.map(({ txn: t, accountName, categoryLabel }) => (
               <tr key={t.id} className={sel.has(t.id!) ? 'selected' : ''}>
-                <td><input type="checkbox" aria-label={`Select ${t.payee || 'transaction'}`} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></td>
-                <td>{t.date}</td>
-                <td className="hide-sm">{accountName}</td>
-                <td>
+                <td className="c-sel"><input type="checkbox" aria-label={`Select ${t.payee || 'transaction'}`} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></td>
+                <td className="c-date">{t.date}</td>
+                <td className="c-acct">{accountName}</td>
+                <td className="c-payee">
                   {t.payee || <span className="muted">(no payee)</span>}
-                  {t.memo && <div className="muted">{t.memo}</div>}
-                  <div className="muted show-sm">{accountName} · {categoryLabel}</div>
+                  {t.memo && <span className="sub">{t.memo}</span>}
+                  <span className="sub show-sm">{t.date} · {accountName} · {categoryLabel}{t.status !== 'cleared' ? ` · ${t.status}` : ''}</span>
                 </td>
-                <td className="hide-sm">{categoryLabel === 'Uncategorized' ? <span className="muted">{categoryLabel}</span> : categoryLabel}</td>
-                <td className={`num ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amountCents)}</td>
-                <td className="hide-sm"><span className={`badge ${t.status}`}>{t.status}</span></td>
-                <td>
-                  <div className="row">
-                    <button className="link" onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>edit</button>
-                    <button
-                      className="link danger"
-                      onClick={() => confirm(t.transferTxnId ? 'Delete this transfer? The matching entry on the other account is deleted too.' : 'Delete this transaction?') && deleteTxn(db, t.id!)}
-                    >delete</button>
-                  </div>
+                <td className="c-cat">{categoryLabel === 'Uncategorized' ? <span className="muted">{categoryLabel}</span> : categoryLabel}</td>
+                <td className={`num c-amt ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{signedCents(t.amountCents)}</td>
+                <td className="c-status"><span className={`badge ${t.status}`}>{t.status}</span></td>
+                <td className="c-act">
+                  <button className="link" onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
+                  <button
+                    className="link danger"
+                    onClick={() => confirm(t.transferTxnId ? 'Delete this transfer? The matching entry on the other account is deleted too.' : 'Delete this transaction?') && deleteTxn(db, t.id!)}
+                  >Delete</button>
                 </td>
               </tr>
             ))}
-            {pageRows.length === 0 && (
-              <tr><td colSpan={8} className="muted">{txns.length === 0 ? <>No transactions yet. Add some from an account on the <Link to="/accounts">Accounts</Link> tab, or use Import.</> : 'No transactions match these filters.'}</td></tr>
+            {txnsLoaded === undefined && [0, 1, 2, 3, 4].map((i) => (
+              <tr key={`sk${i}`} aria-hidden="true"><td colSpan={8}><div className="skeleton" /></td></tr>
+            ))}
+            {txnsLoaded !== undefined && pageRows.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ padding: 0 }}>
+                  {txns.length === 0 ? (
+                    <EmptyState title="No transactions yet" action={<div className="row"><button className="primary" onClick={openAddTransaction}>Add a transaction</button><Link className="btn" to="/import">Import a bank file</Link></div>}>Add one by hand, or import a CSV from your bank.</EmptyState>
+                  ) : (
+                    <EmptyState title="Nothing matches these filters" action={<button onClick={clearAll}>Clear all filters</button>}>Try a wider date range or fewer filters.</EmptyState>
+                  )}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <div className="page-foot">
+        <div className="row">
+          <button disabled={sorted.length === 0} onClick={() => download(`transactions-${todayISO()}.csv`, toCsv(sorted, categories))}>Export {sorted.length.toLocaleString()} to CSV</button>
+          <label className="row">Per page
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}>
+              {[50, 100, 250, 500].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="row">
+          <button disabled={cur === 0} onClick={() => setPage(cur - 1)}>‹ Prev</button>
+          <span>Page {cur + 1} of {pages}</span>
+          <button disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next ›</button>
+        </div>
+      </div>
       {sorted.length > pageRows.length && (
         <p className="muted">
           Showing {pageRows.length} of {sorted.length.toLocaleString()} matching.{' '}
-          <button className="link" onClick={() => setSel(new Set(sorted.map((r) => r.txn.id!)))}>select all {sorted.length.toLocaleString()} matching</button>
+          <button className="link" onClick={() => setSel(new Set(sorted.map((r) => r.txn.id!)))}>Select all {sorted.length.toLocaleString()} matching</button>
         </p>
       )}
     </>
   );
+}
+
+function amountLabel(f: TxnFilter): string {
+  const a = formatCents(f.amountA);
+  switch (f.amountOp) {
+    case 'gt': return `Amount over ${a}`;
+    case 'lt': return `Amount under ${a}`;
+    case 'eq': return `Amount = ${a}`;
+    case 'between': return `Amount ${a} to ${formatCents(f.amountB)}`;
+    default: return '';
+  }
 }

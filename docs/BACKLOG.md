@@ -4,7 +4,34 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-26 (newest): "Refresh prices" button on the Investments > Accounts subtab BUILT ("go")
+## QUEUED 2026-10-26: reconciled / not reconciled badges on the Accounts list (decisions made, waiting for "go")
+
+Ask: on the main Accounts page (Money > Accounts), mark each account as reconciled or not.
+
+Decisions:
+1. Meaning: green "reconciled" when no transaction dated today or earlier is still pending or cleared (all are locked as reconciled, or there are none). Amber "N to reconcile" otherwise. Uses existing statuses; no database change, no sync/backup work.
+2. Look: a coloured badge with words beside the account name, like the existing "primary" and "closed" badges. No row tint.
+3. Scope: checking, savings, and credit cards that are open. Loans and closed accounts get no badge.
+4. To settle while building: whether transactions before an account's "as of" date count (the app treats them as already in the starting balance, so expected: they do not), and how future-dated transactions are handled (expected: ignored until their date).
+
+## STATUS 2026-10-26 (newest): visual redesign across the whole app BUILT, awaiting your review (not committed)
+
+Ask: a calmer, less clunky look and better navigation, from a design brief. Verified with 778 automated tests (none new; presentation only), a type check and a production build, plus a browser check with invented data at desktop and 375px, light and dark, of Home, Transactions, Budget, Accounts, an account ledger, Income, Reports, Forecast, Investments, More, and a no-sideways-scroll check of all 32 pages at 375px. NOT checked: every page's every state, a real phone keyboard or touch, 768px width.
+
+Judgment calls (please review):
+1. **One design system** (`src/ui/tokens.css`, `src/ui/components.tsx`, `src/ui/Toast.tsx`, plus `src/styles.css`): six type sizes, 4px spacing, two corner sizes, three shadows, one control height (40px, 44px on phones). Your palettes and saved themes still drive the colors.
+2. **Contrast:** Classic's blue, amber and dark-mode button text were slightly darkened to pass AA. Other palettes are unchanged.
+3. **Every page has the same header** (title, one-line description, main action on the right). Pages that had a long explanation keep it under a collapsed "About this page". Only Accounts, Transactions and Budget-style pages got a real primary action; the rest have none or their old year/print controls.
+4. **Sidebar** stays collapsible (your choice) but opens the group of the page you are on. Headings are larger and fully readable.
+5. **Add** is a top-bar button on desktop and a round button on phones, kept clear of content. Ctrl K also runs actions.
+6. **Home** is a dashboard: net worth with trend line, needs attention, then cards. "Quick links" removed. The first-run list is a dismissible card. The low-cash alert now needs a checking or savings account.
+7. **Transactions and account ledgers:** two-line rows on phones, sticky headers, filters behind a Filters button with removable chips. Filters open as a panel, not a pop-up. Bulk status change has Undo; deletes still ask first.
+8. **Budget:** every group's table shares column widths and a sticky header.
+9. Fields and buttons are taller everywhere; content is up to 1120px wide.
+
+Not built: Undo for deletes and bulk category changes; shared column widths on other tables (Debt, Investments holdings); a loading skeleton on pages other than Transactions; a rework of each page's internal layout (forms keep their old order).
+
+## STATUS 2026-10-26: "Refresh prices" button on the Investments > Accounts subtab BUILT ("go")
 
 Verified with 778 automated tests (none new; the change is layout and wiring) and a browser check (desktop and 375px, no sideways scroll). Checked: the button next to the "Accounts" heading, the no-key message, and the link jumping to Prices & assumptions. NOT checked: a real price lookup, because no Twelve Data key was available in the test browser. The button runs the same code as the existing one, so I expect it to behave the same, but I did not see it fetch.
 

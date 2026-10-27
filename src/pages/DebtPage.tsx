@@ -10,6 +10,7 @@ import { computeNetWorth } from '../lib/netWorth';
 import { propertyTotal } from '../lib/property';
 import Collapsible from './Collapsible';
 import LoanCard, { KIND_NAMES } from './LoanCard';
+import { PageHeader } from '../ui/components';
 
 function defaultLoan(name: string, kind: LoanKind, scenario: boolean): Loan {
   const today = todayISO();
@@ -86,11 +87,8 @@ export default function DebtPage() {
 
   return (
     <>
-      <h1>Debt</h1>
-      <p className="muted">
-        Track your mortgage and HELOC, see the full amortization schedule, and model extra payments and rate changes. Tie a loan to your ledger and
-        its payments split into principal and interest automatically.
-      </p>
+      <PageHeader title="Debt" description="Mortgage, HELOC, and other loans, with schedules and what-ifs." about={<>Track your mortgage and HELOC, see the full amortization schedule, and model extra payments and rate changes. Tie a loan to your ledger and
+        its payments split into principal and interest automatically.</>} />
 
       {actual.length > 0 && (
         <div className="viz">

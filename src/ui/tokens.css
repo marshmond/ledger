@@ -1,0 +1,63 @@
+/*
+ * Design tokens: the one place for sizes, spacing, corners, shadows and derived colors.
+ * Base colors (--bg, --card, --fg, --muted, --line, --accent, --pos, --neg, --warn, --side-*) come from the chosen palette
+ * (styles.css for Classic, src/palette.ts for the others). Everything below is derived from them, so every palette,
+ * and every saved theme, keeps working with the new look.
+ */
+:root {
+  /* Type scale: six sizes. */
+  --fs-xs: 0.75rem;    /* 12: badges, table headings */
+  --fs-sm: 0.8125rem;  /* 13: labels, hints, secondary lines */
+  --fs-base: 0.9375rem; /* 15: body */
+  --fs-lg: 1.125rem;   /* 18: card titles */
+  --fs-xl: 1.5rem;     /* 24: page titles */
+  --fs-hero: 2.5rem;   /* 40: the one big number */
+
+  /* Spacing: 4px steps. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Two corner sizes (plus full pills for badges and chips). */
+  --r-sm: 8px;
+  --r-lg: 14px;
+
+  /* Three levels of lift: cards, menus, dialogs. */
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-2: 0 6px 18px rgba(16, 24, 40, 0.14);
+  --shadow-3: 0 16px 40px rgba(16, 24, 40, 0.28);
+
+  --control-h: 40px;
+  --topbar-h: 56px;
+
+  /* Derived colors. */
+  --line-strong: color-mix(in srgb, var(--fg) 24%, var(--bg));
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --accent-line: color-mix(in srgb, var(--accent) 40%, var(--bg));
+  --pos-soft: color-mix(in srgb, var(--pos) 13%, var(--bg));
+  --neg-soft: color-mix(in srgb, var(--neg) 13%, var(--bg));
+  --warn-soft: color-mix(in srgb, var(--warn) 14%, var(--bg));
+  --hover: color-mix(in srgb, var(--fg) 6%, transparent);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Bigger touch targets on phones and touch screens. */
+@media (max-width: 640px), (pointer: coarse) {
+  :root { --control-h: 44px; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
+    --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.65);
+  }
+}
+:root[data-theme="dark"] {
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.65);
+}

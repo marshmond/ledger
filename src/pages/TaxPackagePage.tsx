@@ -8,6 +8,7 @@ import { netForTax, realizedFor } from '../lib/lots';
 import { loanView } from '../lib/loanSchedule';
 import { downloadText } from '../lib/download';
 import { buildTaxPackage, displayCell, sectionCsv } from '../lib/taxPackage';
+import { PageHeader } from '../ui/components';
 
 /** A worksheet for your tax preparer: pay, RSUs, sales by lot, HSA, mortgage interest, and the app's estimate. Print it or download CSVs. */
 export default function TaxPackagePage() {
@@ -42,14 +43,8 @@ export default function TaxPackagePage() {
 
   return (
     <>
-      <div className="row spread no-print">
-        <h1>Tax package</h1>
-        <label className="row">Tax year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
-      </div>
-      <p className="muted no-print">
-        Everything your preparer usually asks for, gathered from what you have entered. Official figures come from your W-2, 1099-B, 1099-SA, and 1098, so use this to check
-        them. Print it (choose “Save as PDF” in the print window) or download any table as a spreadsheet file.
-      </p>
+      <PageHeader className="no-print" title="Tax package" description="A worksheet for your tax preparer." about={<>Everything your preparer usually asks for, gathered from what you have entered. Official figures come from your W-2, 1099-B, 1099-SA, and 1098, so use this to check
+        them. Print it (choose “Save as PDF” in the print window) or download any table as a spreadsheet file.</>} actions={<><label className="row">Tax year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label></>} />
       <div className="row no-print">
         <button className="primary" onClick={() => window.print()}>Print or save as PDF</button>
         <button

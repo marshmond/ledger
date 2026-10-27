@@ -9,6 +9,7 @@ import { blankScenario, headline, paycheckLines, runActual, runScenario, scenari
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import ProfileEditor from './ProfileEditor';
+import { PageHeader } from '../ui/components';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const monthName = (m: number) => monthLabel(`2026-${String(m).padStart(2, '0')}`).split(' ')[0];
@@ -104,11 +105,8 @@ export default function PaycheckPage() {
 
   return (
     <>
-      <h1>Paycheck calculator</h1>
-      <p className="muted">
-        Try a new salary, a raise, or different deductions and see the paycheck and the year. Start from a copy of your setup on the <Link to="/income">Income</Link> tab, or
-        start blank and enter everything by hand. Nothing here changes your real setup.
-      </p>
+      <PageHeader title="Paycheck calculator" description="Try a raise or new deductions without touching your real setup." about={<>Try a new salary, a raise, or different deductions and see the paycheck and the year. Start from a copy of your setup on the <Link to="/income">Income</Link> tab, or
+        start blank and enter everything by hand. Nothing here changes your real setup.</>} />
 
       <Collapsible id="paycheck.new" title="Start a scenario">
         <div className="grid">

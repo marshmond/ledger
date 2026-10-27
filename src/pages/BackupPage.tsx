@@ -6,6 +6,7 @@ import { storageStatus, type StorageStatus } from '../pwa';
 import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
 import { Link } from 'react-router-dom';
+import { PageHeader } from '../ui/components';
 
 /** Backups older than this trigger a reminder on the Accounts page. */
 export const BACKUP_STALE_DAYS = 30;
@@ -74,7 +75,7 @@ export default function BackupPage() {
 
   return (
     <>
-      <h1>Backup</h1>
+      <PageHeader title="Backup" description="Keep a safe copy: your data lives only in this browser." />
       <div className="card">
         <p>
           Your data lives only in this browser on this device. Clearing site data, uninstalling the browser, or switching browsers erases it, so

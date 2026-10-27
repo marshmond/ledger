@@ -11,6 +11,7 @@ import { loanView } from '../lib/loanSchedule';
 import { spendingMatrix } from '../lib/reports';
 import { buildReview } from '../lib/review';
 import { LinesChart } from './charts';
+import { PageHeader } from '../ui/components';
 
 const pct = (f: number | null) => (f === null ? '—' : `${(f * 100).toFixed(1)}%`);
 
@@ -59,13 +60,10 @@ export default function ReviewPage() {
 
   return (
     <>
-      <div className="row spread no-print">
-        <h1>Year in review</h1>
-        <div className="row">
+      <PageHeader className="no-print" title="Year in review" description="A printable look back at the year." actions={<><div className="row">
           <label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
           <button className="primary" onClick={() => window.print()}>Print or save as PDF</button>
-        </div>
-      </div>
+        </div></>} />
       <h1 className="print-only">{year} in review</h1>
       <p className="muted no-print">A look back at {year}, from your accounts, your Income setup, your sales, and your net worth history. Income and spending are from the transactions in your accounts, so they are only as complete as what you entered.</p>
 

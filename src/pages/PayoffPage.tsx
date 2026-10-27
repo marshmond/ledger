@@ -9,6 +9,7 @@ import { comparePayoff, extraVsInvest, refinance, type Debt, type PayoffStrategy
 import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
+import { PageHeader } from '../ui/components';
 
 interface PayoffSettings {
   cardTerms: Record<string, { aprPct: number; minPaymentCents: number }>;
@@ -97,11 +98,8 @@ export default function PayoffPage() {
 
   return (
     <>
-      <h1>Debt payoff planner</h1>
-      <p className="muted">
-        Compare ways of paying down your debts, see whether a refinance would pay for itself, and weigh extra payments on a loan against investing the money. Mortgage and HELOC
-        schedules are on the <Link to="/debt">Debt</Link> page.
-      </p>
+      <PageHeader title="Debt payoff planner" description="Compare ways to pay down debt, refinance, or invest instead." about={<>Compare ways of paying down your debts, see whether a refinance would pay for itself, and weigh extra payments on a loan against investing the money. Mortgage and HELOC
+        schedules are on the <Link to="/debt">Debt</Link> page.</>} />
 
       <Collapsible id="payoff.debts" title="Your debts">
         {all.length === 0 && <p className="muted">No debts found. Credit cards with a balance, loans on the Debt page, and anything you add below appear here.</p>}

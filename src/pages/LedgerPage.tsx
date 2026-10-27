@@ -10,6 +10,7 @@ import TxnForm from './TxnForm';
 import CreditLimit from './CreditLimit';
 import RenameAccount from './RenameAccount';
 import { canBePrimary, getPrimaryAccountId, setPrimaryAccountId } from '../lib/primaryAccount';
+import { EmptyState, signedCents } from '../ui/components';
 
 export default function LedgerPage() {
   const id = Number(useParams().id);
@@ -112,10 +113,10 @@ export default function LedgerPage() {
       )}
 
       <h2>Transactions</h2>
-      <table>
+      <div className="txn-wrap"><table className="txn-table no-sel">
         <thead>
           <tr>
-            <th>Date</th><th>Payee</th><th className="hide-sm">Category</th><th className="num">Amount</th><th className="num hide-sm">Balance</th><th></th>
+            <th className="c-date">Date</th><th className="c-payee">Payee</th><th className="c-cat">Category</th><th className="num c-amt">Amount</th><th className="num c-cat">Balance</th><th className="c-act"><span className="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
@@ -123,14 +124,15 @@ export default function LedgerPage() {
             const other = t.transferTxnId ? allTxns.find((x) => x.id === t.transferTxnId) : undefined;
             return (
               <tr key={t.id}>
-                <td>{t.date}</td>
-                <td>
+                <td className="c-date">{t.date}</td>
+                <td className="c-payee">
                   {t.payee || <span className="muted">(no payee)</span>}{' '}
                   <span className={`badge ${t.status}`}>{t.status}</span>
                   {t.recurringId && t.status === 'pending' && <span className="badge scheduled"> scheduled</span>}
-                  <div className="muted">{t.memo}</div>
+                  {t.memo && <span className="sub">{t.memo}</span>}
+                  <span className="sub show-sm">{t.date}</span>
                 </td>
-                <td className="hide-sm">
+                <td className="c-cat">
                   {other ? (
                     <span>↔ {acctName(other.accountId)}</span>
                   ) : t.splits?.length ? (
@@ -139,28 +141,28 @@ export default function LedgerPage() {
                     <span className={t.categoryId ? '' : 'muted'}>{catName(t.categoryId)}</span>
                   )}
                 </td>
-                <td className={`num ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{formatCents(t.amountCents)}</td>
-                <td className="num hide-sm">{formatCents(run)}</td>
-                <td>
-                  <div className="row">
-                    {t.status === 'pending' && <button className="link" onClick={() => updateTxn(db, t.id!, { status: 'cleared' })}>clear</button>}
-                    <button className="link" onClick={() => { setAdding(false); setEditing(t); window.scrollTo({ top: 0 }); }}>edit</button>
-                    {t.transferTxnId && <button className="link" onClick={() => unlinkTransfer(db, t.id!)}>unlink</button>}
+                <td className={`num c-amt ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{signedCents(t.amountCents)}</td>
+                <td className="num c-cat">{formatCents(run)}</td>
+                <td className="c-act">
+                  <div className="row" style={{ justifyContent: 'inherit', flexWrap: 'nowrap' }}>
+                    {t.status === 'pending' && <button className="link" onClick={() => updateTxn(db, t.id!, { status: 'cleared' })}>Clear</button>}
+                    <button className="link" onClick={() => { setAdding(false); setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
+                    {t.transferTxnId && <button className="link" onClick={() => unlinkTransfer(db, t.id!)}>Unlink</button>}
                     <button
                       className="link danger"
                       onClick={() => {
                         const msg = t.transferTxnId ? 'Delete this transfer? The matching entry on the other account will be deleted too.' : 'Delete this transaction?';
                         if (confirm(msg)) deleteTxn(db, t.id!);
                       }}
-                    >delete</button>
+                    >Delete</button>
                   </div>
                 </td>
               </tr>
             );
           })}
-          {withRun.length === 0 && <tr><td colSpan={6} className="muted">No transactions yet.</td></tr>}
+          {withRun.length === 0 && <tr><td colSpan={6} style={{ padding: 0 }}><EmptyState title="No transactions yet" action={<button className="primary" onClick={() => setAdding(true)}>Add a transaction</button>}>Add one by hand, or import a bank file.</EmptyState></td></tr>}
         </tbody>
-      </table>
+      </table></div>
 
       <h2>Reconcile</h2>
       <div className="card">

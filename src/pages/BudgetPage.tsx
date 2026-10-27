@@ -10,6 +10,7 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { planFunding, targetNeed } from '../lib/budgetTargets';
 import BudgetTargets from './BudgetTargets';
 import InlineTarget from './InlineTarget';
+import { PageHeader } from '../ui/components';
 
 function Assigned({ month, row }: { month: string; row: BudgetRow }) {
   return (
@@ -131,15 +132,12 @@ export default function BudgetPage() {
 
   return (
     <>
-      <div className="row spread">
-        <h1>Budget</h1>
-        <div className="row">
+      <PageHeader title="Budget" description="Give every dollar a job." actions={<><div className="row">
           <button onClick={() => setMonth(prevMonth(month))}>‹</button>
           <strong>{monthLabel(month)}</strong>
           <button onClick={() => setMonth(nextMonth(month))}>›</button>
           <button className="link" onClick={() => setMonth(monthOf(todayISO()))}>today</button>
-        </div>
-      </div>
+        </div></>} />
 
       <div className={`card row spread rta ${rta < 0 ? 'rta-neg' : rta === 0 ? 'rta-zero' : 'rta-pos'}`}>
         <div>
@@ -196,7 +194,7 @@ export default function BudgetPage() {
         <section>
           <h2>Credit card payments</h2>
           <p className="muted">Spending on a card moves that money here automatically; paying the card draws it down. Assign here to pay down an existing balance.</p>
-          <table>{head}<tbody>{payRows.map(renderRow)}</tbody></table>
+          <table className="budget-table">{head}<tbody>{payRows.map(renderRow)}</tbody></table>
         </section>
       )}
 
@@ -207,7 +205,7 @@ export default function BudgetPage() {
         return (
           <section key={g.id}>
             <h2>{g.name} <span className="muted">· available {formatCents(sum((r) => r.available))}</span></h2>
-            <table>{head}<tbody>{rows.map(renderRow)}</tbody></table>
+            <table className="budget-table">{head}<tbody>{rows.map(renderRow)}</tbody></table>
           </section>
         );
       })}

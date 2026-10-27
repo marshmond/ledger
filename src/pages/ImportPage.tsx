@@ -13,6 +13,7 @@ import {
   type ParsedCsv,
 } from '../lib/csvImport';
 import { formatCents } from '../lib/money';
+import { PageHeader } from '../ui/components';
 
 const CLS_LABEL = {
   new: 'New',
@@ -79,7 +80,7 @@ export default function ImportPage() {
 
   return (
     <>
-      <h1>Import CSV</h1>
+      <PageHeader title="Import CSV" description="Bring in transactions from a bank CSV." />
       <div className="card">
         <div className="row">
           <label className="f">Account

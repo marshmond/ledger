@@ -9,6 +9,7 @@ import { bunching, charityTotals, deductionAnalysis, gainAvoided, giftsInYear, r
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import { useTaxPlanData } from './useTaxPlanData';
+import { PageHeader } from '../ui/components';
 
 const KIND: Record<Donation['kind'], string> = { cash: 'Cash or check', stock: 'Stock or fund shares', other: 'Other property' };
 const LTCG_RATE = 0.15;
@@ -69,14 +70,8 @@ export default function GivingPage() {
 
   return (
     <>
-      <div className="row spread">
-        <h1>Charitable giving</h1>
-        <label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((v) => <option key={v} value={v}>{v}</option>)}</select></label>
-      </div>
-      <p className="muted">
-        Log your gifts to see what they are worth as a deduction, whether itemizing pays, and the paperwork to keep. Giving shares you have held more than a year, instead of cash,
-        deducts their full value and the gain is never taxed. See which shares in <Link to="/taxplan">Tax planning</Link>. This is a planning estimate, not tax advice.
-      </p>
+      <PageHeader title="Charitable giving" description="Charitable gifts, their tax value, and the paperwork to keep." about={<>Log your gifts to see what they are worth as a deduction, whether itemizing pays, and the paperwork to keep. Giving shares you have held more than a year, instead of cash,
+        deducts their full value and the gain is never taxed. See which shares in <Link to="/taxplan">Tax planning</Link>. This is a planning estimate, not tax advice.</>} actions={<><label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((v) => <option key={v} value={v}>{v}</option>)}</select></label></>} />
 
       <div className="tiles">
         <div className="tile"><div className="muted">Given in {year}</div><div className="v">{formatCents(y.givenCents)}</div><div className="muted" style={{ fontSize: '0.8rem' }}>{y.count} gift{y.count === 1 ? '' : 's'}</div></div>

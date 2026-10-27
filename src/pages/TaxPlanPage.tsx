@@ -5,6 +5,7 @@ import { netForTax } from '../lib/lots';
 import { estimatedDueDates, withHarvest } from '../lib/taxPlan';
 import Collapsible from './Collapsible';
 import { useTaxPlanData } from './useTaxPlanData';
+import { PageHeader } from '../ui/components';
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
 
@@ -32,14 +33,8 @@ export default function TaxPlanPage() {
 
   return (
     <>
-      <div className="row spread">
-        <h1>Tax planning</h1>
-        <label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
-      </div>
-      <p className="muted">
-        A look at where your {year} taxes are headed and what you can still do about them. It uses the setup on the <Link to="/income">Income</Link> tab, your sales on the{' '}
-        <Link to="/investments">Investments</Link> tab, and HSA withdrawals. It is a planning estimate, not tax advice.
-      </p>
+      <PageHeader title="Tax planning" description="Where this year’s taxes are heading, and what to do before December 31." about={<>A look at where your {year} taxes are headed and what you can still do about them. It uses the setup on the <Link to="/income">Income</Link> tab, your sales on the{' '}
+        <Link to="/investments">Investments</Link> tab, and HSA withdrawals. It is a planning estimate, not tax advice.</>} actions={<><label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label></>} />
 
       {!tables && <div className="card rta-neg"><strong className="neg">No tax tables for {year}.</strong> Add them on the Income tab first.</div>}
       {tables && !hh && <p className="warn">Set up income for {year} on the Income tab to see the plan.</p>}

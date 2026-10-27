@@ -12,6 +12,7 @@ import { RETIREMENT_RULES_2026, rmdStartAge } from '../data/retirementTax';
 import { LinesChart, compactUSD } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
+import { PageHeader } from '../ui/components';
 
 const BRACKETS = [0.1, 0.12, 0.22, 0.24, 0.32, 0.35];
 const KIND_LABEL: Record<Strategy['kind'], string> = { none: 'No conversions', bracket: 'Fill a tax bracket', fixed: 'Fixed amount each year', table: 'My own amounts by year' };
@@ -155,7 +156,7 @@ export default function RothPage() {
     setRunning(false);
   }
 
-  if (!loaded) return <h1>Roth conversions</h1>;
+  if (!loaded) return <PageHeader title="Roth conversions" description="Compare ways of converting traditional money to Roth." />;
 
   const idxOf = (year: number) => Math.pow(1 + (input?.inflationPct ?? 0) / 100, year - year0);
   const real = (v: number, year: number) => v / idxOf(year);
@@ -175,12 +176,9 @@ export default function RothPage() {
 
   return (
     <>
-      <h1>Roth conversions</h1>
-      <p className="muted">
-        Compare ways of moving money from traditional IRAs and 401(k)s into a Roth. Each year’s federal and Massachusetts taxes, Social Security taxation, Medicare IRMAA
+      <PageHeader title="Roth conversions" description="Compare ways of converting traditional money to Roth." about={<>Compare ways of moving money from traditional IRAs and 401(k)s into a Roth. Each year’s federal and Massachusetts taxes, Social Security taxation, Medicare IRMAA
         surcharges, and the ACA premium credit are calculated for every strategy, then the results are compared three ways: lowest lifetime taxes, most money left, and the
-        most after-tax money for your heirs. It is a planning model, not tax advice.
-      </p>
+        most after-tax money for your heirs. It is a planning model, not tax advice.</>} />
 
       {built.problems.map((p) => <p key={p} className="warn">{p}</p>)}
       {people.length === 0 && <p className="muted">Start on the <Link to="/income">Income</Link> tab.</p>}

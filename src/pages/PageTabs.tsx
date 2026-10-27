@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useEdgeFade } from '../ui/components';
 
 const KEY = 'ledger-tabs';
 
@@ -33,13 +34,16 @@ export default function PageTabs({ id, tabs, jumpTo }: { id: string; tabs: TabDe
   useEffect(() => {
     if (jumpTo && jumpTo.n > 0 && tabs.some((t) => t.id === jumpTo.tab)) { setCur(jumpTo.tab); write(id, jumpTo.tab); }
   }, [jumpTo?.n]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fade = useEdgeFade<HTMLDivElement>();
   const active = tabs.find((t) => t.id === cur) ?? tabs[0];
   return (
     <>
-      <div className="pagetabs" role="tablist">
+      <div className={`pagetabs-wrap ${fade.className}`}>
+      <div className="pagetabs" role="tablist" ref={fade.ref}>
         {tabs.map((t) => (
           <button key={t.id} role="tab" aria-selected={t.id === active.id} className={t.id === active.id ? 'on' : ''} onClick={() => { setCur(t.id); write(id, t.id); }}>{t.label}</button>
         ))}
+      </div>
       </div>
       <div role="tabpanel">{active.content}</div>
     </>

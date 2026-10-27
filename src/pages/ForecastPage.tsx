@@ -8,6 +8,7 @@ import { DEFAULT_FORECAST, loadForecast, type ForecastSettings } from '../lib/fo
 import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
+import { PageHeader } from '../ui/components';
 
 const KIND_LABEL: Record<string, string> = { income: 'Pay', bill: 'Bill', loan: 'Loan', tax: 'Tax', spending: 'Spending', oneoff: 'One-off' };
 const fmtDay = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -24,7 +25,7 @@ export default function ForecastPage() {
   const [oAmt, setOAmt] = useState(0);
   const [oDir, setODir] = useState<'out' | 'in'>('out');
 
-  if (!f) return <h1>Cash-flow forecast</h1>;
+  if (!f) return <PageHeader title="Cash-flow forecast" description="Will you have the cash? Your balance, day by day." />;
   const { input, result } = f;
   const below = result.firstBelow;
   const thresholdLine = result.months.map(() => s.thresholdCents);
@@ -32,11 +33,8 @@ export default function ForecastPage() {
 
   return (
     <>
-      <h1>Cash-flow forecast</h1>
-      <p className="muted">
-        Will you have the cash? This starts from your checking{s.includeSavings ? ' and savings' : ''} balance and adds your paychecks, scheduled bills, loan payments, taxes, and an estimate of everyday spending, day by day.
-        It only knows what you have entered, so keep <Link to="/scheduled">Scheduled</Link> and <Link to="/income">Income</Link> up to date.
-      </p>
+      <PageHeader title="Cash-flow forecast" description="Will you have the cash? Your balance, day by day." about={<>Will you have the cash? This starts from your checking{s.includeSavings ? ' and savings' : ''} balance and adds your paychecks, scheduled bills, loan payments, taxes, and an estimate of everyday spending, day by day.
+        It only knows what you have entered, so keep <Link to="/scheduled">Scheduled</Link> and <Link to="/income">Income</Link> up to date.</>} />
 
       {f.cashAccounts === 0 && <p className="warn">No checking or savings accounts yet. Add them on the <Link to="/accounts">Accounts</Link> page.</p>}
 

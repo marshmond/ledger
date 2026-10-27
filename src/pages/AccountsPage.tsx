@@ -7,6 +7,7 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { creditStatus, parseLimit } from '../lib/credit';
 import { canBePrimary, getPrimaryAccountId } from '../lib/primaryAccount';
 import { BACKUP_STALE_DAYS } from './BackupPage';
+import { Banner, PageHeader } from '../ui/components';
 
 const KIND_LABEL: Record<AccountKind, string> = {
   checking: 'Checking',
@@ -58,15 +59,14 @@ export default function AccountsPage() {
 
   return (
     <>
-      <h1>Accounts</h1>
+      <PageHeader title="Accounts" description="Checking, savings, and credit cards." actions={<button className="primary" onClick={() => { const el = document.getElementById('add-account'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); el?.querySelector('input')?.focus({ preventScroll: true }); }}>Add account</button>} />
       {hasData && (backupAge === null || backupAge > BACKUP_STALE_DAYS) && (
-        <p className="warn">
-          {backupAge === null ? 'You have not backed up this data yet.' : `Your last backup was ${backupAge} days ago.`} Your data lives only in this browser, so
-          export a backup from the <Link to="/backup">Backup</Link> page.
-        </p>
+        <Banner level="warn" title={backupAge === null ? 'You have not backed up this data yet.' : `Your last backup was ${backupAge} days ago.`} action={<Link className="btn" to="/backup">Back up now</Link>}>
+          Your data lives only in this browser, so keep a backup.
+        </Banner>
       )}
       {data && data.length > 0 && (
-        <div className="card row spread">
+        <div className="card summary">
           <span>Cash (checking + savings): <strong>{formatCents(total(['checking', 'savings']))}</strong></span>
           <span>Card debt: <strong className="neg">{formatCents(total(['credit_card']))}</strong></span>
           {(data ?? []).some((x) => !x.a.closed && x.a.creditLimitCents) && <span>Credit left: <strong>{formatCents((data ?? []).filter((x) => !x.a.closed && x.a.kind === 'credit_card').reduce((s, x) => s + (creditStatus(x.balance, x.a.creditLimitCents)?.available ?? 0), 0))}</strong></span>}
@@ -80,7 +80,7 @@ export default function AccountsPage() {
         return (
           <section key={k}>
             <h2>{KIND_LABEL[k]}</h2>
-            <table>
+            <div className="card flush"><table>
               <tbody>
                 {list.map(({ a, balance }) => (
                   <tr key={a.id}>
@@ -93,13 +93,13 @@ export default function AccountsPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </section>
         );
       })}
 
       <h2>Add account</h2>
-      <div className="card">
+      <div className="card" id="add-account">
         <div className="grid">
           <label className="f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Capital One" /></label>
           <label className="f">Type

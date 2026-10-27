@@ -9,6 +9,7 @@ import { buildProjection, DEFAULT_PROJECTION, type ProjectionSettings } from '..
 import { blendMix } from '../lib/retirement';
 import { solveGoal, type GoalSolution } from '../lib/goals';
 import { MoneyField, NumField } from './fields';
+import { PageHeader } from '../ui/components';
 
 function GoalCard({ goal, accounts, ctxFor }: { goal: Goal; accounts: InvAccount[]; ctxFor: (g: Goal) => Parameters<typeof solveGoal>[1] | null }) {
   const [sol, setSol] = useState<{ s: GoalSolution; key: string } | null>(null);
@@ -158,12 +159,9 @@ export default function GoalsPage() {
 
   return (
     <>
-      <h1>Goals</h1>
-      <p className="muted">
-        Set a goal like a child’s college costs, and see how much to put in each year (or month) so the money is there. Each goal uses the balance and
+      <PageHeader title="Goals" description="How much to save each year for a goal like college." about={<>Set a goal like a child’s college costs, and see how much to put in each year (or month) so the money is there. Each goal uses the balance and
         mix of the account that funds it, and the return assumptions from <Link to="/investments">Investments</Link>. Costs are drawn from the account
-        once they begin, and the account keeps growing while it is being spent.
-      </p>
+        once they begin, and the account keeps growing while it is being spent.</>} />
       {education.length === 0 && <p className="warn">Add the account (for example a 529) on the Investments page first.</p>}
       {goals.map((g) => <GoalCard key={g.id} goal={g} accounts={education} ctxFor={ctxFor} />)}
       <button className="primary" onClick={addGoal} disabled={education.length === 0}>+ Add a goal</button>

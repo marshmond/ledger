@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { monthLabel } from '../lib/dates';
 import { useCheckin } from './useCheckin';
+import { PageHeader } from '../ui/components';
 
 /** The monthly check-in: a short list that keeps your data accurate. Most steps tick themselves. */
 export default function CheckinPage() {
@@ -9,10 +10,7 @@ export default function CheckinPage() {
 
   return (
     <>
-      <h1>Monthly check-in</h1>
-      <p className="muted">
-        A few minutes once a month keeps everything in the app trustworthy. Steps tick themselves when there is nothing left to do; the ones that need your eyes you tick yourself.
-      </p>
+      <PageHeader title="Monthly check-in" description="A few minutes once a month keeps everything trustworthy." about={<>A few minutes once a month keeps everything in the app trustworthy. Steps tick themselves when there is nothing left to do; the ones that need your eyes you tick yourself.</>} />
 
       {!c.ready ? <p className="muted">Looking at your data…</p> : (
         <>

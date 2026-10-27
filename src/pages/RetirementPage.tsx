@@ -12,6 +12,7 @@ import { loanView, paymentsInYear } from '../lib/loanSchedule';
 import { FanChart, compactUSD } from './charts';
 import { MoneyField, NumField, PercentField } from './fields';
 import ScenarioTable from './ScenarioTable';
+import { PageHeader } from '../ui/components';
 
 export default function RetirementPage() {
   const today = todayISO();
@@ -102,8 +103,7 @@ export default function RetirementPage() {
   if (accounts.filter((a) => a.kind !== '529').length === 0) {
     return (
       <>
-        <h1>Retirement</h1>
-        <p className="muted">Add your non-529 investment accounts on the <Link to="/investments">Investments</Link> page first.</p>
+        <PageHeader title="Retirement" description={<>Add your non-529 investment accounts on the <Link to="/investments">Investments</Link> page first.</>} />
       </>
     );
   }
@@ -123,11 +123,8 @@ export default function RetirementPage() {
 
   return (
     <>
-      <h1>Retirement</h1>
-      <p className="muted">
-        Tests whether your savings can fund the spending you want, using the same asset-class assumptions as <Link to="/projections">Projections</Link>.
-        529 accounts are left out because they are earmarked for education. All dollar figures here are in today’s dollars.
-      </p>
+      <PageHeader title="Retirement" description="Does the money last? Tested against many possible futures." about={<>Tests whether your savings can fund the spending you want, using the same asset-class assumptions as <Link to="/projections">Projections</Link>.
+        529 accounts are left out because they are earmarked for education. All dollar figures here are in today’s dollars.</>} />
 
       <div className="card">
         <div className="grid">

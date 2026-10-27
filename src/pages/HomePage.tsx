@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -8,7 +8,6 @@ import { loadBudget } from '../lib/budget';
 import { dueInstances } from '../lib/schedule';
 import { loadNetWorth } from '../lib/netWorthLive';
 import { changeOver, sortedSnapshots } from '../lib/snapshots';
-import { LinesChart } from './charts';
 import { spendingSnapshot } from '../lib/spending';
 import { computeAlerts } from '../lib/alerts';
 import { buildIncomeModel } from '../lib/income';
@@ -21,6 +20,10 @@ import ComingUp from './ComingUp';
 import { useCheckin } from './useCheckin';
 import { loadForecast } from '../lib/forecastLive';
 import { addDays } from '../lib/dates';
+import { EmptyState, PageHeader, Sparkline, Stat, signedCents } from '../ui/components';
+import { openAddTransaction } from '../shell/QuickAdd';
+
+const ONBOARD_KEY = 'ledger.onboarding.dismissed';
 
 /** The landing page: where you stand, what needs attention, and where to go next. */
 export default function HomePage() {
@@ -76,128 +79,142 @@ export default function HomePage() {
     harvestableCents: plan.candidates.reduce((s, c) => s + c.lossCents, 0),
     yearEndTodo: plan.checklist.filter((c) => c.status === 'todo').length,
     checkinLeft: checkin.ready && !checkin.progress.complete && Number(today.slice(8, 10)) >= 25 ? checkin.progress.left : 0,
-    forecastLow: forecast?.result.firstBelow && forecast.result.firstBelow.date <= addDays(today, 90) ? { ...forecast.result.firstBelow, thresholdCents: forecast.settings.thresholdCents } : null,
+    forecastLow: accounts.some((a) => !a.closed && (a.kind === 'checking' || a.kind === 'savings')) && forecast?.result.firstBelow && forecast.result.firstBelow.date <= addDays(today, 90) ? { ...forecast.result.firstBelow, thresholdCents: forecast.settings.thresholdCents } : null,
   });
   const recent = [...txns].filter((t) => !t.transferTxnId).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 6);
   const acctName = (id: number) => accounts.find((a) => a.id === id)?.name ?? '';
   const first = !hasData;
+  void first;
+
+  // First-run checklist: a dismissible card with progress. It stays out of the way once dismissed or finished.
+  const [onboardOff, setOnboardOff] = useState(() => { try { return localStorage.getItem(ONBOARD_KEY) === '1'; } catch { return false; } });
+  const steps = [
+    { label: 'Add your checking, savings, and credit card accounts', to: '/accounts', done: accounts.length > 0 },
+    { label: 'Set up income to see take-home pay and taxes', to: '/income', done: people.length > 0 },
+    { label: 'Add investment accounts and their holdings', to: '/investments', done: invAccounts.length > 0 },
+    { label: 'Make a backup (your data lives only in this browser)', to: '/backup', done: !!lastBackup },
+  ];
+  const stepsDone = steps.filter((s) => s.done).length;
+  const showOnboard = !onboardOff && stepsDone < steps.length;
+  const dismissOnboard = () => { try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* private window: it just comes back next time */ } setOnboardOff(true); };
+
+  const trend = sortedSnaps.map((s) => s.totalCents);
+  const nextStep = checkin.steps.find((s) => s.status === 'todo');
 
   return (
     <>
-      <h1>Home</h1>
+      <PageHeader
+        title="Home"
+        description="Where you stand today, and what needs a look."
+        actions={checkin.ready && checkin.progress.total > 0 && !checkin.progress.complete ? <Link className="btn" to="/checkin">Monthly check-in · {checkin.progress.done}/{checkin.progress.total}</Link> : undefined}
+      />
 
-      {first && (
+      {showOnboard && (
         <div className="card">
-          <strong>Welcome. Start with one of these:</strong>
-          <ul className="starts">
-            <li><Link to="/accounts">Add your checking, savings, and credit card accounts</Link> and their starting balances.</li>
-            <li><Link to="/income">Set up income</Link> to see take-home pay and taxes.</li>
-            <li><Link to="/investments">Add investment accounts</Link> and their holdings.</li>
-            <li><Link to="/backup">Make a backup</Link> once you have entered data. It lives only in this browser.</li>
-          </ul>
-        </div>
-      )}
-
-      <div className="viz">
-        <div className="row spread"><span className="muted">Net worth</span><Link to="/networth">Details and history →</Link></div>
-        <div className={`hero ${(net?.total ?? 0) < 0 ? 'neg' : ''}`}>{formatCents(net?.total ?? 0)}</div>
-        {change && <div className="muted">{change.sinceCents >= 0 ? 'Up' : 'Down'} <strong className={change.sinceCents >= 0 ? 'pos' : 'neg'}>{formatCents(Math.abs(change.sinceCents))}</strong> since {change.since}</div>}
-        {net && (
-          <div className="tiles">
-            <div className="tile"><div className="muted">Cash</div><div className="v">{formatCents(net.cash)}</div></div>
-            <div className="tile"><div className="muted">Investments</div><div className="v">{formatCents(net.investments)}</div></div>
-            <div className="tile"><div className="muted">Property</div><div className="v">{formatCents(net.property)}</div></div>
-            <div className="tile"><div className="muted">Cards</div><div className={`v ${net.cards < 0 ? 'neg' : ''}`}>{formatCents(net.cards)}</div></div>
-            <div className="tile"><div className="muted">Loans</div><div className={`v ${net.loans < 0 ? 'neg' : ''}`}>{formatCents(net.loans)}</div></div>
+          <div className="card-head">
+            <strong>Get started</strong>
+            <button className="link" onClick={dismissOnboard}>Dismiss</button>
           </div>
-        )}
-        {props.length === 0 && <p className="muted">Add your home’s value on the <Link to="/networth">Net worth</Link> page to include it.</p>}
-        {sortedSnaps.length >= 3 && <LinesChart title="Net worth by month" series={[{ label: 'Net worth', color: 'var(--s1)', values: sortedSnaps.map((s) => s.totalCents) }]} xLabels={sortedSnaps.map((s) => s.date)} />}
-      </div>
-
-      <h2>Needs attention</h2>
-      {alerts.length === 0 ? (
-        <p className="muted">{hasData ? 'Nothing needs attention right now.' : 'Alerts will show here once you have entered some data.'}</p>
-      ) : (
-        <ul className="alerts">
-          {alerts.map((a) => (
-            <li key={a.id} className={`alert ${a.level}`}>
-              <div>
-                <strong>{a.title}</strong>
-                <div className="muted">{a.detail}</div>
-              </div>
-              <Link className="alert-act" to={a.to}>{a.actionLabel} →</Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="grid2">
-        <div className="card">
-          <div className="row spread"><strong>{monthLabel(month)}</strong><Link to="/budget">Budget →</Link></div>
-          <table><tbody>
-            <tr><td>Spent</td><td className="num">{formatCents(spending.spentCents)}</td></tr>
-            <tr><td>Income</td><td className="num">{formatCents(spending.incomeCents)}</td></tr>
-            {budget && <tr><td>Ready to assign</td><td className={`num ${budget.readyToAssign < 0 ? 'neg' : ''}`}>{formatCents(budget.readyToAssign)}</td></tr>}
-          </tbody></table>
-          {spending.top.length > 0 && (
-            <>
-              <div className="muted" style={{ marginTop: 6 }}>Top categories</div>
-              <table><tbody>{spending.top.map((t) => <tr key={t.name}><td>{t.name}</td><td className="num">{formatCents(t.cents)}</td></tr>)}</tbody></table>
-            </>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="row spread"><strong>Recent transactions</strong><Link to="/transactions">All →</Link></div>
-          {recent.length === 0 ? <p className="muted">None yet.</p> : (
-            <table><tbody>
-              {recent.map((t) => (
-                <tr key={t.id}>
-                  <td><Link to={`/account/${t.accountId}`}>{t.payee || '(no payee)'}</Link><div className="muted" style={{ fontSize: '0.75rem' }}>{t.date} · {acctName(t.accountId)}</div></td>
-                  <td className={`num ${t.amountCents < 0 ? '' : 'pos'}`}>{formatCents(t.amountCents)}</td>
-                </tr>
-              ))}
-            </tbody></table>
-          )}
-        </div>
-      </div>
-
-      {checkin.ready && checkin.progress.total > 0 && (
-        <div className="card">
-          <div className="row spread"><strong>Monthly check-in</strong><Link to="/checkin">{checkin.progress.complete ? 'Done ✓' : 'Open →'}</Link></div>
-          <div className="progress" role="progressbar" aria-valuenow={checkin.progress.done} aria-valuemin={0} aria-valuemax={checkin.progress.total}><div style={{ width: `${Math.round((checkin.progress.done / checkin.progress.total) * 100)}%` }} /></div>
-          <div className="muted">{checkin.progress.complete ? `All ${checkin.progress.total} steps done this month.` : `${checkin.progress.done} of ${checkin.progress.total} done. Next: ${checkin.steps.find((s) => s.status === 'todo')?.title ?? ''}.`}{checkin.streak > 1 && ` ${checkin.streak} months in a row.`}</div>
-        </div>
-      )}
-
-      <ComingUp />
-
-      <div className="grid2">
-        <div className="card">
-          <div className="row spread"><strong>Goals</strong><Link to="/goals">Goals →</Link></div>
-          {goals.length === 0 ? <p className="muted">No goals yet. Plan for college, a purchase, or retirement.</p> : (
-            <ul className="plain">{goals.map((g) => <li key={g.id}>{g.name}<span className="muted"> · starts {g.startYear}</span></li>)}</ul>
-          )}
-          <p><Link to="/retirement">Does your money last? →</Link></p>
-        </div>
-        <div className="card">
-          <strong>Quick links</strong>
-          <ul className="plain links">
-            <li><Link to="/afford">Can I afford it?</Link></li>
-            <li><Link to="/giving">Charitable giving</Link></li>
-            <li><Link to="/forecast">Cash-flow forecast</Link></li>
-            <li><Link to="/reports">Spending reports</Link></li>
-            <li><Link to="/payoff">Debt payoff planner</Link></li>
-            <li><Link to="/protection">Protection check</Link></li>
-            <li><Link to="/taxplan">Tax planning</Link></li>
-            <li><Link to="/taxpackage">Tax package for your preparer</Link></li>
-            <li><Link to="/paycheck">Paycheck calculator</Link></li>
-            <li><Link to="/roth">Roth conversion planner</Link></li>
-            <li><Link to="/investments">Trades and realized gains</Link></li>
-            <li><Link to="/debt">Mortgage and HELOC</Link></li>
-            <li><Link to="/import">Import transactions</Link></li>
+          <div className="progress" role="progressbar" aria-label="Setup progress" aria-valuenow={stepsDone} aria-valuemin={0} aria-valuemax={steps.length}><div style={{ width: `${(stepsDone / steps.length) * 100}%` }} /></div>
+          <div className="muted">{stepsDone} of {steps.length} done</div>
+          <ul className="onboard-steps">
+            {steps.map((s) => (
+              <li key={s.to} className={s.done ? 'done' : ''}>
+                <span className="tick" aria-hidden="true">{s.done ? '✓' : ''}</span>
+                <Link to={s.to}>{s.label}</Link>
+                {s.done && <span className="muted"> (done)</span>}
+              </li>
+            ))}
           </ul>
+        </div>
+      )}
+
+      <div className="dash">
+        <div className="dash-main">
+          <section className="card hero-card o0" aria-label="Net worth">
+            <div className="card-head"><span className="muted">Net worth</span><Link className="card-link" to="/networth">History</Link></div>
+            <div className={`hero ${(net?.total ?? 0) < 0 ? 'neg' : ''}`}>{formatCents(net?.total ?? 0)}</div>
+            {change && <div className="muted">{change.sinceCents >= 0 ? 'Up' : 'Down'} <strong className={change.sinceCents >= 0 ? 'pos' : 'neg'}>{change.sinceCents >= 0 ? '+' : '-'}{formatCents(Math.abs(change.sinceCents))}</strong> since {change.since}</div>}
+            {trend.length >= 2
+              ? <Sparkline values={trend} label={`Net worth by month, from ${formatCents(trend[0])} to ${formatCents(trend[trend.length - 1])}`} />
+              : <p className="muted">A trend line appears once a couple of months of history have been saved.</p>}
+            {net && (
+              <div className="stat-row">
+                <Stat label="Cash" cents={net.cash} />
+                <Stat label="Investments" cents={net.investments} />
+                <Stat label="Property" cents={net.property} />
+                <Stat label="Cards" cents={net.cards} />
+                <Stat label="Loans" cents={net.loans} />
+              </div>
+            )}
+            {props.length === 0 && <p className="muted" style={{ marginTop: 'var(--sp-3)' }}>Add your home’s value on the <Link to="/networth">Net worth</Link> page to include it.</p>}
+          </section>
+
+          <div className="grid2 o3">
+            <div className="card">
+              <div className="card-head"><strong>{monthLabel(month)}</strong><Link className="card-link" to="/budget">Budget</Link></div>
+              <div className="kv"><span>Spent</span><span className="v">{formatCents(spending.spentCents)}</span></div>
+              <div className="kv"><span>Income</span><span className="v">{formatCents(spending.incomeCents)}</span></div>
+              {budget && <div className="kv"><span>Ready to assign</span><span className={`v ${budget.readyToAssign < 0 ? 'neg' : ''}`}>{formatCents(budget.readyToAssign)}</span></div>}
+              {spending.top.length > 0 && (
+                <>
+                  <h3 className="muted" style={{ fontSize: 'var(--fs-sm)', marginBottom: 0 }}>Top categories</h3>
+                  {spending.top.map((t) => <div className="kv" key={t.name}><span>{t.name}</span><span className="v">{formatCents(t.cents)}</span></div>)}
+                </>
+              )}
+            </div>
+
+            <div className="card">
+              <div className="card-head"><strong>Recent transactions</strong><Link className="card-link" to="/transactions">All</Link></div>
+              {recent.length === 0 ? (
+                <EmptyState title="No transactions yet" action={<button className="primary" onClick={openAddTransaction}>Add a transaction</button>}>Add one by hand or import a bank file.</EmptyState>
+              ) : recent.map((t) => (
+                <Link className="list-row" key={t.id} to={`/account/${t.accountId}`}>
+                  <span><strong>{t.payee || '(no payee)'}</strong><span className="sub">{t.date} · {acctName(t.accountId)}</span></span>
+                  <span className={`amt ${t.amountCents < 0 ? '' : 'pos'}`}>{signedCents(t.amountCents)}</span>
+                </Link>
+              ))}
+            </div>
+
+            {checkin.ready && checkin.progress.total > 0 && (
+              <div className="card">
+                <div className="card-head"><strong>Monthly check-in</strong><Link className="card-link" to="/checkin">{checkin.progress.complete ? 'Done ✓' : 'Open'}</Link></div>
+                <div className="progress" role="progressbar" aria-label="Check-in progress" aria-valuenow={checkin.progress.done} aria-valuemin={0} aria-valuemax={checkin.progress.total}><div style={{ width: `${Math.round((checkin.progress.done / checkin.progress.total) * 100)}%` }} /></div>
+                <div className="muted">{checkin.progress.complete ? `All ${checkin.progress.total} steps done this month.` : `${checkin.progress.done} of ${checkin.progress.total} done. Next: ${nextStep?.title ?? ''}.`}{checkin.streak > 1 && ` ${checkin.streak} months in a row.`}</div>
+              </div>
+            )}
+
+            <div className="card">
+              <div className="card-head"><strong>Goals</strong><Link className="card-link" to="/goals">Goals</Link></div>
+              {goals.length === 0 ? (
+                <EmptyState title="No goals yet" action={<Link className="btn" to="/goals">Plan a goal</Link>}>College, a purchase, or retirement.</EmptyState>
+              ) : (
+                <ul className="plain">{goals.map((g) => <li key={g.id}>{g.name}<span className="muted"> · starts {g.startYear}</span></li>)}</ul>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="dash-rail">
+          <section className="card o1" aria-label="Needs attention">
+            <div className="card-head"><strong>Needs attention</strong>{alerts.length > 0 && <span className="badge">{alerts.length}</span>}</div>
+            {alerts.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>{hasData ? 'Nothing needs attention right now.' : 'Alerts will show here once you have entered some data.'}</p>
+            ) : (
+              <ul className="alerts">
+                {alerts.map((a) => (
+                  <li key={a.id} className={`alert ${a.level}`}>
+                    <div>
+                      <strong>{a.title}</strong>
+                      <div className="muted">{a.detail}</div>
+                    </div>
+                    <Link className="alert-act" to={a.to}>{a.actionLabel}</Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <div className="o4"><ComingUp /></div>
         </div>
       </div>
     </>

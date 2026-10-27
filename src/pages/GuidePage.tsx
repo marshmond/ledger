@@ -10,6 +10,7 @@ import { loanOwedById } from '../lib/netWorthLive';
 import { CONTACT_ROLES, DEFAULT_GUIDE, FIRST_STEPS, guideItems, type GuideData } from '../lib/guide';
 import { POLICY_LABEL } from '../lib/protection';
 import { useInsurance } from './useInsurance';
+import { PageHeader } from '../ui/components';
 
 /** A printable guide for whoever would have to take over: contacts, where documents are, accounts, insurance, and what to do first. */
 export default function GuidePage() {
@@ -49,10 +50,7 @@ export default function GuidePage() {
 
   return (
     <>
-      <div className="row spread no-print">
-        <h1>If something happens to me</h1>
-        <button className="primary" onClick={() => window.print()}>Print or save as PDF</button>
-      </div>
+      <PageHeader className="no-print" title="If something happens to me" description="A printable guide for your family." actions={<><button className="primary" onClick={() => window.print()}>Print or save as PDF</button></>} />
       <h1 className="print-only">If something happens to me: a guide for {people.map((p) => p.name).join(' and ') || 'my family'}</h1>
       <div className="card rta-neg no-print">
         <strong className="neg">Never put passwords, PINs, or full account numbers here.</strong>

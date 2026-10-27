@@ -9,6 +9,7 @@ import { probAtLeast, realTargetToNominal, runMonteCarlo, steadyPath, toReal } f
 import { baseContribution, buildProjection, DEFAULT_PROJECTION, type ProjectionSettings } from '../lib/projectionInput';
 import { FanChart, compactUSD } from './charts';
 import { MoneyField, NumField } from './fields';
+import { PageHeader } from '../ui/components';
 
 export default function ProjectionPage() {
   const year0 = Number(todayISO().slice(0, 4));
@@ -46,8 +47,7 @@ export default function ProjectionPage() {
   if (accounts.length === 0) {
     return (
       <>
-        <h1>Projections</h1>
-        <p className="muted">Add your accounts and holdings on the <Link to="/investments">Investments</Link> page first.</p>
+        <PageHeader title="Projections" description={<>Add your accounts and holdings on the <Link to="/investments">Investments</Link> page first.</>} />
       </>
     );
   }
@@ -86,11 +86,8 @@ export default function ProjectionPage() {
 
   return (
     <>
-      <h1>Projections</h1>
-      <p className="muted">
-        A long-range “what could happen” view built from your holdings, your contributions, and the return assumptions on the{' '}
-        <Link to="/investments">Investments</Link> page. It is a planning tool, not a prediction: change the assumptions and see how the range moves.
-      </p>
+      <PageHeader title="Projections" description="Long-range growth from your holdings and contributions." about={<>A long-range “what could happen” view built from your holdings, your contributions, and the return assumptions on the{' '}
+        <Link to="/investments">Investments</Link> page. It is a planning tool, not a prediction: change the assumptions and see how the range moves.</>} />
 
       <div className="card">
         <div className="grid">

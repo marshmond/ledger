@@ -9,6 +9,7 @@ import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import PageTabs from './PageTabs';
 import FlowPanel from './FlowPanel';
+import { PageHeader } from '../ui/components';
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 const pct = (f: number) => `${f >= 0 ? '+' : '−'}${Math.abs(Math.round(f * 100))}%`;
@@ -29,7 +30,7 @@ function Delta({ now, then, label }: { now: number; then: number | null; label: 
 export default function ReportsPage() {
   return (
     <>
-      <h1>Reports</h1>
+      <PageHeader title="Reports" description="Where the money went." />
       <PageTabs id="reports" tabs={[{ id: 'trends', label: 'Trends', content: <Trends /> }, { id: 'flow', label: 'Flow diagram', content: <FlowPanel /> }]} />
     </>
   );

@@ -15,6 +15,7 @@ import { evaluatePurchase, maxAffordablePrice, rentVsBuy, type AffordInput, type
 import { LinesChart } from './charts';
 import { MoneyField, NumField } from './fields';
 import PageTabs from './PageTabs';
+import { PageHeader } from '../ui/components';
 
 const KIND: Record<PurchaseKind, string> = { house: 'A house', car: 'A car', other: 'Something else' };
 const LEVEL = { ok: 'ok', caution: 'info', warn: 'todo' } as const;
@@ -250,8 +251,7 @@ export default function AffordPage() {
 
   return (
     <>
-      <h1>Can I afford it?</h1>
-      <p className="muted">Check a big purchase against the guidelines lenders and planners use, your cash, and your forecast. These are rules of thumb, not a loan approval.</p>
+      <PageHeader title="Can I afford it?" description={<>Check a big purchase against the guidelines lenders and planners use, your cash, and your forecast. These are rules of thumb, not a loan approval.</>} />
       <PageTabs id="afford" tabs={[{ id: 'afford', label: 'Can I afford it?', content: afford }, { id: 'rent', label: 'Rent or buy?', content: compare }]} />
     </>
   );

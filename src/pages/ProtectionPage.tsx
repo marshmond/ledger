@@ -11,6 +11,7 @@ import { POLICY_LABEL, disabilityNeed, emergencyFund, findings, lifeNeed, newPol
 import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
 import { useInsurance } from './useInsurance';
+import { PageHeader } from '../ui/components';
 
 interface ProtectionSettings {
   monthlyOverrideCents: number | null;
@@ -108,11 +109,8 @@ export default function ProtectionPage() {
 
   return (
     <>
-      <h1>Protection check</h1>
-      <p className="muted">
-        How long your cash would last, and rough guidelines for life, disability, and umbrella insurance against the coverage you enter. These are common rules of thumb, not advice
-        about what you should buy. Employer coverage counts: add it below.
-      </p>
+      <PageHeader title="Protection check" description="Emergency-fund runway and insurance guidelines." about={<>How long your cash would last, and rough guidelines for life, disability, and umbrella insurance against the coverage you enter. These are common rules of thumb, not advice
+        about what you should buy. Employer coverage counts: add it below.</>} />
 
       <ul className="checklist">
         {found.map((f) => (

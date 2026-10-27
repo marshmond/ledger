@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import AppearanceCard from './AppearanceCard';
 import AmountEntryCard from './AmountEntryCard';
+import { PageHeader } from '../ui/components';
 
 /** Settings and housekeeping that do not belong to a daily workflow. */
 export default function MorePage() {
@@ -10,7 +11,7 @@ export default function MorePage() {
   const age = lastBackup ? Math.floor((Date.now() - Date.parse(lastBackup)) / 86400000) : null;
   return (
     <>
-      <h1>More</h1>
+      <PageHeader title="More" description="Appearance, shortcuts, and about." />
 
       <AppearanceCard />
 

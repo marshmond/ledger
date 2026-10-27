@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { clearConfig, engineFor, meta, readConfig, saveConfig, syncNow, useSyncStatus, type SyncConfig } from '../lib/sync/auto';
 import { githubRemote, parseRepo } from '../lib/sync/github';
 import type { Conflict } from '../lib/sync/merge';
+import { PageHeader } from '../ui/components';
 
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString() : 'never');
 
@@ -85,11 +86,8 @@ export default function SyncPage() {
 
   return (
     <>
-      <h1>Sync devices</h1>
-      <p className="muted">
-        Keep your phone and computer in step. Your data is encrypted on this device with your sync passphrase, then stored as one file in a private repository
-        of yours on GitHub. GitHub only ever sees scrambled data. Each device syncs when you open the app, when you come back to it, and a few seconds after you change something.
-      </p>
+      <PageHeader title="Sync devices" description="Keep your phone and computer in step, encrypted." about={<>Keep your phone and computer in step. Your data is encrypted on this device with your sync passphrase, then stored as one file in a private repository
+        of yours on GitHub. GitHub only ever sees scrambled data. Each device syncs when you open the app, when you come back to it, and a few seconds after you change something.</>} />
       {msg && <div className="ok" role="status">{msg}</div>}
       {err && <div className="error" role="alert">{err}</div>}
 

@@ -13,6 +13,7 @@ import Collapsible from './Collapsible';
 import RsuSection from './RsuSection';
 import { hsaYearImpact } from '../lib/hsa';
 import { netForTax, realizedFor } from '../lib/lots';
+import { PageHeader } from '../ui/components';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const monthName = (m: number) => monthLabel(`2026-${String(m).padStart(2, '0')}`).split(' ')[0];
@@ -91,14 +92,11 @@ export default function IncomePage() {
 
   return (
     <>
-      <div className="row spread">
-        <h1>Income</h1>
-        <label className="row">Year
+      <PageHeader title="Income" description="Salary, bonuses, stock awards, and what taxes take." actions={<><label className="row">Year
           <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {yearsWithData.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
-        </label>
-      </div>
+        </label></>} />
 
       {model.tableSource === 'none' && (
         <div className="card rta-neg">

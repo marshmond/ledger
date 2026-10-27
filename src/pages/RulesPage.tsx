@@ -4,6 +4,7 @@ import { db } from '../db';
 import { formatCents, todayISO } from '../lib/money';
 import { applyRulesToExisting, detectRecurring, recurringFromGuess, suggestRules } from '../lib/rules';
 import Collapsible from './Collapsible';
+import { PageHeader } from '../ui/components';
 
 const FREQ: Record<string, string> = { weekly: 'every week', biweekly: 'every 2 weeks', monthly: 'every month', quarterly: 'every 3 months', yearly: 'every year' };
 
@@ -38,11 +39,8 @@ export default function RulesPage() {
 
   return (
     <>
-      <h1>Rules</h1>
-      <p className="muted">
-        Rules categorize transactions as you import or add them, so you do it once. The app also notices payees you always file the same way and charges that repeat. Nothing
-        changes until you say so.
-      </p>
+      <PageHeader title="Rules" description="Categorize transactions automatically as they arrive." about={<>Rules categorize transactions as you import or add them, so you do it once. The app also notices payees you always file the same way and charges that repeat. Nothing
+        changes until you say so.</>} />
 
       <Collapsible id="rules.rules" title="Payee rules">
         <p className="muted">If a payee contains the text, it gets that category (and optionally a cleaner name). The longest matching text wins.</p>

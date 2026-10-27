@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { SETUP_CATEGORY_ID, SETUP_GROUP_ID } from '../lib/setupCategory';
+import { PageHeader } from '../ui/components';
 
 export default function CategoriesPage() {
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []);
@@ -30,7 +31,7 @@ export default function CategoriesPage() {
 
   return (
     <>
-      <h1>Categories</h1>
+      <PageHeader title="Categories" description="The names and groups used by the budget and reports." />
       {(groups ?? []).map((g) => (
         <div className="card" key={g.id}>
           <div className="row spread">
