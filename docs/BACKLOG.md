@@ -4,7 +4,26 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-29 (newest): assets/liabilities bar chart with a net worth line BUILT ("go"), pushed
+## STATUS 2026-10-29 (newest): account filters, column boxes and Reconcile move BUILT ("go"), pushed
+
+Verified with 796 automated tests (6 new, for the column boxes), a type check and a production build, plus a browser check with invented data (since removed): an account page and the Transactions tab at desktop width, and the Transactions tab at 375px (no sideways scroll). Checked: typing "logan" under Payee, "45" under Amount (finds $45.00 and $45.82, not $145.99), "2026-04" under Date, the true running balance staying put while filtering, Reconcile in its new spot. NOT checked: dark mode and the other colour palettes, a real phone touch, the Filters panel and chips on an account page by hand (same component as the Transactions tab), and an account page at 375px after the final styling fix.
+
+Judgment calls (please review):
+1. **Boxes** are under Date, Payee, Category and Amount. On the Transactions tab there are no boxes for Account or Status (Account is in the toolbar; Status is in Filters).
+2. **Category box** matches the text shown in the column, so it also finds splits ("Split: Groceries, Dining Out") and transfers ("↔ Checking").
+3. **Date box:** a 4-digit number is the year; otherwise month, then day ("03/15"). A lone "03" matches month 03 (and day 03 if no year was typed). A lone "0" is ignored until the next digit. Month names ("March") are not understood.
+4. **Amount box:** "45" matches whole dollars exactly ($450 does not match). "45.8" matches $45.80 to $45.89. Ignores minus signs, $ and commas. Also understands >100, <50, >=100, <=50 (size of the amount).
+5. **Account pages** got a search box, a date range menu, the Filters button and panel, chips, and a "Showing X of Y" note. No saved filters there. Balance column keeps the true running balance; the top Balance/Cleared/Pending figures and Reconcile are not affected by filters.
+6. **On phones** the table header is hidden, so the four boxes appear as a small block above the list.
+7. **Reconcile** moved up on account pages (under the credit-left box, above Add transaction; for accounts with no credit box it follows the Possible transfers box).
+8. Saved filters from before still load (the new boxes simply start empty); saved filters do remember the column boxes from now on.
+9. Column box text is not kept when you leave the page (same as the other filters).
+
+Not built: boxes for Account/Status, month names in the Date box, remembering filters between visits.
+
+---
+
+## STATUS 2026-10-29: assets/liabilities bar chart with a net worth line BUILT ("go"), pushed
 
 Verified with 790 automated tests (3 new, for the chart numbers), a type check and a production build, plus a browser check with invented data on Home and the Net worth page at desktop width and 375px (no sideways scroll). Checked: stacked bars, the net worth line, hover values (the parts add up to the total), a total-only past point, and the label spacing on a narrow card. NOT checked: dark mode and the other colour palettes, a real phone touch, keyboard arrow keys on the chart.
 

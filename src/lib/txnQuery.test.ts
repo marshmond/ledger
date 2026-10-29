@@ -3,7 +3,7 @@ import { FinanceDB } from '../db';
 import type { Account, Category, Txn } from '../types';
 import { createTransfer } from './transfers';
 import {
-  EMPTY_FILTER, activeFilterCount, applyFilter, buildRows, csvCell, presetRange, safeText, sortRows, toCsv, totals, visibleSelection, type TxnFilter,
+  EMPTY_FILTER, activeFilterCount, amountMatches, applyFilter, buildRows, csvCell, presetRange, safeText, sortRows, toCsv, totals, visibleSelection, type TxnFilter,
 } from './txnQuery';
 import { bulkDelete, bulkSetCategory, bulkSetStatus, deleteSavedFilter, listSavedFilters, saveFilter } from './txnBulk';
 
@@ -286,5 +286,48 @@ describe('selection only counts visible rows', () => {
     expect(visibleSelection([1, 3, 5, 99, 3], visible)).toEqual([3, 5]);
     expect(visibleSelection([1, 2], visible)).toEqual([]);
     expect(visibleSelection([], visible)).toEqual([]);
+  });
+});
+
+describe('column boxes', () => {
+  it('payee: matches any part, ignoring capitals', () => {
+    expect(ids({ colPayee: 'pay' })).toEqual([4, 9, 10]);
+    expect(ids({ colPayee: 'TRADER' })).toEqual([3]);
+  });
+  it('category: matches the label shown, including splits and transfers', () => {
+    expect(ids({ colCategory: 'dining' })).toEqual([2, 6, 7]);
+    expect(ids({ colCategory: 'capital' })).toEqual([9]);
+  });
+  it('date: year, month, day or combinations', () => {
+    expect(ids({ colDate: '2026' })).toHaveLength(10);
+    expect(ids({ colDate: '2025' })).toEqual([]);
+    expect(ids({ colDate: '2026-04' })).toEqual([4, 5, 6]);
+    expect(ids({ colDate: '04' })).toEqual([4, 5, 6]);
+    expect(ids({ colDate: '03/15' })).toEqual([2, 3]);
+    expect(ids({ colDate: '2026-05-20' })).toEqual([9, 10]);
+    expect(ids({ colDate: '20' })).toEqual([9, 10]);
+    expect(ids({ colDate: '2026-0' })).toHaveLength(10); // still typing: nothing is hidden yet
+  });
+  it('amount: matches as you type, whole dollars first', () => {
+    expect(ids({ colAmount: '100' })).toEqual([1, 6]);
+    expect(ids({ colAmount: '45' })).toEqual([2]);
+    expect(ids({ colAmount: '45.5' })).toEqual([2]);
+    expect(ids({ colAmount: '45.6' })).toEqual([]);
+    expect(ids({ colAmount: '$1,00' })).toEqual([1, 6]);
+    expect(ids({ colAmount: '-80' })).toEqual([5]);
+    expect(ids({ colAmount: '>=250' })).toEqual([4, 9, 10]);
+    expect(ids({ colAmount: '<1' })).toEqual([7]);
+  });
+  it('a 145.99 amount is not found by 45', () => {
+    expect(amountMatches(14599, '45')).toBe(false);
+    expect(amountMatches(4582, '45')).toBe(true);
+    expect(amountMatches(45000, '45')).toBe(false);
+  });
+  it('combine with each other, and filters saved before they existed still work', () => {
+    expect(ids({ colPayee: 'pay', colDate: '2026-05' })).toEqual([9, 10]);
+    const old = { ...EMPTY_FILTER } as Partial<TxnFilter>;
+    delete old.colDate; delete old.colPayee; delete old.colCategory; delete old.colAmount;
+    expect(applyFilter(rows(), old as TxnFilter)).toHaveLength(10);
+    expect(activeFilterCount({ ...EMPTY_FILTER, colPayee: 'x' })).toBe(1);
   });
 });

@@ -24,11 +24,17 @@ export interface TxnFilter {
   hideTransfers: boolean;
   uncategorizedOnly: boolean;
   pendingOnly: boolean;
+  /** Boxes under the column headers. Optional so filters saved before they existed still load. */
+  colDate?: string;
+  colPayee?: string;
+  colCategory?: string;
+  colAmount?: string;
 }
 
 export const EMPTY_FILTER: TxnFilter = {
   accountIds: [], from: '', to: '', categories: [], text: '', amountOp: 'any', amountMode: 'absolute', amountA: 0, amountB: 0,
   statuses: [], hideTransfers: false, uncategorizedOnly: false, pendingOnly: false,
+  colDate: '', colPayee: '', colCategory: '', colAmount: '',
 };
 export const DEFAULT_SORT: Sort = { key: 'date', dir: 'desc' };
 
@@ -64,6 +70,45 @@ export function buildRows(txns: Txn[], accounts: Account[], categories: Category
   });
 }
 
+/**
+ * Date box: any mix of year, month and day, e.g. "2026", "2026-03", "03", "03/15", "2026-03-15".
+ * A number of 3+ digits is the year (a partly typed year matches by its start); the others are month, then day.
+ * A lone 1-2 digit number matches a month, or a day when no year was typed. A lone "0" is ignored until the next digit.
+ */
+export function dateMatches(date: string, query: string): boolean {
+  const groups = query.split(/[^0-9]+/).filter(Boolean);
+  const years = groups.filter((g) => g.length >= 3);
+  if (years.some((g) => !date.slice(0, 4).startsWith(g.slice(0, 4)))) return false;
+  const parts = groups.filter((g) => g.length <= 2 && Number(g) > 0).map(Number);
+  const month = Number(date.slice(5, 7));
+  const day = Number(date.slice(8, 10));
+  if (parts.length === 0) return true;
+  if (parts.length === 1) return parts[0] === month || (years.length === 0 && parts[0] === day);
+  return parts[0] === month && parts[1] === day;
+}
+
+/**
+ * Amount box: "45" finds $45.00 and $45.82 (not $145.99 or $450); "45.8" finds $45.80 to $45.89.
+ * Ignores the minus sign, $ and commas. ">100", "<50", ">=100", "<=50" compare the size of the amount.
+ */
+export function amountMatches(cents: number, query: string): boolean {
+  const q = query.replace(/[\s$,]/g, '');
+  const size = Math.abs(cents);
+  const cmp = /^(>=|<=|>|<)(\d*\.?\d*)$/.exec(q);
+  if (cmp) {
+    if (cmp[2] === '' || cmp[2] === '.') return true;
+    const v = Math.round(Number(cmp[2]) * 100);
+    return cmp[1] === '>' ? size > v : cmp[1] === '<' ? size < v : cmp[1] === '>=' ? size >= v : size <= v;
+  }
+  const n = q.replace(/^[-+]/, '');
+  if (n === '' || n === '.') return true;
+  if (!/^\d*\.?\d*$/.test(n)) return false;
+  const [whole, frac] = n.split('.');
+  if (whole !== '' && Math.floor(size / 100) !== Number(whole)) return false;
+  if (!frac) return true;
+  return String(size % 100).padStart(2, '0').startsWith(frac);
+}
+
 export function matches(r: Row, f: TxnFilter): boolean {
   const t = r.txn;
   if (f.accountIds.length && !f.accountIds.includes(t.accountId)) return false;
@@ -89,6 +134,13 @@ export function matches(r: Row, f: TxnFilter): boolean {
     if (f.amountOp === 'eq' && v !== f.amountA) return false;
     if (f.amountOp === 'between' && !(v >= Math.min(f.amountA, f.amountB) && v <= Math.max(f.amountA, f.amountB))) return false;
   }
+
+  if (f.colDate?.trim() && !dateMatches(t.date, f.colDate)) return false;
+  const cp = f.colPayee?.trim().toLowerCase();
+  if (cp && !t.payee.toLowerCase().includes(cp)) return false;
+  const cc = f.colCategory?.trim().toLowerCase();
+  if (cc && !r.categoryLabel.toLowerCase().includes(cc)) return false;
+  if (f.colAmount?.trim() && !amountMatches(t.amountCents, f.colAmount)) return false;
 
   if (f.statuses.length && !f.statuses.includes(t.status)) return false;
   if (f.hideTransfers && t.transferTxnId) return false;
@@ -200,6 +252,7 @@ export function activeFilterCount(f: TxnFilter): number {
     f.hideTransfers,
     f.uncategorizedOnly,
     f.pendingOnly,
+    !!f.colDate?.trim() || !!f.colPayee?.trim() || !!f.colCategory?.trim() || !!f.colAmount?.trim(),
   ].filter(Boolean).length;
 }
 

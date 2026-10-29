@@ -8,20 +8,15 @@ import { formatCents, todayISO } from '../lib/money';
 import { deleteTxn } from '../lib/transfers';
 import {
   DEFAULT_SORT, EMPTY_FILTER, applyFilter, buildRows, presetRange, sortRows, toCsv, totals, visibleSelection,
-  type AmountOp, type CatSel, type DatePreset, type Sort, type SortKey, type TxnFilter,
+  type DatePreset, type Sort, type SortKey, type TxnFilter,
 } from '../lib/txnQuery';
 import { bulkDelete, bulkSetCategory, bulkSetStatus, deleteSavedFilter, listSavedFilters, saveFilter } from '../lib/txnBulk';
 import { EmptyState, PageHeader, signedCents } from '../ui/components';
 import { useToast } from '../ui/Toast';
 import { openAddTransaction } from '../shell/QuickAdd';
-import { MoneyField } from './fields';
+import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, STATUSES, TxnFilterPanel, filterChips, toggleList } from './TxnFilterUi';
 import TxnForm from './TxnForm';
 
-const PRESETS: [DatePreset | 'custom', string][] = [
-  ['all', 'All time'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'], ['last30', 'Last 30 days'],
-  ['last90', 'Last 90 days'], ['thisYear', 'This year'], ['lastYear', 'Last year'], ['custom', 'Custom range'],
-];
-const STATUSES: TxnStatus[] = ['pending', 'cleared', 'reconciled'];
 const COLS: { key: SortKey; label: string; cls?: string; first: 'asc' | 'desc' }[] = [
   { key: 'date', label: 'Date', first: 'desc' },
   { key: 'account', label: 'Account', cls: 'hide-sm', first: 'asc' },
@@ -86,7 +81,6 @@ export default function TransactionsPage() {
   const allPageSelected = pageRows.length > 0 && pageRows.every((r) => sel.has(r.txn.id!));
 
   const toggle = (id: number) => { const n = new Set(sel); n.has(id) ? n.delete(id) : n.add(id); setSel(n); };
-  const toggleList = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const clickSort = (key: SortKey, first: 'asc' | 'desc') => setSort(sort.key === key ? { key, dir: sort.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: first });
 
   async function doBulk(kind: 'category' | 'delete') {
@@ -109,15 +103,7 @@ export default function TransactionsPage() {
   const accountOf = (t: Txn) => accounts.find((a) => a.id === t.accountId);
 
   // What is filtering the list, as removable chips. The search box shows its own text, so it gets no chip.
-  const chips: { key: string; label: string; clear: () => void }[] = [];
-  if (filter.accountIds.length) chips.push({ key: 'acct', label: filter.accountIds.length === 1 ? accounts.find((a) => a.id === filter.accountIds[0])?.name ?? '1 account' : `${filter.accountIds.length} accounts`, clear: () => patch({ accountIds: [] }) });
-  if (filter.from || filter.to) chips.push({ key: 'date', label: `${filter.from || 'start'} to ${filter.to || 'today'}`, clear: () => { setPreset('all'); patch({ from: '', to: '' }); } });
-  if (filter.categories.length) chips.push({ key: 'cat', label: filter.categories.length === 1 ? 'Category: 1' : `Categories: ${filter.categories.length}`, clear: () => patch({ categories: [] }) });
-  if (filter.amountOp !== 'any') chips.push({ key: 'amt', label: amountLabel(filter), clear: () => patch({ amountOp: 'any', amountA: 0, amountB: 0 }) });
-  if (filter.statuses.length) chips.push({ key: 'status', label: `Status: ${filter.statuses.join(', ')}`, clear: () => patch({ statuses: [] }) });
-  if (filter.hideTransfers) chips.push({ key: 'xfer', label: 'Transfers hidden', clear: () => patch({ hideTransfers: false }) });
-  if (filter.uncategorizedOnly) chips.push({ key: 'uncat', label: 'Uncategorized only', clear: () => patch({ uncategorizedOnly: false }) });
-  if (filter.pendingOnly) chips.push({ key: 'pend', label: 'Pending only', clear: () => patch({ pendingOnly: false }) });
+  const chips = filterChips(filter, patch, setPreset, (f) => (f.accountIds.length ? (f.accountIds.length === 1 ? accounts.find((a) => a.id === f.accountIds[0])?.name ?? '1 account' : `${f.accountIds.length} accounts`) : null));
   const clearAll = () => { setPreset('all'); setFilter(EMPTY_FILTER); };
 
   const setBulkStatusWithUndo = async () => {
@@ -180,101 +166,41 @@ export default function TransactionsPage() {
       </div>
 
       {panel && (
-        <div className="filter-panel" id="txn-filter-panel">
-          <div className="grid">
-            <details className="pick">
-              <summary>{filter.categories.length ? `Categories (${filter.categories.length})` : 'All categories'}</summary>
-              <div className="pick-pop">
-                <label className="chk"><input type="checkbox" checked={filter.categories.includes('uncategorized')} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, 'uncategorized') })} />Uncategorized</label>
-                <label className="chk"><input type="checkbox" checked={filter.categories.includes('transfer')} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, 'transfer') })} />Transfers</label>
-                {groups.map((g) => (
-                  <div key={g.id}>
-                    <div className="grp">{g.name}</div>
-                    {categories.filter((c) => c.groupId === g.id).map((c) => (
-                      <label className="chk" key={c.id}><input type="checkbox" checked={filter.categories.includes(c.id!)} onChange={() => patch({ categories: toggleList<CatSel>(filter.categories, c.id!) })} />{c.name}</label>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </details>
-            <label className="f">From<input type="date" value={filter.from} onChange={(e) => { setPreset('custom'); patch({ from: e.target.value }); }} /></label>
-            <label className="f">To<input type="date" value={filter.to} onChange={(e) => { setPreset('custom'); patch({ to: e.target.value }); }} /></label>
-            <label className="f">Amount
-              <select value={filter.amountOp} onChange={(e) => patch({ amountOp: e.target.value as AmountOp })}>
-                <option value="any">Any amount</option>
-                <option value="gt">Greater than</option>
-                <option value="lt">Less than</option>
-                <option value="eq">Exactly</option>
-                <option value="between">Between</option>
-              </select>
-            </label>
-            {filter.amountOp !== 'any' && (
-              <>
-                <MoneyField key={`a-${filter.amountOp}`} label={filter.amountOp === 'between' ? 'From amount' : 'Amount'} cents={filter.amountA} onChange={(c) => patch({ amountA: c })} />
-                {filter.amountOp === 'between' && <MoneyField key="b" label="To amount" cents={filter.amountB} onChange={(c) => patch({ amountB: c })} />}
-                <label className="f">Compare by
-                  <select value={filter.amountMode} onChange={(e) => patch({ amountMode: e.target.value as 'absolute' | 'signed' })}>
-                    <option value="absolute">Size (ignore in/out)</option>
-                    <option value="signed">In (+) and out (−) as entered</option>
-                  </select>
-                </label>
-              </>
-            )}
-          </div>
-
-          <div>
-            <h3>Show only</h3>
-            <div className="row">
-              {STATUSES.map((s) => (
-                <label className="chk" key={s}><input type="checkbox" checked={filter.statuses.includes(s)} onChange={() => patch({ statuses: toggleList(filter.statuses, s) })} />{s}</label>
-              ))}
-              <label className="chk"><input type="checkbox" checked={filter.uncategorizedOnly} onChange={(e) => patch({ uncategorizedOnly: e.target.checked })} />Uncategorized only</label>
-              <label className="chk"><input type="checkbox" checked={filter.pendingOnly} onChange={(e) => patch({ pendingOnly: e.target.checked })} />Pending only</label>
-              <label className="chk"><input type="checkbox" checked={filter.hideTransfers} onChange={(e) => patch({ hideTransfers: e.target.checked })} />Hide transfers</label>
-            </div>
-          </div>
-
-          <div>
-            <h3>Saved filters</h3>
-            <div className="row">
-              <select
-                aria-label="Apply a saved filter"
-                value=""
-                onChange={(e) => {
-                  const f = saved.find((x) => x.id === e.target.value);
-                  if (!f) return;
-                  setPreset('custom');
-                  setFilter(f.filter);
-                  setSortState(f.sort);
-                }}
-              >
-                <option value="">{saved.length ? 'Apply a saved filter…' : 'None saved yet'}</option>
-                {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-              <input aria-label="Name for this filter" placeholder="Name this filter" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
-              <button
-                disabled={!saveName.trim()}
-                onClick={async () => { await saveFilter(db, saveName, filter, sort); toast(`Saved filter “${saveName.trim()}”.`); setSaveName(''); }}
-              >Save current filter</button>
-              {saved.length > 0 && (
-                <select aria-label="Delete a saved filter" value="" onChange={async (e) => { const f = saved.find((x) => x.id === e.target.value); if (f && confirm(`Delete saved filter "${f.name}"?`)) await deleteSavedFilter(db, f.id); }}>
-                  <option value="">Delete a saved filter…</option>
-                  {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-              )}
-            </div>
-          </div>
+        <TxnFilterPanel id="txn-filter-panel" filter={filter} patch={patch} setPreset={setPreset} categories={categories} groups={groups}>
+      <div>
+        <h3>Saved filters</h3>
+        <div className="row">
+          <select
+            aria-label="Apply a saved filter"
+            value=""
+            onChange={(e) => {
+              const f = saved.find((x) => x.id === e.target.value);
+              if (!f) return;
+              setPreset('custom');
+              setFilter(f.filter);
+              setSortState(f.sort);
+            }}
+          >
+            <option value="">{saved.length ? 'Apply a saved filter…' : 'None saved yet'}</option>
+            {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+          <input aria-label="Name for this filter" placeholder="Name this filter" value={saveName} onChange={(e) => setSaveName(e.target.value)} />
+          <button
+            disabled={!saveName.trim()}
+            onClick={async () => { await saveFilter(db, saveName, filter, sort); toast(`Saved filter “${saveName.trim()}”.`); setSaveName(''); }}
+          >Save current filter</button>
+          {saved.length > 0 && (
+            <select aria-label="Delete a saved filter" value="" onChange={async (e) => { const f = saved.find((x) => x.id === e.target.value); if (f && confirm(`Delete saved filter "${f.name}"?`)) await deleteSavedFilter(db, f.id); }}>
+              <option value="">Delete a saved filter…</option>
+              {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          )}
         </div>
+      </div>
+        </TxnFilterPanel>
       )}
 
-      {chips.length > 0 && (
-        <div className="chips" aria-label="Active filters">
-          {chips.map((c) => (
-            <span className="chip" key={c.key}>{c.label}<button aria-label={`Remove filter: ${c.label}`} onClick={c.clear}>×</button></span>
-          ))}
-          <button className="link" onClick={clearAll}>Clear all</button>
-        </div>
-      )}
+      <FilterChips chips={chips} onClearAll={clearAll} />
 
       <div className="tiles">
         <div className="tile"><div className="muted">Showing</div><div className="v">{tot.count.toLocaleString()}</div></div>
@@ -319,6 +245,7 @@ export default function TransactionsPage() {
         />
       )}
 
+      <ColumnBoxes filter={filter} patch={patch} />
       <div className="txn-wrap">
         <table className="txn-table">
           <thead>
@@ -341,6 +268,7 @@ export default function TransactionsPage() {
               <th className="c-status">Status</th>
               <th className="c-act"><span className="sr-only">Actions</span></th>
             </tr>
+            <ColumnFilterRow filter={filter} patch={patch} variant="all" />
           </thead>
           <tbody>
             {pageRows.map(({ txn: t, accountName, categoryLabel }) => (
@@ -406,15 +334,4 @@ export default function TransactionsPage() {
       )}
     </>
   );
-}
-
-function amountLabel(f: TxnFilter): string {
-  const a = formatCents(f.amountA);
-  switch (f.amountOp) {
-    case 'gt': return `Amount over ${a}`;
-    case 'lt': return `Amount under ${a}`;
-    case 'eq': return `Amount = ${a}`;
-    case 'between': return `Amount ${a} to ${formatCents(f.amountB)}`;
-    default: return '';
-  }
 }

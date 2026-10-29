@@ -11,6 +11,8 @@ import CreditLimit from './CreditLimit';
 import RenameAccount from './RenameAccount';
 import { canBePrimary, getPrimaryAccountId, setPrimaryAccountId } from '../lib/primaryAccount';
 import { EmptyState, signedCents } from '../ui/components';
+import { EMPTY_FILTER, applyFilter, activeFilterCount, buildRows, presetRange, type DatePreset, type TxnFilter } from '../lib/txnQuery';
+import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, TxnFilterPanel, filterChips } from './TxnFilterUi';
 
 export default function LedgerPage() {
   const id = Number(useParams().id);
@@ -19,6 +21,7 @@ export default function LedgerPage() {
   const txns = useLiveQuery(() => db.txns.where('accountId').equals(id).toArray(), [id]);
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+  const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const allTxns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
   const candidates = useLiveQuery(() => findTransferCandidates(db), [allTxns.length]) ?? [];
   const primaryId = useLiveQuery(() => getPrimaryAccountId(db), []);
@@ -29,6 +32,10 @@ export default function LedgerPage() {
   const [recBal, setRecBal] = useState('');
   const [rec, setRec] = useState<ReconcileResult | null>(null);
   const [recErr, setRecErr] = useState('');
+  const [filter, setFilter] = useState<TxnFilter>(EMPTY_FILTER);
+  const [preset, setPreset] = useState<DatePreset | 'custom'>('all');
+  const [panel, setPanel] = useState(false);
+  const patch = (p: Partial<TxnFilter>) => setFilter((f) => ({ ...f, ...p }));
 
   if (!account || !txns) return <p className="muted">Loading…</p>;
 
@@ -40,6 +47,12 @@ export default function LedgerPage() {
   let run = account.openingBalanceCents;
   const withRun = sorted.map((t) => ({ t, run: (run += t.amountCents) }));
   const balance = run;
+  // Filters only decide which rows are listed; each row keeps its true running balance.
+  const shownIds = new Set(applyFilter(buildRows(allTxns, accounts, cats), { ...filter, accountIds: [id] }).map((r) => r.txn.id));
+  const shownRows = withRun.filter(({ t }) => shownIds.has(t.id!));
+  const chips = filterChips(filter, patch, setPreset);
+  const clearAll = () => { setPreset('all'); setFilter(EMPTY_FILTER); };
+  const filtering = activeFilterCount(filter) > 0;
   const pendingTotal = txns.filter((t) => t.status === 'pending').reduce((s, t) => s + t.amountCents, 0);
   const myCandidates = candidates.filter(([a, b]) => a.accountId === id || b.accountId === id);
 
@@ -97,6 +110,31 @@ export default function LedgerPage() {
         </div>
       )}
 
+      <h2>Reconcile</h2>
+      <div className="card">
+        <p className="muted">Enter the ending balance from your statement. {isCard ? 'For a card or loan, enter the amount owed.' : ''}</p>
+        <div className="row">
+          <label className="f">Statement date<input type="date" value={recDate} onChange={(e) => setRecDate(e.target.value)} /></label>
+          <label className="f">Ending balance<input value={recBal} onChange={(e) => setRecBal(e.target.value)} inputMode="decimal" /></label>
+          <button onClick={runReconcile}>Check</button>
+        </div>
+        {recErr && <div className="error">{recErr}</div>}
+        {rec && (
+          <div style={{ marginTop: 8 }}>
+            <div>Cleared balance through {recDate}: <strong>{formatCents(isCard ? -rec.clearedBalanceCents : rec.clearedBalanceCents)}</strong></div>
+            {rec.differenceCents === 0 ? (
+              <div className="ok">
+                Balanced. <button onClick={async () => { await finalizeReconcile(db, rec.clearedTxnIds); setRec(null); }}>Lock {rec.clearedTxnIds.length} cleared transactions as reconciled</button>
+              </div>
+            ) : (
+              <div className="warn">
+                Off by {formatCents(Math.abs(rec.differenceCents))}. Look for a missing or duplicated transaction, or one still marked pending that has cleared.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {adding || editing ? (
         <TxnForm
           key={editing?.id ?? 'new'}
@@ -113,14 +151,34 @@ export default function LedgerPage() {
       )}
 
       <h2>Transactions</h2>
+      <div className="toolbar">
+        <label className="grow">
+          <span className="sr-only">Search payee or memo</span>
+          <input type="search" value={filter.text} onChange={(e) => patch({ text: e.target.value })} placeholder="Search payee or memo" />
+        </label>
+        <label>
+          <span className="sr-only">Date</span>
+          <select value={preset} onChange={(e) => { const v = e.target.value as DatePreset | 'custom'; setPreset(v); if (v === 'custom') setPanel(true); else patch(presetRange(v, todayISO())); }}>
+            {PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </label>
+        <button className="filter-btn" aria-expanded={panel} aria-controls="acct-filter-panel" onClick={() => setPanel(!panel)}>
+          Filters {chips.length > 0 && <span className="count">{chips.length}</span>}
+        </button>
+      </div>
+      {panel && <TxnFilterPanel id="acct-filter-panel" filter={filter} patch={patch} setPreset={setPreset} categories={cats} groups={groups} />}
+      <FilterChips chips={chips} onClearAll={clearAll} />
+      {filtering && <p className="muted">Showing {shownRows.length.toLocaleString()} of {withRun.length.toLocaleString()} transactions. The Balance column still shows the true running balance.</p>}
+      <ColumnBoxes filter={filter} patch={patch} />
       <div className="txn-wrap"><table className="txn-table no-sel">
         <thead>
           <tr>
             <th className="c-date">Date</th><th className="c-payee">Payee</th><th className="c-cat">Category</th><th className="num c-amt">Amount</th><th className="num c-cat">Balance</th><th className="c-act"><span className="sr-only">Actions</span></th>
           </tr>
+          <ColumnFilterRow filter={filter} patch={patch} variant="account" />
         </thead>
         <tbody>
-          {[...withRun].reverse().map(({ t, run }) => {
+          {[...shownRows].reverse().map(({ t, run }) => {
             const other = t.transferTxnId ? allTxns.find((x) => x.id === t.transferTxnId) : undefined;
             return (
               <tr key={t.id}>
@@ -160,34 +218,10 @@ export default function LedgerPage() {
               </tr>
             );
           })}
+          {withRun.length > 0 && shownRows.length === 0 && <tr><td colSpan={6} style={{ padding: 0 }}><EmptyState title="Nothing matches these filters" action={<button onClick={clearAll}>Clear all filters</button>}>Try a wider date range or fewer filters.</EmptyState></td></tr>}
           {withRun.length === 0 && <tr><td colSpan={6} style={{ padding: 0 }}><EmptyState title="No transactions yet" action={<button className="primary" onClick={() => setAdding(true)}>Add a transaction</button>}>Add one by hand, or import a bank file.</EmptyState></td></tr>}
         </tbody>
       </table></div>
-
-      <h2>Reconcile</h2>
-      <div className="card">
-        <p className="muted">Enter the ending balance from your statement. {isCard ? 'For a card or loan, enter the amount owed.' : ''}</p>
-        <div className="row">
-          <label className="f">Statement date<input type="date" value={recDate} onChange={(e) => setRecDate(e.target.value)} /></label>
-          <label className="f">Ending balance<input value={recBal} onChange={(e) => setRecBal(e.target.value)} inputMode="decimal" /></label>
-          <button onClick={runReconcile}>Check</button>
-        </div>
-        {recErr && <div className="error">{recErr}</div>}
-        {rec && (
-          <div style={{ marginTop: 8 }}>
-            <div>Cleared balance through {recDate}: <strong>{formatCents(isCard ? -rec.clearedBalanceCents : rec.clearedBalanceCents)}</strong></div>
-            {rec.differenceCents === 0 ? (
-              <div className="ok">
-                Balanced. <button onClick={async () => { await finalizeReconcile(db, rec.clearedTxnIds); setRec(null); }}>Lock {rec.clearedTxnIds.length} cleared transactions as reconciled</button>
-              </div>
-            ) : (
-              <div className="warn">
-                Off by {formatCents(Math.abs(rec.differenceCents))}. Look for a missing or duplicated transaction, or one still marked pending that has cleared.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       <div className="row" style={{ marginTop: 16 }}>
         <button
