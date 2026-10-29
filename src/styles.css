@@ -572,3 +572,14 @@ details.pick label.chk:hover { background: var(--hover); }
   .txn-table tr.split-detail { display: block; padding: var(--sp-2) var(--sp-3); background: var(--hover); }
   .txn-table .split-detail > td:not(.split-phone) { display: none; }
 }
+
+/* Re-ordering categories, groups and targets */
+.drag-handle { cursor: grab; color: var(--muted); user-select: none; padding: 0 4px; touch-action: none; }
+.drag-handle:active { cursor: grabbing; }
+.dragging { opacity: 0.45; }
+.reorder { display: inline-flex; gap: 2px; }
+.reorder .link { font-size: 0.7rem; padding: 0 3px; min-height: 0; }
+.target-line { margin: 2px 0 6px 26px; font-size: 0.85rem; }
+.drop-end { border: 2px dashed var(--line-strong); border-radius: var(--r-lg); padding: var(--sp-3); text-align: center; color: var(--muted); margin-bottom: var(--sp-4); }
+.row.grow { flex: 1 1 auto; flex-wrap: nowrap; }
+.row.grow input { flex: 1 1 auto; min-width: 0; }

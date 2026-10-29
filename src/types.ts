@@ -18,6 +18,8 @@ export interface Account {
 export interface CategoryGroup {
   id?: number;
   name: string;
+  /** Place in the owner's chosen order (see lib/order); unset sorts last. */
+  order?: number;
 }
 
 export interface Category {
@@ -27,6 +29,8 @@ export interface Category {
   hidden?: boolean;
   /** Income categories feed Ready to Assign instead of being budgeted. Default: expense. */
   kind?: 'expense' | 'income';
+  /** Place within its group in the owner's chosen order; unset sorts last. */
+  order?: number;
 }
 
 /** Money given a job: one row per month per budget line. */
@@ -595,6 +599,8 @@ export interface BudgetTarget {
   /** 'yearly': the month of the year (1-12) the bill comes due. */
   dueMonthOfYear?: number;
   note?: string;
+  /** Place among the targets of its category in the owner's chosen order; unset sorts last. */
+  order?: number;
 }
 
 /** A gift to a charity. Gifts of stock are deductible at their market value, and the gain is never taxed. */

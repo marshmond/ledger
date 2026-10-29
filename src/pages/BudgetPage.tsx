@@ -11,6 +11,10 @@ import { planFunding, targetNeed } from '../lib/budgetTargets';
 import BudgetTargets from './BudgetTargets';
 import InlineTarget from './InlineTarget';
 import { PageHeader } from '../ui/components';
+import { readCollapsed, writeCollapsed } from './Collapsible';
+import { sortByOrder } from '../lib/order';
+
+const foldKey = (groupId: number) => `budget.g${groupId}`;
 
 function Assigned({ month, row }: { month: string; row: BudgetRow }) {
   return (
@@ -54,9 +58,15 @@ export default function BudgetPage() {
     const idx = Number(month.slice(5, 7)) - 1;
     return { net: monthlyNet(model.years, { excludeRsu: true })[idx], checks: model.years.reduce((a, y) => a + y.events.filter((e) => e.kind !== 'rsu' && Number(e.date.slice(5, 7)) === idx + 1).length, 0) };
   }, [month]);
-  const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
-  const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];
-  const targets = useLiveQuery(() => db.budgetTargets.toArray(), []) ?? [];
+  const groups = sortByOrder(useLiveQuery(() => db.categoryGroups.toArray(), []) ?? []);
+  const cats = sortByOrder(useLiveQuery(() => db.categories.toArray(), []) ?? []);
+  const targets = sortByOrder(useLiveQuery(() => db.budgetTargets.toArray(), []) ?? []);
+  const [folded, setFolded] = useState<Record<number, boolean>>({});
+  const isFolded = (id: number) => folded[id] ?? readCollapsed(foldKey(id)) ?? false;
+  const setFold = (ids: number[], v: boolean) => {
+    setFolded({ ...folded, ...Object.fromEntries(ids.map((i) => [i, v])) });
+    for (const i of ids) writeCollapsed(foldKey(i), v);
+  };
 
   if (!budget) return <p className="muted">Loading…</p>;
 
@@ -78,6 +88,12 @@ export default function BudgetPage() {
     }
     setNote(plan.adds.length ? `Funded ${plan.adds.length} target${plan.adds.length === 1 ? '' : 's'} with ${formatCents(plan.totalAddCents)}.` : 'Nothing to fund.');
   };
+
+  // Rows of a group in the order chosen on the Categories page.
+  const catPlace = new Map(cats.map((c, i) => [c.id!, i]));
+  const groupRows = (groupId: number) =>
+    budget.rows.filter((r) => r.kind === 'category' && r.groupId === groupId).sort((a, b) => (catPlace.get(a.categoryId!) ?? 0) - (catPlace.get(b.categoryId!) ?? 0));
+  const shownGroups = groups.filter((g) => groupRows(g.id!).length > 0);
 
   const cover = (r: BudgetRow) => setAssignment(db, month, r.key, r.assigned - r.available);
 
@@ -198,14 +214,26 @@ export default function BudgetPage() {
         </section>
       )}
 
-      {groups.map((g) => {
-        const rows = budget.rows.filter((r) => r.kind === 'category' && r.groupId === g.id);
-        if (!rows.length) return null;
+      {shownGroups.length > 1 && (
+        <div className="row">
+          <button className="link" onClick={() => setFold(shownGroups.map((g) => g.id!), !shownGroups.every((g) => isFolded(g.id!)))}>
+            {shownGroups.every((g) => isFolded(g.id!)) ? 'Expand all groups' : 'Collapse all groups'}
+          </button>
+        </div>
+      )}
+      {shownGroups.map((g) => {
+        const rows = groupRows(g.id!);
         const sum = (f: (r: BudgetRow) => number) => rows.reduce((s, r) => s + f(r), 0);
+        const open = !isFolded(g.id!);
         return (
-          <section key={g.id}>
-            <h2>{g.name} <span className="muted">· available {formatCents(sum((r) => r.available))}</span></h2>
-            <table className="budget-table">{head}<tbody>{rows.map(renderRow)}</tbody></table>
+          <section key={g.id} className="collapsible">
+            <h2>
+              <button className="collapse-btn" aria-expanded={open} onClick={() => setFold([g.id!], open)}>
+                <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> {g.name}
+              </button>{' '}
+              <span className="muted">· available {formatCents(sum((r) => r.available))}{!open && ` · ${rows.length} categor${rows.length === 1 ? 'y' : 'ies'}`}</span>
+            </h2>
+            {open && <table className="budget-table">{head}<tbody>{rows.map(renderRow)}</tbody></table>}
           </section>
         );
       })}

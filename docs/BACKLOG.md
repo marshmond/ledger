@@ -4,6 +4,24 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-29 (newest): foldable budget groups and drag-to-reorder BUILT ("go and push")
+
+Ask: fold budget categories for easier viewing; drag and drop to re-order groups, categories and targets on the Categories page, with the Budget page following that layout. Decisions (all your first choices): targets shown and ordered on the Categories page; groups draggable, and categories movable within or between groups; Budget groups fold by clicking the heading, remembered on this device, with a collapse/expand-all button; the Categories page folds too.
+
+Verified with 803 automated tests (5 new, for the ordering rules), a type check and a production build, plus a browser check with the starter categories (invented data): moving a group, moving a category with the arrows, dragging a category into another group, folding on both pages, the fold being remembered, the Budget page showing the new order, and the Categories page at 375px (no sideways scroll). NOT checked: dragging a target by hand (the same code as categories, but no target existed), a real mouse drag (I simulated the drag events), touch dragging, dark mode and the other colour palettes, sync between two devices.
+
+Judgment calls (please review):
+1. **Phones and touch screens cannot drag** (browsers do not support it), so every group, category and target also has small ▲ ▼ buttons.
+2. **Order is saved on each record** (no database change needed). Anything you add later goes to the end of its list. Old data works unchanged. The order syncs and backs up with the records.
+3. **Folds are per device and separate** for the Budget and Categories pages (a fold on one does not fold the other). The Initial setup group never folds.
+4. **Targets on the Categories page** are a read-only summary line under each category (you still add and delete them on the Budget page). Targets can be re-ordered only within their own category.
+5. **Budget page, folded group:** shows the group name, its available total and the number of categories. The "Collapse all groups" link appears when two or more groups are shown.
+6. Only the Budget and Categories pages use the new order. Pickers in other screens (transaction forms, filters, Reports) still list groups and categories in the old order.
+
+Not built: moving whole groups on a phone by touch drag, applying the order to the other screens, expand/collapse the target lines alone.
+
+---
+
 ## STATUS 2026-10-29 (newest): RSU vests left out of budgeting income BUILT ("go"), pushed
 
 Verified with 798 automated tests (2 new: pay by month without vests, and the Forecast per-person switch), a type check and a production build, plus a browser check with invented people and vests (since removed). Checked: the Budget page's projected take-home fell from $27,464 to $14,486 for a month with two vests (paychecks only), and on the Forecast page switching each person's vests off lowered "Money in" by that person's vests, one at a time. NOT checked: a month with a bonus by eye, dark mode and the other colour palettes, phone width.
