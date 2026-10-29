@@ -4,7 +4,17 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-29 (newest): account filters, column boxes and Reconcile move BUILT ("go"), pushed
+## STATUS 2026-10-29 (newest): Amount filter box right-aligned BUILT (after a yes), not committed
+
+Ask: in the Amount filter box under the column header, the placeholder text ("45 or >100") is left-aligned, but the Amount header and amounts are right-aligned. Right-align the box's text (placeholder and what you type) so it lines up with the header and data.
+
+Applies to: the Amount box on the Transactions tab and on account pages (a small style change; the phone block above the list is unchanged).
+
+Verified in the browser on the Transactions tab (the box and the header both report right alignment) and the existing 796 tests are unaffected (style only). Judgment call: only the Amount box changed; Date, Payee and Category stay left-aligned like their data. NOT checked: account page by eye, phone width, dark mode.
+
+---
+
+## STATUS 2026-10-29: account filters, column boxes and Reconcile move BUILT ("go"), pushed
 
 Verified with 796 automated tests (6 new, for the column boxes), a type check and a production build, plus a browser check with invented data (since removed): an account page and the Transactions tab at desktop width, and the Transactions tab at 375px (no sideways scroll). Checked: typing "logan" under Payee, "45" under Amount (finds $45.00 and $45.82, not $145.99), "2026-04" under Date, the true running balance staying put while filtering, Reconcile in its new spot. NOT checked: dark mode and the other colour palettes, a real phone touch, the Filters panel and chips on an account page by hand (same component as the Transactions tab), and an account page at 375px after the final styling fix.
 

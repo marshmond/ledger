@@ -559,5 +559,6 @@ details.pick label.chk:hover { background: var(--hover); }
 /* Type-to-filter boxes under the transaction column headers */
 .txn-table thead tr.col-filters th { top: calc(var(--topbar-h) + 36px); font-weight: 400; padding-top: 0; padding-bottom: var(--sp-2); }
 .txn-table thead tr.col-filters th input { width: 100%; min-width: 0; min-height: 32px; font-size: var(--fs-sm); }
+.txn-table thead tr.col-filters th.c-amt input { text-align: right; }
 .col-boxes { display: none; }
 @media (max-width: 640px) { .col-boxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); } .col-boxes input { width: 100%; min-width: 0; } }
