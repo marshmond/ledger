@@ -4,6 +4,36 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-28 (newest): customizable Home page with charts BUILT ("go"), awaiting your review (not committed)
+
+Verified with 787 automated tests (9 new, for the layout rules and the chart numbers), a type check and a production build, plus a browser check with invented data: desktop (two columns) and 375px (one column, no sideways scroll). Checked: every chart drawing, Edit Home, moving a card, removing a card (and it appearing under "Add a card"), making a card wider and saving it across a reload. NOT checked: dark mode and the other colour palettes, a real phone touch, and the Reset to default button (simple, covered only by the default-layout test).
+
+Judgment calls (please review):
+1. **Default layout:** same cards as before in a two-column grid (one column on phones), with the four new chart cards added. Get started is full width at the top and hides itself when finished or dismissed.
+2. **Net worth card** now shows the number and trend only; the cash/investments/property/cards/loans figures moved to the new "What you own and owe" card (ring of assets, plus a bar of what is owed against them). The "add your home's value" hint was dropped.
+3. **"This month"** (October and so on) replaces the text figures with Income and Spent bars, plus Ready to assign.
+4. **Budget progress** shows the six most used-up categories. A category with spending but no money set aside shows as full red ("none set aside"). Card payment lines are left out. Bars turn amber past 85% and red when overspent.
+5. **Income vs spending** is the last six months, same rules as the existing month figures (transfers and the "Initial setup" category left out).
+6. **Spending by category** shows the top five plus "Other".
+7. **Check-in** is a progress ring; **Goals** are bars by how many years away each starts (longer = further out). Goals have no cost or funding shown here because the Home card never had it.
+8. **Needs attention, Recent transactions and Coming up** stay as lists. Coming up on Home no longer shows the calendar download link or footnote (still on its own use elsewhere, if any).
+9. **Editing:** "Edit Home" in the page header. Arrows reorder, a wider/narrower button (computer screens only), Remove, and an "Add a card" row; "Reset to default" restores everything. Cards that are not showing right now (finished setup, no check-in) appear greyed in edit mode so you can still move or remove them.
+10. **Saved on this device only** (browser storage); nothing synced, no backup change. Clearing site data resets it. Cards added in a future version will appear under "Add a card", not automatically.
+
+Not built: drag and drop, per-chart settings (period, number of categories), chart tooltips on hover, a synced layout.
+
+### Decisions it was built from
+
+Ask: make Home a set of cards you can add, remove and reorder, and use more visuals and less text.
+
+Decisions:
+1. Editing: an "Edit Home" mode. Each card gets move up/down, half/full width, and remove; an "Add card" picker lists the cards not on the page. Arrows, no drag and drop (works the same on phone and desktop).
+2. Saving: per device (browser storage), not synced. No database change, backup or sync work. A "Reset to default" button restores today's layout.
+3. New chart cards: spending by category (this month), budget progress bars (spent vs budgeted, overspent in red), income vs spending (last 6 months), net worth breakdown (cash / investments / property / debts). Charts are hand-drawn SVG like the existing ones (no chart library).
+4. Less text: lists become visuals (Top categories, net worth parts, goals, check-in as rings and progress bars). Needs attention and Coming up stay as short lists because they are action items.
+5. Existing cards (net worth, month summary, recent transactions, check-in, goals, needs attention, coming up, get started) all become cards in the same system.
+6. To settle while building: default order (expected: today's layout with the new charts added below), and what an empty chart shows when there is no data.
+
 ## QUEUED 2026-10-26: reconciled / not reconciled badges on the Accounts list (decisions made, waiting for "go")
 
 Ask: on the main Accounts page (Money > Accounts), mark each account as reconciled or not.
