@@ -4,6 +4,34 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-29 (newest): assets/liabilities bar chart with a net worth line BUILT ("go"), pushed
+
+Verified with 790 automated tests (3 new, for the chart numbers), a type check and a production build, plus a browser check with invented data on Home and the Net worth page at desktop width and 375px (no sideways scroll). Checked: stacked bars, the net worth line, hover values (the parts add up to the total), a total-only past point, and the label spacing on a narrow card. NOT checked: dark mode and the other colour palettes, a real phone touch, keyboard arrow keys on the chart.
+
+Judgment calls (please review):
+1. **Same chart on both screens.** Home shows the last 12 months; the Net worth page shows up to the last 60. It replaces the old plain line on Home and the old three-line chart on the Net worth page.
+2. **Colours:** up bars are cash (blue), investments (green), property (purple); down bars are credit cards (pink) and loans (orange). The net worth line is dark. Colour is never the only signal: hovering lists every amount.
+3. **A month with only a total** (a past point you typed in) shows as a dot on the line with no bars, and its hover says "Total only".
+4. **A negative cash, investments or property figure** is left out of the bars (the net worth line still counts it).
+5. **Net worth page table:** the single "Debts" column is now separate "Cards" and "Loans" columns.
+6. **The chart redraws at the card's real width**, so labels stay readable instead of shrinking on phones. Month labels thin out when space is tight.
+7. The old Home trend line piece (`Sparkline`) is no longer used on Home.
+
+Not built: choosing a time period, entering a past point part by part, a "last 12 months / all" switch on the Net worth page.
+
+### Decisions it was built from (originally queued 2026-10-29)
+
+Ask: on Home, show assets as upward bars and liabilities as downward bars, with net worth as a line on top. On the Net worth page, break the history out and track it the same way (cash, investments, property, cards, loans).
+
+Today: Home shows a bare line of total net worth (monthly snapshots, no axes). The Net worth page has a three-line chart (net worth, assets, debts) that only appears once two months are saved.
+
+Decisions:
+1. Bars are stacked by type: up = cash, investments, property; down = credit cards and loans (each its own colour).
+2. The chart has month labels, a dollar scale, and hover/tap values.
+3. Both screens use the same chart. The Net worth page's table of saved points keeps its columns, with cards and loans shown separately.
+4. No database change: snapshots already store cash, investments, property, cards and loans separately.
+5. To settle while building: the Net worth page's "Add a past point" only records a total (the parts are saved as zero), so those points would show as a net worth dot with no bars. Expected: show them that way, and offer parts-by-part entry as a later option. Also what the chart shows with fewer than two months saved (expected: the same hint text as today).
+
 ## STATUS 2026-10-28 (newest): customizable Home page with charts BUILT ("go"), awaiting your review (not committed)
 
 Verified with 787 automated tests (9 new, for the layout rules and the chart numbers), a type check and a production build, plus a browser check with invented data: desktop (two columns) and 375px (one column, no sideways scroll). Checked: every chart drawing, Edit Home, moving a card, removing a card (and it appearing under "Add a card"), making a card wider and saving it across a reload. NOT checked: dark mode and the other colour palettes, a real phone touch, and the Reset to default button (simple, covered only by the default-layout test).

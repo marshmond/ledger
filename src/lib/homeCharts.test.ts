@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import type { Category, Txn } from '../types';
 import type { BudgetRow } from './budget';
-import { budgetBars, monthlyFlow, spendingSlices } from './homeCharts';
+import type { NetWorthSnapshot } from '../types';
+import { budgetBars, monthlyFlow, netWorthBars, spendingSlices } from './homeCharts';
+
+const snap = (date: string, p: Partial<NetWorthSnapshot>): NetWorthSnapshot => ({ date, cashCents: 0, investmentsCents: 0, propertyCents: 0, cardsCents: 0, loansCents: 0, totalCents: 0, ...p });
+
+describe('netWorthBars', () => {
+  it('puts assets up, what is owed down as positive amounts, and keeps the net worth total', () => {
+    const [b] = netWorthBars([snap('2026-10-15', { cashCents: 1000, investmentsCents: 5000, propertyCents: 20000, cardsCents: -300, loansCents: -15000, totalCents: 10700 })]);
+    expect(b.upCents).toBe(26000);
+    expect(b.downCents).toBe(15300);
+    expect(b.cardsOwedCents).toBe(300);
+    expect(b.netCents).toBe(10700);
+    expect(b.label).toBe("Oct '26");
+    expect(b.hasParts).toBe(true);
+  });
+  it('sorts oldest first, keeps only the latest few, and flags total-only points', () => {
+    const bars = netWorthBars([snap('2026-03-01', { totalCents: 500 }), snap('2026-01-01', { totalCents: 100 }), snap('2026-02-01', { cashCents: 200, totalCents: 200 })], 2);
+    expect(bars.map((x) => x.date)).toEqual(['2026-02-01', '2026-03-01']);
+    expect(bars.map((x) => x.hasParts)).toEqual([true, false]);
+  });
+  it('leaves a negative cash balance out of the asset bar', () => {
+    const [b] = netWorthBars([snap('2026-10-01', { cashCents: -400, investmentsCents: 1000, totalCents: 600 })]);
+    expect(b.cashCents).toBe(0);
+    expect(b.upCents).toBe(1000);
+  });
+});
 
 const cats: Category[] = [
   { id: 1, groupId: null, name: 'Pay', kind: 'income' },

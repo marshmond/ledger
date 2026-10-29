@@ -546,3 +546,12 @@ details.pick label.chk:hover { background: var(--hover); }
   .txn-table td.c-act { text-align: left; }
 }
 @media (max-width: 899px) { .hc-width { display: none; } }
+.nwchart { position: relative; }
+.nwchart svg { width: 100%; display: block; touch-action: pan-y; }
+.nwchart svg:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 2px; border-radius: 6px; }
+.legend-line { flex: none; width: 16px; height: 0; border-top: 2.5px solid var(--fg); display: inline-block; }
+.nwchart .legend.inline { flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.nw-tip { background: var(--card); color: var(--fg); border-color: var(--line-strong); }
+.nw-tip .k { color: var(--muted); }
+.nw-tip .k i { border-top-color: var(--fg); }
+.nwchart .axis-label { font-size: 11px; }

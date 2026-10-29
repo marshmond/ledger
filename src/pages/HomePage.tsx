@@ -7,7 +7,7 @@ import { monthLabel, monthOf } from '../lib/dates';
 import { loadBudget } from '../lib/budget';
 import { dueInstances } from '../lib/schedule';
 import { loadNetWorth } from '../lib/netWorthLive';
-import { changeOver, sortedSnapshots } from '../lib/snapshots';
+import { changeOver } from '../lib/snapshots';
 import { spendingSnapshot } from '../lib/spending';
 import { computeAlerts } from '../lib/alerts';
 import { buildIncomeModel } from '../lib/income';
@@ -20,10 +20,10 @@ import ComingUp from './ComingUp';
 import { useCheckin } from './useCheckin';
 import { loadForecast } from '../lib/forecastLive';
 import { addDays } from '../lib/dates';
-import { EmptyState, PageHeader, Sparkline, signedCents } from '../ui/components';
-import { BarList, Donut, PairedColumns, Ring } from '../ui/charts';
+import { EmptyState, PageHeader, signedCents } from '../ui/components';
+import { BarList, Donut, NetWorthChart, PairedColumns, Ring } from '../ui/charts';
 import { CARD_IDS, DEFAULT_LAYOUT, addCard, loadLayout, moveCard, removeCard, saveLayout, toggleSize, type HomeCard } from '../lib/homeLayout';
-import { budgetBars, monthlyFlow, spendingSlices } from '../lib/homeCharts';
+import { budgetBars, monthlyFlow, netWorthBars, spendingSlices } from '../lib/homeCharts';
 import { openAddTransaction } from '../shell/QuickAdd';
 
 const TITLES: Record<string, string> = {
@@ -64,7 +64,6 @@ export default function HomePage() {
   const net = useLiveQuery(() => loadNetWorth(db, today), [today]);
   const spending = useMemo(() => spendingSnapshot(txns, categories, month), [txns, categories, month]);
 
-  const sortedSnaps = sortedSnapshots(snaps);
   const change = changeOver(snaps);
   const gains = useMemo(() => netForTax(realizedFor(sales, year)), [sales, year]);
   const hsa = useMemo(() => hsaYearImpact(hsaWithdrawals, invAccounts, people, year), [hsaWithdrawals, invAccounts, people, year]);
@@ -106,7 +105,7 @@ export default function HomePage() {
   const showOnboard = !onboardOff && stepsDone < steps.length;
   const dismissOnboard = () => { try { localStorage.setItem(ONBOARD_KEY, '1'); } catch { /* private window: it just comes back next time */ } setOnboardOff(true); };
 
-  const trend = sortedSnaps.map((s) => s.totalCents);
+  const nwBars = netWorthBars(snaps, 12);
   const nextStep = checkin.steps.find((s) => s.status === 'todo');
 
   // Which cards show, in what order and width. Saved on this device only.
@@ -155,8 +154,8 @@ export default function HomePage() {
           <div className="card-head"><span className="muted">Net worth</span><Link className="card-link" to="/networth">History</Link></div>
           <div className={`hero ${(net?.total ?? 0) < 0 ? 'neg' : ''}`}>{formatCents(net?.total ?? 0)}</div>
           {change && <div className="muted">{change.sinceCents >= 0 ? 'Up' : 'Down'} <strong className={change.sinceCents >= 0 ? 'pos' : 'neg'}>{change.sinceCents >= 0 ? '+' : '-'}{formatCents(Math.abs(change.sinceCents))}</strong> since {change.since}</div>}
-          {trend.length >= 2
-            ? <Sparkline values={trend} label={`Net worth by month, from ${formatCents(trend[0])} to ${formatCents(trend[trend.length - 1])}`} />
+          {nwBars.length >= 2
+            ? <NetWorthChart bars={nwBars} label="Assets and amounts owed by month, with net worth as a line" />
             : <p className="muted">A trend line appears once a couple of months of history have been saved.</p>}
         </section>
       ),

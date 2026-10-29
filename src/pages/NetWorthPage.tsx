@@ -7,7 +7,8 @@ import { formatCents, todayISO } from '../lib/money';
 import { loadNetWorth, loanOwedById } from '../lib/netWorthLive';
 import { equityOf, latestValue, valueAgeDays } from '../lib/property';
 import { changeOver, snapshotOf, sortedSnapshots } from '../lib/snapshots';
-import { LinesChart } from './charts';
+import { NetWorthChart } from '../ui/charts';
+import { netWorthBars } from '../lib/homeCharts';
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import { PageHeader } from '../ui/components';
@@ -126,16 +127,7 @@ export default function NetWorthPage() {
             The app saves a point each month when you open it, so the chart fills in as time passes ({sorted.length} saved so far). You can add past months below.
           </p>
         ) : (
-          <LinesChart
-            title="Net worth by month"
-            subtitle="Assets (cash, investments, property) and debts (cards and loans)"
-            xLabels={sorted.map((s) => s.date)}
-            series={[
-              { label: 'Net worth', color: 'var(--s1)', values: sorted.map((s) => s.totalCents) },
-              { label: 'Assets', color: 'var(--s2)', values: sorted.map((s) => s.cashCents + s.investmentsCents + s.propertyCents), dashed: true },
-              { label: 'Debts', color: 'var(--s3)', values: sorted.map((s) => -(s.cardsCents + s.loansCents)), dashed: true },
-            ]}
-          />
+          <NetWorthChart bars={netWorthBars(snaps, 60)} label="Assets and amounts owed by month, with net worth as a line" />
         )}
         <div className="row">
           <label className="f">Add a past point: date<input type="date" value={hDate} onChange={(e) => setHDate(e.target.value)} /></label>
@@ -156,13 +148,13 @@ export default function NetWorthPage() {
             <summary>All points ({sorted.length})</summary>
             <div className="scroll-x">
               <table>
-                <thead><tr><th>Date</th><th className="num">Net worth</th><th className="num">Cash</th><th className="num">Investments</th><th className="num">Property</th><th className="num">Debts</th><th /></tr></thead>
+                <thead><tr><th>Date</th><th className="num">Net worth</th><th className="num">Cash</th><th className="num">Investments</th><th className="num">Property</th><th className="num">Cards</th><th className="num">Loans</th><th /></tr></thead>
                 <tbody>
                   {[...sorted].reverse().map((s) => (
                     <tr key={s.id}>
                       <td>{s.date}</td><td className="num"><strong>{formatCents(s.totalCents)}</strong></td>
                       <td className="num">{formatCents(s.cashCents)}</td><td className="num">{formatCents(s.investmentsCents)}</td><td className="num">{formatCents(s.propertyCents)}</td>
-                      <td className="num">{formatCents(s.cardsCents + s.loansCents)}</td>
+                      <td className="num">{formatCents(s.cardsCents)}</td><td className="num">{formatCents(s.loansCents)}</td>
                       <td><button className="link danger" onClick={() => confirm(`Delete the ${s.date} point?`) && db.netWorthSnapshots.delete(s.id!)}>delete</button></td>
                     </tr>
                   ))}
