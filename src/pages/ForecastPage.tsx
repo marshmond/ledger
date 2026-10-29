@@ -20,6 +20,9 @@ export default function ForecastPage() {
   const saved = useLiveQuery(() => db.settings.get('forecast'), []);
   const s: ForecastSettings = { ...DEFAULT_FORECAST, ...((saved?.value as Partial<ForecastSettings>) ?? {}) };
   const setS = (patch: Partial<ForecastSettings>) => db.settings.put({ key: 'forecast', value: { ...s, ...patch } });
+  const people = useLiveQuery(() => db.people.toArray(), []) ?? [];
+  const vestOwners = new Set((useLiveQuery(() => db.rsuVests.toArray(), []) ?? []).map((v) => v.personId));
+  const ignored = s.ignoreVestsFor ?? [];
   const [oDate, setODate] = useState(today);
   const [oLabel, setOLabel] = useState('');
   const [oAmt, setOAmt] = useState(0);
@@ -111,6 +114,9 @@ export default function ForecastPage() {
         <div className="checks wrap">
           <label className="chk"><input type="checkbox" checked={s.includeSavings} onChange={(e) => setS({ includeSavings: e.target.checked })} /> Count savings accounts as cash I can spend</label>
           <label className="chk"><input type="checkbox" checked={s.includeTaxes} onChange={(e) => setS({ includeTaxes: e.target.checked })} /> Include tax due (or a refund) when I file next spring</label>
+          {people.filter((p) => vestOwners.has(p.id!)).map((p) => (
+            <label className="chk" key={p.id}><input type="checkbox" checked={!ignored.includes(p.id!)} onChange={(e) => setS({ ignoreVestsFor: e.target.checked ? ignored.filter((x) => x !== p.id) : [...ignored, p.id!] })} /> Count {p.name}'s stock vests as cash coming in</label>
+          ))}
         </div>
         <p className="muted">
           Everyday spending is the average of your last three full months, leaving out bills posted from Scheduled and loan interest and escrow (they are forecast on their own). Card

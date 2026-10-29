@@ -530,9 +530,9 @@ export function householdTax(years: PersonYear[], s: TaxSettings, t: TaxTables, 
   };
 }
 
-/** Take-home pay by month (index 0 = January) across the given people. */
-export function monthlyNet(years: PersonYear[]): number[] {
+/** Take-home pay by month (index 0 = January) across the given people. `excludeRsu` leaves stock vests out (paychecks and bonuses only). */
+export function monthlyNet(years: PersonYear[], opts: { excludeRsu?: boolean } = {}): number[] {
   const out = Array<number>(12).fill(0);
-  for (const y of years) for (const e of y.events) out[Number(e.date.slice(5, 7)) - 1] += e.net;
+  for (const y of years) for (const e of y.events) if (!(opts.excludeRsu && e.kind === 'rsu')) out[Number(e.date.slice(5, 7)) - 1] += e.net;
   return out;
 }

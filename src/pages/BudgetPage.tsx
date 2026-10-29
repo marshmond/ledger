@@ -52,7 +52,7 @@ export default function BudgetPage() {
     const model = buildIncomeModel(year, people, profiles, bonuses, settings.find((s) => s.year === year), { vests: rsuVests, securities });
     if (model.years.length === 0) return null;
     const idx = Number(month.slice(5, 7)) - 1;
-    return { net: monthlyNet(model.years)[idx], checks: model.years.reduce((a, y) => a + y.events.filter((e) => Number(e.date.slice(5, 7)) === idx + 1).length, 0) };
+    return { net: monthlyNet(model.years, { excludeRsu: true })[idx], checks: model.years.reduce((a, y) => a + y.events.filter((e) => e.kind !== 'rsu' && Number(e.date.slice(5, 7)) === idx + 1).length, 0) };
   }, [month]);
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const cats = useLiveQuery(() => db.categories.toArray(), []) ?? [];

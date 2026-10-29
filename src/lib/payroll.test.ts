@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TAX_2026 as T } from '../data/taxYears';
-import { bracketTax, defaultFlags, householdTax, monthlyNet, simulatePerson } from './payroll';
+import { bracketTax, defaultFlags, householdTax, monthlyNet, simulatePerson, type PersonYear } from './payroll';
 import type { Bonus, DeductionItem, IncomeProfile, TaxSettings } from '../types';
 
 const $ = (n: number) => Math.round(n * 100);
@@ -269,5 +269,17 @@ describe('monthlyNet', () => {
     const counts = Array<number>(12).fill(0);
     y.events.forEach((e) => counts[Number(e.date.slice(5, 7)) - 1]++);
     expect(Math.max(...counts)).toBe(3);
+  });
+});
+
+describe('monthlyNet without stock vests', () => {
+  it('leaves vests out when asked, and keeps paychecks and bonuses', () => {
+    const y = { events: [
+      { date: '2026-03-05', kind: 'rsu', net: 500 },
+      { date: '2026-03-15', kind: 'regular', net: 300 },
+      { date: '2026-03-20', kind: 'bonus', net: 200 },
+    ] } as unknown as PersonYear;
+    expect(monthlyNet([y])[2]).toBe(1000);
+    expect(monthlyNet([y], { excludeRsu: true })[2]).toBe(500);
   });
 });

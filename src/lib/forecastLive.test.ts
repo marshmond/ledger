@@ -79,6 +79,21 @@ describe('loading the forecast from the database', () => {
     expect(f.result.endCents).toBeGreaterThan(f.input.startCents);
   });
 
+  it('leaves out the vests of people you switch off, and keeps their paychecks', async () => {
+    const a = await d.people.add({ name: 'Pat', birthYear: 1985 });
+    const b = await d.people.add({ name: 'Sam', birthYear: 1985 });
+    for (const pid of [a, b]) {
+      await d.incomeProfiles.add({ ...newProfile(pid, 2026), salary: [{ effectiveDate: '2026-01-01', annualCents: $(120000) }] });
+      await d.rsuVests.add({ personId: pid, date: '2026-11-15', grant: 'G', kind: 'cash', shares: 100, priceCents: $(100) });
+    }
+    const vests = (f: Awaited<ReturnType<typeof loadForecast>>) => f.input.pay.filter((p) => p.label.includes('RSU')).length;
+    expect(vests(await loadForecast(d, '2026-10-17', { months: 3, includeTaxes: false }))).toBe(2);
+    const some = await loadForecast(d, '2026-10-17', { months: 3, includeTaxes: false, ignoreVestsFor: [b] });
+    expect(vests(some)).toBe(1);
+    expect(some.input.pay.filter((p) => p.label.startsWith('Sam')).length).toBeGreaterThan(0);
+    expect(vests(await loadForecast(d, '2026-10-17', { months: 3, includeTaxes: false, ignoreVestsFor: [a, b] }))).toBe(0);
+  });
+
   it('includes tax due at filing (or a refund) for the year, and one-off items', async () => {
     const pid = await d.people.add({ name: 'Alex', birthYear: 1985 });
     await d.incomeProfiles.add({ ...newProfile(pid, 2026), salary: [{ effectiveDate: '2026-01-01', annualCents: $(300000) }], fedWithholding: { mode: 'manual', manualPerPaycheckCents: 0, twoJobs: false, extraPerPaycheckCents: 0 } });

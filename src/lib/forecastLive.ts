@@ -22,6 +22,8 @@ export interface ForecastSettings {
   /** Warn when the balance would fall below this. */
   thresholdCents: number;
   includeTaxes: boolean;
+  /** People whose RSU vests are left out of the cash coming in (paychecks and bonuses still count). Optional: older saved settings lack it. */
+  ignoreVestsFor?: number[];
   oneOffs: { id: string; date: string; label: string; cents: number }[];
 }
 
@@ -86,7 +88,7 @@ export async function loadForecast(d: FinanceDB, today: string, overrides: Parti
     const m = buildIncomeModel(y, people, profiles, bonuses, taxSettings.find((s) => s.year === y), { vests: rsu, securities }, { taxableCents: hsa.taxableCents, penaltyCents: hsa.penaltyCents }, netForTax(realizedFor(sales, y)));
     for (const py of m.years) {
       const who = people.find((p) => p.id === py.personId)?.name ?? '';
-      for (const e of py.events) if (e.date > today && e.net > 0) pay.push({ date: e.date, label: `${who ? who + ': ' : ''}${e.kind === 'regular' ? 'Paycheck' : e.label}`, netCents: e.net });
+      for (const e of py.events) if (e.date > today && e.net > 0 && !(e.kind === 'rsu' && settings.ignoreVestsFor?.includes(py.personId))) pay.push({ date: e.date, label: `${who ? who + ': ' : ''}${e.kind === 'regular' ? 'Paycheck' : e.label}`, netCents: e.net });
     }
     if (settings.includeTaxes && m.household && y === year) {
       const due = `${y + 1}-04-15`;

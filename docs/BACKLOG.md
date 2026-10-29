@@ -4,7 +4,24 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-29 (newest): expandable split transactions BUILT ("go"), not committed
+## QUEUED 2026-10-29 (newest, waiting for "go"): leave RSU vests out of budgeting income; Forecast gets a per-person vest switch
+
+Ask: for budgeting and monthly spending, do not count RSU vest dates as available monthly income. Rely only on paycheck and bonus income. If vest money lands in checking, the owner enters it as income themself.
+
+Today: the Budget page banner ("Projected take-home for the month, from your Income model") adds each month's vest (after-tax) to the paychecks. The Forecast page adds vest cash to future balances. Ready to Assign, Home's income vs spending and Reports use only the transactions you enter, so they already ignore vests until you enter them.
+
+Decisions:
+1. Budget page: the projected take-home counts paychecks and bonuses only. No note about vests (owner's choice).
+2. Forecast page: a switch per person to include or ignore that person's vests (e.g. count person 1's, ignore person 2's). Shares you keep (held, not sold) are already not cash and stay out.
+3. Money you enter as income, and Ready to Assign, do not change.
+4. The Income page's tax and monthly pay tables are not changed: they report real pay and tax, not budgeting.
+5. No database change: the switch is saved with the other Forecast settings (older saved settings keep working).
+
+To settle while building: the switch's starting value (expected: include everyone's vests, so the Forecast looks the same until you change it).
+
+---
+
+## STATUS 2026-10-29 : expandable split transactions BUILT ("go"), not committed
 
 Verified with 796 automated tests (unchanged: this is screen-only), a type check and a production build, plus a browser check with an invented split (since removed): account page and Transactions tab at desktop width, Transactions tab at 375px (no sideways scroll). Checked: opening and closing, the amounts lining up under Category and Amount on desktop, a phone list of category and amount. NOT checked: phone view of an account page by eye, dark mode and the other colour palettes, keyboard use.
 
