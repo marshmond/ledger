@@ -562,3 +562,13 @@ details.pick label.chk:hover { background: var(--hover); }
 .txn-table thead tr.col-filters th.c-amt input { text-align: right; }
 .col-boxes { display: none; }
 @media (max-width: 640px) { .col-boxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); } .col-boxes input { width: 100%; min-width: 0; } }
+
+/* Expandable split transactions */
+.split-toggle { min-height: 0; padding: 0; text-align: left; font: inherit; }
+.txn-table tr.split-detail td { padding-top: 0; font-size: var(--fs-sm); background: var(--hover); }
+.txn-table tr.split-detail td.num { text-align: right; }
+.split-phone .split-line { display: flex; justify-content: space-between; gap: var(--sp-3); }
+@media (max-width: 640px) {
+  .txn-table tr.split-detail { display: block; padding: var(--sp-2) var(--sp-3); background: var(--hover); }
+  .txn-table .split-detail > td:not(.split-phone) { display: none; }
+}

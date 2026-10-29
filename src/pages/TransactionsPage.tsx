@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'react-router-dom';
@@ -16,6 +16,7 @@ import { useToast } from '../ui/Toast';
 import { openAddTransaction } from '../shell/QuickAdd';
 import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, STATUSES, TxnFilterPanel, filterChips, toggleList } from './TxnFilterUi';
 import TxnForm from './TxnForm';
+import { SplitDetailRow, SplitToggle } from './SplitDetail';
 
 const COLS: { key: SortKey; label: string; cls?: string; first: 'asc' | 'desc' }[] = [
   { key: 'date', label: 'Date', first: 'desc' },
@@ -55,6 +56,9 @@ export default function TransactionsPage() {
   const [bulkStatus, setBulkStatus] = useState('');
   const [saveName, setSaveName] = useState('');
   const [panel, setPanel] = useState(false);
+  const [openSplits, setOpenSplits] = useState<Set<number>>(new Set());
+  const toggleSplit = (id: number) => setOpenSplits((o) => { const n = new Set(o); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const catName = (id: number | null) => (id === null ? 'Uncategorized' : categories.find((c) => c.id === id)?.name ?? 'Unknown');
   const toast = useToast();
 
   useEffect(() => {
@@ -272,7 +276,8 @@ export default function TransactionsPage() {
           </thead>
           <tbody>
             {pageRows.map(({ txn: t, accountName, categoryLabel }) => (
-              <tr key={t.id} className={sel.has(t.id!) ? 'selected' : ''}>
+              <Fragment key={t.id}>
+              <tr className={sel.has(t.id!) ? 'selected' : ''}>
                 <td className="c-sel"><input type="checkbox" aria-label={`Select ${t.payee || 'transaction'}`} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></td>
                 <td className="c-date">{t.date}</td>
                 <td className="c-acct">{accountName}</td>
@@ -280,8 +285,9 @@ export default function TransactionsPage() {
                   {t.payee || <span className="muted">(no payee)</span>}
                   {t.memo && <span className="sub">{t.memo}</span>}
                   <span className="sub show-sm">{t.date} · {accountName} · {categoryLabel}{t.status !== 'cleared' ? ` · ${t.status}` : ''}</span>
+                  {t.splits?.length ? <SplitToggle className="show-sm" open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>Show split amounts</SplitToggle> : null}
                 </td>
-                <td className="c-cat">{categoryLabel === 'Uncategorized' ? <span className="muted">{categoryLabel}</span> : categoryLabel}</td>
+                <td className="c-cat">{t.splits?.length ? <SplitToggle open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>{categoryLabel}</SplitToggle> : categoryLabel === 'Uncategorized' ? <span className="muted">{categoryLabel}</span> : categoryLabel}</td>
                 <td className={`num c-amt ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{signedCents(t.amountCents)}</td>
                 <td className="c-status"><span className={`badge ${t.status}`}>{t.status}</span></td>
                 <td className="c-act">
@@ -292,6 +298,8 @@ export default function TransactionsPage() {
                   >Delete</button>
                 </td>
               </tr>
+              {t.splits?.length && openSplits.has(t.id!) ? <SplitDetailRow txn={t} catName={catName} variant="all" /> : null}
+              </Fragment>
             ))}
             {txnsLoaded === undefined && [0, 1, 2, 3, 4].map((i) => (
               <tr key={`sk${i}`} aria-hidden="true"><td colSpan={8}><div className="skeleton" /></td></tr>

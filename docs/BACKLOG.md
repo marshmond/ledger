@@ -4,7 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-29 (newest): Amount filter box right-aligned BUILT (after a yes), not committed
+## STATUS 2026-10-29 (newest): expandable split transactions BUILT ("go"), not committed
+
+Verified with 796 automated tests (unchanged: this is screen-only), a type check and a production build, plus a browser check with an invented split (since removed): account page and Transactions tab at desktop width, Transactions tab at 375px (no sideways scroll). Checked: opening and closing, the amounts lining up under Category and Amount on desktop, a phone list of category and amount. NOT checked: phone view of an account page by eye, dark mode and the other colour palettes, keyboard use.
+
+Judgment calls (please review):
+1. **The toggle** is the Category text itself (e.g. "▸ Split: Rent / Mortgage, Utilities"). On phones, where Category is hidden, a "Show split amounts" link sits under the payee.
+2. **Open state** is remembered only while you stay on the page; it resets on leaving, and a filter or sort change keeps rows open.
+3. **Opening a row** does not affect selection, sorting or totals. The parts always add up to the row amount shown above them.
+4. Transfers and ordinary rows have no arrow.
+
+Not built: per-part notes (parts have none), expand all / collapse all.
+
+---
+
+## STATUS 2026-10-29: Amount filter box right-aligned BUILT (after a yes), not committed
 
 Ask: in the Amount filter box under the column header, the placeholder text ("45 or >100") is left-aligned, but the Amount header and amounts are right-aligned. Right-align the box's text (placeholder and what you type) so it lines up with the header and data.
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -7,6 +7,7 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { finalizeReconcile, reconcileCheck, type ReconcileResult } from '../lib/ledger';
 import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
 import TxnForm from './TxnForm';
+import { SplitDetailRow, SplitToggle } from './SplitDetail';
 import CreditLimit from './CreditLimit';
 import RenameAccount from './RenameAccount';
 import { canBePrimary, getPrimaryAccountId, setPrimaryAccountId } from '../lib/primaryAccount';
@@ -35,6 +36,8 @@ export default function LedgerPage() {
   const [filter, setFilter] = useState<TxnFilter>(EMPTY_FILTER);
   const [preset, setPreset] = useState<DatePreset | 'custom'>('all');
   const [panel, setPanel] = useState(false);
+  const [openSplits, setOpenSplits] = useState<Set<number>>(new Set());
+  const toggleSplit = (sid: number) => setOpenSplits((o) => { const n = new Set(o); n.has(sid) ? n.delete(sid) : n.add(sid); return n; });
   const patch = (p: Partial<TxnFilter>) => setFilter((f) => ({ ...f, ...p }));
 
   if (!account || !txns) return <p className="muted">Loading…</p>;
@@ -181,7 +184,8 @@ export default function LedgerPage() {
           {[...shownRows].reverse().map(({ t, run }) => {
             const other = t.transferTxnId ? allTxns.find((x) => x.id === t.transferTxnId) : undefined;
             return (
-              <tr key={t.id}>
+              <Fragment key={t.id}>
+              <tr>
                 <td className="c-date">{t.date}</td>
                 <td className="c-payee">
                   {t.payee || <span className="muted">(no payee)</span>}{' '}
@@ -189,12 +193,13 @@ export default function LedgerPage() {
                   {t.recurringId && t.status === 'pending' && <span className="badge scheduled"> scheduled</span>}
                   {t.memo && <span className="sub">{t.memo}</span>}
                   <span className="sub show-sm">{t.date}</span>
+                  {t.splits?.length && !other ? <SplitToggle className="show-sm" open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>Show split amounts</SplitToggle> : null}
                 </td>
                 <td className="c-cat">
                   {other ? (
                     <span>↔ {acctName(other.accountId)}</span>
                   ) : t.splits?.length ? (
-                    <span>Split: {t.splits.map((s) => catName(s.categoryId)).join(', ')}</span>
+                    <SplitToggle open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>Split: {t.splits.map((s) => catName(s.categoryId)).join(', ')}</SplitToggle>
                   ) : (
                     <span className={t.categoryId ? '' : 'muted'}>{catName(t.categoryId)}</span>
                   )}
@@ -216,6 +221,8 @@ export default function LedgerPage() {
                   </div>
                 </td>
               </tr>
+              {t.splits?.length && !other && openSplits.has(t.id!) ? <SplitDetailRow txn={t} catName={catName} variant="account" /> : null}
+              </Fragment>
             );
           })}
           {withRun.length > 0 && shownRows.length === 0 && <tr><td colSpan={6} style={{ padding: 0 }}><EmptyState title="Nothing matches these filters" action={<button onClick={clearAll}>Clear all filters</button>}>Try a wider date range or fewer filters.</EmptyState></td></tr>}
