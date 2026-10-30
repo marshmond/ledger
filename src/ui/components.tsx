@@ -90,6 +90,7 @@ export function Sparkline({ values, label }: { values: number[]; label: string }
 /** Marks a scrolling strip with `fade-l` / `fade-r` when more is hidden off that edge, so the fade only shows when it means something. */
 export function useEdgeFade<T extends HTMLElement>() {
   const ref = useRef<T>(null);
+  const lastActive = useRef<HTMLElement | null>(null);
   const [state, setState] = useState({ l: false, r: false });
   useEffect(() => {
     const el = ref.current;
@@ -102,8 +103,13 @@ export function useEdgeFade<T extends HTMLElement>() {
     update();
     el.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
-    // Keep the active item in view when the page changes.
-    el.querySelector<HTMLElement>('.active, .on')?.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    // Keep the active item in view, but only when it changes: this effect re-runs on every render, and
+    // re-centering each time would snap the row back while the user is swiping it.
+    const active = el.querySelector<HTMLElement>('.active, .on');
+    if (active && active !== lastActive.current) {
+      lastActive.current = active;
+      active.scrollIntoView?.({ block: 'nearest', inline: 'center' });
+    }
     return () => {
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
