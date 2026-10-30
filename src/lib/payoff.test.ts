@@ -137,3 +137,12 @@ describe('extra payments versus investing', () => {
     expect(['prepay', 'even']).toContain(r.better);
   });
 });
+
+describe('a mistyped, enormous interest rate', () => {
+  it('is capped instead of overflowing the math', () => {
+    const r = comparePayoff([debt('card', 5000, 1e9, 100)], 0);
+    expect(Number.isFinite(r.minimum.totalInterestCents)).toBe(true);
+    expect(r.minimum.balances.every(Number.isFinite)).toBe(true);
+    expect(simulatePayoff([debt('card', 5000, Number.NaN, 100)], 0, 'minimum').months).not.toBeNull();
+  });
+});

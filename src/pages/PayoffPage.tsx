@@ -5,7 +5,7 @@ import { db } from '../db';
 import { formatCents, todayISO } from '../lib/money';
 import { ledgerBalance } from '../lib/netWorth';
 import { loanView, nextRow } from '../lib/loanSchedule';
-import { comparePayoff, extraVsInvest, refinance, type Debt, type PayoffStrategy } from '../lib/payoff';
+import { capApr, comparePayoff, extraVsInvest, refinance, type Debt, type PayoffStrategy } from '../lib/payoff';
 import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
@@ -46,7 +46,7 @@ export default function PayoffPage() {
       const owed = -ledgerBalance(a, txns);
       if (owed <= 0) continue;
       const t = s.cardTerms[String(a.id)];
-      out.push({ id: `card-${a.id}`, name: a.name, balanceCents: owed, aprPct: t?.aprPct ?? 0, minPaymentCents: t?.minPaymentCents ?? Math.max(2500, Math.round(owed * 0.02)), source: 'Credit card', editable: true });
+      out.push({ id: `card-${a.id}`, name: a.name, balanceCents: owed, aprPct: capApr(t?.aprPct ?? 0), minPaymentCents: t?.minPaymentCents ?? Math.max(2500, Math.round(owed * 0.02)), source: 'Credit card', editable: true });
     }
     for (const l of loans) {
       if (l.scenario) continue;
@@ -55,7 +55,7 @@ export default function PayoffPage() {
       if (!r) continue;
       out.push({ id: `loan-${l.id}`, name: l.name, balanceCents: Math.round(r.startBalance), aprPct: r.ratePct, minPaymentCents: Math.round(r.payment), source: l.kind === 'mortgage' ? 'Mortgage' : l.kind === 'heloc' ? 'HELOC' : 'Loan', editable: false, months: v.schedule.rows.filter((x) => x.date >= today).length });
     }
-    for (const m of s.manual) out.push({ ...m, source: 'Entered by hand', editable: false });
+    for (const m of s.manual) out.push({ ...m, aprPct: capApr(m.aprPct), source: 'Entered by hand', editable: false });
     return out;
   }, [accounts, txns, loans, rates, events, s.cardTerms, s.manual, today]);
 
@@ -88,7 +88,7 @@ export default function PayoffPage() {
   const [newTermIn, setNewTerm] = useState<number | null>(null);
   const [closingIn, setClosing] = useState<number | null>(null);
   const remaining = remainingIn ?? tool?.months ?? 300;
-  const newApr = newAprIn ?? Math.max(0, Math.round(((tool?.aprPct ?? 6) - 1) * 8) / 8);
+  const newApr = capApr(newAprIn ?? Math.max(0, Math.round(((tool?.aprPct ?? 0) - 1) * 8) / 8));
   const newTerm = newTermIn ?? remaining;
   const closing = closingIn ?? (tool && (tool.source === 'Mortgage' || tool.source === 'HELOC') ? 500000 : 0);
   const [roll, setRoll] = useState(false);
@@ -116,7 +116,7 @@ export default function PayoffPage() {
                       <td><input type="checkbox" aria-label={`Include ${d.name}`} checked={isIn(d)} onChange={() => toggle(d)} /></td>
                       <td>{d.name}<div className="muted" style={{ fontSize: '0.75rem' }}>{d.source}{d.source === 'Mortgage' && ' (left out by default)'}</div></td>
                       <td className="num">{formatCents(d.balanceCents)}</td>
-                      <td className="num">{d.editable ? <NumField value={t?.aprPct ?? 0} step={0.1} width={70} onChange={(n) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: n, minPaymentCents: t?.minPaymentCents ?? d.minPaymentCents } } })} /> : d.aprPct.toFixed(2)}</td>
+                      <td className="num">{d.editable ? <NumField value={capApr(t?.aprPct ?? 0)} step={0.1} width={70} onChange={(n) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: capApr(n), minPaymentCents: t?.minPaymentCents ?? d.minPaymentCents } } })} /> : d.aprPct.toFixed(2)}</td>
                       <td className="num">{d.editable ? <MoneyField key={`${cardId}-${t?.minPaymentCents}`} cents={t?.minPaymentCents ?? d.minPaymentCents} width={90} onChange={(c) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: t?.aprPct ?? 0, minPaymentCents: c } } })} /> : formatCents(d.minPaymentCents)}</td>
                       <td>{d.source === 'Entered by hand' && <button className="link danger" onClick={() => setS({ manual: s.manual.filter((x) => x.id !== d.id) })}>remove</button>}</td>
                     </tr>

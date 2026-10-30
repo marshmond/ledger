@@ -32,7 +32,12 @@ export interface PayoffResult {
 
 const MAX_MONTHS = 720;
 
-export function simulatePayoff(debts: Debt[], extraCents: number, strategy: PayoffStrategy): PayoffResult {
+/** The highest interest rate (percent) the planner accepts; a typo like 1500 would overflow the math and crash the page. */
+export const MAX_APR_PCT = 35;
+export const capApr = (x: number) => (Number.isFinite(x) ? Math.min(MAX_APR_PCT, Math.max(0, x)) : 0);
+
+export function simulatePayoff(rawDebts: Debt[], extraCents: number, strategy: PayoffStrategy): PayoffResult {
+  const debts = rawDebts.map((d) => ({ ...d, aprPct: capApr(d.aprPct) }));
   const live = debts.filter((d) => d.balanceCents > 0).map((d) => ({ ...d, bal: d.balanceCents, rate: d.aprPct / 1200, done: false }));
   const notCovering = live.filter((d) => d.minPaymentCents < Math.round(d.balanceCents * (d.aprPct / 1200))).map((d) => d.name);
   const budget = live.reduce((a, d) => a + d.minPaymentCents, 0) + (strategy === 'minimum' ? 0 : Math.max(0, extraCents));
