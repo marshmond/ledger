@@ -83,24 +83,24 @@ export default function AccountsPage() {
             <div className="card flush"><table>
               <tbody>
                 {list.map(({ a, balance }) => (
-                  <tr key={a.id}>
-                    <td>
+                  <tr key={a.id} className="acct-row">
+                    <td className="acct-name">
                       <Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}
                       {primaryId === a.id && canBePrimary(a) && <span className="badge" title="Quick add starts on this account"> primary</span>}
-                      {!a.closed && (
-                        <div className="muted" style={{ fontSize: '0.85rem' }}>
-                          {a.lastReconciledDate === todayISO()
-                            ? <span className="ok" title="You locked a balanced reconcile for this account today">✓ Reconciled today</span>
-                            : <span title="The last day a balanced reconcile was locked for this account">{a.lastReconciledDate ? `Last reconciled ${a.lastReconciledDate}` : 'Never reconciled'}</span>}
-                        </div>
-                      )}
+                      {a.kind === 'credit_card' && (() => { const s = creditStatus(balance, a.creditLimitCents); return s ? <div className="muted" style={{ fontSize: '0.85rem' }}>Credit left <span className={s.level === 'over' ? 'neg' : s.level === 'high' ? 'warn' : ''}>{formatCents(s.available)}</span> of {formatCents(s.limit)} ({Math.round(s.usedPct)}% used)</div> : null; })()}
+                    </td>
+                    <td className="acct-rec muted">
+                      {!a.closed && (a.lastReconciledDate === todayISO()
+                        ? <span className="ok" title="You locked a balanced reconcile for this account today">✓ Reconciled today</span>
+                        : <span title="The last day a balanced reconcile was locked for this account">{a.lastReconciledDate ? `Last reconciled ${a.lastReconciledDate}` : 'Never reconciled'}</span>)}
+                    </td>
+                    <td className="acct-inc muted">
                       {(a.kind === 'checking' || a.kind === 'savings') && (
-                        <label className="muted" style={{ fontSize: '0.85rem', display: 'inline-flex', gap: 6, alignItems: 'center' }} title="Leave this off for long-term savings: it will not count toward Ready to Assign">
+                        <label title="Leave this off for long-term savings: it will not count toward Ready to Assign">
                           <input type="checkbox" checked={!a.budgetExcluded} onChange={(e) => db.accounts.update(a.id!, { budgetExcluded: !e.target.checked })} />
-                          Include in budget
+                          {' '}Include in budget
                         </label>
                       )}
-                      {a.kind === 'credit_card' && (() => { const s = creditStatus(balance, a.creditLimitCents); return s ? <div className="muted" style={{ fontSize: '0.85rem' }}>Credit left <span className={s.level === 'over' ? 'neg' : s.level === 'high' ? 'warn' : ''}>{formatCents(s.available)}</span> of {formatCents(s.limit)} ({Math.round(s.usedPct)}% used)</div> : null; })()}
                     </td>
                     <td className={`num ${balance < 0 ? 'neg' : ''}`}>{formatCents(balance)}</td>
                   </tr>

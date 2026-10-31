@@ -117,6 +117,18 @@ label.f input, label.f select { color: var(--fg); font-size: var(--fs-base); fon
   .hide-sm { display: none; }
 }
 
+/* Accounts list: name, reconciled status, budget tick and balance sit side by side; on a phone the status and tick drop under the name. */
+.acct-row .acct-rec, .acct-row .acct-inc { white-space: nowrap; font-size: 0.85rem; }
+@media (min-width: 641px) { .acct-row .acct-rec { width: 13rem; } .acct-row .acct-inc { width: 10rem; } .acct-row .num { width: 8rem; } }
+.acct-row .acct-inc label { cursor: pointer; }
+@media (max-width: 640px) {
+  .acct-row { display: flex; flex-wrap: wrap; align-items: center; }
+  .acct-row .acct-name { flex: 1 1 70%; }
+  .acct-row .num { order: 2; flex: 0 0 auto; text-align: right; }
+  .acct-row .acct-rec { order: 3; flex: 1 1 55%; }
+  .acct-row .acct-inc { order: 4; flex: 0 0 auto; }
+}
+
 .count { margin-left: var(--sp-1); background: var(--accent); color: var(--on-accent, #fff); border-radius: 999px; padding: 2px 7px; font-size: var(--fs-xs); font-weight: 600; line-height: 1.2; }
 .badge.scheduled { color: var(--accent); background: var(--accent-soft); }
 input.assign { width: 110px; text-align: right; }
