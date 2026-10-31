@@ -119,7 +119,10 @@ label.f input, label.f select { color: var(--fg); font-size: var(--fs-base); fon
 
 /* Accounts list: name, reconciled status, budget tick and balance sit side by side; on a phone the status and tick drop under the name. */
 .acct-row .acct-rec, .acct-row .acct-inc { white-space: nowrap; font-size: 0.85rem; }
-@media (min-width: 641px) { .acct-row .acct-rec { width: 13rem; } .acct-row .acct-inc { width: 10rem; } .acct-row .num { width: 8rem; } }
+@media (min-width: 641px) {
+  .acct-list { table-layout: fixed; width: 100%; }
+  .acct-row td { width: 25%; }
+}
 .acct-row .acct-inc label { cursor: pointer; }
 @media (max-width: 640px) {
   .acct-row { display: flex; flex-wrap: wrap; align-items: center; }

@@ -80,7 +80,7 @@ export default function AccountsPage() {
         return (
           <section key={k}>
             <h2>{KIND_LABEL[k]}</h2>
-            <div className="card flush"><table>
+            <div className="card flush"><table className="acct-list">
               <tbody>
                 {list.map(({ a, balance }) => (
                   <tr key={a.id} className="acct-row">
