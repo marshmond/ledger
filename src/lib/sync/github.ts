@@ -27,9 +27,8 @@ export function parseRepo(text: string): { owner: string; repo: string } | null 
   return m ? { owner: m[1], repo: m[2].replace(/\.git$/, '') } : null;
 }
 
-export function githubRemote(cfg: GhConfig, f: typeof fetch = (...a) => fetch(...a)): RemoteStore & { checkRepo(): Promise<{ private: boolean }> } {
-  const base = `/repos/${cfg.owner}/${cfg.repo}`;
-  async function call(path: string, init: RequestInit = {}, raw = false) {
+function caller(cfg: GhConfig, f: typeof fetch) {
+  return async function call(path: string, init: RequestInit = {}, raw = false) {
     const res = await f(`https://api.github.com${path}`, {
       ...init,
       cache: 'no-store',
@@ -45,7 +44,50 @@ export function githubRemote(cfg: GhConfig, f: typeof fetch = (...a) => fetch(..
       throw new GhError(res.status, explain(res.status, message));
     }
     return res;
-  }
+  };
+}
+
+export const BACKUP_DIR = 'backups';
+export interface BackupStore {
+  /** The backup files in the repository's backups folder (empty if the folder does not exist yet). */
+  list(): Promise<{ name: string; sha: string }[]>;
+  /** Adds a new file; resolves false if one with that name already exists. */
+  add(name: string, text: string, message: string): Promise<boolean>;
+  remove(name: string, sha: string, message: string): Promise<void>;
+}
+
+/** Dated backup files in a `backups` folder of the same private repository sync uses (sync's own file is not touched). */
+export function githubBackups(cfg: GhConfig, f: typeof fetch = (...a) => fetch(...a)): BackupStore {
+  const call = caller(cfg, f);
+  const dir = `/repos/${cfg.owner}/${cfg.repo}/contents/${BACKUP_DIR}`;
+  return {
+    async list() {
+      try {
+        const rows = (await (await call(dir)).json()) as { name: string; sha: string; type?: string }[];
+        return Array.isArray(rows) ? rows.filter((r) => r.type !== 'dir').map(({ name, sha }) => ({ name, sha })) : [];
+      } catch (e) {
+        if (e instanceof GhError && e.status === 404) return []; // no backups folder yet (a missing repo shows up when the upload fails)
+        throw e;
+      }
+    },
+    async add(name, text, message) {
+      try {
+        await call(`${dir}/${name}`, { method: 'PUT', body: JSON.stringify({ message, content: toB64(new TextEncoder().encode(text)) }) });
+        return true;
+      } catch (e) {
+        if (e instanceof GhError && (e.status === 409 || e.status === 422)) return false;
+        throw e;
+      }
+    },
+    async remove(name, sha, message) {
+      await call(`${dir}/${name}`, { method: 'DELETE', body: JSON.stringify({ message, sha }) });
+    },
+  };
+}
+
+export function githubRemote(cfg: GhConfig, f: typeof fetch = (...a) => fetch(...a)): RemoteStore & { checkRepo(): Promise<{ private: boolean }> } {
+  const base = `/repos/${cfg.owner}/${cfg.repo}`;
+  const call = caller(cfg, f);
   const checkRepo = async () => ({ private: Boolean(((await (await call(base)).json()) as { private?: boolean }).private) });
 
   return {

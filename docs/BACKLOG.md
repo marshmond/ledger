@@ -4,6 +4,40 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-10-30 (newest): repeating bill targets, accounts left out of the budget, reconciled-today cue, weekly GitHub backup BUILT ("Go, build all four"), not committed
+
+Verified with 822 automated tests (19 new), a type check and a production build, plus a browser check with invented data: leaving a savings account out dropped Ready to Assign from $6,000 to $1,000; a $300 every-3-months bill due in December showed "needs $100.00 this month"; the reconciled-today tick and "Last reconciled <date>" showed; the weekly-backup card's passphrase checks worked; Accounts, Backup and Budget had no sideways scroll at 375px. NOT checked: a real upload to GitHub (I did not send anything to your repository; the upload code is tested against a pretend GitHub and pretend server replies only), restoring an automatic copy by hand, the sync of the new fields between two devices, dark mode, and the bottom "Targets" table at phone width.
+
+Judgment calls (please review):
+1. **No database migration was needed.** The new fields (`budgetExcluded`, `lastReconciledDate` on accounts; `everyMonths` on targets) are optional, so old data and old backups work unchanged, and backups and sync carry them like any other field. The backup file version stays 14.
+2. **Left-out accounts:** a tick named "Include in budget" on each checking and savings account on the Accounts page. Anything bought or earned inside a left-out account (interest, a purchase) is NOT budgeted: it adds no income and takes nothing from a category. Moving money to or from it is a transfer, so it changes Ready to Assign by exactly that amount. A credit card paid from a left-out account should still draw down the card's payment line (from reading the code; UNVERIFIED, no test covers it). Net worth and every other screen still count the account.
+3. **Repeating bills:** "A bill that repeats every few months" (every 3, 6 or 12 months, plus the next due month). The schedule counts forward from that month by the calendar, so it rolls to the next due date on its own the month after the due month; there is no "paid" detection. If you pay the bill EARLY, the target shows a need again until its due month passes (yearly targets already behave this way). Entered on the budget line or in the Targets section.
+4. **Reconciled cue:** the date is recorded only when you press "Lock ... as reconciled" after a balanced check. Accounts show "✓ Reconciled today" in green, otherwise "Last reconciled <date>" or "Never reconciled", with no warning colours. Existing accounts show "Never reconciled" until reconciled again. Closed accounts show nothing. The date used is your device's local date.
+5. **Weekly backup** goes to a `backups` folder of the same private repository (the sync file is untouched), named `ledger-YYYY-MM-DD.ledgerbackup`, at most one per week (the repository decides, so phone and computer do not both add one), about 30 seconds after the app opens and every 6 hours while it stays open. The newest 8 are kept; older ones are deleted. It uses its own passphrase (8+ characters, typed twice), saved in this browser only. A failure shows a plain message on the Backup tab and never blocks the app. "Back up now" forces a copy any time (one per day: a second press the same day does nothing new). The file day uses UTC, so a late evening backup can carry the next day's date.
+6. **Restoring an automatic copy is manual:** download the file from GitHub, then use "Restore from backup" with the automatic-backup passphrase. There is no in-app list of copies.
+7. A reconcile lock now saves in two steps rather than one all-or-nothing step (combining them tripped a quirk in the database library). The worst case is transactions locked without the date being remembered.
+
+Not built: restoring from the repository inside the app, a warning when the weekly backup has failed for a long time, other repeat lengths (every 2 or 4 months), showing left-out accounts differently on the Budget page.
+
+---
+
+## (superseded) QUEUED 2026-10-30: repeating bill targets and choosing which accounts feed Ready to Assign (decided, now built)
+
+Ask: bills paid quarterly / twice a year / yearly should be saved for in a way that fits; and long-term savings accounts (not daily cash) should be left out of Ready to Assign. Today every checking/savings/cash account counts and there is no switch (`cashAccts` in `src/lib/budget.ts`); targets are monthly, by date, or yearly only.
+
+Decisions (your first choices):
+1. **Repeating bill target:** amount, repeat every N months (3, 6 or 12 to start), next due month. Monthly set-aside = amount divided by months until due, rounded up; rolls to the next due date after the bill is paid.
+2. **"Include in budget" tick on each checking/savings/cash account**, on by default so nothing changes until you turn it off. Excluded accounts still count in net worth and all other screens.
+3. **Transfers to/from an excluded account** count as money leaving/entering the budget (moving $500 to long-term savings lowers Ready to Assign by $500).
+
+Also queued (2026-10-30): **reconciled-today cue on the Accounts tab.** Today the app only marks individual transactions "reconciled" (LedgerPage "Lock ... as reconciled"); it does not remember WHEN an account was last reconciled. Decisions: record the date each time a balanced reconcile is locked; Accounts tab shows a green tick if that was today, otherwise a muted "last reconciled <date>" (or "never"); no amber/red warning colours. Needs a new account field (same migration, backup and sync support as below).
+
+Also queued (2026-10-30): **automatic weekly backups to the private GitHub repo.** Decisions: reuse the Sync repo and token; at most one dated encrypted copy per week, taken the first time the app is opened after a week has passed; keep roughly the last 8 and delete older ones; same encryption as manual backups (AES-256-GCM, key from PBKDF2) but using its OWN separate "automatic backup passphrase" (your choice, 2026-10-30), set once on the Backup tab and saved on each device in this browser only (never in the repo, backups or sync, like the Sync passphrase), because an automatic backup cannot ask you to type one; manual backups still ask each time. Restoring an automatic copy needs the passphrase in force when it was made, so changing it must warn that older copies still need the old one. Each device that should back up needs it entered (it is not synced); keep it written down somewhere safe, it cannot be recovered. Manual export stays. Reason: Sync holds only the latest state, so a mistake spreads to every device and there is no older copy. Still to settle while building: where in the repo the copies go (separate folder from `ledger-sync.bin`), what happens if the token or network fails (show a plain message, never block the app), and showing "last automatic backup" on the Backup tab. Only works if Sync is set up.
+
+Needs: a database migration (new account field and target fields), backup and sync support. Wording of "paid" detection for rolling the due date is still to be settled while building.
+
+---
+
 ## STATUS 2026-10-29 (newest): foldable budget groups and drag-to-reorder BUILT ("go and push")
 
 Ask: fold budget categories for easier viewing; drag and drop to re-order groups, categories and targets on the Categories page, with the Budget page following that layout. Decisions (all your first choices): targets shown and ordered on the Categories page; groups draggable, and categories movable within or between groups; Budget groups fold by clicking the heading, remembered on this device, with a collapse/expand-all button; the Categories page folds too.

@@ -1,5 +1,6 @@
 import type { FinanceDB } from '../db';
 import type { Split, Txn } from '../types';
+import { todayISO } from './money';
 
 export async function accountBalance(d: FinanceDB, accountId: number): Promise<number> {
   const acct = await d.accounts.get(accountId);
@@ -47,6 +48,8 @@ export async function reconcileCheck(
   };
 }
 
-export async function finalizeReconcile(d: FinanceDB, ids: number[]) {
+/** Locks the cleared transactions as reconciled and, given the account, remembers the day it was reconciled (for the Accounts tab). */
+export async function finalizeReconcile(d: FinanceDB, ids: number[], accountId?: number, today: string = todayISO()) {
   await d.txns.where('id').anyOf(ids).modify({ status: 'reconciled' });
+  if (accountId !== undefined) await d.accounts.update(accountId, { lastReconciledDate: today });
 }

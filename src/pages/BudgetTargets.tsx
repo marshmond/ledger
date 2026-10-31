@@ -15,6 +15,7 @@ export default function BudgetTargets({ targets, groups, cats, needs, month }: {
   const [amt, setAmt] = useState(0);
   const [due, setDue] = useState(month);
   const [moy, setMoy] = useState(12);
+  const [every, setEvery] = useState(3);
   const catName = (id: number) => cats.find((c) => c.id === id)?.name ?? '?';
   const needFor = (id?: number) => needs.find((n) => n.target.id === id);
 
@@ -22,6 +23,7 @@ export default function BudgetTargets({ targets, groups, cats, needs, month }: {
     if (!catId || amt <= 0) return;
     const t: BudgetTarget = { categoryId: Number(catId), kind, amountCents: amt };
     if (kind === 'by_date') t.dueMonth = due;
+    if (kind === 'repeating') { t.dueMonth = due; t.everyMonths = every; }
     if (kind === 'yearly') t.dueMonthOfYear = moy;
     await db.budgetTargets.add(t);
     setAmt(0);
@@ -63,10 +65,23 @@ export default function BudgetTargets({ targets, groups, cats, needs, month }: {
             <option value="monthly">A set amount every month</option>
             <option value="by_date">An amount by a date</option>
             <option value="yearly">A bill that comes every year</option>
+            <option value="repeating">A bill that repeats every few months</option>
           </select>
         </label>
-        <MoneyField key={`a${targets.length}`} label={kind === 'monthly' ? 'Per month' : 'Amount needed'} cents={amt} onChange={setAmt} width={110} />
+        <MoneyField key={`a${targets.length}`} label={kind === 'monthly' ? 'Per month' : kind === 'repeating' ? 'Amount of each bill' : 'Amount needed'} cents={amt} onChange={setAmt} width={110} />
         {kind === 'by_date' && <label className="f">Needed by<input type="month" value={due} onChange={(e) => setDue(e.target.value)} /></label>}
+        {kind === 'repeating' && (
+          <>
+            <label className="f">Comes due
+              <select value={every} onChange={(e) => setEvery(Number(e.target.value))}>
+                <option value={3}>Every 3 months (quarterly)</option>
+                <option value={6}>Every 6 months (twice a year)</option>
+                <option value={12}>Every 12 months (yearly)</option>
+              </select>
+            </label>
+            <label className="f">Next due<input type="month" value={due} onChange={(e) => setDue(e.target.value)} /></label>
+          </>
+        )}
         {kind === 'yearly' && <NumField label="Due in month (1-12)" value={moy} step={1} width={90} onChange={(n) => setMoy(Math.max(1, Math.min(12, Math.round(n))))} />}
         <button className="primary" disabled={!catId || amt <= 0} onClick={add}>Add target</button>
       </div>

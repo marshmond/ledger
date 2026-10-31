@@ -127,7 +127,7 @@ export default function LedgerPage() {
             <div>Cleared balance through {recDate}: <strong>{formatCents(isCard ? -rec.clearedBalanceCents : rec.clearedBalanceCents)}</strong></div>
             {rec.differenceCents === 0 ? (
               <div className="ok">
-                Balanced. <button onClick={async () => { await finalizeReconcile(db, rec.clearedTxnIds); setRec(null); }}>Lock {rec.clearedTxnIds.length} cleared transactions as reconciled</button>
+                Balanced. <button onClick={async () => { await finalizeReconcile(db, rec.clearedTxnIds, id); setRec(null); }}>Lock {rec.clearedTxnIds.length} cleared transactions as reconciled</button>
               </div>
             ) : (
               <div className="warn">

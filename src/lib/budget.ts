@@ -66,7 +66,10 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
   // by assigning the principal you plan to pay. They are never part of spendable cash.
   const loans = accounts.filter((a) => a.kind === 'loan');
   const debtAccts = [...cards, ...loans];
-  const cashAccts = new Set(accounts.filter((a) => a.kind !== 'credit_card' && a.kind !== 'loan').map((a) => a.id!));
+  // Accounts you left out of the budget (long-term savings) are not spendable cash, and what is bought or earned in them is not budgeted.
+  // Moving money to or from one is a transfer, so it changes the included account's balance and so Ready to Assign.
+  const cashAccts = new Set(accounts.filter((a) => a.kind !== 'credit_card' && a.kind !== 'loan' && !a.budgetExcluded).map((a) => a.id!));
+  const excludedIds = new Set(accounts.filter((a) => a.kind !== 'credit_card' && a.kind !== 'loan' && a.budgetExcluded).map((a) => a.id!));
   const cardIds = new Set(cards.map((c) => c.id!));
   const payIds = new Set(debtAccts.map((c) => c.id!));
   const expense = categories.filter((c) => c.kind !== 'income' && c.id !== SETUP_CATEGORY_ID);
@@ -109,6 +112,7 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
         if (payIds.has(t.accountId)) payments.set(t.accountId, (payments.get(t.accountId) ?? 0) + t.amountCents);
         continue;
       }
+      if (excludedIds.has(t.accountId)) continue;
       for (const s of allocations(t)) {
         if (isSetupAlloc(s)) continue; // balances entered to get started: not income, not spending
         if (s.categoryId !== null && incomeIds.has(s.categoryId)) {

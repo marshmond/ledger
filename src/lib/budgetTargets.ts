@@ -42,12 +42,28 @@ export function nextDueMonth(month: string, monthOfYear: number): string {
   return `${year}-${String(monthOfYear).padStart(2, '0')}`;
 }
 
+/** The first due month on or after `month` for a bill that repeats every `every` months, counting from the month `anchor` it comes due. */
+export function nextRepeatDue(month: string, anchor: string, every: number): string {
+  const n = Math.max(1, Math.round(every));
+  const gap = monthsBetween(anchor, month);
+  const steps = gap <= 0 ? 0 : Math.ceil(gap / n);
+  const idx = Number(anchor.slice(0, 4)) * 12 + (Number(anchor.slice(5, 7)) - 1) + steps * n;
+  return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`;
+}
+
+const EVERY_LABEL: Record<number, string> = { 3: 'every 3 months', 6: 'twice a year', 12: 'every year' };
+
 export function targetNeed(t: BudgetTarget, row: RowLike, month: string, fmt: (c: number) => string = (c) => `$${(c / 100).toFixed(2)}`): TargetNeed {
   if (t.kind === 'monthly') {
     const need = Math.max(0, t.amountCents - row.assigned);
     return { target: t, dueMonth: null, monthsLeft: null, perMonthCents: t.amountCents, needCents: need, funded: need === 0, overdue: false, description: `${fmt(t.amountCents)} every month` };
   }
-  const due = t.kind === 'yearly' ? nextDueMonth(month, t.dueMonthOfYear ?? 1) : t.dueMonth ?? month;
+  const due =
+    t.kind === 'yearly' ? nextDueMonth(month, t.dueMonthOfYear ?? 1)
+    : t.kind === 'repeating' ? nextRepeatDue(month, t.dueMonth ?? month, t.everyMonths ?? 12)
+    : t.dueMonth ?? month;
+  const every = t.everyMonths ?? 12;
+  const lead = t.kind === 'yearly' ? 'every year, next in' : t.kind === 'repeating' ? `${EVERY_LABEL[every] ?? `every ${every} months`}, next in` : 'by';
   const gap = monthsBetween(month, due);
   const overdue = gap < 0;
   const monthsLeft = overdue ? 1 : gap + 1;
@@ -62,7 +78,7 @@ export function targetNeed(t: BudgetTarget, row: RowLike, month: string, fmt: (c
     needCents: need,
     funded: need === 0,
     overdue,
-    description: `${fmt(t.amountCents)} ${t.kind === 'yearly' ? 'every year, next in' : 'by'} ${due}${overdue ? ' (past due)' : ''}`,
+    description: `${fmt(t.amountCents)} ${lead} ${due}${overdue ? ' (past due)' : ''}`,
   };
 }
 
@@ -104,6 +120,8 @@ export interface TargetForm {
   dueMonth?: string;
   /** 1 to 12, for a yearly bill. */
   monthOfYear?: number;
+  /** 'repeating': months between due dates (3, 6 or 12); `dueMonth` is then a month it comes due. */
+  everyMonths?: number;
 }
 
 /** A target from what was typed into the form, or the plain-language reason it is not ready. Only the fields the kind needs are kept. */
@@ -114,6 +132,13 @@ export function makeTarget(f: TargetForm): { target: BudgetTarget } | { error: s
   if (f.kind === 'by_date') {
     if (!f.dueMonth || !/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(f.dueMonth)) return { error: 'Choose the month the money is needed by.' };
     t.dueMonth = f.dueMonth;
+  }
+  if (f.kind === 'repeating') {
+    if (!f.dueMonth || !/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(f.dueMonth)) return { error: 'Choose the next month the bill comes due.' };
+    const n = Math.round(f.everyMonths ?? 0);
+    if (![3, 6, 12].includes(n)) return { error: 'Choose how often the bill comes: every 3, 6 or 12 months.' };
+    t.dueMonth = f.dueMonth;
+    t.everyMonths = n;
   }
   if (f.kind === 'yearly') {
     const m = Math.round(f.monthOfYear ?? 0);

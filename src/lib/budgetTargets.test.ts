@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { makeTarget, monthsBetween, nextDueMonth, planFunding, targetNeed } from './budgetTargets';
+import { makeTarget, monthsBetween, nextDueMonth, nextRepeatDue, planFunding, targetNeed } from './budgetTargets';
 import type { BudgetTarget } from '../types';
 
 const $ = (n: number) => Math.round(n * 100);
@@ -61,6 +61,46 @@ describe('yearly bills', () => {
     const after = targetNeed(yearly(1800, 12), row(0, 0), '2027-01');
     expect(after).toMatchObject({ dueMonth: '2027-12', monthsLeft: 12, perMonthCents: $(150) });
     expect(n.description).toMatch(/every year, next in 2026-12/);
+  });
+});
+
+describe('bills that repeat every few months', () => {
+  const repeating = (amt: number, next: string, every: number, id = 4): BudgetTarget => ({ id, categoryId: id, kind: 'repeating', amountCents: $(amt), dueMonth: next, everyMonths: every });
+
+  it('finds the next due month, counting forward from the one entered', () => {
+    expect(nextRepeatDue('2026-10', '2026-12', 3)).toBe('2026-12');
+    expect(nextRepeatDue('2026-12', '2026-12', 3)).toBe('2026-12');
+    expect(nextRepeatDue('2027-01', '2026-12', 3)).toBe('2027-03');
+    expect(nextRepeatDue('2027-03', '2026-12', 3)).toBe('2027-03');
+    expect(nextRepeatDue('2027-04', '2026-12', 3)).toBe('2027-06');
+    // an old date entered long ago: Feb, Aug, Feb... so after October it is next February
+    expect(nextRepeatDue('2026-10', '2026-02', 6)).toBe('2027-02');
+    expect(nextRepeatDue('2026-08', '2026-02', 6)).toBe('2026-08');
+  });
+  it('spreads a quarterly bill over the months until it is due', () => {
+    // $300 due in December, it is October: Oct, Nov, Dec
+    const n = targetNeed(repeating(300, '2026-12', 3), row(0, 0), '2026-10');
+    expect(n).toMatchObject({ dueMonth: '2026-12', monthsLeft: 3, perMonthCents: $(100), needCents: $(100) });
+    expect(n.description).toMatch(/every 3 months, next in 2026-12/);
+  });
+  it('rolls to the following due date once the month has passed, with no need to edit it', () => {
+    const n = targetNeed(repeating(300, '2026-12', 3), row(0, 0), '2027-01');
+    expect(n).toMatchObject({ dueMonth: '2027-03', monthsLeft: 3, perMonthCents: $(100) });
+  });
+  it('a twice-a-year bill spreads over six months, and money already set aside counts', () => {
+    const fresh = targetNeed(repeating(600, '2026-12', 6), row(0, 0), '2027-01');
+    expect(fresh).toMatchObject({ dueMonth: '2027-06', monthsLeft: 6, perMonthCents: $(100) });
+    // March: March, April, May, June = 4 months left, $300 still missing
+    expect(targetNeed(repeating(600, '2026-12', 6), row(300, 0), '2027-03')).toMatchObject({ monthsLeft: 4, perMonthCents: $(75) });
+  });
+  it('is described plainly for twice a year and every year', () => {
+    expect(targetNeed(repeating(600, '2026-12', 6), row(0, 0), '2026-10').description).toMatch(/twice a year, next in/);
+    expect(targetNeed(repeating(600, '2026-12', 12), row(0, 0), '2026-10').description).toMatch(/every year, next in/);
+  });
+  it('the form keeps the repeat fields only for this kind and explains what is missing', () => {
+    expect(makeTarget({ categoryId: 5, kind: 'repeating', amountCents: 30000, dueMonth: '2026-12', everyMonths: 3 })).toEqual({ target: { categoryId: 5, kind: 'repeating', amountCents: 30000, dueMonth: '2026-12', everyMonths: 3 } });
+    expect(makeTarget({ categoryId: 5, kind: 'repeating', amountCents: 30000, everyMonths: 3 })).toEqual({ error: 'Choose the next month the bill comes due.' });
+    expect(makeTarget({ categoryId: 5, kind: 'repeating', amountCents: 30000, dueMonth: '2026-12', everyMonths: 5 })).toEqual({ error: 'Choose how often the bill comes: every 3, 6 or 12 months.' });
   });
 });
 

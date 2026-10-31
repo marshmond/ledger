@@ -13,6 +13,10 @@ export interface Account {
   closed?: boolean;
   /** Credit cards only: the card's limit, if you want to see how much credit is left. */
   creditLimitCents?: number;
+  /** Checking/savings/cash: true leaves the account out of the budget (long-term savings). Unset means included. */
+  budgetExcluded?: boolean;
+  /** The day (YYYY-MM-DD) a balanced reconcile was last locked for this account. */
+  lastReconciledDate?: string;
 }
 
 export interface CategoryGroup {
@@ -592,10 +596,12 @@ export interface PayeeRule {
 export interface BudgetTarget {
   id?: number;
   categoryId: number;
-  kind: 'monthly' | 'by_date' | 'yearly';
+  kind: 'monthly' | 'by_date' | 'yearly' | 'repeating';
   amountCents: number;
-  /** 'by_date': the month the money is needed, as 'YYYY-MM'. */
+  /** 'by_date': the month the money is needed, as 'YYYY-MM'. 'repeating': one month the bill comes due (the schedule counts from it). */
   dueMonth?: string;
+  /** 'repeating': the bill comes due every this many months (3, 6 or 12). */
+  everyMonths?: number;
   /** 'yearly': the month of the year (1-12) the bill comes due. */
   dueMonthOfYear?: number;
   note?: string;

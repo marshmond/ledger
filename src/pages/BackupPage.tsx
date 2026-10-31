@@ -7,6 +7,10 @@ import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../ui/components';
+import {
+  AUTO_BACKUP_KEEP, AUTO_BACKUP_MIN_PASSPHRASE, autoBackupNow, clearAutoBackup, readAutoBackup, readAutoStatus, saveAutoBackup,
+} from '../lib/autoBackup';
+import { BACKUP_DIR as AUTO_BACKUP_DIR } from '../lib/sync/github';
 
 /** Backups older than this trigger a reminder on the Accounts page. */
 export const BACKUP_STALE_DAYS = 30;
@@ -30,6 +34,85 @@ async function saveOrShare(name: string, text: string): Promise<'shared' | 'down
   a.click();
   URL.revokeObjectURL(url);
   return 'downloaded';
+}
+
+/** Weekly encrypted copies in the private GitHub repository that Sync uses, under a passphrase of their own. */
+function AutoBackupCard() {
+  const sync = readConfig();
+  const [cfg, setCfg] = useState(readAutoBackup());
+  const [status, setStatus] = useState(readAutoStatus());
+  const [pass, setPass] = useState('');
+  const [again, setAgain] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  if (!sync) {
+    return (
+      <div className="card">
+        <strong>Automatic weekly backup</strong>
+        <p className="muted">
+          This saves a dated, encrypted copy of your data to the private GitHub repository once a week, so you always have older copies to go back to.
+          It needs <Link to="/sync">Sync devices</Link> to be set up first.
+        </p>
+      </div>
+    );
+  }
+
+  function turnOn() {
+    setErr('');
+    if (pass.length < AUTO_BACKUP_MIN_PASSPHRASE) return setErr(`Use a passphrase of at least ${AUTO_BACKUP_MIN_PASSPHRASE} characters. You cannot recover the backups without it.`);
+    if (pass !== again) return setErr('The two passphrases are different.');
+    if (cfg && cfg.passphrase !== pass && !confirm('Copies already saved stay locked with the OLD passphrase, so keep it. Change to the new one?')) return;
+    saveAutoBackup({ passphrase: pass });
+    setCfg({ passphrase: pass });
+    setPass('');
+    setAgain('');
+  }
+
+  async function backUpNow() {
+    setBusy(true);
+    setErr('');
+    setStatus(await autoBackupNow({ force: true }));
+    setBusy(false);
+  }
+
+  return (
+    <div className="card">
+      <strong>Automatic weekly backup</strong>
+      <p className="muted">
+        About once a week, when the app is open, an encrypted copy is saved to the <code>{AUTO_BACKUP_DIR}</code> folder of your private GitHub repository ({sync.owner}/{sync.repo}).
+        The last {AUTO_BACKUP_KEEP} copies are kept. It uses its own passphrase, saved in this browser only. Write it down: it cannot be recovered, and each device that should back up needs it entered.
+      </p>
+      {cfg ? (
+        <>
+          <p className={status.error ? 'warn' : 'muted'}>
+            {status.day ? `Newest copy in the repository: ${status.day}.` : 'No automatic copy has been made from this device yet.'}
+            {status.error && ` The last try failed: ${status.error}`}
+          </p>
+          <div className="row">
+            <button className="primary" disabled={busy} onClick={backUpNow}>{busy ? 'Backing up…' : 'Back up now'}</button>
+            <button onClick={() => { clearAutoBackup(); setCfg(null); }}>Turn off on this device</button>
+          </div>
+          <details style={{ marginTop: 8 }}>
+            <summary>Change the passphrase</summary>
+            <div className="row">
+              <label className="f">New passphrase<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+              <label className="f">Again<input type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="off" /></label>
+              <button onClick={turnOn}>Change</button>
+            </div>
+          </details>
+          <p className="muted" style={{ fontSize: '0.85rem' }}>To restore a copy, download it from the repository on GitHub and use “Restore from backup” above with this passphrase.</p>
+        </>
+      ) : (
+        <div className="row">
+          <label className="f">Passphrase<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+          <label className="f">Again<input type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="off" /></label>
+          <button className="primary" onClick={turnOn}>Turn on automatic backups</button>
+        </div>
+      )}
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
 }
 
 export default function BackupPage() {
@@ -98,6 +181,8 @@ export default function BackupPage() {
         {msg && <div className="ok">{msg}</div>}
         {err && <div className="error">{err}</div>}
       </div>
+
+      <AutoBackupCard />
 
       <div className="card">
         <strong>Using it on your phone and your computer</strong>

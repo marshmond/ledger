@@ -167,6 +167,40 @@ describe('budget', () => {
   });
 });
 
+describe('accounts left out of the budget', () => {
+  const longTerm: Account = { id: 3, name: 'Long-term savings', kind: 'savings', openingBalanceCents: 500000, openingDate: '2026-01-01', budgetExcluded: true };
+
+  it('their balance is not part of Ready to Assign, and the switch defaults to included', () => {
+    expect(run('2026-02', [checking, longTerm], [], []).readyToAssign).toBe(100000);
+    expect(run('2026-02', [checking, { ...longTerm, budgetExcluded: undefined }], [], []).readyToAssign).toBe(600000);
+    expect(run('2026-02', [checking, { ...longTerm, budgetExcluded: false }], [], []).readyToAssign).toBe(600000);
+  });
+
+  it('moving money to or from one counts as money leaving or entering the budget', () => {
+    const out = [
+      tx({ accountId: 1, date: '2026-02-03', amountCents: -50000, transferTxnId: 98 }),
+      tx({ accountId: 3, date: '2026-02-03', amountCents: 50000, transferTxnId: 97 }),
+    ];
+    expect(run('2026-02', [checking, longTerm], out, []).readyToAssign).toBe(50000);
+    const back = [
+      tx({ accountId: 1, date: '2026-02-03', amountCents: 20000, transferTxnId: 98 }),
+      tx({ accountId: 3, date: '2026-02-03', amountCents: -20000, transferTxnId: 97 }),
+    ];
+    expect(run('2026-02', [checking, longTerm], back, []).readyToAssign).toBe(120000);
+  });
+
+  it('interest earned and spending inside one are not budgeted', () => {
+    const t = [
+      tx({ accountId: 3, date: '2026-02-05', amountCents: 1234, categoryId: 12 }),
+      tx({ accountId: 3, date: '2026-02-06', amountCents: -2000, categoryId: 10 }),
+    ];
+    const r = run('2026-02', [checking, longTerm], t, []);
+    expect(r.readyToAssign).toBe(100000);
+    expect(r.incomeThisMonth).toBe(0);
+    expect(row(r, 'c10').activity).toBe(0);
+  });
+});
+
 describe('budget persistence helpers', () => {
   it('setAssignment upserts and removes; copyLastMonth fills gaps only', async () => {
     const d = new FinanceDB('budget-test');

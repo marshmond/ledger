@@ -110,6 +110,9 @@ describe('splits and reconcile', () => {
     await finalizeReconcile(d, ok.clearedTxnIds);
     const statuses = (await d.txns.toArray()).map((t) => t.status).sort();
     expect(statuses).toEqual(['pending', 'reconciled']);
+    expect((await d.accounts.get(checking))?.lastReconciledDate).toBeUndefined(); // no account given: no date remembered
+    await finalizeReconcile(d, ok.clearedTxnIds, checking, '2026-02-28');
+    expect(await d.accounts.get(checking)).toMatchObject({ name: 'Checking', openingBalanceCents: 100000, lastReconciledDate: '2026-02-28' });
     const bad = await reconcileCheck(d, checking, '2026-02-28', 97000);
     expect(bad.differenceCents).toBe(-1000);
   });
