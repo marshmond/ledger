@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Account } from '../types';
-import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { formatCents, parseAmountMath, todayISO } from '../lib/money';
 import { recentPayees, suggestCategory } from '../lib/rules';
 import TxnForm from '../pages/TxnForm';
 import AmountInput from '../pages/AmountInput';
@@ -51,7 +51,7 @@ export default function QuickTxn({ accounts, primaryId, onDone }: { accounts: Ac
   if (!account) return <p className="muted">Add an account first, on the Accounts page.</p>;
   if (full) return <TxnForm account={account} onDone={onDone} />;
 
-  const cents = parseAmountToCents(amount);
+  const cents = parseAmountMath(amount);
   async function save(another: boolean) {
     setMsg('');
     const abs = cents === null ? 0 : Math.abs(cents);

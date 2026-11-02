@@ -74,6 +74,25 @@ export async function applyPrices(d: FinanceDB, results: PriceResult[]): Promise
   return n;
 }
 
+/**
+ * Looks up a price for every security that is held, using the saved key, and stores them. Returns the plain message to show
+ * (it starts with "Updated" on success, "Save your API key" when there is no key). `onStatus` gets progress messages.
+ */
+export async function refreshAllPrices(d: FinanceDB, onStatus: (text: string) => void): Promise<string> {
+  const apiKey = ((await d.settings.get('priceApiKey')) as { value?: string } | undefined)?.value ?? '';
+  if (!apiKey) return 'Save your API key first.';
+  const [holdings, securities] = await Promise.all([d.holdings.toArray(), d.securities.toArray()]);
+  const held = [...new Set(holdings.map((h) => securities.find((s) => s.id === h.securityId)?.ticker).filter(Boolean) as string[])];
+  if (held.length === 0) return 'No holdings to price yet.';
+  onStatus(`Fetching ${held.length} price(s)…`);
+  const res = await fetchPrices(held, apiKey, {
+    onProgress: (done, total, waiting) => onStatus(waiting ? `Free plan allows ${PER_MINUTE} lookups a minute. Pausing before the next batch (${done}/${total} done)…` : `Fetched ${done}/${total}…`),
+  });
+  const n = await applyPrices(d, res);
+  const bad = res.filter((r) => r.error);
+  return `Updated ${n} security price(s).${bad.length ? ` Could not price: ${bad.map((b) => `${b.ticker} (${b.error})`).join('; ')}. Enter those manually below.` : ''}`;
+}
+
 export type PriceEntry = { ok: true; cents: number | null } | { ok: false; error: string };
 
 /** Parses a typed price. Empty clears the price; anything that is not a positive amount is rejected (never silently cleared). */

@@ -3,7 +3,7 @@ import { db } from '../db';
 import type { BudgetTarget } from '../types';
 import { makeTarget } from '../lib/budgetTargets';
 import { NumField } from './fields';
-import { parseAmountToCents } from '../lib/money';
+import { parseAmountMath } from '../lib/money';
 
 /** Set, change, or remove a category's target right on its budget line. */
 export default function InlineTarget({ categoryId, existing, month, onClose }: { categoryId: number; existing?: BudgetTarget; month: string; onClose: () => void }) {
@@ -16,7 +16,7 @@ export default function InlineTarget({ categoryId, existing, month, onClose }: {
   const [err, setErr] = useState('');
 
   async function save() {
-    const cents = amtText.trim() === '' ? 0 : parseAmountToCents(amtText);
+    const cents = amtText.trim() === '' ? 0 : parseAmountMath(amtText);
     if (cents === null) return setErr('That is not a valid amount.');
     const r = makeTarget({ id: existing?.id, categoryId, kind, amountCents: cents, dueMonth: due, monthOfYear: moy, everyMonths: every });
     if ('error' in r) return setErr(r.error);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { parseAmountToCents } from '../lib/money';
+import { parseAmountMath } from '../lib/money';
 
 /** A typed-in percent (min to max): any text is allowed while typing; the value is checked and kept within range when you click away. */
 export function PercentField({
@@ -61,7 +61,7 @@ export function MoneyField({
       aria-invalid={bad}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
-        const c = text.trim() === '' ? 0 : parseAmountToCents(text);
+        const c = text.trim() === '' ? 0 : parseAmountMath(text);
         if (c === null) return setBad(true);
         setBad(false);
         setText(fmt(c));

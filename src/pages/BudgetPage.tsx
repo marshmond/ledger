@@ -6,7 +6,7 @@ import { copyLastMonth, loadBudget, nextMonth, prevMonth, setAssignment, type Bu
 import { monthLabel, monthOf } from '../lib/dates';
 import { buildIncomeModel } from '../lib/income';
 import { monthlyNet } from '../lib/payroll';
-import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { assignedFromEntry, formatCents, todayISO } from '../lib/money';
 import { planFunding, targetNeed } from '../lib/budgetTargets';
 import BudgetTargets from './BudgetTargets';
 import InlineTarget from './InlineTarget';
@@ -25,8 +25,7 @@ function Assigned({ month, row }: { month: string; row: BudgetRow }) {
       defaultValue={row.assigned ? (row.assigned / 100).toFixed(2) : ''}
       placeholder="0.00"
       onBlur={async (e) => {
-        const raw = e.target.value.trim();
-        const cents = raw === '' ? 0 : parseAmountToCents(raw);
+        const cents = assignedFromEntry(e.target.value, row.assigned);
         if (cents === null) {
           e.target.value = row.assigned ? (row.assigned / 100).toFixed(2) : '';
           return;

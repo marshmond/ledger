@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Account, Category, CategoryGroup, Split, Txn, TxnStatus } from '../types';
-import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
+import { formatCents, parseAmountMath, todayISO } from '../lib/money';
 import { validateSplits } from '../lib/ledger';
 import { convertToTransfer, createTransfer, moveTxn, updateTxn } from '../lib/transfers';
 import { recentPayees, suggestCategory } from '../lib/rules';
@@ -77,8 +77,8 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   const choices = accounts.filter((a) => a.id === account.id || (!a.closed && a.kind !== 'loan'));
   const reconciledMove = moving && editing?.status === 'reconciled' && status === 'reconciled';
 
-  const total = parseAmountToCents(amount);
-  const splitTotal = splits.reduce((s, r) => s + (parseAmountToCents(r.amt) ?? 0), 0);
+  const total = parseAmountMath(amount);
+  const splitTotal = splits.reduce((s, r) => s + (parseAmountMath(r.amt) ?? 0), 0);
 
   async function save() {
     setError('');
@@ -101,7 +101,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
         if (splitOn && !wantsTransfer) {
           splitData = splits.map((r) => ({
             categoryId: r.cat ? Number(r.cat) : null,
-            amountCents: Math.abs(parseAmountToCents(r.amt) ?? 0) * (dir === 'out' ? -1 : 1),
+            amountCents: Math.abs(parseAmountMath(r.amt) ?? 0) * (dir === 'out' ? -1 : 1),
           }));
           const err = validateSplits(signed, splitData);
           if (err) return setError(err.includes('at least') ? err : 'Split amounts must add up to the total');

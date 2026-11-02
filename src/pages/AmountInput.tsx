@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { centsText, keypadText, useKeypadAmounts } from '../lib/amountEntry';
-import { parseAmountToCents } from '../lib/money';
+import { formatCents, isAmountSum, parseAmountMath, parseAmountToCents } from '../lib/money';
 
 /**
  * A dollar amount box for the transaction forms. Normally typing works as usual; with keystroke-style entry on (the default,
@@ -38,27 +38,40 @@ export default function AmountInput({
     if (keypad && el) el.setSelectionRange(el.value.length, el.value.length);
   };
 
+  const sum = isAmountSum(value) ? parseAmountMath(value) : null;
+
   return (
-    <input
-      ref={ref}
-      className={className}
-      style={style}
-      inputMode={keypad ? 'numeric' : 'decimal'}
-      placeholder={placeholder}
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(keypad ? keypadText(e.target.value) : e.target.value)}
-      onPaste={(e) => {
-        if (!keypad) return;
-        e.preventDefault();
-        const cents = parseAmountToCents(e.clipboardData.getData('text'));
-        if (cents !== null) onChange(centsText(cents));
-      }}
-      onFocus={() => setTimeout(toEnd, 0)}
-      onClick={toEnd}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' && onEnter) onEnter();
-      }}
-    />
+    <>
+      <input
+        ref={ref}
+        className={className}
+        style={style}
+        inputMode={keypad ? 'numeric' : 'decimal'}
+        placeholder={placeholder}
+        aria-label={label}
+        value={value}
+        onChange={(e) => {
+          const raw = e.target.value;
+          // Once a + or - follows a number the box is typed in plainly, so a sum like 15.37+123.86 can be entered.
+          if (!keypad) onChange(raw);
+          else if (/\d\s*[+-]/.test(raw)) onChange(raw.replace(/[^\d.,$+\-\s]/g, ''));
+          else onChange(keypadText(raw));
+        }}
+        onPaste={(e) => {
+          if (!keypad) return;
+          e.preventDefault();
+          const text = e.clipboardData.getData('text');
+          if (isAmountSum(text)) return onChange(text.trim());
+          const cents = parseAmountToCents(text);
+          if (cents !== null) onChange(centsText(cents));
+        }}
+        onFocus={() => setTimeout(toEnd, 0)}
+        onClick={toEnd}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && onEnter) onEnter();
+        }}
+      />
+      {sum !== null && <span className="muted" aria-live="polite">= {formatCents(sum)}</span>}
+    </>
   );
 }

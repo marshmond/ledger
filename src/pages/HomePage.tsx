@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { formatCents, todayISO } from '../lib/money';
+import { refreshAllPrices } from '../lib/prices';
 import { monthLabel, monthOf } from '../lib/dates';
 import { loadBudget } from '../lib/budget';
 import { dueInstances } from '../lib/schedule';
@@ -111,6 +112,16 @@ export default function HomePage() {
   // Which cards show, in what order and width. Saved on this device only.
   const [layout, setLayout] = useState(loadLayout);
   const [editing, setEditing] = useState(false);
+  const [pricing, setPricing] = useState(false);
+  const [priceMsg, setPriceMsg] = useState('');
+  async function refreshPrices() {
+    setPricing(true);
+    try {
+      setPriceMsg(await refreshAllPrices(db, setPriceMsg));
+    } finally {
+      setPricing(false);
+    }
+  }
   const update = (next: HomeCard[]) => { setLayout(next); saveLayout(next); };
 
   const slices = useMemo(() => spendingSlices(txns, categories, month), [txns, categories, month]);
@@ -295,10 +306,17 @@ export default function HomePage() {
         actions={
           <>
             {!editing && checkinOn && !checkin.progress.complete && <Link className="btn" to="/checkin">Monthly check-in · {checkin.progress.done}/{checkin.progress.total}</Link>}
+            {!editing && <button disabled={pricing} onClick={refreshPrices}>{pricing ? 'Refreshing…' : 'Refresh prices'}</button>}
             <button className={editing ? 'primary' : ''} onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit Home'}</button>
           </>
         }
       />
+      {priceMsg && (
+        <p className={priceMsg.startsWith('Updated') ? 'ok' : 'muted'}>
+          {priceMsg}
+          {priceMsg.startsWith('Save your API key') && <> <Link to="/investments">Add it on Investments, Prices</Link></>}
+        </p>
+      )}
 
       {editing && (
         <div className="card edit-panel">

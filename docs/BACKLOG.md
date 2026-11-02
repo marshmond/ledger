@@ -4,7 +4,30 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-10-30 (newest): repeating bill targets, accounts left out of the budget, reconciled-today cue, weekly GitHub backup BUILT ("Go, build all four"), not committed
+## STATUS 2026-11-02 (newest): Home "Refresh prices" button, and adding/subtracting in amount boxes BUILT ("go"), not committed
+
+Verified with 831 automated tests (9 new, for the sum reading and the Budget `+25` / `-10` rule), a type check and a production build, plus a browser check with invented data: the Home button with no key saved showed "Save your API key first" with a link to Investments; typing 1537+123.86 key by key in the transaction form showed "= $139.23" and saved a -$139.23 transaction; in Budget, `100+50` gave 150.00 and then `+25` made it 175.00; the transaction form had no sideways scroll at 375px. NOT checked: a real price refresh from the Home button (no key was used; the shared lookup code is the same one Investments always used, and Investments was changed to call it, but I did not press its button with a key), `-10` and an invalid entry in the Budget box by hand (covered by tests only), sums in split rows, the quick-add box on the phone, and a phone's number keyboard (see 2).
+
+Judgment calls (please review):
+1. **Amount boxes everywhere that take a transaction or target amount now accept sums:** the transaction form (including split rows), the quick-add box, Budget "Assigned", the budget-target amount, and the general money boxes used on other screens (`MoneyField`). The "= $139.23" preview shows under the transaction and quick-add boxes only.
+2. **A phone's number keyboard has no + key.** Transaction boxes use the number-only keyboard (for the digit-by-digit entry), so on a phone you may need to switch keyboards to type the +. I did not add a "+" button. Say if you want one.
+3. **In the transaction boxes, the first number still fills in digit by digit** (1, 5, 3, 7 shows 15.37). Once you type a + or - after a number, the box switches to plain typing, so type the next amount with its decimal point (123.86). Deleting back to a single number returns to digit-by-digit.
+4. **Budget "Assigned": a leading sign now adjusts.** `-10` takes $10 off what is there. It used to mean "set it to negative $10"; that is no longer possible by typing, which seemed an acceptable trade. A bad entry (such as `5+`) puts the old amount back and saves nothing, as before.
+5. **Other money boxes elsewhere in the app** (loan, tax and planning screens that use `parseAmountToCents` directly) were NOT changed; they still take a single amount only.
+6. **Home button** sits beside "Edit Home" (hidden while editing the layout). It refreshes every held security, shows progress, then the result. It does not skip prices already updated today.
+
+Not built: multiply/divide and brackets (you chose + and - only), a + button for phones, sums in the other planning screens, skipping already-fresh prices.
+
+Decisions behind this (your first choices):
+1. **Refresh prices button on Home.** Does the same as the Investments > Prices "Refresh prices" button, for all holdings, then shows a plain result message (e.g. updated N, M failed). With no price key saved it says so and points to where to add one.
+2. **Math in transaction amounts.** Amount boxes accept `+` and `-` only (e.g. `15.37+123.86`, `200-15.50`). A small running result ("= $139.23") shows under the box while typing; only the total is saved (nothing added to the memo).
+3. **Math in the Budget screen's Assigned boxes, YNAB style.** Same `+`/`-` math (`100+50` becomes $150). A leading sign adjusts the existing amount: `+25` adds $25 to what is there, `-10` takes $10 off.
+
+To settle while building: which other amount boxes get the math (split lines, transfers, targets); what happens with an invalid entry (plan: keep the box, show a plain message, save nothing). Money stays whole cents. No database change expected.
+
+---
+
+## STATUS 2026-10-30: repeating bill targets, accounts left out of the budget, reconciled-today cue, weekly GitHub backup BUILT ("Go, build all four"), not committed
 
 Verified with 822 automated tests (19 new), a type check and a production build, plus a browser check with invented data: leaving a savings account out dropped Ready to Assign from $6,000 to $1,000; a $300 every-3-months bill due in December showed "needs $100.00 this month"; the reconciled-today tick and "Last reconciled <date>" showed; the weekly-backup card's passphrase checks worked; Accounts, Backup and Budget had no sideways scroll at 375px. NOT checked: a real upload to GitHub (I did not send anything to your repository; the upload code is tested against a pretend GitHub and pretend server replies only), restoring an automatic copy by hand, the sync of the new fields between two devices, dark mode, and the bottom "Targets" table at phone width.
 

@@ -4,7 +4,7 @@ import { db, seedAssetClassesIfEmpty } from '../db';
 import type { AssetClass, AssetKind, Holding, InvAccount, InvKind, InvTaxType, Person, Security } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import { allocationFor, gainLoss, holdingValue, summarize } from '../lib/investments';
-import { applyPrices, fetchPrices, PER_MINUTE } from '../lib/prices';
+import { PER_MINUTE, refreshAllPrices } from '../lib/prices';
 import { AllocationBar, compactUSD, type AllocItem } from './charts';
 import { MoneyField, NumField } from './fields';
 import PriceCell from './PriceCell';
@@ -244,17 +244,8 @@ export default function InvestmentsPage() {
   const [jump, setJump] = useState({ tab: 'prices', n: 0 });
 
   async function refresh() {
-    if (!apiKey) return setStatus('Save your API key first.');
-    const held = [...new Set(holdings.map((h) => securities.find((s) => s.id === h.securityId)?.ticker).filter(Boolean) as string[])];
-    if (held.length === 0) return setStatus('No holdings to price yet.');
     setBusy(true);
-    setStatus(`Fetching ${held.length} price(s)…`);
-    const res = await fetchPrices(held, apiKey, {
-      onProgress: (done, total, waiting) => setStatus(waiting ? `Free plan allows ${PER_MINUTE} lookups a minute. Pausing before the next batch (${done}/${total} done)…` : `Fetched ${done}/${total}…`),
-    });
-    const n = await applyPrices(db, res);
-    const bad = res.filter((r) => r.error);
-    setStatus(`Updated ${n} security price(s).${bad.length ? ` Could not price: ${bad.map((b) => `${b.ticker} (${b.error})`).join('; ')}. Enter those manually below.` : ''}`);
+    setStatus(await refreshAllPrices(db, setStatus));
     setBusy(false);
   }
 
