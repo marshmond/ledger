@@ -3,6 +3,8 @@ import type { FinanceDB } from '../db';
 export interface BackupFile {
   /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data; 4 adds investments; 5 adds goals and windfalls; 6 adds loans; 7 adds RSU vests; 8 adds paycheck scenarios; 9 adds HSA withdrawals; 10 adds tax lots and sales; 11 adds property and net worth history; 12 adds payee rules; 13 adds budget targets and donations; 14 adds RSU grants. */
   version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
+  /** Same number as `version`; added so plain backups carry an explicit schemaVersion. Older files lack it. */
+  schemaVersion?: number;
   exportedAt: string;
   accounts: unknown[];
   categoryGroups: unknown[];
@@ -43,6 +45,7 @@ export interface BackupFile {
 export async function exportAll(d: FinanceDB): Promise<BackupFile> {
   return {
     version: 14,
+    schemaVersion: 14,
     exportedAt: new Date().toISOString(),
     accounts: await d.accounts.toArray(),
     categoryGroups: await d.categoryGroups.toArray(),

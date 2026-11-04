@@ -4,4 +4,6 @@ dist
 # Never commit financial data exports or backups
 backups/
 *.ledgerbackup
+Ledger Backup*.json
+Ledger Pre-Import*.json
 *.csv
