@@ -5,6 +5,7 @@ import { allModules, lastModuleId, rememberModule } from './core/registry';
 import { registerModules } from './modules';
 import { legacyTarget } from './core/legacy';
 import SettingsPage from './pages/SettingsPage';
+import { TaskCreator } from './modules/tasks/QuickTask';
 
 registerModules();
 
@@ -26,6 +27,7 @@ export default function App() {
   return (
     <>
       <ModuleBar />
+      <TaskCreator />
       <Routes>
         {allModules().map((m) => (
           <Route key={m.id} path={`/${m.id}/*`} element={<><Remember id={m.id} /><m.Component /></>} />

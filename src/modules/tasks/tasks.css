@@ -1,0 +1,65 @@
+/* Tasks module. Builds on calendar.css (forms, chips, priority marks) and the app's design tokens. */
+
+.tk { max-width: 900px; }
+.tk-quick { margin: var(--sp-2) 0 var(--sp-3); }
+.tk-preview { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
+.tk-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); font-weight: 600; font-size: var(--fs-xs); }
+.tk-plain { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: auto; color: var(--muted); }
+
+.tk-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; padding: var(--sp-1) 0 var(--sp-2); scrollbar-width: none; }
+.tk-tabs::-webkit-scrollbar { display: none; }
+.tk-tabs button { flex: none; min-height: 40px; padding: 0 var(--sp-3); border-radius: 999px; border-color: transparent; background: none; color: var(--muted); font-weight: 500; white-space: nowrap; }
+.tk-tabs button.on { background: var(--accent); color: var(--on-accent, #fff); }
+.tk-tabs button.on .count { background: var(--on-accent, #fff); color: var(--accent); }
+
+.tk-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.tk-controls input[type="search"] { flex: 1 1 180px; min-width: 0; }
+.tk-controls select { max-width: 100%; }
+.tk-bulk { position: sticky; top: calc(var(--bar-h, 36px) + 4px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); background: var(--card); border: 1px solid var(--accent-line); border-radius: var(--r-lg); box-shadow: var(--shadow-2); }
+.tk-bulk input[type="date"] { max-width: 150px; }
+
+.tk-group { margin-bottom: var(--sp-4); }
+.tk-group h3 { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-1); border-bottom: 1px solid var(--line); font-size: var(--fs-base); }
+.tk-group.bad h3 { color: var(--neg); }
+.tk-group .plain li { padding: 0; }
+.tk-empty { padding: var(--sp-4) 0; }
+
+.tk-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: stretch; border-bottom: 1px solid var(--line); }
+.tk-row.selected { background: var(--accent-soft); }
+.tk-check, .tk-select, .tk-restore { align-self: center; justify-self: center; }
+.tk-check { width: 28px; height: 28px; min-height: 28px; padding: 0; border-radius: 50%; border: 2px solid var(--line-strong); background: var(--bg); color: var(--on-accent, #fff); font-weight: 800; line-height: 1; display: inline-flex; align-items: center; justify-content: center; position: relative; }
+/* A bigger invisible hit area for fingers */
+.tk-check::after { content: ''; position: absolute; inset: -9px; }
+.tk-row.p-high .tk-check { border-color: var(--neg); }
+.tk-row.p-reminder .tk-check { border-style: dashed; }
+.tk-row.done .tk-check { background: var(--pos); border-color: var(--pos); }
+.tk-select { width: 22px; height: 22px; }
+.tk-restore { grid-column: 1; min-height: 32px; padding: 0 var(--sp-2); font-size: var(--fs-sm); }
+.tk-main { display: grid; gap: 2px; min-height: 48px; padding: var(--sp-2) var(--sp-2); border: 0; border-radius: var(--r-sm); background: none; text-align: left; min-width: 0; }
+.tk-main:hover { background: var(--hover); }
+.tk-title { font-weight: 500; overflow-wrap: anywhere; }
+.tk-row.p-high .tk-title { font-weight: 700; }
+.tk-row.p-reminder .tk-title { font-style: italic; opacity: 0.85; }
+.tk-row.done .tk-title { text-decoration: line-through; color: var(--muted); }
+.tk-meta { display: flex; flex-wrap: wrap; gap: 0 var(--sp-3); font-size: var(--fs-sm); color: var(--muted); }
+.tk-late { color: var(--neg); font-weight: 600; }
+.tk-icon { color: var(--muted); }
+
+.tk-checklist { display: grid; gap: var(--sp-1); }
+.tk-checklist li { padding: 0; }
+.tk-checklist input:not([type="checkbox"]) { flex: 1 1 auto; min-width: 0; }
+
+/* Add task / open-task count on records in other modules (Ledger) */
+.tk-actions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1); }
+.tk-linked { position: relative; display: inline-block; }
+.tk-linked-list { display: grid; gap: 2px; margin-top: 2px; padding: var(--sp-2); min-width: 160px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: var(--shadow-2); position: absolute; z-index: 6; left: 0; font-size: var(--fs-sm); }
+.tk-linked-list a { padding: 4px 6px; border-radius: 4px; }
+.tk-linked-list a:hover { background: var(--hover); }
+
+@media (max-width: 640px) {
+  .tk-controls select { flex: 1 1 45%; }
+  .tk-bulk { top: calc(var(--bar-h, 36px) + 2px); }
+  .tk-bulk > * { flex: 1 1 auto; }
+  .tk-plain { margin-left: 0; flex: 1 1 100%; }
+}
+@media (pointer: coarse) { .tk-main { min-height: 52px; } }
