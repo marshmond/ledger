@@ -43,3 +43,7 @@ Built on the `DueItem` shape (`src/core/entities.ts`), never stored:
 ## Ledger's provider (`src/modules/ledger/dueProvider.ts`)
 
 Reuses `dueInstances()` for scheduled items and `loadCalendar()` for vests, tax dates, RMDs, pay milestones and the next loan payment, so it matches Home, the sidebar count and the Scheduled page. Scheduled items past due drop off after the overdue window (Calendar settings, default 30 days). Not included: budget bill goals (month only), windfalls and goals (year only), donations and HSA withdrawals (records of past actions).
+
+## Tasks' provider (src/modules/tasks/dueProvider.ts)
+
+Open tasks with a due date (or a "do on" date) appear on the Tasks layer. Tasks are stored records, so this provider sets `actions` (complete, reopen, reschedule) and the Calendar writes straight to the task: a normal edit, not a copy. Tasks without a date stay off the Calendar.
