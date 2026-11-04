@@ -1,6 +1,8 @@
 import type { ModuleDef } from '../../core/registry';
 import { GROUPS } from '../../shell/nav';
 import LedgerModule, { LEDGER_BASE, LEDGER_ROUTES } from './LedgerModule';
+import { ledgerDueProvider } from './dueProvider';
+import { ledgerRecords } from './records';
 
 /** Ledger, module #1: personal finance. Its pages, sidebar and calculations are unchanged; this only registers them. */
 export const ledgerModule: ModuleDef = {
@@ -10,6 +12,6 @@ export const ledgerModule: ModuleDef = {
   Component: LedgerModule,
   routePaths: LEDGER_ROUTES.map(([p]) => p),
   nav: GROUPS.map((g) => ({ id: g.id, label: g.label, to: g.to, items: g.items })),
-  // Phase 2 will fill this in (scheduled bills, RSU vests, tax dates, ...). Left empty on purpose.
-  contributes: { dueItems: async () => [], tasks: async () => [] },
+  // What Ledger offers the other modules: dated things for the Calendar (read-only, computed), and records others can link to.
+  contributes: { dueProvider: ledgerDueProvider, records: ledgerRecords },
 };

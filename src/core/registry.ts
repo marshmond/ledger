@@ -3,7 +3,8 @@
  * `src/modules/index.ts`; the top bar, the routes and "open to the last module used" all come from this list.
  */
 import type { ComponentType, ReactNode } from 'react';
-import type { DueItemInput } from './entities';
+import type { RecordId } from './entities';
+import { registerDueProvider, type DueProvider } from './dueProvider';
 
 export interface ModuleNavItem {
   to: string;
@@ -28,13 +29,27 @@ export interface ModuleDef {
   routePaths: string[];
   /** The module's own navigation map (informational for the shell; the module draws its own sidebar). */
   nav: ModuleNavGroup[];
-  /** Optional hooks. Empty stubs for now; Phase 2 will read them. */
+  /** Optional hooks other modules (the Calendar, Tasks) read. */
   contributes?: {
-    /** Returns the due dates / events this module wants on the shared calendar. */
-    dueItems?: () => Promise<DueItemInput[]>;
-    /** Returns tasks this module wants on the shared task list (shape decided in Phase 2). */
-    tasks?: () => Promise<unknown[]>;
+    /** Dated things this module works out on the fly for the Calendar. Read-only; see docs/due-provider.md. */
+    dueProvider?: DueProvider;
+    /** Lets other modules link to this module's records (a task about an account) and show them by name. */
+    records?: RecordSource;
   };
+}
+
+/** A record another module can link to. Ids are text like `account:12`, because one module can have several kinds of record. */
+export interface RecordChoice {
+  id: RecordId;
+  label: string;
+  /** Short kind label, e.g. "Account". */
+  kind: string;
+}
+export interface RecordSource {
+  /** Records whose name contains `text` (empty text = a short default list). */
+  search(text: string): Promise<RecordChoice[]>;
+  /** The record's current name and the full address that opens it, or null if it no longer exists. */
+  describe(id: RecordId): Promise<{ label: string; kind: string; path: string } | null>;
 }
 
 const modules: ModuleDef[] = [];
@@ -42,8 +57,10 @@ const modules: ModuleDef[] = [];
 export function registerModule(m: ModuleDef) {
   if (modules.some((x) => x.id === m.id)) throw new Error(`Module "${m.id}" is registered twice.`);
   modules.push(m);
+  if (m.contributes?.dueProvider) registerDueProvider(m.contributes.dueProvider);
 }
 export const allModules = (): readonly ModuleDef[] => modules;
+export const recordSource = (moduleId: string) => modules.find((m) => m.id === moduleId)?.contributes?.records;
 export const getModule = (id: string | null | undefined) => modules.find((m) => m.id === id);
 
 const LAST_KEY = 'ledger-last-module';
