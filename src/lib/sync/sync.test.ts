@@ -467,3 +467,26 @@ describe('first sync on a new device, and the safety copy', () => {
     expect((file.accounts as unknown[]).length).toBe(1);
   });
 });
+
+describe('calendar data rides along with device sync', () => {
+  it('an event made on one device appears on the other, and both devices seeding the built-in calendars never doubles them', async () => {
+    const { ensureCalendarSeed, createEvent, newEventData, loadEvents, loadLayers } = await import('../../modules/calendar/data');
+    const { blankFields, PERSONAL_ID } = await import('../../modules/calendar/model');
+    const remote = memoryRemote();
+    const A = device(remote);
+    const B = device(remote);
+    await ensureCalendarSeed(A.d);
+    await ensureCalendarSeed(B.d); // both devices create the built-in calendars on their own
+    await createEvent(newEventData({ ...blankFields('2026-11-04'), title: 'Test dentist' }, { calendarId: PERSONAL_ID, tagIds: [], contactIds: [], recurrence: { freq: 'weekly', interval: 1, end: { type: 'never' } }, trackDone: false }), A.d);
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    await ensureCalendarSeed(B.d); // opening the Calendar on B again must not add a second set
+    await B.engine.sync();
+    await A.engine.sync();
+    for (const x of [A, B]) {
+      expect((await loadEvents(x.d)).map((e) => e.data.title)).toEqual(['Test dentist']);
+      expect((await loadLayers(x.d)).map((l) => l.name).sort()).toEqual(['Finance', 'Personal', 'Tasks']);
+    }
+    expect((await B.d.moduleRecords.toArray()).filter((r) => r.kind === 'calendar')).toHaveLength(3);
+  });
+});
