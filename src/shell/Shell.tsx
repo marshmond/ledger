@@ -13,6 +13,7 @@ import { ToastProvider } from '../ui/Toast';
 import { useEdgeFade } from '../ui/components';
 import QuickAdd from './QuickAdd';
 import SearchDialog from './SearchDialog';
+import BackupReminder from './BackupReminder';
 
 /** Simple line icons for the bottom tab bar, one per group. */
 const ICONS: Record<GroupId, ReactNode> = {
@@ -129,6 +130,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           </nav>
           </div>
         )}
+        <BackupReminder />
         <main className="main">{children}</main>
       </div>
 

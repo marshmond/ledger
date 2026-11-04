@@ -4,7 +4,25 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-02 (newest): Home "Refresh prices" button, and adding/subtracting in amount boxes BUILT ("go"), not committed
+## STATUS 2026-11-04 (newest): Phase 0 safety net BUILT (plain backup file, restore, 10-day reminder), committed locally, NOT pushed
+
+Verified with 841 automated tests (10 new), a type check, and a browser check with invented data: two exports named `Ledger Backup 11-04-26.json` and `..._2.json`; junk, broken and too-new files rejected with plain messages and data unchanged; a restore showed the summary, downloaded `Ledger Pre-Import 11-04-26.json` first, and removed a test transaction added after the backup; the reminder appeared after "11 days ago", hid on Dismiss, came back the next day, and cleared on Export now; no sideways scroll at 375px. NOT checked: a real download into the Chrome Downloads folder (the browser pane cannot show it), the phone share sheet, restoring with Sync turned on, and a production build.
+
+Judgment calls (please review):
+1. **The data version already existed** (the database and backup files were at version 14). The new `schemaVersion` is that same number (14); it is written into the file next to the old `version`. Older files without it still restore. Nothing was added to the stored data.
+2. **The old encrypted backup, restore and weekly GitHub backup are unchanged** and now sit below the new plain controls on the Backup page. The plain file is the first card; an Export button is also on More.
+3. **Not in the file, on purpose:** the price-lookup key, the Sync token and the weekly-backup passphrase. The file IS readable by anyone who opens it. `.gitignore` now also skips `Ledger Backup*.json` and `Ledger Pre-Import*.json`.
+4. **Screen preferences** (theme, colours, Home layout, folded panels, etc.) are saved in the file and put back on restore. Preferences missing from a file are left as they are.
+5. **"Last backup" and the per-day counter live in this browser only** (not in backups or Sync), so restoring an old file cannot reset them. A plain or encrypted export both count; a Pre-Import copy does not.
+6. **Reminder rules:** calendar days in your local time, more than 10. If an older "last backup" date already existed it is used; otherwise the clock starts the first time this version runs. It only shows once there is at least one account.
+7. **Testing tools:** a folded "Testing tools" section on the Backup page moves only the recorded last-backup date.
+8. **appVersion** is the package number (0.1.0), which does not change by itself.
+
+Not built: auto-backup to a folder, cloud sync changes, and Phase 1.
+
+---
+
+## STATUS 2026-11-02: Home "Refresh prices" button, and adding/subtracting in amount boxes BUILT ("go"), not committed
 
 Verified with 831 automated tests (9 new, for the sum reading and the Budget `+25` / `-10` rule), a type check and a production build, plus a browser check with invented data: the Home button with no key saved showed "Save your API key first" with a link to Investments; typing 1537+123.86 key by key in the transaction form showed "= $139.23" and saved a -$139.23 transaction; in Budget, `100+50` gave 150.00 and then `+25` made it 175.00; the transaction form had no sideways scroll at 375px. NOT checked: a real price refresh from the Home button (no key was used; the shared lookup code is the same one Investments always used, and Investments was changed to call it, but I did not press its button with a key), `-10` and an invalid entry in the Budget box by hand (covered by tests only), sums in split rows, the quick-add box on the phone, and a phone's number keyboard (see 2).
 

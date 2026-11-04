@@ -6,6 +6,8 @@ import { storageStatus, type StorageStatus } from '../pwa';
 import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
 import { Link } from 'react-router-dom';
+import PlainBackupCard from './PlainBackupCard';
+import { recordBackup } from '../lib/backupFile';
 import { PageHeader } from '../ui/components';
 import {
   AUTO_BACKUP_KEEP, AUTO_BACKUP_MIN_PASSPHRASE, autoBackupNow, clearAutoBackup, readAutoBackup, readAutoStatus, saveAutoBackup,
@@ -132,6 +134,7 @@ export default function BackupPage() {
       const text = await encryptText(JSON.stringify(await exportAll(db)), pass);
       const how = await saveOrShare(`ledger-${new Date().toISOString().slice(0, 10)}.ledgerbackup`, text);
       await db.settings.put({ key: 'lastBackup', value: new Date().toISOString() });
+      recordBackup(); // this device's reminder clock
       setMsg(how === 'shared' ? 'Encrypted backup shared.' : 'Encrypted backup downloaded.');
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) setErr(e instanceof Error ? e.message : String(e));
@@ -159,7 +162,10 @@ export default function BackupPage() {
   return (
     <>
       <PageHeader title="Backup" description="Keep a safe copy: your data lives only in this browser." />
+      <PlainBackupCard />
+
       <div className="card">
+        <strong>Encrypted backup (optional)</strong>
         <p>
           Your data lives only in this browser on this device. Clearing site data, uninstalling the browser, or switching browsers erases it, so
           export a backup regularly. Backups are encrypted with your passphrase; keep the passphrase somewhere safe, because there is no way to recover it.
@@ -174,7 +180,7 @@ export default function BackupPage() {
           <button className="primary" onClick={doExport}>Export encrypted backup</button>
         </div>
         <div className="row" style={{ marginTop: 12 }}>
-          <label className="f">Restore from backup (replaces everything on this device)
+          <label className="f">Restore an encrypted backup (replaces everything on this device)
             <input type="file" accept=".ledgerbackup,application/json" onChange={(e) => doImport(e.target.files?.[0])} />
           </label>
         </div>

@@ -599,3 +599,9 @@ details.pick label.chk:hover { background: var(--hover); }
 .drop-end { border: 2px dashed var(--line-strong); border-radius: var(--r-lg); padding: var(--sp-3); text-align: center; color: var(--muted); margin-bottom: var(--sp-4); }
 .row.grow { flex: 1 1 auto; flex-wrap: nowrap; }
 .row.grow input { flex: 1 1 auto; min-width: 0; }
+
+/* Backup reminder: in the page flow under the top bar, so it never covers content or the + button. */
+.backup-reminder { margin: var(--sp-3) var(--sp-5) 0; flex-wrap: wrap; }
+.backup-reminder .row { margin: 0; }
+@media (max-width: 640px) { .backup-reminder { margin: var(--sp-3) var(--sp-4) 0; } }
+@media print { .backup-reminder { display: none !important; } }

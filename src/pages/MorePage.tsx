@@ -4,6 +4,7 @@ import { db } from '../db';
 import AppearanceCard from './AppearanceCard';
 import AmountEntryCard from './AmountEntryCard';
 import { PageHeader } from '../ui/components';
+import { exportBackupNow } from '../lib/backupFile';
 
 /** Settings and housekeeping that do not belong to a daily workflow. */
 export default function MorePage() {
@@ -22,6 +23,7 @@ export default function MorePage() {
         <p className="muted">
           Your data lives only in this browser. {age === null ? 'You have not backed it up yet.' : age === 0 ? 'Last backup: today.' : `Last backup: ${age} day${age === 1 ? '' : 's'} ago.`}
         </p>
+        <div className="row"><button onClick={() => { exportBackupNow(db).catch(() => undefined); }}>Export backup</button></div>
       </div>
 
       <div className="card">
