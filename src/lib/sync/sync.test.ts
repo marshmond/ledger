@@ -490,3 +490,21 @@ describe('calendar data rides along with device sync', () => {
     expect((await B.d.moduleRecords.toArray()).filter((r) => r.kind === 'calendar')).toHaveLength(3);
   });
 });
+
+describe('tasks ride along with device sync', () => {
+  it('a task made on one device, and a completion on the other, both arrive; completing a repeating task makes exactly one next task', async () => {
+    const { createTask, completeTask, loadTasks } = await import('../../modules/tasks/data');
+    const { blankTask } = await import('../../modules/tasks/model');
+    const remote = memoryRemote();
+    const A = device(remote);
+    const B = device(remote);
+    const id = await createTask(blankTask({ title: 'Test filter', dueDate: '2026-11-02', repeat: { mode: 'fixed', rule: { freq: 'weekly', interval: 1, end: { type: 'never' } } } }), [], A.d);
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    expect((await loadTasks(B.d)).map((t) => t.data.title)).toEqual(['Test filter']);
+    await completeTask(id, '2026-11-04', B.d);
+    await B.engine.sync();
+    await A.engine.sync();
+    for (const x of [A, B]) expect((await loadTasks(x.d)).map((t) => [t.data.status, t.data.dueDate]).sort()).toEqual([['done', '2026-11-02'], ['todo', '2026-11-09']]);
+  });
+});

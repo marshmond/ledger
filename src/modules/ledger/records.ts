@@ -9,11 +9,13 @@ const KINDS = {
   account: { label: 'Account', path: (n: number) => `/ledger/account/${n}` },
   scheduled: { label: 'Scheduled item', path: () => '/ledger/scheduled' },
   loan: { label: 'Loan', path: () => '/ledger/debt' },
+  // Transactions are found by the page they sit on, not searched (there can be thousands).
+  txn: { label: 'Transaction', path: (n: number) => '/ledger/account/' + n },
 } as const;
 type Kind = keyof typeof KINDS;
 
 const parse = (id: string | number): { kind: Kind; n: number } | null => {
-  const m = /^(account|scheduled|loan):(\d+)$/.exec(String(id));
+  const m = /^(account|scheduled|loan|txn):(\d+)$/.exec(String(id));
   return m ? { kind: m[1] as Kind, n: Number(m[2]) } : null;
 };
 
@@ -31,6 +33,10 @@ export const ledgerRecords: RecordSource = {
   async describe(id) {
     const p = parse(id);
     if (!p) return null;
+    if (p.kind === 'txn') {
+      const t = await db.txns.get(p.n);
+      return t ? { label: (t.payee || 'Transaction') + ' ' + t.date, kind: KINDS.txn.label, path: KINDS.txn.path(t.accountId) } : null;
+    }
     const row = p.kind === 'account' ? await db.accounts.get(p.n) : p.kind === 'scheduled' ? await db.recurring.get(p.n) : await db.loans.get(p.n);
     if (!row) return null;
     const label = 'payee' in row ? row.payee : row.name;

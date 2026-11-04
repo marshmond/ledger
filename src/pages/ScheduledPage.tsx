@@ -1,3 +1,4 @@
+import TaskActions from '../modules/tasks/TaskActions';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -181,6 +182,7 @@ export default function ScheduledPage() {
               <td className={`num ${r.amountCents < 0 ? 'neg' : 'pos'}`}>{formatCents(r.amountCents)}</td>
               <td>
                 <div className="row">
+                  <TaskActions module="ledger" id={`scheduled:${r.id}`} label={r.payee} />
                   <button className="link" onClick={() => load(r)}>edit</button>
                   <button className="link" onClick={() => db.recurring.update(r.id!, { active: !r.active })}>{r.active ? 'pause' : 'resume'}</button>
                   <button className="link danger" onClick={() => confirm(`Delete "${r.payee}"? Transactions already posted are kept.`) && deleteRule(db, r.id!)}>delete</button>

@@ -16,8 +16,8 @@ import { dayLabel } from './time';
 import { onDay, type CalItem } from './useCalendarData';
 
 /** Everything on one day, with a button to add something. Opened from "+N more" or a day number. */
-export function DayPanel({ date, items, onOpenItem, onAdd, onClose }: {
-  date: string; items: CalItem[]; onOpenItem: (i: CalItem) => void; onAdd: (date: string) => void; onClose: () => void;
+export function DayPanel({ date, items, onOpenItem, onAdd, onAddTask, onClose }: {
+  date: string; items: CalItem[]; onOpenItem: (i: CalItem) => void; onAdd: (date: string) => void; onAddTask: (date: string) => void; onClose: () => void;
 }) {
   const list = onDay(items, date);
   return (
@@ -25,7 +25,7 @@ export function DayPanel({ date, items, onOpenItem, onAdd, onClose }: {
       {list.length === 0 ? <p className="muted">Nothing on this day.</p> : (
         <ul className="plain cal-daylist">{list.map((i) => <AgendaRow key={i.key} item={i} onOpen={(x) => { onClose(); onOpenItem(x); }} />)}</ul>
       )}
-      <div className="row cal-actions"><button className="btn primary" onClick={() => { onClose(); onAdd(date); }}>Add event</button></div>
+      <div className="row cal-actions"><button className="btn primary" onClick={() => { onClose(); onAdd(date); }}>Add event</button><button className="btn" onClick={() => { onClose(); onAddTask(date); }}>Add task</button></div>
     </Modal>
   );
 }
@@ -33,17 +33,44 @@ export function DayPanel({ date, items, onOpenItem, onAdd, onClose }: {
 /** What a Finance (or other derived) item is, and a button to its source. Derived items are read-only here. */
 export function DerivedDetail({ item, onClose }: { item: CalItem; onClose: () => void }) {
   const src = item.source!;
+  const toast = useToast();
+  const act = src.actions;
+  const [date, setDate] = useState(item.firstDay);
+  const complete = async () => {
+    await act!.complete!();
+    toast(`Done: ${item.title}`, async () => { await act!.reopen?.(); });
+    onClose();
+  };
+  const move = async () => {
+    const was = item.firstDay;
+    await act!.reschedule!(date);
+    toast(`Moved to ${dayLabel(date)}`, async () => { await act!.reschedule!(was); });
+    onClose();
+  };
   return (
     <Modal title={item.title} onClose={onClose}>
       <dl className="cal-detail">
         <dt>When</dt><dd>{dayLabel(item.firstDay, { weekday: 'long', year: true })}{item.lastDay !== item.firstDay ? ` to ${dayLabel(item.lastDay, { year: true })}` : ''} · all day{item.overdue && <> · <span className="cal-flag bad">Overdue</span></>}</dd>
-        <dt>Calendar</dt><dd><span className="cal-swatch" style={{ background: item.color }} /> {item.layerName} <span className="muted">(read-only: worked out from your {src.sourceModule === 'ledger' ? 'Ledger' : src.sourceModule} data)</span></dd>
+        <dt>Calendar</dt><dd><span className="cal-swatch" style={{ background: item.color }} /> {item.layerName} <span className="muted">{act ? '(your tasks)' : `(read-only: worked out from your ${src.sourceModule === 'ledger' ? 'Ledger' : src.sourceModule} data)`}</span></dd>
         <dt>Priority</dt><dd><PriorityMark priority={item.priority} /> {PRIORITY_LABEL[item.priority]}</dd>
         {src.detail && <><dt>About</dt><dd>{src.detail}</dd></>}
       </dl>
-      <p className="muted small">To change this, change it where it comes from. Nothing here can move its date or approve it.</p>
+      {act ? (
+        <>
+          <p className="muted small">This is one of your tasks, so changes made here change the task itself.</p>
+          <div className="row">
+            {act.complete && <button className="btn primary" onClick={() => void complete()}>Mark done</button>}
+            {act.reschedule && (
+              <span className="row nowrap">
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="New date" />
+                <button className="btn" disabled={!date || date === item.firstDay} onClick={() => void move()}>Move</button>
+              </span>
+            )}
+          </div>
+        </>
+      ) : <p className="muted small">To change this, change it where it comes from. Nothing here can move its date or approve it.</p>}
       <div className="row cal-actions">
-        <button className="btn primary" onClick={() => { onClose(); src.openSource(); }}>{src.sourceLabel ?? 'Open source'}</button>
+        <button className={`btn ${act ? '' : 'primary'}`} onClick={() => { onClose(); src.openSource(); }}>{src.sourceLabel ?? 'Open source'}</button>
         <button className="btn" onClick={onClose}>Close</button>
       </div>
     </Modal>

@@ -10,6 +10,7 @@ import type { Priority } from '../../core/entities';
 import { addDays } from '../../lib/dates';
 import { todayISO } from '../../lib/money';
 import { loadEvents, loadLayers } from './data';
+import { msAt, parseHM } from './time';
 import { PERSONAL_ID, type CalendarLayer, type EventRecord } from './model';
 import { occurrencesOf, statusOf, type Occurrence } from './occurrences';
 
@@ -104,12 +105,13 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
     for (const p of allDueProviders()) {
       const layer = layers.find((l) => l.providerId === p.id);
       for (const it of derived[p.id] ?? []) {
-        const [y, m, d] = it.date.split('-').map(Number);
-        const startMs = new Date(y, m - 1, d).getTime();
+        // All-day unless the provider gave a clock time (a task due at 2:30pm); a timed item is shown as a half hour.
+        const mins = !it.allDay && it.time ? parseHM(it.time) : null;
+        const startMs = msAt(it.date, mins ?? 0);
         const open = it.status === 'open';
         items.push({
           key: `d:${it.id}`, title: it.title, layerId: layer?.id ?? -1, layerName: layer?.name ?? p.layerName, color: layer?.color ?? p.color,
-          derived: true, allDay: true, firstDay: it.date, lastDay: it.endDate ?? it.date, startMs, endMs: startMs + 86_400_000,
+          derived: true, allDay: mins === null, firstDay: it.date, lastDay: it.endDate ?? it.date, startMs, endMs: mins === null ? msAt(addDays(it.endDate ?? it.date, 1)) : startMs + 30 * 60_000,
           priority: it.priority, location: '', done: !open, overdue: open && it.date < today, soon: false, recurring: false, source: it,
         });
       }

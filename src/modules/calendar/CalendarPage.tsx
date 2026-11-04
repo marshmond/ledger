@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { loadCalendarSettings, saveCalendarSettings, type ViewId } from '../../core/calendarSettings';
 import { addDays, addMonths, monthLabel } from '../../lib/dates';
 import { todayISO } from '../../lib/money';
+import { requestTask } from '../../core/taskBridge';
 import AgendaView from './AgendaView';
 import { DayPanel, DerivedDetail, ExportDialog, Legend, ManageCalendars } from './dialogs';
 import { defaultCalendarId, ensureCalendarSeed } from './data';
@@ -94,6 +95,7 @@ export default function CalendarPage() {
           <button className="btn" onClick={() => step(1)} aria-label="Next">›</button>
           <label className="cal-jump"><span className="sr-only">Jump to date</span><input type="date" value={anchor} onChange={(e) => e.target.value && go({ d: e.target.value })} aria-label="Jump to date" /></label>
           <button className="btn primary cal-add" onClick={() => setEditor({ start: { date: today >= range.from && today <= range.to ? today : anchor } })}>+ Add event</button>
+          <button className="btn cal-addtask" onClick={() => requestTask({ dueDate: today >= range.from && today <= range.to ? today : anchor })}>+ Add task</button>
         </div>
       </div>
       <div className="cal-toolbar2">
@@ -117,7 +119,7 @@ export default function CalendarPage() {
 
       {editor && data && <EventEditor key={editor.occ ? `${editor.occ.eventId}:${editor.occ.key}` : 'new'} occ={editor.occ} start={editor.start} layers={data.layers} defaultCalendarId={defaultCal} onClose={() => setEditor(null)} />}
       {detail && <DerivedDetail item={detail} onClose={() => setDetail(null)} />}
-      {dayOpen && <DayPanel date={dayOpen} items={items} onOpenItem={openItem} onAdd={(date) => setEditor({ start: { date } })} onClose={() => setDayOpen(null)} />}
+      {dayOpen && <DayPanel date={dayOpen} items={items} onOpenItem={openItem} onAdd={(date) => setEditor({ start: { date } })} onAddTask={(date) => requestTask({ dueDate: date })} onClose={() => setDayOpen(null)} />}
       {manage && data && <ManageCalendars layers={data.layers} defaultId={defaultCal} onClose={() => setManage(false)} onExport={(only) => { setManage(false); setExporting({ only }); }} onSetDefault={(id) => void saveCalendarSettings({ defaultCalendarId: id })} />}
       {exporting && data && <ExportDialog layers={data.layers} hidden={hidden} only={exporting.only} onClose={() => setExporting(null)} />}
     </div>

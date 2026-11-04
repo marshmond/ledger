@@ -1,3 +1,4 @@
+import TaskActions from '../modules/tasks/TaskActions';
 import { Fragment, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Link, useNavigate } from '../core/router';
@@ -209,6 +210,7 @@ export default function LedgerPage() {
                 <td className="num c-cat">{formatCents(run)}</td>
                 <td className="c-act">
                   <div className="row" style={{ justifyContent: 'inherit', flexWrap: 'nowrap' }}>
+                    <TaskActions module="ledger" id={`txn:${t.id}`} label={`${t.payee || 'Transaction'} ${t.date}`} />
                     {t.status === 'pending' && <button className="link" onClick={() => updateTxn(db, t.id!, { status: 'cleared' })}>Clear</button>}
                     <button className="link" onClick={() => { setAdding(false); setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
                     {t.transferTxnId && <button className="link" onClick={() => unlinkTransfer(db, t.id!)}>Unlink</button>}

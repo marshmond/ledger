@@ -154,7 +154,7 @@
   .cal-nav { width: 100%; }
   .cal-nav .cal-jump { flex: 1 1 120px; }
   .cal-jump input { max-width: none; width: 100%; }
-  .cal-add { flex: 1 1 100%; }
+  .cal-add, .cal-addtask { flex: 1 1 45%; }
   .cal-views { width: 100%; }
   .cal-views button { flex: 1 1 0; padding: 0 var(--sp-1); font-size: var(--fs-sm); }
   .cal-cell { min-height: 58px; padding: 1px; }

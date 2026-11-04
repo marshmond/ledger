@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { addDays, dayOfWeek } from '../../lib/dates';
+import { addDays } from '../../lib/dates';
 import { daysBetween } from '../../lib/money';
 import type { RecordRef } from '../../core/entities';
 import { store } from '../../core/store';
@@ -11,9 +11,10 @@ import {
 } from './data';
 import { MODULE, PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL, type CalendarLayer, type EventFields } from './model';
 import { REMINDER_CHOICES, reminderLabel, type Occurrence } from './occurrences';
+import RepeatFields from './RepeatFields';
 import { ContactPicker, RecordLinks, TagPicker, refKey } from './pickers';
-import { describeRule, nthOfMonth, normalizeRule, type Recurrence } from './recurrence';
-import { fmtHM, localISO, minutesOfDay, msAt, parseHM, WEEKDAYS_LONG, WEEKDAYS_SHORT } from './time';
+import { normalizeRule, type Recurrence } from './recurrence';
+import { fmtHM, localISO, minutesOfDay, msAt, parseHM } from './time';
 import type { Priority } from '../../core/entities';
 
 export interface EditorStart {
@@ -157,15 +158,6 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   // Esc closes the dialog (Modal handles it); Enter in the title saves.
   useEffect(() => setError(''), [title]);
 
-  const setRuleField = (patch: Partial<Recurrence>) => setRule((r) => (r ? { ...r, ...patch } : r));
-  const startForRule = startDate || localISO(Date.now());
-  const nth = nthOfMonth(startForRule);
-  const onRepeatKind = (v: string) => {
-    if (v === 'none') return setRule(null);
-    const freq = v as Recurrence['freq'];
-    setRule({ freq, interval: rule?.interval ?? 1, end: rule?.end ?? { type: 'never' }, ...(freq === 'weekly' ? { byWeekday: [dayOfWeek(startForRule)] } : {}), ...(freq === 'monthly' ? { monthly: 'date' as const } : {}) });
-  };
-  const unit = rule ? { daily: 'day(s)', weekly: 'week(s)', monthly: 'month(s)', yearly: 'year(s)' }[rule.freq] : '';
 
   return (
     <>
@@ -206,62 +198,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
             </label>
           </div>
 
-          <fieldset className="cal-repeat">
-            <legend>Repeat</legend>
-            <div className="row">
-              <select value={rule?.freq ?? 'none'} onChange={(e) => onRepeatKind(e.target.value)} aria-label="Repeat">
-                <option value="none">Does not repeat</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-              {rule && (
-                <>
-                  <span>every</span>
-                  <input type="number" min={1} max={999} className="cal-num" value={rule.interval} onChange={(e) => setRuleField({ interval: Math.max(1, Number(e.target.value) || 1) })} aria-label="Repeat every" />
-                  <span>{unit}</span>
-                </>
-              )}
-            </div>
-            {rule?.freq === 'weekly' && (
-              <div className="row cal-days" role="group" aria-label="Repeat on">
-                {WEEKDAYS_SHORT.map((w, d) => {
-                  const on = (rule.byWeekday ?? []).includes(d);
-                  return (
-                    <button type="button" key={w} className={`cal-daybtn ${on ? 'on' : ''}`} aria-pressed={on} aria-label={WEEKDAYS_LONG[d]}
-                      onClick={() => {
-                        const cur = rule.byWeekday ?? [];
-                        const next = on ? cur.filter((x) => x !== d) : [...cur, d];
-                        setRuleField({ byWeekday: next.length ? next.sort((a, b) => a - b) : cur });
-                      }}>{w[0]}<span className="sr-only">{w}</span></button>
-                  );
-                })}
-              </div>
-            )}
-            {rule?.freq === 'monthly' && (
-              <select value={rule.monthly ?? 'date'} onChange={(e) => setRuleField({ monthly: e.target.value as Recurrence['monthly'] })} aria-label="Monthly pattern">
-                <option value="date">On day {Number(startForRule.slice(8, 10))} (last day in shorter months)</option>
-                <option value="nth">On the {['', '1st', '2nd', '3rd', '4th'][nth.nth]} {WEEKDAYS_LONG[nth.weekday]}</option>
-                <option value="last">On the last {WEEKDAYS_LONG[nth.weekday]}</option>
-              </select>
-            )}
-            {rule && (
-              <div className="row">
-                <select value={rule.end.type} onChange={(e) => {
-                  const t = e.target.value;
-                  setRuleField({ end: t === 'until' ? { type: 'until', date: addDays(startForRule, 90) } : t === 'count' ? { type: 'count', count: 10 } : { type: 'never' } });
-                }} aria-label="Repeat ends">
-                  <option value="never">Never ends</option>
-                  <option value="until">Ends on a date</option>
-                  <option value="count">Ends after a number of times</option>
-                </select>
-                {rule.end.type === 'until' && <input type="date" value={rule.end.date} onChange={(e) => e.target.value && setRuleField({ end: { type: 'until', date: e.target.value } })} aria-label="Repeat until" />}
-                {rule.end.type === 'count' && <><input type="number" min={1} max={1000} className="cal-num" value={rule.end.count} onChange={(e) => setRuleField({ end: { type: 'count', count: Math.max(1, Number(e.target.value) || 1) } })} aria-label="Number of times" /><span>times</span></>}
-              </div>
-            )}
-            {rule && <p className="muted small">{describeRule(rule, startForRule)}</p>}
-          </fieldset>
+          <RepeatFields rule={rule} onChange={setRule} start={startDate || localISO(Date.now())} />
 
           <label className="f">Location<input value={location} onChange={(e) => setLocation(e.target.value)} /></label>
           <label className="f">Notes<textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
