@@ -1,8 +1,8 @@
 import type { FinanceDB } from '../db';
 
 export interface BackupFile {
-  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data; 4 adds investments; 5 adds goals and windfalls; 6 adds loans; 7 adds RSU vests; 8 adds paycheck scenarios; 9 adds HSA withdrawals; 10 adds tax lots and sales; 11 adds property and net worth history; 12 adds payee rules; 13 adds budget targets and donations; 14 adds RSU grants. */
-  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
+  /** 1 = Phase 1 data only; 2 adds budget and recurring items; 3 adds income/payroll data; 4 adds investments; 5 adds goals and windfalls; 6 adds loans; 7 adds RSU vests; 8 adds paycheck scenarios; 9 adds HSA withdrawals; 10 adds tax lots and sales; 11 adds property and net worth history; 12 adds payee rules; 13 adds budget targets and donations; 14 adds RSU grants; 15 adds the shared tables (contacts, tags, attachments, links, due items, module records). */
+  version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
   /** Same number as `version`; added so plain backups carry an explicit schemaVersion. Older files lack it. */
   schemaVersion?: number;
   exportedAt: string;
@@ -40,12 +40,18 @@ export interface BackupFile {
   budgetTargets?: unknown[];
   donations?: unknown[];
   rsuGrants?: unknown[];
+  contacts?: unknown[];
+  tags?: unknown[];
+  attachments?: unknown[];
+  links?: unknown[];
+  dueItems?: unknown[];
+  moduleRecords?: unknown[];
 }
 
 export async function exportAll(d: FinanceDB): Promise<BackupFile> {
   return {
-    version: 14,
-    schemaVersion: 14,
+    version: 15,
+    schemaVersion: 15,
     exportedAt: new Date().toISOString(),
     accounts: await d.accounts.toArray(),
     categoryGroups: await d.categoryGroups.toArray(),
@@ -82,13 +88,19 @@ export async function exportAll(d: FinanceDB): Promise<BackupFile> {
     budgetTargets: await d.budgetTargets.toArray(),
     donations: await d.donations.toArray(),
     rsuGrants: await d.rsuGrants.toArray(),
+    contacts: await d.contacts.toArray(),
+    tags: await d.tags.toArray(),
+    attachments: await d.attachments.toArray(),
+    links: await d.links.toArray(),
+    dueItems: await d.dueItems.toArray(),
+    moduleRecords: await d.moduleRecords.toArray(),
   };
 }
 
 /** Replaces ALL data with the backup's contents. Older (version 1) backups restore with an empty budget. */
 export async function importAll(d: FinanceDB, b: BackupFile) {
-  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(b.version)) throw new Error('Unsupported backup version');
-  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings, d.invAccounts, d.assetClasses, d.securities, d.holdings, d.settings, d.windfalls, d.goals, d.loans, d.loanRates, d.loanEvents, d.rsuVests, d.payScenarios, d.hsaWithdrawals, d.taxLots, d.sales, d.properties, d.propertyValues, d.netWorthSnapshots, d.payeeRules, d.budgetTargets, d.donations, d.rsuGrants];
+  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].includes(b.version)) throw new Error('Unsupported backup version');
+  const tables = [d.accounts, d.categoryGroups, d.categories, d.txns, d.importBatches, d.assignments, d.recurring, d.recurringLog, d.people, d.incomeProfiles, d.bonuses, d.taxSettings, d.invAccounts, d.assetClasses, d.securities, d.holdings, d.settings, d.windfalls, d.goals, d.loans, d.loanRates, d.loanEvents, d.rsuVests, d.payScenarios, d.hsaWithdrawals, d.taxLots, d.sales, d.properties, d.propertyValues, d.netWorthSnapshots, d.payeeRules, d.budgetTargets, d.donations, d.rsuGrants, d.contacts, d.tags, d.attachments, d.links, d.dueItems, d.moduleRecords];
   await d.transaction('rw', tables, async () => {
     // The API key lives only on this device (never in backups), so a restore must not wipe it.
     const apiKey = await d.settings.get('priceApiKey');
@@ -127,6 +139,12 @@ export async function importAll(d: FinanceDB, b: BackupFile) {
     await d.budgetTargets.bulkAdd((b.budgetTargets ?? []) as never[]);
     await d.donations.bulkAdd((b.donations ?? []) as never[]);
     await d.rsuGrants.bulkAdd((b.rsuGrants ?? []) as never[]);
+    await d.contacts.bulkAdd((b.contacts ?? []) as never[]);
+    await d.tags.bulkAdd((b.tags ?? []) as never[]);
+    await d.attachments.bulkAdd((b.attachments ?? []) as never[]);
+    await d.links.bulkAdd((b.links ?? []) as never[]);
+    await d.dueItems.bulkAdd((b.dueItems ?? []) as never[]);
+    await d.moduleRecords.bulkAdd((b.moduleRecords ?? []) as never[]);
     if (apiKey) await d.settings.put(apiKey);
   });
 }

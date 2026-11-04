@@ -295,3 +295,30 @@ describe('GitHub client', () => {
     expect(parseRepo('nonsense')).toBeNull();
   });
 });
+
+describe('shared tables ride along with device sync', () => {
+  it('contacts, links, due items and delete markers reach the other device with no change to the sync engine', async () => {
+    const { createStore } = await import('../../core/store');
+    const { publishDueItem, listDueItems } = await import('../../core/dueItems');
+    const remote = memoryRemote();
+    const A = device(remote);
+    const B = device(remote);
+    const sa = createStore(A.d);
+    const sb = createStore(B.d);
+    const pid = await sa.shared.contacts.put({ name: 'Test Person' });
+    const tid = await sa.shared.tags.put({ name: 'temp' });
+    await sa.shared.links.add({ module: 'ledger', id: 1 }, { module: 'shared', id: pid }, 'about');
+    await publishDueItem({ sourceModule: 'ledger', sourceRecordId: 1, title: 'Bill', date: '2026-12-01', allDay: true, priority: 'high', status: 'open', tagIds: [] }, A.d);
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    expect((await sb.shared.contacts.query()).map((c) => c.name)).toEqual(['Test Person']);
+    expect((await sb.shared.links.linkedTo({ module: 'ledger', id: 1 })).length).toBe(1);
+    expect((await listDueItems({}, B.d)).map((i) => i.title)).toEqual(['Bill']);
+    // a soft delete on B reaches A
+    await sb.shared.tags.remove(tid);
+    await B.engine.sync();
+    await A.engine.sync();
+    expect(await sa.shared.tags.get(tid)).toBeUndefined();
+    expect((await A.d.tags.get(tid))?.deletedAt).toBeGreaterThan(0);
+  });
+});

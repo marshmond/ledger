@@ -3,7 +3,7 @@ import { db } from '../db';
 import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
 import {
-  BackupFileError, checkBackupText, exportBackupNow, readMeta, recordBackup, restoreChecked, savePreImportCopy, writeMeta, localDay,
+  BackupFileError, CURRENT_SCHEMA_VERSION, checkBackupText, exportBackupNow, readMeta, recordBackup, restoreChecked, savePreImportCopy, writeMeta, localDay,
   type BackupSummary,
 } from '../lib/backupFile';
 import type { BackupFile } from '../lib/backup';
@@ -98,7 +98,7 @@ export default function PlainBackupCard() {
             <li>File: {pending.name}</li>
             <li>Backup made: {w.exportedAt ? new Date(w.exportedAt).toLocaleString() : 'unknown'}</li>
             {w.counts.map((c) => <li key={c.label}>{c.label}: {c.n.toLocaleString()}</li>)}
-            {w.fromVersion < 14 && <li>This is an older file (data version {w.fromVersion}); it will be upgraded automatically.</li>}
+            {w.fromVersion < CURRENT_SCHEMA_VERSION && <li>This is an older file (data version {w.fromVersion}); it will be upgraded automatically.</li>}
           </ul>
           <p className="warn"><strong>This REPLACES all the data currently in this browser.</strong> A copy of your current data downloads first
             (“Ledger Pre-Import …”) so you can undo it. {readConfig() ? 'Sync is on, so the restored data will also replace the data on your other devices.' : ''}

@@ -149,7 +149,7 @@ describe('rules in the database', () => {
 
   it('rules survive a backup', async () => {
     const file = await exportAll(d);
-    expect(file.version).toBe(14);
+    expect(file.version).toBe(15);
     await d.payeeRules.clear();
     await importAll(d, file);
     expect(await d.payeeRules.count()).toBe(2);

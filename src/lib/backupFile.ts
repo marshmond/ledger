@@ -8,7 +8,7 @@ import { downloadText } from './download';
  */
 
 /** The data layout version. It must equal the newest Dexie version in db.ts (a test checks this). Bump both together. */
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 15;
 
 /** Shown in the file so you can tell which build wrote it. */
 export const APP_VERSION = '0.1.0';
@@ -126,6 +126,7 @@ const OPTIONAL_LISTS = [
   'assignments', 'recurring', 'recurringLog', 'people', 'incomeProfiles', 'bonuses', 'taxSettings', 'invAccounts', 'assetClasses', 'securities',
   'holdings', 'settings', 'windfalls', 'goals', 'loans', 'loanRates', 'loanEvents', 'rsuVests', 'payScenarios', 'hsaWithdrawals', 'taxLots',
   'sales', 'properties', 'propertyValues', 'netWorthSnapshots', 'payeeRules', 'budgetTargets', 'donations', 'rsuGrants',
+  'contacts', 'tags', 'attachments', 'links', 'dueItems', 'moduleRecords',
 ] as const;
 
 /**

@@ -32,7 +32,10 @@ export function installTracking(d: FinanceDB) {
     t.hook('creating', function (primKey, obj) {
       const key = settings ? (obj as { key?: string }).key : primKey;
       if (key !== undefined && applying.has(`${t.name}|${key}`)) return undefined;
-      (obj as { updatedAt?: number }).updatedAt = Date.now();
+      const o = obj as { updatedAt?: number; createdAt?: number };
+      o.updatedAt = Date.now();
+      // New records note when they were made. (Older Ledger records have no createdAt; nothing depends on it.)
+      if (!settings && o.createdAt === undefined) o.createdAt = o.updatedAt;
       changed();
       return !settings && primKey === undefined ? newId() : undefined;
     });

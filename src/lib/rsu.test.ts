@@ -294,7 +294,7 @@ describe('recording held shares', () => {
   it('vests survive a backup round trip', async () => {
     await d.rsuVests.add(held());
     const file = await exportAll(d);
-    expect(file.version).toBe(14);
+    expect(file.version).toBe(15);
     await d.rsuVests.clear();
     await importAll(d, file);
     expect(await d.rsuVests.count()).toBe(1);

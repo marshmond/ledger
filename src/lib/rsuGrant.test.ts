@@ -193,7 +193,7 @@ describe('grants and their vests', () => {
     expect(((await d.rsuGrants.get(id)) as { updatedAt?: number }).updatedAt).toBeGreaterThan(0);
     expect(id).toBeGreaterThan(1e15); // a time-based id, so two devices cannot collide
     const file = await exportAll(d);
-    expect(file.version).toBe(14);
+    expect(file.version).toBe(15);
     expect(file.rsuGrants).toHaveLength(1);
     await d.rsuGrants.clear();
     await d.rsuVests.clear();

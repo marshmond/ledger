@@ -36,6 +36,7 @@ import type {
   Txn,
   Windfall,
 } from './types';
+import type { Attachment, Contact, DueItem, Link, ModuleRecord, Tag } from './core/entities';
 
 export class FinanceDB extends Dexie {
   accounts!: Table<Account, number>;
@@ -72,6 +73,13 @@ export class FinanceDB extends Dexie {
   payeeRules!: Table<PayeeRule, number>;
   budgetTargets!: Table<BudgetTarget, number>;
   donations!: Table<Donation, number>;
+  // Shared across modules (version 15). See src/core.
+  contacts!: Table<Contact, number>;
+  tags!: Table<Tag, number>;
+  attachments!: Table<Attachment, number>;
+  links!: Table<Link, number>;
+  dueItems!: Table<DueItem, number>;
+  moduleRecords!: Table<ModuleRecord, number>;
 
   constructor(name = 'ledger') {
     super(name);
@@ -149,6 +157,15 @@ export class FinanceDB extends Dexie {
     this.version(14).stores({
       rsuGrants: '++id, personId',
       rsuVests: '++id, personId, date, grantId',
+    });
+    // Version 15 only ADDS tables (shared contacts, tags, attachments, links, due items, and per-module records). Nothing existing changes.
+    this.version(15).stores({
+      contacts: '++id, name',
+      tags: '++id, name',
+      attachments: '++id, [ownerModule+ownerId]',
+      links: '++id, [fromModule+fromId], [toModule+toId]',
+      dueItems: '++id, [sourceModule+sourceRecordId], sourceModule, date',
+      moduleRecords: '++id, module, [module+kind]',
     });
   }
 }
