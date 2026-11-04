@@ -4,7 +4,29 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-04 (newest): Phase 1 PART B BUILT (sync covers the shared store; conflict copies; status in the top bar; safety copies). Part A signed off by the owner. NOT committed or pushed. Waiting for the Part B checklist.
+## STATUS 2026-11-04 (newest): Phase 2 PART A BUILT (Calendar module + due-provider contract + Ledger's read-only Finance layer). NOT committed or pushed. Waiting for the owner's checklist sign-off before Part B (Tasks). Part C still to do (see "Not built").
+
+**Built:** the due-provider contract (`src/core/dueProvider.ts`, doc `docs/due-provider.md`); Calendar module #2 (Month, Week, Work week, Agenda; events with repeats, reminders, priorities, tags, people, linked records; calendars/layers with toggles, rename, recolour, delete; .ics export; settings tab under Settings > Calendar). Ledger exposes a provider and a records source only; no Ledger page changed.
+**Verified:** 902 tests (37 new: repeat rules, month-end clamping identical to Ledger, all-day dates identical under 7 time zones, this/following/all edits, deletes, calendars, .ics, Finance export ids equal to Ledger's existing export ids, Ledger provider vs `dueInstances`, two-device sync with no doubled built-in calendars); type check and production build clean. Browser pane (invented data): month, week (phone width too), agenda with Overdue section, quick-create with weekly repeat, Finance bill shown High when 2 days away, Settings tab, no console errors, no sideways scroll at 375px. NOT checked in a browser: editing "this and following" through the screens (tests only), drag to move, real downloads of the .ics, a second real device, dark mode.
+
+**Judgment calls (please review):**
+1. **I built the core of Ledger's provider (Part C1) now**, because the Part A checklist needs the Finance layer to show real items. Part C will add the rest (click-through polish, handoff, Finance event type).
+2. **Calendar data lives in the existing `moduleRecords` table** (kinds `event` and `calendar`), so no database change; backup and sync already cover it. Calendar settings are one `settings` row (`calendarSettings`).
+3. **Layer on/off switches are per device** (kept in this browser), not synced.
+4. **Drag to move/resize was skipped** (stability). Edit an event to move it.
+5. **Repeating timed events keep the same clock time on this device** (10:00 stays 10:00 through clock changes). Travelling to another time zone shifts them with the device.
+6. **Pay milestones default to "reminder"** (you listed no default); year-end tax reminder counts as a tax date (High). All editable under Settings > Calendar.
+7. **The Calendar shows scheduled items further ahead than Home does** (Home stops at 60 days); everything within 60 days matches. Vests/tax dates/loan payments are forward-looking only, as on Home, so past months show none of them.
+8. **"Keep as overdue until done"** is an event option so past events can appear in Overdue; ordinary events never go overdue.
+9. **Deleting a calendar asks** whether to move its events to Personal or delete them (soft delete).
+10. **Reminders are in-app only** ("Due soon" flag); no pushes, texts, emails.
+11. **`dueItems` table (Phase 1) is not used by anything and is not needed now.** Suggest removing it later (it would need a database version bump and backup tweak); not touched.
+12. Existing Ledger calendar (Home "Coming up" + "Add to my calendar" file) is untouched. Later suggestion: keep the file download until you trust the new export, then point Home's "Coming up" at the Calendar's Finance layer.
+13. Linking to records only supports Ledger accounts, scheduled items and loans for now.
+
+**Not built (Part A):** Tasks (Part B); Ledger click-through beyond opening the page, "create scheduled item from event", Finance event type, birthdays (Part C); drag; subscriptions; push notifications.
+
+## STATUS 2026-11-04: Phase 1 PART B BUILT (sync covers the shared store; conflict copies; status in the top bar; safety copies). Part A and Part B signed off by the owner (2026-11-04), pushed as eacd1bc. Owner ran the Part B checklist on the live app: steps 1-3, 5, 6, 8 confirmed; step 4 had nothing to see (no screen for the shared store); step 7 (fresh browser) deliberately NOT run, so first sync on a brand-new device is covered by tests only. Next: Phase 2 (Calendar/Tasks), not started. Revert point if ever needed: 5210524 (Part A).
 
 Plain-language write-up of how sync works, its limits and the two-device risk table: `docs/sync.md`.
 
