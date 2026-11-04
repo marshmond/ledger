@@ -77,7 +77,6 @@ export default function Shell({ children }: { children: ReactNode }) {
     <ToastProvider>
     <div className="shell">
       <aside className="sidebar" aria-label="Main">
-        <Link to="/" className="brand-link"><strong className="brand">Ledger</strong></Link>
         <button className="searchbtn side" onClick={() => setSearchOpen(true)} aria-label="Search">
           <span aria-hidden="true">⌕</span> Search <kbd>Ctrl K</kbd>
         </button>
@@ -120,7 +119,7 @@ export default function Shell({ children }: { children: ReactNode }) {
               <span key={i}>{i > 0 && <span className="sep"> › </span>}{c.to && i < crumbs.length - 1 ? <Link to={c.to}>{c.label}</Link> : <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.label}</span>}</span>
             ))}
           </nav>
-          <strong className="topbar-title">{group.id === 'home' ? 'Ledger' : group.label}</strong>
+          <strong className="topbar-title">{group.id === 'home' ? 'Home' : group.label}</strong>
           <button className="searchbtn top" onClick={() => setSearchOpen(true)} aria-label="Search"><span aria-hidden="true">⌕</span></button>
           <QuickAdd />
         </header>
