@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, NavLink, useLocation, useMatch } from 'react-router-dom';
+import { matchPath } from 'react-router-dom';
+import { Link, NavLink, useLocation } from '../core/router';
 import { loadOpenGroup, saveOpenGroup, toggleGroup } from './sideState';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -31,7 +32,7 @@ const ICONS: Record<GroupId, ReactNode> = {
 export default function Shell({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const group = groupForPath(loc.pathname);
-  const accountMatch = useMatch('/account/:id');
+  const accountMatch = matchPath('/account/:id', loc.pathname);
   const accountId = accountMatch?.params.id ? Number(accountMatch.params.id) : null;
   const account = useLiveQuery(() => (accountId ? db.accounts.get(accountId) : undefined), [accountId]);
   const dueCount = useLiveQuery(async () => (await dueInstances(db, todayISO(), 7)).length, []) ?? 0;

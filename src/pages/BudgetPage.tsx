@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { copyLastMonth, loadBudget, nextMonth, prevMonth, setAssignment, type BudgetRow } from '../lib/budget';

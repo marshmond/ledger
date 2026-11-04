@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import QuickTxn from './QuickTxn';

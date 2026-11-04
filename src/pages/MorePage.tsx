@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import AppearanceCard from './AppearanceCard';

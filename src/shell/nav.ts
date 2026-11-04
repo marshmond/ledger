@@ -2,7 +2,7 @@
  * The app's map. Pages are grouped by what you are doing:
  *   Home (what needs attention), Money (day to day), Invest (what you own and owe), Plan (income, taxes, the future),
  *   More (backup, appearance). The sidebar (desktop) and bottom tabs (phone) are both drawn from this one list, and so are
- *   breadcrumbs and search. Page addresses never change, so bookmarks keep working.
+ *   breadcrumbs and search. Ledger pages live under #/ledger/... (old addresses such as #/budget redirect there, so bookmarks keep working).
  */
 
 export type GroupId = 'home' | 'money' | 'invest' | 'plan' | 'more';

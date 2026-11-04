@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import { clearConfig, engineFor, meta, readConfig, saveConfig, syncNow, useSyncStatus, type SyncConfig } from '../lib/sync/auto';
 import { githubRemote, parseRepo } from '../lib/sync/github';
 import type { Conflict } from '../lib/sync/merge';

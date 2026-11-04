@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import { formatCents, todayISO } from '../lib/money';
 import { netForTax } from '../lib/lots';
 import { estimatedDueDates, withHarvest } from '../lib/taxPlan';

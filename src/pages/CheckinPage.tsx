@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import { monthLabel } from '../lib/dates';
 import { useCheckin } from './useCheckin';
 import { PageHeader } from '../ui/components';

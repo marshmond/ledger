@@ -4,7 +4,46 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-04 (newest): Phase 0 safety net BUILT (plain backup file, restore, 10-day reminder), committed locally, NOT pushed
+## STATUS 2026-11-04 (newest): Phase 1 PART A BUILT (shell, module switcher, shared data layer, shared entities, shell Settings). NOT committed or pushed. Waiting for the owner's checklist sign-off before Part B (sync).
+
+**What was built (Part A):**
+- **Top bar + registry.** A thin strip above every screen with a module switcher (Ledger only) and a Settings link. A module is added by writing one definition (`src/core/registry.ts`: id, name, icon, pages component, route list, nav map, optional empty `dueItems` / `tasks` hooks) and listing it in `src/modules/index.ts`. The app opens to the last module used (`ledger-last-module` in this browser).
+- **Ledger under `#/ledger/...`.** `src/modules/ledger/LedgerModule.tsx` holds Ledger's sidebar/tab bar (the old Shell, unchanged) and all 32 page routes. Every old address (`#/budget`, `#/account/12`, `#/transactions?q=x`, `#/`) redirects to the new one (`src/core/legacy.ts`); unknown addresses open the last module.
+- **Shared data layer** (`src/core/store.ts`): get / put / query / soft-delete / restore / watch for contacts, tags, attachments (description only), links (with "everything linked to X" in either direction), plus a private namespace per module (`moduleStore('calendar')`). **DueItem contract + publish/retract registry** (`src/core/dueItems.ts`, no UI). Entity shapes in `src/core/entities.ts`.
+- **Database version 15** only ADDS six tables (`contacts`, `tags`, `attachments`, `links`, `dueItems`, `moduleRecords`), so no existing record is touched. Backups are now version 15 and include them; version 14 and older files still restore (new tables empty). Device sync already carries any table, and a new test proves contacts, links, due items and delete markers cross between two devices.
+- **Shell Settings** at `#/settings` (Backup and restore, Sync devices): the same two pages Ledger shows, now reachable from the top bar. Ledger's sidebar still has its own Backup and Sync pages.
+- New Ledger records get a `createdAt` time (set where updatedAt is set). Old records are not rewritten.
+
+**Verified:** 859 tests (18 new), type check clean, production build OK. In the browser pane with invented data: all 31 Ledger addresses reached by their OLD address redirected to the right page with no errors; sidebar, quick-add and an account's ledger page worked; module bar, switcher menu and Settings looked right at desktop width; at 375px no sideways scroll, and the bar did not collide with the tab bar or "+" button. NOT checked: a real export/import round trip in the browser after this change (covered by tests only), the installed phone app, dark mode, and print.
+
+**Judgment calls (please review):**
+1. **Link wrapper instead of rewriting ~100 addresses.** Pages still write `/budget`; `Link`, `NavLink` and `useNavigate` from `src/core/router.tsx` add `/ledger` automatically. Same result as you chose, fewer edits and fewer chances to miss one. Tests fail if a page imports those from react-router-dom directly, and check that every address written in the code points at a real page.
+2. **Settings pages exist twice** (Ledger's sidebar and the shell Settings page); same components, so they cannot differ. Inside shell Settings, the Backup and Sync pages link to each other within Settings.
+3. **The bar is always visible (sticky)** and shifts Ledger's sticky table headers and sidebar down by its height (36px); the module name shows even on Settings (the last module).
+4. **`moduleRecords`** is one generic table for any later module's own records, so a new module needs no new table until it has real query needs.
+5. **Ids** stay numbers (time-based); links and due items accept text ids too for later modules.
+6. **Contacts** is separate from Ledger's household "people" (tax math), as decided.
+7. **createdAt for Ledger** is stamped on new records only; nothing was backfilled (a backfill would have marked every record "changed" and could beat newer edits on another device).
+8. **Backup file summary** does not list the new shared tables yet (they are saved and restored; they have no screen).
+
+**Not built:** any Calendar/Tasks screen, any screen for contacts/tags/links/due items, sync status in the shell, conflict copies, pre-sync snapshot (all Part B), and soft delete inside Ledger.
+
+Original plan (kept for reference): Part A (module switcher top bar, module registry, shared data layer, shared entities, shell Settings), STOP for the owner's checklist, then Part B (cross-device sync for the new store). Do not build Calendar/Tasks; do not restyle Ledger.
+
+**Audit findings (read-only):**
+- Single Dexie database `ledger`, 33 tables, schema 14. Hash router, all Ledger routes at the root (`/budget`, `/account/:id`, ...), about 64 links in screens and about 37 address strings in `src/lib` mention them.
+- Sync = one gzip + AES-GCM encrypted file (`ledger-sync.bin`) in the owner's private GitHub repo, using a token and passphrase kept in this browser only. It loops over ALL Dexie tables, merges record by record (newest `updatedAt` wins), notices deletes by comparing with the ids at the last sync, keeps tombstones a year, and records a notice (not a recoverable copy) for same-record conflicts. Status shows only on the Sync page, not in the shell. So new tables in the same database with `id` + `updatedAt` sync with no engine change; Part B needs conflict copies, a shell status, and a pre-sync snapshot.
+- Ledger already has a `people` table (household members with birth year, used by tax and pay math).
+
+**Decisions (owner, 2026-11-04):**
+1. Routes: move Ledger under `#/ledger/...`; every old address redirects permanently. Safeguards: one central address helper; a test that fails if a hard-coded old-style Ledger address remains outside it; a redirect table test covering every old route (including `/account/:id`); a browser click-through of every page at desktop and 375px; a table of old address -> new address and the list of touched files recorded here for triage; done as its own commit so it can be undone alone.
+2. Record fields: new shared tables get id, createdAt, updatedAt and deletedAt (soft delete). Existing Ledger tables only gain `createdAt` (no balance or report can change) and keep their current delete behaviour. Soft delete for Ledger is a possible later project.
+3. People: keep Ledger's `people` untouched; new shared table named `contacts`. Links can connect them later.
+4. Settings: new shell Settings page opened from the top bar, holding Backup/Export/Import and Sync. Old `#/backup` and `#/sync` addresses keep working. Ledger's "Settings & about" page stays for Ledger-only options.
+
+Also from the notes: the module switcher remembers the last-used module; switcher must not collide with Ledger's mobile tab bar or the + button; DueItem is a data contract and publish/retract registry only (no UI).
+
+## STATUS 2026-11-04: Phase 0 safety net BUILT (plain backup file, restore, 10-day reminder), pushed and signed off by the owner (checklist passed on the live app, including the encrypted-file refusal)
 
 Verified with 841 automated tests (10 new), a type check, and a browser check with invented data: two exports named `Ledger Backup 11-04-26.json` and `..._2.json`; junk, broken and too-new files rejected with plain messages and data unchanged; a restore showed the summary, downloaded `Ledger Pre-Import 11-04-26.json` first, and removed a test transaction added after the backup; the reminder appeared after "11 days ago", hid on Dismiss, came back the next day, and cleared on Export now; no sideways scroll at 375px. NOT checked: a real download into the Chrome Downloads folder (the browser pane cannot show it), the phone share sheet, restoring with Sync turned on, and a production build.
 

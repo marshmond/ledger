@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { SETUP_CATEGORY_ID, SETUP_GROUP_ID } from '../lib/setupCategory';

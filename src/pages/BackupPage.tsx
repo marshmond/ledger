@@ -5,7 +5,7 @@ import { decryptText, encryptText, exportAll, importAll, type BackupFile } from 
 import { storageStatus, type StorageStatus } from '../pwa';
 import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
-import { Link } from 'react-router-dom';
+import { Link } from '../core/router';
 import PlainBackupCard from './PlainBackupCard';
 import { recordBackup } from '../lib/backupFile';
 import { PageHeader } from '../ui/components';
