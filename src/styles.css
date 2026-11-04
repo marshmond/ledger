@@ -628,3 +628,18 @@ details.pick label.chk:hover { background: var(--hover); }
 .txn-table thead th, .budget-table thead th { top: calc(var(--topbar-h) + var(--bar-h)); }
 .txn-table thead tr.col-filters th { top: calc(var(--topbar-h) + var(--bar-h) + 36px); }
 @media (min-width: 900px) { .sidebar { top: var(--bar-h); height: calc(100vh - var(--bar-h)); } }
+
+/* Sync status in the module bar. */
+.syncwrap { position: relative; }
+.syncchip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: none; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; text-decoration: none; white-space: nowrap; }
+.syncchip:hover { background: var(--hover, rgba(127, 127, 127, 0.14)); text-decoration: none; }
+.syncdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.syncchip.ok .syncdot { background: #2e9e5b; }
+.syncchip.busy .syncdot { background: var(--accent); animation: syncpulse 1s ease-in-out infinite; }
+.syncchip.warn .syncdot { background: #d98a00; }
+.syncchip.bad .syncdot { background: #d23b3b; }
+.syncchip.bad, .syncchip.warn { color: var(--fg); font-weight: 600; }
+@keyframes syncpulse { 50% { opacity: 0.35; } }
+.syncpop { position: absolute; right: 0; top: calc(100% + 4px); width: min(300px, calc(100vw - 24px)); padding: var(--sp-3); background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); z-index: 60; }
+.syncpop p { margin: 0 0 var(--sp-2); }
+@media (prefers-reduced-motion: reduce) { .syncchip.busy .syncdot { animation: none; } }

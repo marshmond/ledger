@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from '../core/router';
-import { clearConfig, engineFor, meta, readConfig, saveConfig, syncNow, useSyncStatus, type SyncConfig } from '../lib/sync/auto';
+import { clearConfig, engineFor, meta, readConfig, refreshConflicts, saveConfig, syncNow, useSyncStatus, type SyncConfig } from '../lib/sync/auto';
 import { githubRemote, parseRepo } from '../lib/sync/github';
 import type { Conflict } from '../lib/sync/merge';
 import { PageHeader } from '../ui/components';
+import { db } from '../db';
+import { downloadText } from '../lib/download';
+import { listSnapshots, readSnapshot, restoreLostVersion, takeSnapshot } from '../lib/sync/safety';
 
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString() : 'never');
 
@@ -12,6 +15,35 @@ export default function SyncPage() {
   const s = useSyncStatus();
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   useEffect(() => { meta.get<Conflict[]>('conflicts').then((c) => setConflicts(c ?? [])); }, [s.lastSyncedAt, s.configured]);
+
+  const [snaps, setSnaps] = useState<Awaited<ReturnType<typeof listSnapshots>>>([]);
+  useEffect(() => { listSnapshots(meta).then(setSnaps).catch(() => undefined); }, [s.lastSyncedAt, s.configured]);
+
+  async function putBack(i: number) {
+    const c = conflicts[i];
+    try {
+      await restoreLostVersion(db, c);
+      const rest = conflicts.filter((_, j) => j !== i);
+      await meta.set('conflicts', rest);
+      setConflicts(rest);
+      refreshConflicts();
+      setMsg(`Put back “${c.label}”. It will reach your other devices at the next sync.`);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+  }
+  async function clearConflicts() {
+    await meta.set('conflicts', []);
+    setConflicts([]);
+    refreshConflicts();
+  }
+  async function downloadSnap(key: string) {
+    const snap = await readSnapshot(meta, key);
+    if (!snap) return setErr('That copy is no longer stored on this device.');
+    const d = new Date(snap.at);
+    const day = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${String(d.getFullYear()).slice(2)}`;
+    downloadText(`Ledger Auto Snapshot ${day}.json`, 'application/json', snap.text);
+  }
 
   const [repoText, setRepoText] = useState('');
   const [token, setToken] = useState('');
@@ -52,7 +84,11 @@ export default function SyncPage() {
     try {
       const engine = engineFor(probe.cfg);
       if (mode === 'upload') await engine.initialUpload();
-      else await engine.replaceFromRemote();
+      else {
+        // Replacing wipes this device first, so keep a full local copy before doing it.
+        await takeSnapshot(db, meta, 'before-replace', 'Taken automatically just before this device was replaced with the synced copy.');
+        await engine.replaceFromRemote();
+      }
       saveConfig(probe.cfg);
       setProbe(null);
       setToken('');
@@ -107,15 +143,33 @@ export default function SyncPage() {
           </div>
 
           {conflicts.length > 0 && (
-            <div className="card">
+            <div className="card" id="conflicts">
               <div className="row spread">
-                <strong>Changes that were overwritten</strong>
-                <button className="link" onClick={() => meta.set('conflicts', []).then(() => setConflicts([]))}>clear</button>
+                <strong>Edits that lost a tie ({conflicts.length})</strong>
+                <button className="link" onClick={clearConflicts}>clear this list</button>
               </div>
-              <p className="muted">You and another device both edited these. The later edit was kept (last edit wins). The older version is listed here in case you want to re-enter it.</p>
-              <ul>
+              <p className="muted">You and another device both changed these since the last sync. The later edit was kept. The other version is saved here so nothing is lost: put it back if you prefer it.</p>
+              <ul className="plain">
                 {conflicts.map((c, i) => (
-                  <li key={i}>{c.label} <span className="muted">({c.table}, {when(c.at)}): {c.kept === 'this device' ? 'the other device’s edit was overwritten by this one' : 'your edit on this device was overwritten by the other device’s'}</span></li>
+                  <li key={i} className="row spread">
+                    <span>{c.label} <span className="muted">({c.table}, {when(c.at)}): {c.kept === 'this device' ? 'the other device’s version was replaced by the one here' : 'the version on this device was replaced by the other device’s'}</span></span>
+                    {c.lost ? <button onClick={() => putBack(i)}>Put that version back</button> : <span className="muted">no copy saved</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {snaps.length > 0 && (
+            <div className="card">
+              <strong>Automatic safety copies on this device</strong>
+              <p className="muted">Full copies taken automatically before risky moments. They stay in this browser only. Download one if you want to keep it; it is a normal backup file that Import backup can restore.</p>
+              <ul className="plain">
+                {snaps.map((x) => (
+                  <li key={x.key} className="row spread">
+                    <span>{x.why} <span className="muted">({when(x.at)}, {x.records.toLocaleString()} records)</span></span>
+                    <button onClick={() => downloadSnap(x.key)}>Download</button>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -180,7 +234,7 @@ export default function SyncPage() {
       <div className="card">
         <strong>Good to know</strong>
         <ul>
-          <li>If two devices change the same item, the later edit wins and the overwritten one is listed above.</li>
+          <li>If two devices change the same item, the later edit wins and the other version is saved in the list above, with a button to put it back.</li>
           <li>Deleting something on one device deletes it everywhere. Restoring a backup on a synced device replaces the data everywhere too.</li>
           <li>The price-data key stays on each device and is never synced. Sync is not a backup: keep exporting <Link to="/backup">backups</Link> too.</li>
           <li>Anyone with the token and your passphrase could read your data, so keep both private. If a phone is lost, delete the token on GitHub.</li>

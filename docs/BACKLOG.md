@@ -4,7 +4,31 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-04 (newest): Phase 1 PART A BUILT (shell, module switcher, shared data layer, shared entities, shell Settings). NOT committed or pushed. Waiting for the owner's checklist sign-off before Part B (sync).
+## STATUS 2026-11-04 (newest): Phase 1 PART B BUILT (sync covers the shared store; conflict copies; status in the top bar; safety copies). Part A signed off by the owner. NOT committed or pushed. Waiting for the Part B checklist.
+
+Plain-language write-up of how sync works, its limits and the two-device risk table: `docs/sync.md`.
+
+**Finding:** no switch of method was needed. The existing mechanism (one encrypted file in the owner's private GitHub repo, merged record by record, newest `updatedAt` wins) already walks every database table, so the shared tables sync with no engine change (proved by a two-device test). Google Drive was not added.
+
+**Built in Part B:**
+- **Conflict copies.** When both devices changed the same record, or one deleted what the other edited, the losing version is now saved in full. The Sync page lists them ("Edits that lost a tie") with a "Put that version back" button (applied as a fresh edit, so it syncs to the other devices). The top bar shows "Review N".
+- **Sync status in the top bar** (all screens, desktop and phone): Synced / Syncing… / Offline / Needs attention / Review N / Paused / "Sync off" (links to setup), with a small panel holding "Sync now" and a link to Sync settings.
+- **Safety copies.** One automatic full local snapshot before the first sync after this update (sync pauses with a message if it cannot be saved), and one before a device is replaced with the synced copy. Listed on the Sync page with a Download button (normal backup files; Import backup restores them).
+- Two small Part A follow-ups from the owner's checklist: removed the duplicate "Ledger" title (sidebar heading; the phone's Home header now says "Home"), and the phone's round + button is now attached to the page body instead of the sticky header (some phone browsers nudged it while scrolling; NOT confirmed on a real phone, only that it still works in the browser pane).
+
+**Verified:** 865 tests (6 new for Part B, plus 1 changed): same record edited on both, deleted-vs-edited, different records edited while apart (Ledger and shared store), put-back reaching the other device, restoring a backup with sync on, a new device that already made starter categories ends with no doubles, and the one-time snapshot. Browser pane: the status chip and its panel, the Sync page list, and "Put that version back" with invented data; at 375px the longest label fits beside the switcher and Settings. NOT checked: a real sync to GitHub from two real devices (nothing was sent to GitHub; tests use a pretend GitHub), airplane-mode behaviour on a real phone, and the + button on a real phone.
+
+**Judgment calls (please review):**
+1. **Conflict copies live on the device that lost** (in this browser's sync-meta store, newest 50), not in the synced file, so they do not grow the shared file or reach other devices.
+2. **The snapshot blocks sync if it cannot be saved** (safety over convenience).
+3. **"Sync off" shows as a small link** in the bar until sync is set up, rather than hiding.
+4. **Deleted here + edited there** now also produces a saved copy (before, that edit vanished silently).
+5. **Restore with sync on** keeps the existing rule (the restored data wins everywhere); the Import screen already says so.
+6. **No automatic merge option for a second device** that already has its own data; it still has to choose "use the synced copy" (after the automatic copy). Merging two separate data sets was not built.
+
+**Not built:** field-by-field merging, a screen to browse or restore from a snapshot inside the app (download then Import backup), cleaning up old conflict copies by age, any Calendar/Tasks screen, soft delete inside Ledger.
+
+## STATUS 2026-11-04: Phase 1 PART A BUILT (shell, module switcher, shared data layer, shared entities, shell Settings). NOT committed or pushed. Waiting for the owner's checklist sign-off before Part B (sync).
 
 **What was built (Part A):**
 - **Top bar + registry.** A thin strip above every screen with a module switcher (Ledger only) and a Settings link. A module is added by writing one definition (`src/core/registry.ts`: id, name, icon, pages component, route list, nav map, optional empty `dueItems` / `tasks` hooks) and listing it in `src/modules/index.ts`. The app opens to the last module used (`ledger-last-module` in this browser).

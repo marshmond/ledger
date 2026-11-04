@@ -26,6 +26,8 @@ export interface Conflict {
   /** Which edit survived. `label` names the edit that was overwritten. */
   kept: 'this device' | 'other device';
   at: number;
+  /** The full version of the record that lost, so it can be put back. (Notices saved by older versions of the app lack it.) */
+  lost?: Rec;
 }
 
 export interface MergeResult {
@@ -98,13 +100,15 @@ export function mergeSnapshots(a: { local: Snapshot; remote: Snapshot; base: Bas
         if (stable(l) === stable(r)) win = r;
         else {
           win = stamp(l) > stamp(r) ? l : r;
-          if (stamp(l) > lastSync && stamp(r) > lastSync) conflicts.push({ table: t, id, label: labelOf(win === l ? r : l, id), kept: win === l ? 'this device' : 'other device', at: now });
+          if (stamp(l) > lastSync && stamp(r) > lastSync) conflicts.push({ table: t, id, label: labelOf(win === l ? r : l, id), kept: win === l ? 'this device' : 'other device', at: now, lost: win === l ? r : l });
         }
       } else win = l ?? r;
       const tm = tomb[id];
       if (tm !== undefined) {
         if (tm >= stamp(win)) {
-          if (l && !r && remote.tombstones[t]?.[id] !== undefined && stamp(l) > lastSync) conflicts.push({ table: t, id, label: labelOf(l, id), kept: 'other device', at: now });
+          if (l && !r && remote.tombstones[t]?.[id] !== undefined && stamp(l) > lastSync) conflicts.push({ table: t, id, label: labelOf(l, id), kept: 'other device', at: now, lost: l });
+          // Deleted here, but the other device edited it after the last sync: the deletion wins, and their edit is kept as a copy.
+          else if (!l && r && remote.tombstones[t]?.[id] === undefined && stamp(r) > lastSync) conflicts.push({ table: t, id, label: labelOf(r, id), kept: 'this device', at: now, lost: r });
           win = undefined;
         } else delete tomb[id];
       }

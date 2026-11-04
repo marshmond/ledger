@@ -30,7 +30,7 @@ describe('merging records', () => {
       base: { accounts: ['1'] }, lastSync: 100, now: NOW,
     });
     expect(m.merged.tables.accounts[1].name).toBe('Theirs');
-    expect(m.conflicts).toEqual([{ table: 'accounts', id: '1', label: 'Mine', kept: 'other device', at: NOW }]);
+    expect(m.conflicts).toEqual([{ table: 'accounts', id: '1', label: 'Mine', kept: 'other device', at: NOW, lost: { id: 1, name: 'Mine', updatedAt: 200 } }]);
     // only one side changed: no conflict
     const q = mergeSnapshots({
       local: snap({ accounts: { 1: { id: 1, name: 'Old', updatedAt: 50 } } }),
@@ -320,5 +320,150 @@ describe('shared tables ride along with device sync', () => {
     await A.engine.sync();
     expect(await sa.shared.tags.get(tid)).toBeUndefined();
     expect((await A.d.tags.get(tid))?.deletedAt).toBeGreaterThan(0);
+  });
+});
+
+const pause = (ms = 8) => new Promise((r) => setTimeout(r, ms));
+
+describe('keeping both sides when two devices disagree', () => {
+  async function pair() {
+    const { createStore } = await import('../../core/store');
+    const remote = memoryRemote();
+    const A = device(remote);
+    const B = device(remote);
+    return { A, B, sa: createStore(A.d), sb: createStore(B.d) };
+  }
+
+  it('same record edited on both: the later edit wins, the other is saved, and "put back" brings it to both devices', async () => {
+    const { restoreLostVersion } = await import('./safety');
+    const { A, B, sa, sb } = await pair();
+    const id = await sa.shared.contacts.put({ name: 'Test Person' });
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    await pause();
+    await sa.shared.contacts.put({ id, name: 'Test Person (A edit)' });
+    await pause();
+    await sb.shared.contacts.put({ id, name: 'Test Person (B edit)' });
+    await B.engine.sync();
+    const run = await A.engine.sync();
+    expect((await sa.shared.contacts.get(id))?.name).toBe('Test Person (B edit)');
+    expect(run.conflicts).toHaveLength(1);
+    const c = (await A.engine.conflicts())[0];
+    expect(c.kept).toBe('other device');
+    expect((c.lost as { name: string }).name).toBe('Test Person (A edit)');
+    await pause();
+    await restoreLostVersion(A.d, c);
+    await A.engine.sync();
+    await B.engine.sync();
+    for (const s of [sa, sb]) expect((await s.shared.contacts.get(id))?.name).toBe('Test Person (A edit)');
+  });
+
+  it('deleted on one device, edited on the other: the deletion stands, the edit is saved and can be put back', async () => {
+    const { restoreLostVersion } = await import('./safety');
+    const { A, B } = await pair();
+    const acct = (await A.d.accounts.add({ name: 'Checking', kind: 'checking' } as never)) as number;
+    const t = (await A.d.txns.add({ accountId: acct, date: '2026-10-01', amountCents: -500, payee: 'Coffee' } as never)) as number;
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    await pause();
+    await A.d.txns.delete(t);
+    await B.d.txns.update(t, { payee: 'Coffee (edited)' });
+    await B.engine.sync();
+    const run = await A.engine.sync();
+    expect(await A.d.txns.get(t)).toBeUndefined();
+    expect(run.conflicts.map((c) => c.kept)).toEqual(['this device']);
+    const c = (await A.engine.conflicts())[0];
+    expect((c.lost as { payee: string }).payee).toBe('Coffee (edited)');
+    await B.engine.sync();
+    expect(await B.d.txns.get(t)).toBeUndefined();
+    await pause();
+    await restoreLostVersion(A.d, c);
+    await A.engine.sync();
+    await B.engine.sync();
+    expect((await B.d.txns.get(t))?.payee).toBe('Coffee (edited)');
+  });
+
+  it('different records edited on each device while apart: both changes survive, in Ledger and in the shared store', async () => {
+    const { A, B, sa, sb } = await pair();
+    const acct = (await A.d.accounts.add({ name: 'Checking', kind: 'checking' } as never)) as number;
+    const p1 = await sa.shared.contacts.put({ name: 'One' });
+    const p2 = await sa.shared.contacts.put({ name: 'Two' });
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    await pause();
+    await A.d.accounts.update(acct, { name: 'Main checking' });
+    await sa.shared.contacts.put({ id: p1, name: 'One (A)' });
+    await sb.shared.contacts.put({ id: p2, name: 'Two (B)' });
+    const added = await sb.shared.contacts.put({ name: 'Three (B, new)' });
+    await A.engine.sync();
+    await B.engine.sync();
+    await A.engine.sync();
+    for (const [d, s] of [[A.d, sa], [B.d, sb]] as const) {
+      expect((await d.accounts.get(acct))?.name).toBe('Main checking');
+      expect((await s.shared.contacts.query()).map((c) => c.name).sort()).toEqual(['One (A)', 'Three (B, new)', 'Two (B)']);
+      expect(await s.shared.contacts.get(added)).toBeDefined();
+    }
+    expect((await A.engine.conflicts()).length).toBe(0);
+  });
+});
+
+describe('restoring a backup while sync is on', () => {
+  it('the restored data replaces what the other device has at its next sync (extras are removed, nothing is duplicated)', async () => {
+    const { exportAll, importAll } = await import('../backup');
+    const remote = memoryRemote();
+    const A = device(remote);
+    const B = device(remote);
+    const acct = (await A.d.accounts.add({ name: 'Keep', kind: 'checking' } as never)) as number;
+    await A.d.txns.add({ accountId: acct, date: '2026-10-01', amountCents: -500, payee: 'Old one' } as never);
+    await A.engine.initialUpload();
+    await B.engine.replaceFromRemote();
+    const backup = await exportAll(A.d);
+    await pause();
+    await A.d.txns.add({ accountId: acct, date: '2026-10-05', amountCents: -900, payee: 'Added after the backup' } as never);
+    await A.engine.sync();
+    await B.engine.sync();
+    expect(await B.d.txns.count()).toBe(2);
+    await pause();
+    await importAll(A.d, backup);
+    await touchAll(A.d);
+    await A.engine.sync();
+    await B.engine.sync();
+    for (const x of [A, B]) expect((await x.d.txns.toArray()).map((t) => t.payee)).toEqual(['Old one']);
+  });
+});
+
+describe('first sync on a new device, and the safety copy', () => {
+  it('a new device that already created its starter categories ends with exactly the synced copy (no wipe of the copy, no doubles)', async () => {
+    const { seedIfEmpty } = await import('../../db');
+    const remote = memoryRemote();
+    const A = device(remote);
+    const B = device(remote);
+    await seedIfEmpty(A.d);
+    await A.d.accounts.add({ name: 'Checking', kind: 'checking' } as never);
+    await A.engine.initialUpload();
+    await seedIfEmpty(B.d); // a fresh device makes its own starter categories before sync is set up
+    await B.engine.replaceFromRemote();
+    await B.engine.sync();
+    await A.engine.sync();
+    for (const t of ['categoryGroups', 'categories', 'accounts'] as const) {
+      expect(await B.d[t].count()).toBe(await A.d[t].count());
+      expect((await B.d[t].toArray()).map((r) => r.id).sort()).toEqual((await A.d[t].toArray()).map((r) => r.id).sort());
+    }
+  });
+
+  it('the one-time safety copy is a full, restorable backup and is only taken once', async () => {
+    const { ensureFirstSyncSnapshot, listSnapshots, readSnapshot, FIRST_SYNC_KEY } = await import('./safety');
+    const { checkBackupText } = await import('../backupFile');
+    const d = new FinanceDB(uniq());
+    const meta = dexieMeta(uniq());
+    await d.accounts.add({ name: 'Checking', kind: 'checking' } as never);
+    expect(await ensureFirstSyncSnapshot(d, meta)).toBe(true);
+    await d.accounts.add({ name: 'Savings', kind: 'savings' } as never);
+    expect(await ensureFirstSyncSnapshot(d, meta)).toBe(false); // already have one: not overwritten by a later state
+    const list = await listSnapshots(meta);
+    expect(list.map((s) => s.key)).toEqual([FIRST_SYNC_KEY]);
+    const snap = (await readSnapshot(meta, FIRST_SYNC_KEY))!;
+    const { file } = checkBackupText(snap.text);
+    expect((file.accounts as unknown[]).length).toBe(1);
   });
 });
