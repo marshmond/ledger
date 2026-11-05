@@ -1,4 +1,3 @@
-import TaskActions from '../modules/tasks/TaskActions';
 import { useState } from 'react';
 import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -87,7 +86,6 @@ export default function AccountsPage() {
                   <tr key={a.id} className="acct-row">
                     <td className="acct-name">
                       <Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}{' '}
-                      <TaskActions module="ledger" id={`account:${a.id}`} label={a.name} />
                       {primaryId === a.id && canBePrimary(a) && <span className="badge" title="Quick add starts on this account"> primary</span>}
                       {a.kind === 'credit_card' && (() => { const s = creditStatus(balance, a.creditLimitCents); return s ? <div className="muted" style={{ fontSize: '0.85rem' }}>Credit left <span className={s.level === 'over' ? 'neg' : s.level === 'high' ? 'warn' : ''}>{formatCents(s.available)}</span> of {formatCents(s.limit)} ({Math.round(s.usedPct)}% used)</div> : null; })()}
                     </td>

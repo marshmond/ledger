@@ -4,7 +4,7 @@
  *   time:        at 3pm, 3:30pm, 15:00
  *   priority:    !high !medium !low !reminder (or !h !m !l !r)
  *   tag:         #renovation        list: @home
- *   repeat:      every day / every 2 weeks / every monday / every month / every year (also daily, weekly, monthly, yearly)
+ *   repeat:      every day / every 2 weeks / every two weeks / every other week / biweekly / every monday / every month / every year (also daily, weekly, monthly, yearly)
  * The screen always shows what was understood before saving, and a plain title is always possible. Pure; nothing is stored.
  */
 import { addDays, addMonths, dayOfWeek } from '../../lib/dates';
@@ -58,6 +58,9 @@ function parseTime(word: string): string | null {
   return `${p2(h)}:${p2(min)}`;
 }
 
+/** "every two weeks", "every other week". */
+const NUMBER_WORDS: Record<string, number> = { other: 2, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+
 export function parseQuickAdd(input: string, today: string): ParsedQuick {
   const words = input.trim().split(/\s+/).filter(Boolean);
   const used = words.map(() => false);
@@ -78,9 +81,11 @@ export function parseQuickAdd(input: string, today: string): ParsedQuick {
     if (used[i]) continue;
     const one = { daily: 'daily', weekly: 'weekly', monthly: 'monthly', yearly: 'yearly', annually: 'yearly' }[w(i)] as 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined;
     if (one) { out.repeat = { mode: 'fixed', rule: { freq: one, interval: 1, end: { type: 'never' } } }; take(i); break; }
+    if (w(i) === 'biweekly' || w(i) === 'fortnightly') { out.repeat = { mode: 'fixed', rule: { freq: 'weekly', interval: 2, end: { type: 'never' } } }; take(i); break; }
     if (w(i) !== 'every' || !free(i, 2)) continue;
     let n = 1, at = i + 1;
-    if (/^\d+$/.test(w(at)) && free(at, 2)) { n = Math.max(1, Number(w(at))); at++; }
+    const num = /^\d+$/.test(w(at)) ? Number(w(at)) : NUMBER_WORDS[w(at)];
+    if (num && free(at, 2)) { n = Math.max(1, num); at++; }
     const unit = w(at).replace(/s$/, '');
     const freq = ({ day: 'daily', week: 'weekly', month: 'monthly', year: 'yearly' } as const)[unit as 'day'];
     if (freq) { out.repeat = { mode: 'fixed', rule: { freq, interval: n, end: { type: 'never' } } }; take(i, at - i + 1); }

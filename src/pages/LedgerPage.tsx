@@ -73,7 +73,7 @@ export default function LedgerPage() {
     <>
       <div className="row spread">
         <RenameAccount table="accounts" id={id} name={account.name} taken={accounts.filter((a) => a.id !== id).map((a) => a.name)} heading />
-        <span className="row"><Link to="/transactions">All transactions</Link><Link to="/accounts">← Accounts</Link></span>
+        <span className="row"><TaskActions module="ledger" id={`account:${id}`} label={account.name} /><Link to="/transactions">All transactions</Link><Link to="/accounts">← Accounts</Link></span>
       </div>
       <div className="card row spread">
         <span>{isCard ? 'Owed' : 'Balance'}: <strong className={balance < 0 ? 'neg' : ''}>{formatCents(isCard ? -balance : balance)}</strong></span>

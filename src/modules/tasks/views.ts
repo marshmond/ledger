@@ -11,8 +11,8 @@ export const VIEWS: { id: ViewId; label: string }[] = [
   { id: 'completed', label: 'Completed' }, { id: 'deleted', label: 'Deleted' },
 ];
 
-export type SortKey = 'due' | 'priority' | 'created' | 'title';
-export const SORTS: { id: SortKey; label: string }[] = [{ id: 'due', label: 'Due date' }, { id: 'priority', label: 'Priority' }, { id: 'created', label: 'Newest first' }, { id: 'title', label: 'Title' }];
+export type SortKey = 'due' | 'priority' | 'created' | 'title' | 'completed';
+export const SORTS: { id: SortKey; label: string }[] = [{ id: 'due', label: 'Due date' }, { id: 'priority', label: 'Priority' }, { id: 'created', label: 'Newest first' }, { id: 'title', label: 'Title' }, { id: 'completed', label: 'Recently completed' }];
 
 export interface Filter {
   text: string;
@@ -42,6 +42,7 @@ export function sortTasks(tasks: TaskRecord[], by: SortKey): TaskRecord[] {
     priority: (a, b) => PRI[a.data.priority] - PRI[b.data.priority] || dueKey(a).localeCompare(dueKey(b)),
     created: (a, b) => b.createdAt - a.createdAt,
     title: (a, b) => a.data.title.localeCompare(b.data.title),
+    completed: (a, b) => (b.data.completedAt ?? 0) - (a.data.completedAt ?? 0),
   };
   return [...tasks].sort((a, b) => cmp[by](a, b) || a.data.title.localeCompare(b.data.title) || a.id - b.id);
 }
@@ -87,6 +88,8 @@ export function buildView(view: ViewId, all: TaskRecord[], deleted: TaskRecord[]
       const end = addDays(c.today, c.days);
       const dateOf = (t: TaskRecord) => t.data.dueDate ?? t.data.startDate;
       const inRange = open.filter((t) => { const d = dateOf(t); return !!d && d > c.today && d <= end; });
+      // Sorted by anything other than date: one list, so the choice applies across days too.
+      if (c.sort !== 'due') return g('range', `Next ${c.days} days`, inRange);
       const days = [...new Set(inRange.map((t) => dateOf(t)!))].sort();
       return days.map((d) => ({ key: d, title: d, tasks: sorted(inRange.filter((t) => dateOf(t) === d)) }));
     }
@@ -105,8 +108,8 @@ export function buildView(view: ViewId, all: TaskRecord[], deleted: TaskRecord[]
     case 'waiting': return g('waiting', 'Waiting on someone or something', open.filter((t) => t.data.status === 'waiting'));
     case 'completed': {
       const since = (c.now ?? Date.now()) - (c.completedDays ?? 30) * 86_400_000;
-      const done = src.filter((t) => t.data.status === 'done' && (t.data.completedAt ?? 0) >= since).sort((a, b) => (b.data.completedAt ?? 0) - (a.data.completedAt ?? 0));
-      return done.length ? [{ key: 'done', title: `Completed in the last ${c.completedDays ?? 30} days`, tasks: done }] : [];
+      const done = src.filter((t) => t.data.status === 'done' && (t.data.completedAt ?? 0) >= since);
+      return done.length ? [{ key: 'done', title: `Completed in the last ${c.completedDays ?? 30} days`, tasks: sorted(done) }] : [];
     }
     case 'deleted': return src.length ? [{ key: 'deleted', title: 'Deleted (restore to bring one back)', tasks: sortTasks(src, 'created') }] : [];
   }

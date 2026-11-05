@@ -67,9 +67,11 @@ export default function TasksPage() {
     const next = new URLSearchParams(sp); next.delete('task'); setSp(next, { replace: true });
   }, [wanted, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // In Completed the natural order is "recently completed"; everywhere else that choice means the default (due date).
+  const effSort: SortKey = view === 'completed' ? (sort === 'due' ? 'completed' : sort) : sort === 'completed' ? 'due' : sort;
   const groups = useMemo(
-    () => buildView(view, tasks ?? [], deleted, { today, days, sort, filter, lists, tags: tagList }),
-    [view, tasks, deleted, today, days, sort, filter, lists, tagList],
+    () => buildView(view, tasks ?? [], deleted, { today, days, sort: effSort, filter, lists, tags: tagList }),
+    [view, tasks, deleted, today, days, effSort, filter, lists, tagList],
   );
   const badge = useMemo(() => counts(tasks ?? [], today), [tasks, today]);
   const listCounts = useMemo(() => {
@@ -129,7 +131,7 @@ export default function TasksPage() {
 
       <div className="tk-controls">
         <input type="search" value={filter.text} onChange={(e) => f({ text: e.target.value })} placeholder="Search tasks" aria-label="Search tasks" />
-        <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort by">{SORTS.map((s) => <option key={s.id} value={s.id}>Sort: {s.label}</option>)}</select>
+        <select value={effSort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort by">{SORTS.filter((s) => s.id !== 'completed' || view === 'completed').map((s) => <option key={s.id} value={s.id}>Sort: {s.label}</option>)}</select>
         <select value={filter.priority} onChange={(e) => f({ priority: e.target.value as Priority | '' })} aria-label="Filter by priority">
           <option value="">Any priority</option>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_ICON[p]} {PRIORITY_LABEL[p]}</option>)}
         </select>
@@ -168,7 +170,7 @@ export default function TasksPage() {
 
       {groups.length === 0 ? <p className="muted tk-empty">{filtering ? 'No tasks match these filters.' : EMPTY[view]}</p> : groups.map((g) => (
         <section key={g.key} className={`tk-group ${g.tone ?? ''}`} aria-label={g.title}>
-          <h3>{view === 'upcoming' ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="muted">· {g.tasks.length}</span></h3>
+          <h3>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="muted">· {g.tasks.length}</span></h3>
           <ul className="plain">
             {g.tasks.map((t) => (
               <TaskRow key={t.id} task={t} lists={lists} tags={tagList} today={today} selecting={selecting} selected={selected.has(t.id)}

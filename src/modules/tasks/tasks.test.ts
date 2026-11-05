@@ -49,6 +49,16 @@ describe('quick-add shorthand', () => {
   });
 });
 
+describe('quick-add repeat words', () => {
+  it('understands number words, "every other", biweekly and fortnightly', () => {
+    for (const s of ['water plants every two weeks', 'water plants every other week', 'water plants biweekly', 'water plants fortnightly', 'water plants every 2 weeks']) {
+      expect(parseQuickAdd(s, TODAY)).toMatchObject({ title: 'water plants', repeat: { mode: 'fixed', rule: { freq: 'weekly', interval: 2 } } });
+    }
+    expect(parseQuickAdd('pay rent every three months', TODAY)).toMatchObject({ title: 'pay rent', repeat: { rule: { freq: 'monthly', interval: 3 } } });
+    expect(parseQuickAdd('stretch every other day', TODAY)).toMatchObject({ title: 'stretch', repeat: { rule: { freq: 'daily', interval: 2 } } });
+  });
+});
+
 describe('repeating tasks', () => {
   const weekly = (mode: 'fixed' | 'after') => ({ mode, rule: { freq: 'weekly' as const, interval: 1, byWeekday: [1], end: { type: 'never' as const } } });
   it('fixed schedule: the next one follows the schedule, after the later of due date and finish day', () => {
@@ -147,6 +157,18 @@ describe('views, filters and sorting', () => {
   it('Upcoming groups by day within the range, and widens', () => {
     expect(ids(buildView('upcoming', all, [], ctx())).map((g) => g[0])).toEqual(['2026-11-06']);
     expect(ids(buildView('upcoming', all, [], ctx({ days: 30 }))).map((g) => g[0])).toEqual(['2026-11-06', '2026-11-20']);
+  });
+  it('Upcoming and Completed obey the sort choice', () => {
+    const u = buildView('upcoming', all, [], ctx({ days: 30, sort: 'title' }));
+    expect(u).toHaveLength(1);
+    expect(u[0].tasks.map((x) => x.id)).toEqual([4, 6]);
+    const u2 = buildView('upcoming', all, [], ctx({ days: 30, sort: 'priority' }));
+    expect(u2[0].tasks.map((x) => x.id)).toEqual([4, 6]);
+    expect(buildView('completed', all, [], ctx({ sort: 'completed' }))[0].tasks.map((x) => x.id)).toEqual([7]);
+    const two = [t(10, { status: 'done', completedAt: 1000, title: 'B' }), t(11, { status: 'done', completedAt: 2000, title: 'A' })];
+    expect(buildView('completed', two, [], ctx({ sort: 'completed', now: 3000 }))[0].tasks.map((x) => x.id)).toEqual([11, 10]);
+    expect(buildView('completed', two, [], ctx({ sort: 'title', now: 3000 }))[0].tasks.map((x) => x.id)).toEqual([11, 10]);
+    expect(buildView('completed', two, [], ctx({ sort: 'title', now: 3000 }))[0].tasks[0].data.title).toBe('A');
   });
   it('Overdue, Waiting, All, By list, By tag, By priority', () => {
     expect(ids(buildView('overdue', all, [], ctx()))).toEqual([['Overdue', [1]]]);
