@@ -1,8 +1,8 @@
 # Module hooks for Today, search and quick-add
 
-Added in Phase 3, Part A. These sit next to the due-provider contract (`docs/due-provider.md`) in `ModuleDef.contributes`. Today **nothing
-uses them yet**: Part B (Today cards), Part C (search) and Part D (quick-add) will. A module that offers none of them behaves exactly as before.
-The types live in `src/core/registry.ts`.
+Added in Phase 3. These sit next to the due-provider contract (`docs/due-provider.md`) in `ModuleDef.contributes`. **`todayCards` is in use
+since Part B** (the Today module and Ledger each offer cards); `searchSource` (Part C) and `quickAdd` (Part D) are not used yet. A module that
+offers none of them behaves exactly as before. The types live in `src/core/registry.ts`.
 
 ```ts
 contributes: {
@@ -27,6 +27,22 @@ Dated things (events, tasks, bills) should normally come through the due provide
 (alerts, a cash outlook, a count).
 
 `allTodayCards()` returns every card in default order.
+
+### How Today uses them (Part B)
+
+- **Cards in use.** Today module: `today.agenda`, `today.reminders`, `today.overdue`, `today.upcoming` (`src/modules/today/cards.tsx`). Ledger:
+  `ledger.attention` and `ledger.cash` (`src/modules/ledger/todayCards.tsx`).
+- **One aggregation for dated items.** `TodayDataProvider` (`src/modules/today/TodayData.tsx`) calls the Calendar's data hook once (your events plus
+  every due provider, covering the overdue window, today and the look-ahead). The four Today cards read that list through `useTodayData()` and
+  only slice it (`src/modules/today/logic.ts`, pure and tested). A new module's tasks or bills show up with no card of its own.
+- **Sharing a query between cards.** `useSharedLive(key, loader)` (`src/core/sharedLive.ts`) runs one live database query per key and shares it. The
+  cash forecast feeds both Ledger's alerts and the cash outlook, so it is worked out once. The key must name everything the query depends on.
+- **Hide amounts.** A card that shows money must honour `hideAmounts`. Text that may contain money (an alert title, a bill name) goes through
+  `maskAmounts()` (`logic.ts`).
+- **Layout.** `src/modules/today/layout.ts`: per device, saved under `today.layout.v1` (in the backup preference list). Cards come from the registry,
+  so a new card appears at the end by itself and a card that disappears is ignored.
+- **Failing cards.** Each card is wrapped in an error boundary, so one card breaking never blanks the screen.
+- **"N older items".** A due provider can add `olderThan(cutoff, today)` (see `docs/due-provider.md`).
 
 ## `searchSource`: what global search can find
 

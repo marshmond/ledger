@@ -20,6 +20,12 @@ How a module puts dated things on the Calendar without copying anything.
 - **Leave out** anything already handled (posted, skipped, completed). Do not return handled items unless there is a reason to show them (`status: 'handled'`).
 - **Never fail the Calendar.** If a provider throws, its layer is empty and the others still show.
 
+## Older items (optional): `olderThan(cutoff, today)`
+
+The Today screen's Overdue card lists open items from the last `overdueDays` days. A provider can also say how many open items are **older** than that
+(dated before `cutoff`) and where to see them in its own module: `olderThan` returns `{ count, path }` (or null). Today shows it as "N older items in
+<module>" with a link to `path`. Read-only. Tasks links to its Overdue view; Ledger links to Scheduled. It never changes how the module itself ages or counts items.
+
 ## The item (`DerivedItem`)
 
 Built on the `DueItem` shape (`src/core/entities.ts`), never stored:
