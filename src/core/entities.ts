@@ -16,8 +16,12 @@ export interface BaseRecord {
 /** A person you know (family, a doctor, a landlord). Not the same as Ledger's household members, which drive tax math. */
 export interface Contact extends BaseRecord {
   name: string;
+  /** Free text: "sister", "plumber", "landlord". */
   relationship?: string;
   notes?: string;
+  /** Optional. Added for vendors and other people you phone or write to; nothing requires them. */
+  phone?: string;
+  email?: string;
 }
 
 /** A label any module can put on its records. */

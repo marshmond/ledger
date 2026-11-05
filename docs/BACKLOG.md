@@ -14,6 +14,39 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
+## STATUS 2026-11-05 (newest): PROJECTS P1 (PROJECT FOUNDATION) BUILT AND COMMITTED, NOT PUSHED. P2 is NOT started.
+
+Owner asked for the first usable Projects module: data model, module, budget lines, vendors. **1,138 tests pass** (was 1,111), type check and production build clean.
+
+**What was built:**
+- **Projects module** (fifth in the top-bar switcher, after Tasks): a list at #/projects (tabs Open, Finished, Archived, All, with counts) and one page per project at #/projects/<id>. Files in `src/modules/projects/`.
+- **Project fields:** name, notes, status (Planning, Active, On hold, Completed, Cancelled), start date, target date, overall budget (cents; blank means the total of the budget lines is used), vendor contact ids, archived. Create and edit in a dialog with plain-words checks (name needed, real dates, target not before start, budget is an amount and not negative). Quick status change, Archive and Restore (with Undo) on the project page.
+- **Budget lines:** add, rename, change the planned amount, reorder (up and down buttons), remove. The page shows the lines total against the overall budget in words: not planned yet, over by, matches, or "no overall budget so this total is the budget". A line that transactions are tagged to cannot be removed.
+- **Vendors:** shared contacts, now with optional phone and email (`src/core/contacts.ts`). Add someone from your contacts, or add a new vendor (name, what they do, phone, email). An existing contact with the same name (ignoring case and spaces) is reused, never duplicated, and only its missing details are filled in. Edit a contact from the project (tel and mail links shown). Remove takes it off this project only. The same contact can be on several projects.
+- **Search, linking and Add:** projects are found by name and notes in global search (grouped under Projects); the "Link a record" picker offers Projects (archived ones are labelled); the Add box has a Project destination (shortcut `p`, then the name; it starts in Planning; Undo removes it).
+- **Finance compatibility:** the records use the field names Finance's project layer already reads, so tagging a transaction to a project and a budget line works, and `loadProjectSummary` gives the same planned total and not-yet-planned figure the screen shows. Nothing in Finance was changed.
+- **No database change.** Projects and lines are `moduleRecords` (module `projects`, kinds `project` and `budgetLine`), one record each, so backup and sync cover them. No schema version bump, no backup format change.
+
+**Tests added (27, `src/modules/projects/projects.test.ts`):** module registration and no Add-box clash; create, edit, every status, archive and restore; plain-words checks; the Add box and its undo; line totals, derived budget and the four comparison states; edit, soft removal and reordering (including a stable order for ties and no writes when nothing changes); removal blocked for tagged spending; vendors (new, same name reused, existing contacts compatible, several projects, remove, phone and email checks, clearing details, unknown contact fields kept); defensive reading and unknown fields kept through every change; search ranking; record lookup; Finance compatibility; export, restore and sync snapshot; two devices changing different lines.
+
+**Checked in a real browser (invented data, since removed), desktop and 375 px:** empty list, create with bad budget and bad date messages, project page, three lines with the over-budget comparison, reorder, vendor with a bad email message then a good one, status change, archive, the Archived tab, search (Ctrl+K) opening the project, restore, Add box shortcut with its "Will add" preview and Undo toast. No console errors, no sideways scroll at 375 px.
+
+**Decisions and deviations (please review):**
+1. Status word is **Completed** (the Phase 0 plan said "done"); Finance does not read status.
+2. **No delete for projects**, only archive and restore (plan decision R8). The Add box undo is the only removal, and only for a project made seconds earlier.
+3. Vendor links are a list of contact ids **inside the project record** (as the plan said), so two devices adding different vendors to one project at the same moment would lose one (the lost edit is recoverable from the sync notices). Budget lines are separate records, so they do not have this problem.
+4. A vendor is not a separate kind of record: it is a shared contact that a project points at. "What they do" uses the contact's existing `relationship` text. A future personal-CRM or household-services module can use the same contact without a second copy.
+5. Contacts only gained two optional fields (`phone`, `email`); nothing requires them.
+6. Unknown addresses under #/projects show the list.
+7. The tab, form and list styles were written for Projects (`projects.css`); it does not import the Calendar stylesheet.
+8. The Today screen has no Projects card yet, and project dates do not appear on the Calendar (both belong to later steps).
+
+**Known limitations:** no way to delete a project or a contact from Projects; no Projects card on Today; vendors have no notes; no search of vendors from the Projects search group (contacts are still found by Tasks search); lines have no categories or notes; the "Link a record" picker was unit-tested for Projects but not opened in a browser; offline and real two-device sync were not exercised.
+
+**Not built (as agreed):** commitments or change orders, transaction tagging screens, spending figures, project tasks and milestones, project Calendar events, documents, AI.
+
+**Recommended scope for P2:** commitments (quote, accepted, declined, cancelled; change orders as child commitments) on the project page; a "Project" box on the transaction form and in bulk actions using the Finance layer (with the Reversal or Credit prompt, the pre-filled change order and the "is this refund about a contract?" question); then the dashboard figures from `loadProjectSummary` (paid, agreed, left to pay, expected total, left in budget) beside the existing budget summary.
+
 ## DECISION 2026-11-05 (owner): refunds versus credits in Projects. DECIDED AND BUILT into the project layer (uncommitted, with Phase 0). 1,108 tests pass.
 
 The owner asked that money coming back be split into a **reversal** (undoes a payment) and a **credit** (reduces the contract), and that this be settled before the Projects dashboard is built. This replaces the single refund rule (plan edge case 7 and decision O2).

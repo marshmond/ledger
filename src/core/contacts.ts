@@ -1,0 +1,71 @@
+/**
+ * Shared contacts: one record per person or business, whatever module uses them. A vendor is not a different kind of record. A project
+ * points at the contact (project.vendorContactIds), so the same contact can serve several projects, and a future personal-CRM or
+ * household-services module can use it too without a second copy. These helpers add the two things vendors need (phone, email) and
+ * keep a name from being created twice.
+ */
+import type { FinanceDB } from '../db';
+import type { Contact } from './entities';
+import { createStore, isLive } from './store';
+
+export interface ContactInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  /** What they are to you or what they do: "plumber", "sister". */
+  relationship?: string;
+}
+
+const tidy = (s: string | undefined) => (s ?? '').trim().replace(/\s+/g, ' ');
+/** Names match ignoring case, accents and extra spaces. */
+export const nameKey = (s: string) => tidy(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+export const validEmail = (s: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+
+/** Plain-words problem with a contact's details, or null. Phone is free text (any format, extensions). */
+export function validateContact(input: ContactInput): string | null {
+  if (!tidy(input.name)) return 'Enter a name.';
+  if (tidy(input.name).length > 120) return 'That name is too long.';
+  const email = tidy(input.email);
+  if (email && !validEmail(email)) return 'That email address does not look right.';
+  if (tidy(input.phone).length > 40) return 'That phone number is too long.';
+  return null;
+}
+
+/**
+ * Finds the live contact with this name, or makes one. A contact that already exists is never overwritten: only details it does not
+ * have yet (phone, email, relationship) are filled in. Done in one transaction, so two quick calls cannot make two.
+ */
+export async function findOrCreateContact(d: FinanceDB, input: ContactInput): Promise<{ id: number; created: boolean }> {
+  const problem = validateContact(input);
+  if (problem) throw new Error(problem);
+  const name = tidy(input.name);
+  return d.transaction('rw', d.contacts, async () => {
+    const contacts = createStore(d).shared.contacts;
+    const found = (await d.contacts.toArray()).find((c) => isLive(c) && nameKey(c.name) === nameKey(name));
+    const extra = { phone: tidy(input.phone), email: tidy(input.email), relationship: tidy(input.relationship) };
+    if (found) {
+      const fill: Partial<Contact> = {};
+      for (const k of ['phone', 'email', 'relationship'] as const) if (extra[k] && !found[k]) fill[k] = extra[k];
+      if (Object.keys(fill).length) await contacts.put({ ...found, ...fill, id: found.id });
+      return { id: found.id as number, created: false };
+    }
+    const id = await contacts.put({ name, ...(extra.phone ? { phone: extra.phone } : {}), ...(extra.email ? { email: extra.email } : {}), ...(extra.relationship ? { relationship: extra.relationship } : {}) });
+    return { id, created: true };
+  });
+}
+
+/** Changes a contact's details. An empty phone, email or relationship removes it. Fields this code does not know are kept. */
+export async function updateContactDetails(d: FinanceDB, id: number, input: ContactInput): Promise<void> {
+  const problem = validateContact(input);
+  if (problem) throw new Error(problem);
+  await d.transaction('rw', d.contacts, async () => {
+    const existing = await d.contacts.get(id);
+    if (!existing || !isLive(existing)) throw new Error('That contact no longer exists.');
+    const next: Contact = { ...existing, name: tidy(input.name), updatedAt: Date.now() };
+    for (const k of ['phone', 'email', 'relationship'] as const) {
+      const v = tidy(input[k]);
+      if (v) next[k] = v; else delete next[k];
+    }
+    await d.contacts.put(next);
+  });
+}

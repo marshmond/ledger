@@ -1,6 +1,7 @@
 import { registerModule } from '../core/registry';
 import { calendarModule } from './calendar';
 import { ledgerModule } from './ledger';
+import { projectsModule } from './projects';
 import { tasksModule } from './tasks';
 import { todayModule } from './today';
 
@@ -13,4 +14,5 @@ export function registerModules() {
   registerModule(ledgerModule);
   registerModule(calendarModule);
   registerModule(tasksModule);
+  registerModule(projectsModule);
 }
