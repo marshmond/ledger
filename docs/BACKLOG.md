@@ -14,7 +14,7 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): Phase 3 PART B BUILT (the Today screen) plus the minimum account balance. Committed locally, NOT pushed. Waiting for the owner's Part B checklist sign-off. Parts C to E not started. The owner will live with Part B for a few days before Part C.
+## STATUS 2026-11-05 (newest): Phase 3 PART B BUILT (the Today screen) plus the minimum account balance. SIGNED OFF 2026-11-05 (all 13 checklist items passed) and pushed. Parts C to E not started. The owner will live with Part B for a few days before Part C.
 
 Part A was signed off 2026-11-05 and pushed. The owner added a request during sign-off: **a minimum balance per account** ("never let checking go below $2,000"). It was folded into Part B; the design answers were: both checks (today's real balance per account, and the forecast), set on the account, shown on Today as an alert plus the cash outlook.
 
