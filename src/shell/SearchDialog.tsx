@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from '../core/router';
+import { useNavigate } from 'react-router-dom';
+import { withBasePath } from '../core/paths';
+import { filterActions } from './searchActions';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { KIND_LABEL, searchAll, type SearchData } from '../lib/search';
@@ -7,6 +9,7 @@ import Modal from './Modal';
 import { openAddTransaction } from './QuickAdd';
 
 /** Things you can do from the palette, not just places you can go. */
+// `to` is written the way Ledger writes its pages (/budget); the dialog now lives outside Ledger, so it adds the /ledger prefix itself.
 const ACTIONS: { title: string; words: string; to?: string; run?: () => void }[] = [
   { title: 'Add a transaction', words: 'add new transaction expense income spend log', run: openAddTransaction },
   { title: 'Log a trade', words: 'log buy sell trade investment stock', to: '/investments' },
@@ -32,10 +35,7 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState('');
   const [cur, setCur] = useState(0);
   const hits = useMemo(() => searchAll(q, data), [q, data]);
-  const actions = useMemo(() => {
-    const words = q.trim().toLowerCase().split(/s+/).filter(Boolean);
-    return ACTIONS.filter((a) => words.every((w) => a.title.toLowerCase().includes(w) || a.words.includes(w)));
-  }, [q]);
+  const actions = useMemo(() => filterActions(q, ACTIONS), [q]);
   const total = actions.length + hits.length;
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
@@ -43,12 +43,12 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
 
   const go = (to: string) => {
     onClose();
-    nav(to);
+    nav(withBasePath('/ledger', to));
   };
   const runAction = (a: (typeof ACTIONS)[number]) => {
     onClose();
     if (a.run) a.run();
-    else if (a.to) nav(a.to);
+    else if (a.to) nav(withBasePath('/ledger', a.to));
   };
   const choose = (i: number) => (i < actions.length ? runAction(actions[i]) : go(hits[i - actions.length].to));
   const onKey = (e: React.KeyboardEvent) => {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from '../core/router';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { withBasePath } from '../core/paths';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import QuickTxn from './QuickTxn';
@@ -12,7 +13,8 @@ export const ADD_TXN_EVENT = 'ledger:add-transaction';
 export const openAddTransaction = () => window.dispatchEvent(new Event(ADD_TXN_EVENT));
 
 /**
- * Quick add: an "Add" button in the top bar on a computer, a round button above the tab bar on a phone.
+ * Quick add, one for the whole app (mounted next to the module bar): an "Add" button in the module bar on a computer, a round
+ * button on a phone. The round button sits above Ledger's tab bar, or at the screen's bottom edge in modules without one (see `--tab-h`).
  * The menu closes on Escape, on a click elsewhere, and when you change page.
  */
 export default function QuickAdd() {
@@ -45,7 +47,7 @@ export default function QuickAdd() {
 
   const go = (to: string) => {
     setMenu(false);
-    nav(to);
+    nav(withBasePath('/ledger', to));
   };
 
   const button = (

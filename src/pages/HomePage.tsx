@@ -2,7 +2,8 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { formatCents, todayISO } from '../lib/money';
+import { formatCents } from '../lib/money';
+import { useToday } from '../ui/useToday';
 import { refreshAllPrices } from '../lib/prices';
 import { monthLabel, monthOf } from '../lib/dates';
 import { loadBudget } from '../lib/budget';
@@ -10,7 +11,7 @@ import { dueInstances } from '../lib/schedule';
 import { loadNetWorth } from '../lib/netWorthLive';
 import { changeOver } from '../lib/snapshots';
 import { spendingSnapshot } from '../lib/spending';
-import { computeAlerts } from '../lib/alerts';
+import { computeAlerts, forecastLowForAlert } from '../lib/alerts';
 import { buildIncomeModel } from '../lib/income';
 import { hsaYearImpact } from '../lib/hsa';
 import { netForTax, realizedFor } from '../lib/lots';
@@ -20,7 +21,6 @@ import { useTaxPlanData } from './useTaxPlanData';
 import ComingUp from './ComingUp';
 import { useCheckin } from './useCheckin';
 import { loadForecast } from '../lib/forecastLive';
-import { addDays } from '../lib/dates';
 import { EmptyState, PageHeader, signedCents } from '../ui/components';
 import { BarList, Donut, NetWorthChart, PairedColumns, Ring } from '../ui/charts';
 import { CARD_IDS, DEFAULT_LAYOUT, addCard, loadLayout, moveCard, removeCard, saveLayout, toggleSize, type HomeCard } from '../lib/homeLayout';
@@ -36,7 +36,7 @@ const ONBOARD_KEY = 'ledger.onboarding.dismissed';
 
 /** The landing page: where you stand, what needs attention, and where to go next. */
 export default function HomePage() {
-  const today = todayISO();
+  const today = useToday();
   const month = monthOf(today);
   const year = Number(today.slice(0, 4));
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
@@ -79,6 +79,7 @@ export default function HomePage() {
   const nextEstimated = estimatedDueDates(year).find((d) => d >= today) ?? null;
   const overspent = (budget?.rows ?? []).filter((r) => r.kind === 'category' && r.available < 0).map((r) => r.name);
   const hasData = accounts.length > 0 || invAccounts.length > 0 || loans.length > 0 || people.length > 0 || props.length > 0;
+  const cashIds = new Set(accounts.filter((a) => !a.closed && (a.kind === 'checking' || a.kind === 'savings')).map((a) => a.id!));
   const alerts = computeAlerts({
     today, hasData, lastBackup, scheduledDue: due.length, overspent, invAccounts, holdings, securities, lots, vests, people,
     federalBalanceCents: income.household?.federal.balance ?? null,
@@ -87,7 +88,10 @@ export default function HomePage() {
     harvestableCents: plan.candidates.reduce((s, c) => s + c.lossCents, 0),
     yearEndTodo: plan.checklist.filter((c) => c.status === 'todo').length,
     checkinLeft: checkin.ready && !checkin.progress.complete && Number(today.slice(8, 10)) >= 25 ? checkin.progress.left : 0,
-    forecastLow: accounts.some((a) => !a.closed && (a.kind === 'checking' || a.kind === 'savings')) && forecast?.result.firstBelow && forecast.result.firstBelow.date <= addDays(today, 90) ? { ...forecast.result.firstBelow, thresholdCents: forecast.settings.thresholdCents } : null,
+    forecastLow: forecastLowForAlert({
+      today, firstBelow: forecast?.result.firstBelow, thresholdCents: forecast?.settings.thresholdCents ?? 0,
+      cashAccounts: cashIds.size, cashTxnCount: txns.filter((t) => cashIds.has(t.accountId)).length, forecastEventCount: forecast?.result.events.length ?? 0,
+    }),
   });
   const recent = [...txns].filter((t) => !t.transferTxnId).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 6);
   const acctName = (id: number) => accounts.find((a) => a.id === id)?.name ?? '';

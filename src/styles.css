@@ -246,10 +246,13 @@ kbd { font: inherit; font-size: var(--fs-xs); border: 1px solid var(--line-stron
 .tabbar a.active { color: var(--accent); font-weight: 650; }
 .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tabcount { position: absolute; top: 4px; left: calc(50% + 8px); margin: 0; }
-.main { padding-bottom: 160px; }
+.main { padding-bottom: calc(var(--tab-h) + 100px + env(safe-area-inset-bottom)); }
 
 /* Quick add: a round button on phones (clear of content), an "Add" button in the top bar on a computer. */
-.qa { position: fixed; right: var(--sp-4); bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-2); }
+/* Bottom-bar rule (all modules): --tab-h is the bottom tab bar's height when the current module has one (Ledger), else 0. The round button and the toasts sit above it; pages in modules without a tab bar get room at the bottom so nothing hides under the button. */
+:root { --tab-h: 0px; }
+:root[data-tabbar='yes'] { --tab-h: 57px; }
+.qa { position: fixed; right: var(--sp-4); bottom: calc(var(--tab-h) + var(--sp-4) + env(safe-area-inset-bottom)); z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: var(--sp-2); }
 .qa-btn { width: 52px; height: 52px; padding: 0; border: none; border-radius: 50%; background: var(--accent); color: var(--on-accent, #fff); box-shadow: var(--shadow-2); }
 .qa-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, var(--fg)); }
 .qa-plus { font-size: 1.8rem; line-height: 1; }
@@ -319,7 +322,6 @@ kbd { font: inherit; font-size: var(--fs-xs); border: 1px solid var(--line-stron
   .tabbar, .sectiontabs-wrap { display: none; }
   .main { padding-bottom: var(--sp-6); }
   .topbar { padding-top: var(--sp-2); padding-inline: var(--sp-5); }
-  .topbar .searchbtn.top { display: none; }
   .qa { position: relative; right: auto; bottom: auto; flex-direction: row; }
   .qa-btn { width: auto; height: var(--control-h); border-radius: var(--r-sm); padding: 0 var(--sp-4); box-shadow: none; }
   .qa-plus { font-size: 1.25rem; }
@@ -354,7 +356,7 @@ a.list-row:hover { text-decoration: none; background: var(--hover); }
 .spark-area { fill: var(--accent-soft); }
 .spark-dot { position: absolute; right: -4px; width: 9px; height: 9px; margin-top: -4px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--bg); }
 
-.toasts { position: fixed; z-index: 120; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--sp-2); width: min(440px, calc(100vw - 32px)); }
+.toasts { position: fixed; z-index: 120; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h) + 84px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--sp-2); width: min(440px, calc(100vw - 32px)); }
 @media (min-width: 900px) { .toasts { bottom: var(--sp-5); } }
 .toast { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--fg); color: var(--bg); border-radius: var(--r-sm); box-shadow: var(--shadow-2); }
 .toast > span { flex: 1; }
@@ -617,6 +619,11 @@ details.pick label.chk:hover { background: var(--hover); }
 .modmenu a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; color: var(--fg); text-decoration: none; }
 .modmenu a:hover, .modmenu a.active { background: var(--hover, rgba(127, 127, 127, 0.14)); }
 .modspacer { flex: 1; }
+.modsearch { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+.modsearch:hover:not(:disabled) { color: var(--fg); background: var(--hover, rgba(127, 127, 127, 0.14)); }
+.modsearch-label { display: none; }
+@media (min-width: 900px) { .modsearch-label { display: inline; } }
+.modulebar .qa-btn { height: 28px; }
 .modsettings { color: var(--muted); text-decoration: none; }
 .modsettings:hover, .modsettings.active { color: var(--fg); }
 .settings-tabs { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-4); border-bottom: 1px solid var(--line); }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import SyncChip from './SyncChip';
+import QuickAdd from '../shell/QuickAdd';
+import { openSearch } from './globalEvents';
 import { allModules, getModule, lastModuleId } from './registry';
 
 /** The thin bar across the top of every screen: which module you are in (with a switcher), and the shared Settings. */
@@ -41,6 +43,8 @@ export default function ModuleBar() {
         )}
       </div>
       <span className="modspacer" />
+      <button className="modsearch" onClick={openSearch} aria-label="Search" title="Search (Ctrl K)"><span aria-hidden="true">⌕</span><span className="modsearch-label">Search</span></button>
+      <QuickAdd />
       <SyncChip />
       <Link to="/settings" className={`modsettings ${loc.pathname.startsWith('/settings') ? 'active' : ''}`}>Settings</Link>
     </div>

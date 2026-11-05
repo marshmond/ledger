@@ -5,15 +5,14 @@ import { loadOpenGroup, saveOpenGroup, toggleGroup } from './sideState';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { dueInstances } from '../lib/schedule';
-import { todayISO } from '../lib/money';
+import { useToday } from '../ui/useToday';
 import { loadNetWorth } from '../lib/netWorthLive';
 import { saveMonthlySnapshot } from '../lib/snapshots';
 import ThemeToggle from '../pages/ThemeToggle';
 import { GROUPS, crumbsFor, groupForPath, type GroupId } from './nav';
 import { ToastProvider } from '../ui/Toast';
 import { useEdgeFade } from '../ui/components';
-import QuickAdd from './QuickAdd';
-import SearchDialog from './SearchDialog';
+import { openSearch } from '../core/globalEvents';
 import BackupReminder from './BackupReminder';
 
 /** Simple line icons for the bottom tab bar, one per group. */
@@ -35,37 +34,22 @@ export default function Shell({ children }: { children: ReactNode }) {
   const accountMatch = matchPath('/account/:id', loc.pathname);
   const accountId = accountMatch?.params.id ? Number(accountMatch.params.id) : null;
   const account = useLiveQuery(() => (accountId ? db.accounts.get(accountId) : undefined), [accountId]);
-  const dueCount = useLiveQuery(async () => (await dueInstances(db, todayISO(), 7)).length, []) ?? 0;
-  const nw = useLiveQuery(() => loadNetWorth(db, todayISO()), []);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const today = useToday();
+  const dueCount = useLiveQuery(async () => (await dueInstances(db, today, 7)).length, [today]) ?? 0;
+  const nw = useLiveQuery(() => loadNetWorth(db, today), [today]);
   const [open, setOpen] = useState<string | null>(() => loadOpenGroup());
   const toggle = (id: string) => setOpen((cur) => { const next = toggleGroup(cur, id); saveOpenGroup(next); return next; });
 
   // Net worth history: this month's point follows the latest figures (saved shortly after they settle).
   useEffect(() => {
     if (!nw) return;
-    const t = setTimeout(() => { saveMonthlySnapshot(db, todayISO(), nw).catch(() => undefined); }, 2500);
+    const t = setTimeout(() => { saveMonthlySnapshot(db, today, nw).catch(() => undefined); }, 2500);
     return () => clearTimeout(t);
   }, [nw?.total, nw?.cash, nw?.investments, nw?.property, nw?.cards, nw?.loans]); // eslint-disable-line react-hooks/exhaustive-deps
   const crumbs = crumbsFor(loc.pathname, account?.name);
   const fade = useEdgeFade<HTMLElement>();
 
-  // Ctrl/Cmd+K, or "/" when not typing, opens search.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target as HTMLElement)?.tagName ?? '') || (e.target as HTMLElement)?.isContentEditable;
-      if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        setSearchOpen(true);
-      } else if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-  useEffect(() => setSearchOpen(false), [loc.pathname]);
+  // Search and quick add are app-wide now (GlobalFrame and the module bar); Ctrl/Cmd+K and "/" are handled there.
   // Landing on a page opens its group in the sidebar, so you can always see its neighbours.
   useEffect(() => { if (group.id !== 'home') setOpen((cur) => { if (cur === group.id) return cur; saveOpenGroup(group.id); return group.id; }); }, [group.id]);
 
@@ -77,7 +61,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     <ToastProvider>
     <div className="shell">
       <aside className="sidebar" aria-label="Main">
-        <button className="searchbtn side" onClick={() => setSearchOpen(true)} aria-label="Search">
+        <button className="searchbtn side" onClick={openSearch} aria-label="Search">
           <span aria-hidden="true">⌕</span> Search <kbd>Ctrl K</kbd>
         </button>
         {GROUPS.map((g) => (
@@ -120,8 +104,6 @@ export default function Shell({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <strong className="topbar-title">{group.id === 'home' ? 'Home' : group.label}</strong>
-          <button className="searchbtn top" onClick={() => setSearchOpen(true)} aria-label="Search"><span aria-hidden="true">⌕</span></button>
-          <QuickAdd />
         </header>
         {group.items.length > 1 && (
           <div className={`sectiontabs-wrap ${fade.className}`}>
@@ -143,8 +125,6 @@ export default function Shell({ children }: { children: ReactNode }) {
           </NavLink>
         ))}
       </nav>
-
-      {searchOpen && <SearchDialog onClose={() => setSearchOpen(false)} />}
     </div>
     </ToastProvider>
   );

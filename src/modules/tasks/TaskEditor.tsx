@@ -106,8 +106,16 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
           </label>
         </div>
         <label className="f">List <span className="muted">(optional; type a new name to make a list)</span>
-          <input list="tk-lists" value={shownList} onChange={(e) => { setListTouched(true); setListName(e.target.value); }} placeholder="No list" />
-          <datalist id="tk-lists">{lists.map((l) => <option key={l.id} value={l.name} />)}</datalist>
+          {/* A plain menu for existing lists, plus a box for a new one: the browser's suggestion pop-up (datalist) can open far from the box. */}
+          <span className="row grow">
+            {lists.length > 0 && (
+              <select value={lists.some((l) => l.name === shownList) ? shownList : ''} onChange={(e) => { setListTouched(true); setListName(e.target.value); }} aria-label="Pick a list">
+                <option value="">No list</option>
+                {lists.map((l) => <option key={l.id} value={l.name}>{l.name}</option>)}
+              </select>
+            )}
+            <input value={lists.some((l) => l.name === shownList) ? '' : shownList} onChange={(e) => { setListTouched(true); setListName(e.target.value); }} placeholder={lists.length ? 'or type a new list name' : 'No list; type a name to make one'} aria-label="New list name" />
+          </span>
         </label>
 
         <RepeatFields rule={rule} onChange={setRule} start={dueDate || today} mode={mode} onMode={setMode} />

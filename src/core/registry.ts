@@ -29,6 +29,11 @@ export interface ModuleDef {
   routePaths: string[];
   /** The module's own navigation map (informational for the shell; the module draws its own sidebar). */
   nav: ModuleNavGroup[];
+  /**
+   * True when the module draws its own bottom tab bar on phones (only Ledger does). The shell uses it to keep the round "+" button
+   * and the toasts clear of that bar; modules without one get the screen's bottom edge.
+   */
+  hasTabBar?: boolean;
   /** Optional hooks other modules (the Calendar, Tasks) read. */
   contributes?: {
     /** Dated things this module works out on the fly for the Calendar. Read-only; see docs/due-provider.md. */
@@ -40,7 +45,74 @@ export interface ModuleDef {
      * scheduled item). The module draws its own prefilled form; the Calendar retires the event only after the module reports success.
      */
     createFromEvent?: EventHandoff;
+    /** Cards this module offers the Today screen. See docs/module-hooks.md. */
+    todayCards?: TodayCardDef[];
+    /** What global search can find in this module. See docs/module-hooks.md. */
+    searchSource?: SearchSource;
+    /** What the global quick-add box can create in this module. See docs/module-hooks.md. */
+    quickAdd?: QuickAddDef;
   };
+}
+
+/** What a Today card receives. Dates are 'YYYY-MM-DD' in local time; `today` changes at midnight. */
+export interface TodayCardProps {
+  today: string;
+  /** The "Hide amounts" switch in Today's header. A card that shows money must honour it. */
+  hideAmounts: boolean;
+  /** A card calls this with true when it has nothing to show, so a card marked `hideWhenEmpty` can disappear. */
+  reportEmpty(empty: boolean): void;
+}
+export interface TodayCardDef {
+  /** Permanent. Saved layouts refer to it (`ledger.alerts`). Use `<module>.<name>`. */
+  id: string;
+  title: string;
+  defaultWidth: 'half' | 'full';
+  /** Position in the default layout; lower comes first. */
+  priority: number;
+  /** Disappear (instead of showing an empty state) when the card reports it has nothing. */
+  hideWhenEmpty?: boolean;
+  Component: ComponentType<TodayCardProps>;
+}
+
+/** One thing global search found. `path` is a full address (`/ledger/accounts`); `open` is for hits that need more than navigation. */
+export interface SearchResult {
+  /** Stable within the module, used as the list key. */
+  id: string;
+  title: string;
+  subtitle?: string;
+  /** Short kind label shown as a badge, e.g. "Task". */
+  kind: string;
+  /** Higher ranks first. Within a module only; results are grouped by module. */
+  score?: number;
+  path?: string;
+  open?(): void | Promise<void>;
+}
+export interface SearchSource {
+  /** Heading for the group of results, e.g. "Tasks". Defaults to the module name. */
+  group?: string;
+  /** Results for the typed text (not trimmed or lower-cased for you). Must be fast; a linear scan is fine. */
+  search(query: string, limit: number): Promise<SearchResult[]> | SearchResult[];
+}
+
+/** What the quick-add box shows before saving: a one-line summary and the fields the text was understood as. */
+export interface QuickAddPreview {
+  /** "Will add: Pay rent, Friday, high priority". */
+  summary: string;
+  fields: { label: string; value: string }[];
+  /** Whatever `commit` needs; opaque to the shell. */
+  payload: unknown;
+}
+export interface QuickAddDef {
+  /** Permanent short id, e.g. `task`. */
+  id: string;
+  /** Chooser text, e.g. "Task". */
+  label: string;
+  /** Typed shortcut: text starting with `<prefix> ` picks this destination. One short token (`t`, `e`, `$`). */
+  prefix: string;
+  /** Understands the text (prefix already removed), or returns null when it is not something this destination can make. */
+  parse(text: string): QuickAddPreview | null;
+  /** Creates the record. Only called after the user has seen the preview and pressed Add. */
+  commit(preview: QuickAddPreview): Promise<void>;
 }
 
 /** What the Calendar knows about an event, in plain terms, when it offers a handoff. Nothing here is Ledger-specific. */
@@ -108,10 +180,35 @@ const modules: ModuleDef[] = [];
 
 export function registerModule(m: ModuleDef) {
   if (modules.some((x) => x.id === m.id)) throw new Error(`Module "${m.id}" is registered twice.`);
+  checkHooks(m);
   modules.push(m);
   if (m.contributes?.dueProvider) registerDueProvider(m.contributes.dueProvider);
 }
+/** Catches hook mistakes at start-up instead of as a confusing screen: a badly named or repeated card id, or a quick-add prefix already taken. */
+function checkHooks(m: ModuleDef) {
+  for (const c of m.contributes?.todayCards ?? []) {
+    if (!c.id.startsWith(`${m.id}.`)) throw new Error(`Today card "${c.id}" must start with "${m.id}.".`);
+    if (allTodayCards().some((x) => x.id === c.id)) throw new Error(`Today card "${c.id}" is registered twice.`);
+  }
+  const q = m.contributes?.quickAdd;
+  if (q) {
+    const clash = allQuickAdds().find((x) => x.prefix.toLowerCase() === q.prefix.toLowerCase() || x.id === q.id);
+    if (clash) throw new Error(`Quick-add "${q.id}" (prefix "${q.prefix}") clashes with "${clash.id}" (prefix "${clash.prefix}").`);
+  }
+}
 export const allModules = (): readonly ModuleDef[] => modules;
+/** Every Today card offered by any module, in default-layout order. */
+export function allTodayCards(mods: readonly ModuleDef[] = modules): (TodayCardDef & { moduleId: string })[] {
+  return mods.flatMap((m) => (m.contributes?.todayCards ?? []).map((c) => ({ ...c, moduleId: m.id }))).sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
+}
+/** Every module that can be searched, with its search hook. */
+export function allSearchSources(mods: readonly ModuleDef[] = modules): { moduleId: string; moduleName: string; source: SearchSource }[] {
+  return mods.flatMap((m) => (m.contributes?.searchSource ? [{ moduleId: m.id, moduleName: m.name, source: m.contributes.searchSource }] : []));
+}
+/** Every quick-add destination, in module order. */
+export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {
+  return mods.flatMap((m) => (m.contributes?.quickAdd ? [{ ...m.contributes.quickAdd, moduleId: m.id }] : []));
+}
 export const recordSource = (moduleId: string) => modules.find((m) => m.id === moduleId)?.contributes?.records;
 /** The module that offers to take over events of this type, if any. */
 export function handoffFor(type: string | undefined): (EventHandoff & { moduleId: string }) | undefined {

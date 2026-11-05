@@ -144,3 +144,27 @@ export function computeAlerts(i: AlertInput): Alert[] {
   const rank = (a: Alert) => (a.level === 'warn' ? 0 : 1);
   return out.sort((a, b) => rank(a) - rank(b));
 }
+
+/**
+ * The "cash may drop" alert needs a forecast worth trusting. A cash account that exists but is empty (or under the warning level)
+ * with nothing recorded and nothing scheduled has no real forecast: it would only say "Cash may drop to $0.00 today". So the alert
+ * needs a cash account AND something to forecast from (transactions in a cash account, or dated events in the forecast), and the dip
+ * must fall inside `horizonDays`. A real shortfall (a bill that takes the balance under the level) still shows.
+ */
+export function forecastLowForAlert(i: {
+  today: string;
+  firstBelow: { date: string; balanceCents: number } | null | undefined;
+  thresholdCents: number;
+  /** Open checking or savings accounts. */
+  cashAccounts: number;
+  /** Transactions recorded in those accounts. */
+  cashTxnCount: number;
+  /** Dated events the forecast expects (pay, bills, loan payments, taxes, one-offs). */
+  forecastEventCount: number;
+  horizonDays?: number;
+}): { date: string; balanceCents: number; thresholdCents: number } | null {
+  if (!i.firstBelow || i.cashAccounts < 1) return null;
+  if (i.cashTxnCount === 0 && i.forecastEventCount === 0) return null;
+  if (daysBetween(i.firstBelow.date, i.today) > (i.horizonDays ?? 90)) return null;
+  return { ...i.firstBelow, thresholdCents: i.thresholdCents };
+}

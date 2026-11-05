@@ -96,6 +96,8 @@ export function recordBackup(now: Date = new Date(), storage?: Store) {
 export const PREFERENCE_KEYS = [
   'ledger-theme', 'ledger-palette', 'ledger-palette-vars', 'ledger-keypad-amounts', 'ledger.home.layout.v1', 'ledger-collapsed',
   'ledger-tabs', 'ledger-side-open', 'ledger-flow-last', 'ledger.onboarding.dismissed', 'ledger-sale-method', 'ledger-quick-account',
+  // Today (per device): card order, widths and hidden cards; and the "Hide amounts" switch. Shared Today options live in the settings table instead.
+  'today.layout.v1', 'today.hideAmounts.v1',
 ];
 
 export function collectPreferences(storage?: Pick<Storage, 'getItem'>): Record<string, string> {

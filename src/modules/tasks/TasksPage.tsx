@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Priority } from '../../core/entities';
 import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
+import { useToday } from '../../ui/useToday';
 import { useToast } from '../../ui/Toast';
 import { dayLabel } from '../calendar/time';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../calendar/model';
@@ -35,7 +36,7 @@ const EMPTY: Record<ViewId, string> = {
 export default function TasksPage() {
   const toast = useToast();
   const [sp, setSp] = useSearchParams();
-  const today = todayISO();
+  const today = useToday();
   const tasks = useLiveQuery(() => loadTasks(), []);
   const deleted = useLiveQuery(() => loadDeletedTasks(), []) ?? [];
   const lists = useLiveQuery(() => loadLists(), []) ?? [];

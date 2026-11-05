@@ -11,6 +11,7 @@ export const ledgerModule: ModuleDef = {
   name: 'Ledger',
   icon: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>,
   Component: LedgerModule,
+  hasTabBar: true,
   routePaths: LEDGER_ROUTES.map(([p]) => p),
   nav: GROUPS.map((g) => ({ id: g.id, label: g.label, to: g.to, items: g.items })),
   // What Ledger offers the other modules: dated things for the Calendar (read-only, computed), and records others can link to.
