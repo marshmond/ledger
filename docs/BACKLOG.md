@@ -14,7 +14,45 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): Phase 3 PART B BUILT (the Today screen) plus the minimum account balance. SIGNED OFF 2026-11-05 (all 13 checklist items passed) and pushed. Parts C to E not started. The owner will live with Part B for a few days before Part C.
+## STATUS 2026-11-05 (newest): Phase 3 PART C BUILT (global search across Ledger, Calendar, Tasks and Today). Committed locally, NOT pushed. Waiting for the owner's Part C checklist sign-off. Parts D and E not started.
+
+Part B was signed off and pushed (b9d3bab) before this started.
+
+**What was built (Part C):**
+- **One search box, grouped by module.** Ctrl+K, `/` and the Search button now ask every module's own search source and show the answers under a heading per module (Ledger, Calendar, Tasks, Today), the module with the best match first. Each module offers its source through `contributes.searchSource` (documented in `docs/module-hooks.md`). A source that fails is left out; the others still answer.
+- **Ledger** keeps everything it found before (pages, accounts, investment accounts, holdings, loans, paycheck scenarios, transactions with "See all N") and now also finds **scheduled items by payee or memo** (opens that item in Ledger's Scheduled edit form).
+- **Calendar:** your **events** by title, notes and location (a repeating event opens its next occurrence), and the Calendar page. **Tasks:** **tasks** by title, notes and checklist items (open tasks above done ones when equally good), **tags** and **contacts** (open Tasks filtered to that tag or contact), and the Tasks page. **Today:** the Today page.
+- **Open at the record.** A task opens its editor, an event opens its editor in the Calendar, a scheduled item opens its edit form, a tag or contact opens Tasks filtered to it (a "Contact: <name>" label and Clear filters appear). Existing Ledger hits open where they did.
+- **Two new actions** in the list: **Add a task** (opens the quick-task form from anywhere) and **Add an event** (opens a blank event in the Calendar). The existing four actions are unchanged.
+- **Speed (measured).** In the preview browser with 20,000 invented transactions, 1,500 tasks, 600 events and 150 scheduled items: before a fix a search took about 110 to 145 ms, almost all of it reading the transactions out of the database (about 90 ms; scanning them takes about 8 ms). Now, while the dialog is open, Ledger keeps a live in-memory snapshot (the same trick the old dialog used), so a search takes about 25 ms, and about 130 ms passes from typing to results on screen (including a 90 ms pause after you stop typing). No index and no database change were needed. NOT measured: a phone-speed processor (my machine is a desktop with no slowdown), and the first keystroke before the snapshot has loaded (it reads directly, about 110 ms here).
+
+**Verified:** 1,023 tests (16 new: task and event matching and ordering, tag/contact hits and the contact filter, scheduled-item hits, repeating-event opening, group ordering), type check and production build clean. In a real browser (invented data): results are grouped as above; the event, task (found by a checklist word), scheduled item and tag each open at the right place; the contact link filters Tasks; "Add an event" and "Add a task" open their forms from the Calendar; the dialog at 375 px has no sideways scroll. Test data I added is removed again.
+
+**Judgment calls (please review):**
+1. **Tags and contacts are searched from the Tasks module** (they are shared records, and Tasks is where they can be filtered). Searching a contact shows only its tasks; events with that contact are not listed.
+2. **Result caps:** up to 8 tasks, 8 events, 3 tags and 3 contacts; Ledger keeps its old 14. Done tasks are included but ranked lower.
+3. **Groups are ordered by their best match,** not by a fixed module order, so the module with the closest hit comes first.
+4. **A repeating event opens its next occurrence** (within about a year); one with none left opens its first.
+5. **Add an event** goes through a link to the Calendar (`#/calendar?new=1`), not a real "create an event from anywhere" bridge; the proper bridge arrives with Part D.
+6. **Search waits 90 ms after you stop typing,** then asks all modules in parallel; results from an older search never overwrite a newer one.
+7. **Retired events** (turned into a Ledger scheduled item) are not searchable, to avoid duplicates.
+
+**NOT built in Part C (by design or later):** search by an amount for tasks or events; searching attachments, categories, budgets, goals, payee rules or RSU grants; recent searches; highlighting the matched words; a search index (not needed on these measurements); the Add box with a destination chooser and preview (Part D); phone-speed measurement (Part E).
+
+**Part C checklist (for the owner):**
+1. From Calendar, Tasks, Today and Ledger press Ctrl+K (or `/`, or click Search). Type a word that is in a task, an event and a payee at once: results appear under separate headings (Ledger, Calendar, Tasks).
+2. Click a **task** result: Tasks opens with that task's editor. Search a word that only appears in the task's notes, and in one of its checklist items: both find it.
+3. Click an **event** result: the Calendar opens with that event's editor (try one by location, and one by its notes).
+4. Click a **scheduled item** (a bill's payee): Ledger Scheduled opens with that item in the edit form.
+5. Search a **tag** name and a **contact** name: Tasks opens showing only that tag's or contact's tasks; "Clear filters" returns to all.
+6. Type "tasks", "calendar" and "today": each page appears as a result and opens.
+7. Check the old results still work: an account, a ticker, a loan, a page such as "budget", and a payee with "See all N matching transactions".
+8. Actions: type "add task" (a quick-task form opens on top of whatever page you are on) and "add event" (the Calendar opens a blank event for today). "add transaction" still works.
+9. Type quickly and delete everything: no stale results stay; an empty box shows the hint; a word with no match says "Nothing matches".
+10. Use arrow keys and Enter to pick results; Esc closes. Try it on the phone (or 375 px): results fit, no sideways scrolling.
+11. Speed: on your real data, type a few searches. Note anything that feels slow, and on which device (a phone is the one to try).
+
+## STATUS 2026-11-05: Phase 3 PART B BUILT (the Today screen) plus the minimum account balance. SIGNED OFF 2026-11-05 (all 13 checklist items passed) and pushed. Parts C to E not started. The owner will live with Part B for a few days before Part C.
 
 Part A was signed off 2026-11-05 and pushed. The owner added a request during sign-off: **a minimum balance per account** ("never let checking go below $2,000"). It was folded into Part B; the design answers were: both checks (today's real balance per account, and the forecast), set on the account, shown on Today as an alert plus the cash outlook.
 

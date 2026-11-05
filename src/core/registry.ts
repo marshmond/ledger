@@ -92,6 +92,11 @@ export interface SearchSource {
   group?: string;
   /** Results for the typed text (not trimmed or lower-cased for you). Must be fast; a linear scan is fine. */
   search(query: string, limit: number): Promise<SearchResult[]> | SearchResult[];
+  /**
+   * Optional. Called when the search dialog opens; returns a function called when it closes. A source whose data is slow to read can keep
+   * a live in-memory snapshot between the two (Ledger does this for its transactions). Not an index: nothing is stored.
+   */
+  start?(): () => void;
 }
 
 /** What the quick-add box shows before saving: a one-line summary and the fields the text was understood as. */

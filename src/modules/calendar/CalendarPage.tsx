@@ -77,6 +77,14 @@ export default function CalendarPage() {
 
   const openItem = (i: CalItem) => (i.derived ? setDetail(i) : i.occ && setEditor({ occ: i.occ }));
 
+  // #/calendar?new=1 (the "Add an event" action in search) opens a blank event for today (or the date in `d`), then tidies the address.
+  const wantNew = sp.get('new');
+  useEffect(() => {
+    if (!wantNew) return;
+    const next = new URLSearchParams(sp); next.delete('new'); setSp(next, { replace: true });
+    setEditor({ start: { date: anchor } });
+  }, [wantNew]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // A link such as #/calendar?d=2026-11-05&open=e:12:2026-11-05 (from the Today screen) opens that event, then tidies the address.
   const openParam = sp.get('open');
   useEffect(() => {

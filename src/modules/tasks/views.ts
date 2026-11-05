@@ -19,6 +19,8 @@ export interface Filter {
   priority: Priority | '';
   listId: number | '' | 'none';
   tagId: number | '';
+  /** Only tasks involving this contact (set from global search). Optional so existing filters need not mention it. */
+  contactId?: number | '';
 }
 export const NO_FILTER: Filter = { text: '', priority: '', listId: '', tagId: '' };
 
@@ -53,6 +55,7 @@ export function matches(t: TaskRecord, f: Filter): boolean {
   if (f.priority && t.data.priority !== f.priority) return false;
   if (f.listId === 'none' ? t.data.listId !== null : f.listId !== '' && t.data.listId !== f.listId) return false;
   if (f.tagId !== '' && !t.data.tagIds.includes(f.tagId)) return false;
+  if (f.contactId !== undefined && f.contactId !== '' && !t.data.contactIds.includes(f.contactId)) return false;
   return true;
 }
 

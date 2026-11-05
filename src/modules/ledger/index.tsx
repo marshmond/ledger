@@ -3,6 +3,7 @@ import { GROUPS } from '../../shell/nav';
 import LedgerModule, { LEDGER_BASE, LEDGER_ROUTES } from './LedgerModule';
 import { ledgerDueProvider } from './dueProvider';
 import { ledgerRecords } from './records';
+import { ledgerSearchSource } from './searchSource';
 import ScheduledFromEvent from './ScheduledFromEvent';
 import { LEDGER_TODAY_CARDS } from './todayCards';
 
@@ -23,5 +24,7 @@ export const ledgerModule: ModuleDef = {
     createFromEvent: { types: ['bill'], label: 'Create scheduled item in Ledger', ownerName: 'Ledger', Form: ScheduledFromEvent },
     // Today: Ledger's alerts (the same ones as Ledger Home, with dismiss and snooze) and the low point of the cash forecast.
     todayCards: LEDGER_TODAY_CARDS,
+    // Global search: Ledger's pages, accounts, holdings, loans, scenarios, scheduled items and transactions.
+    searchSource: ledgerSearchSource,
   },
 };

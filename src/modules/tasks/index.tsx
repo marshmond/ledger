@@ -1,5 +1,6 @@
 import type { ModuleDef } from '../../core/registry';
 import { tasksDueProvider } from './dueProvider';
+import { tasksSearchSource } from './searchSource';
 import TasksModule, { TASKS_BASE } from './TasksModule';
 
 /** Tasks, module #3: to-dos you own. Dated ones show on the Calendar's Tasks layer (computed, never copied). */
@@ -10,5 +11,5 @@ export const tasksModule: ModuleDef = {
   Component: TasksModule,
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: tasksDueProvider },
+  contributes: { dueProvider: tasksDueProvider, searchSource: tasksSearchSource },
 };

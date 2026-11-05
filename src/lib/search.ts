@@ -1,4 +1,4 @@
-import type { Account, Holding, InvAccount, Loan, PayScenario, Security, Txn } from '../types';
+import type { Account, Holding, InvAccount, Loan, PayScenario, RecurringRule, Security, Txn } from '../types';
 import { ALL_ITEMS } from '../shell/nav';
 import { formatCents } from './money';
 
@@ -12,9 +12,11 @@ export interface SearchData {
   loans: Loan[];
   scenarios: PayScenario[];
   txns: Txn[];
+  /** Scheduled items (found by payee). Optional so older callers keep working. */
+  rules?: RecurringRule[];
 }
 
-export type HitKind = 'page' | 'account' | 'investment' | 'holding' | 'loan' | 'scenario' | 'transaction' | 'transactions';
+export type HitKind = 'page' | 'account' | 'investment' | 'holding' | 'loan' | 'scenario' | 'transaction' | 'transactions' | 'scheduled';
 
 export interface SearchHit {
   kind: HitKind;
@@ -33,12 +35,13 @@ export const KIND_LABEL: Record<HitKind, string> = {
   scenario: 'Paycheck scenario',
   transaction: 'Transaction',
   transactions: 'Transactions',
+  scheduled: 'Scheduled item',
 };
 
-const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
+export const norm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '');
 
 /** Every word of the query must appear; a match at the start of the title ranks higher. Returns 0 for no match. */
-function score(query: string[], title: string, extra = ''): number {
+export function score(query: string[], title: string, extra = ''): number {
   const t = norm(title);
   const hay = `${t} ${norm(extra)}`;
   if (!query.every((w) => hay.includes(w))) return 0;
@@ -73,6 +76,11 @@ export function searchAll(raw: string, data: SearchData, limit = 14): SearchHit[
   }
   for (const l of data.loans) push({ kind: 'loan', title: l.name, subtitle: `${l.kind}${l.scenario ? ' (what-if)' : ''}`, to: '/debt' }, score(query, l.name, l.kind));
   for (const s of data.scenarios) push({ kind: 'scenario', title: s.name, subtitle: `Paycheck scenario, ${s.year}`, to: '/paycheck' }, score(query, s.name));
+
+  // Scheduled items: found by payee (or memo) and opened in the Scheduled page's edit form.
+  for (const r of data.rules ?? []) {
+    push({ kind: 'scheduled', title: r.payee, subtitle: `${r.frequency}${r.active ? '' : ' (paused)'} · ${formatCents(Math.abs(r.amountCents))} · ${acctName(r.accountId)}`, to: `/scheduled?rule=${r.id}` }, score(query, r.payee, r.memo ?? ''));
+  }
 
   // Transactions: match payee, memo, or the amount as typed (e.g. "45.20").
   const matching = data.txns.filter((t) => {

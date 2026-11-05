@@ -68,6 +68,17 @@ export default function TasksPage() {
     const next = new URLSearchParams(sp); next.delete('task'); setSp(next, { replace: true });
   }, [wanted, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A link such as #/tasks?v=all&tag=3 or &contact=7 (from global search) shows just that tag or contact, then tidies the address.
+  const wantTag = Number(sp.get('tag')) || '';
+  const wantContact = Number(sp.get('contact')) || '';
+  useEffect(() => {
+    if (wantTag === '' && wantContact === '') return;
+    setFilter({ ...NO_FILTER, ...(wantTag !== '' ? { tagId: wantTag } : {}), ...(wantContact !== '' ? { contactId: wantContact } : {}) });
+    const next = new URLSearchParams(sp); next.delete('tag'); next.delete('contact'); setSp(next, { replace: true });
+  }, [wantTag, wantContact]); // eslint-disable-line react-hooks/exhaustive-deps
+  const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
+  const filteredContact = filter.contactId ? contacts.find((c) => c.id === filter.contactId)?.name : undefined;
+
   // In Completed the natural order is "recently completed"; everywhere else that choice means the default (due date).
   const effSort: SortKey = view === 'completed' ? (sort === 'due' ? 'completed' : sort) : sort === 'completed' ? 'due' : sort;
   const groups = useMemo(
@@ -143,6 +154,7 @@ export default function TasksPage() {
           <option value="">Any tag</option>{tagList.map((t) => <option key={t.id} value={t.id}>#{t.name}</option>)}
         </select>
         {view === 'upcoming' && <select value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Upcoming range">{[7, 14, 30].map((d) => <option key={d} value={d}>Next {d} days</option>)}</select>}
+        {filteredContact && <span className="badge">Contact: {filteredContact}</span>}
         {filtering && <button className="link" onClick={() => setFilter(NO_FILTER)}>Clear filters</button>}
         {view !== 'deleted' && <button className={`btn ${selecting ? 'primary' : ''}`} onClick={() => { setSelecting(!selecting); setSelected(new Set()); }}>{selecting ? 'Done selecting' : 'Select'}</button>}
       </div>

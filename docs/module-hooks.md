@@ -1,7 +1,7 @@
 # Module hooks for Today, search and quick-add
 
 Added in Phase 3. These sit next to the due-provider contract (`docs/due-provider.md`) in `ModuleDef.contributes`. **`todayCards` is in use
-since Part B** (the Today module and Ledger each offer cards); `searchSource` (Part C) and `quickAdd` (Part D) are not used yet. A module that
+since Part B** (the Today module and Ledger each offer cards); `searchSource` is in use since Part C (Ledger, Calendar, Tasks and Today each offer one); `quickAdd` (Part D) is not used yet. A module that
 offers none of them behaves exactly as before. The types live in `src/core/registry.ts`.
 
 ```ts
@@ -49,6 +49,19 @@ Dated things (events, tasks, bills) should normally come through the due provide
 `search(query, limit)` returns `SearchResult[]` (`id`, `title`, `subtitle?`, `kind` badge text, `score?`, and either `path`, a full
 address such as `/tasks`, or `open()` for hits that need more than navigation). Results are grouped by module under `group` (default: the
 module name). A linear scan is fine; do not build an index unless a measurement says it is slow. `allSearchSources()` lists them.
+
+### How search uses them (Part C)
+
+- **Every module answers, the dialog groups.** `src/shell/SearchDialog.tsx` waits 90 ms after typing stops, asks every source in parallel (a source that
+  throws is left out), and `groupResults()` (`src/shell/searchGroups.ts`) orders the groups by their best hit. Hits open by `path` (a full address, query
+  string allowed) or `open()`.
+- **Optional `start()`.** Called when the dialog opens; it returns a function called when it closes. Ledger uses it to keep a live in-memory snapshot of
+  its tables (reading 20,000 transactions out of the database cost about 90 ms per keystroke; scanning them costs about 8 ms). Nothing is stored or indexed.
+- **Sources in use.** Ledger (`modules/ledger/searchSource.ts`: pages, accounts, investments, holdings, loans, scenarios, scheduled items, transactions), Calendar
+  (`modules/calendar/searchSource.ts`: the page and events by title, notes, location), Tasks (`modules/tasks/searchSource.ts`: the page, tasks by title, notes and
+  checklist, plus the shared tags and contacts), Today (`modules/today/searchSource.ts`: the page). The matching code in each is pure and tested.
+- **Deep links these rely on.** `#/tasks?task=<id>` (opens a task), `#/tasks?v=all&tag=<id>` and `&contact=<id>` (filter), `#/calendar?v=agenda&d=<date>&open=<key>`
+  (opens an event), `#/calendar?new=1` (blank event), `#/ledger/scheduled?rule=<id>` (edit a scheduled item).
 
 ## `quickAdd`: what the global add box can create
 
