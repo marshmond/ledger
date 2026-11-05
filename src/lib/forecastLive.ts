@@ -11,6 +11,7 @@ import { addMonths } from './dates';
 import { occurrencesBetween } from './schedule';
 import { runForecast, type ForecastInput, type ForecastResult } from './forecast';
 import { lastMonths } from './reports';
+import { effectiveThreshold, forecastFloor } from './minBalance';
 
 export interface ForecastSettings {
   months: number;
@@ -62,6 +63,10 @@ export interface LoadedForecast {
   result: ForecastResult;
   estimateCents: number;
   cashAccounts: number;
+  /** The level this forecast actually warns below: the total of the accounts' minimum balances if any are set, else `settings.thresholdCents`. */
+  thresholdCents: number;
+  /** The total of the minimum balances of the accounts counted (0 = none set, so the single level is used). */
+  floorCents: number;
 }
 
 /** Reads your data and builds the forecast. */
@@ -134,5 +139,7 @@ export async function loadForecast(d: FinanceDB, today: string, overrides: Parti
     everydayMonthlyCents: settings.everydayCents ?? estimateCents,
     otherIncomeMonthlyCents: settings.otherIncomeMonthlyCents,
   };
-  return { settings, input, result: runForecast(input, settings.thresholdCents), estimateCents, cashAccounts: cash.length };
+  const floorCents = forecastFloor(accounts, settings.includeSavings);
+  const thresholdCents = effectiveThreshold(floorCents, settings.thresholdCents);
+  return { settings, input, result: runForecast(input, thresholdCents), estimateCents, cashAccounts: cash.length, thresholdCents, floorCents };
 }

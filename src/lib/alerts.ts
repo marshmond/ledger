@@ -11,6 +11,19 @@ export interface Alert {
   /** Where to go to deal with it. */
   to: string;
   actionLabel: string;
+  /**
+   * What stretch of time or which situation this alert is about ("2026-11" for a monthly one, the dip's date for a cash warning).
+   * Dismissing or snoozing an alert on Today is remembered against `id + period`, so it comes back when the situation changes.
+   */
+  period?: string;
+}
+
+/** An open checking or savings account whose real balance today is under the minimum you set for it. */
+export interface BelowMinimum {
+  accountId: number;
+  name: string;
+  balanceCents: number;
+  minCents: number;
 }
 
 export interface AlertInput {
@@ -42,6 +55,25 @@ export interface AlertInput {
   forecastLow?: { date: string; balanceCents: number; thresholdCents: number } | null;
   /** Year-end checklist items that still need action. */
   yearEndTodo?: number;
+  /** Accounts under the minimum balance you set for them (see lib/minBalance). */
+  belowMinimum?: BelowMinimum[];
+}
+
+/** The period each alert is about; see `Alert.period`. A new situation (another month, another dip date) is a new period. */
+export function alertPeriod(id: string, i: AlertInput): string {
+  const month = i.today.slice(0, 7);
+  switch (id) {
+    case 'backup': case 'checkin': case 'stale': return month;
+    case 'scheduled': return i.today;
+    case 'overspent': return `${month}:${i.overspent.join(',')}`;
+    case 'owe': return `${i.today.slice(0, 4)}:${Math.round((i.federalBalanceCents ?? 0) / 100000)}`;
+    case 'forecast': return i.forecastLow?.date ?? month;
+    case 'vest': return i.vests.filter((v) => v.date >= i.today).map((v) => v.date).sort()[0] ?? month;
+    case 'estimated': return i.estimatedDue?.date ?? month;
+    case 'yearend': case 'harvest': return i.today.slice(0, 4);
+    case 'property': return (i.propertyStale ?? []).join(',');
+    default: return month;
+  }
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -82,6 +114,19 @@ export function computeAlerts(i: AlertInput): Alert[] {
 
   if (i.forecastLow) {
     out.push({ id: 'forecast', level: 'warn', title: `Cash may drop to ${formatCents(i.forecastLow.balanceCents)} on ${i.forecastLow.date}`, detail: `That is below your ${formatCents(i.forecastLow.thresholdCents)} warning level.`, to: '/forecast', actionLabel: 'See the forecast' });
+  }
+
+  for (const b of i.belowMinimum ?? []) {
+    out.push({
+      id: `mincash:${b.accountId}`,
+      level: 'warn',
+      title: `${b.name} is ${formatCents(b.balanceCents)}, under your ${formatCents(b.minCents)} minimum`,
+      detail: `It is ${formatCents(b.minCents - b.balanceCents)} short of the minimum balance you set for this account.`,
+      to: `/account/${b.accountId}`,
+      actionLabel: 'Open account',
+      // A new month, a different minimum, or the balance going below zero is a new situation and brings a dismissed alert back.
+      period: `${i.today.slice(0, 7)}:${b.minCents}:${b.balanceCents < 0 ? 'neg' : 'low'}`,
+    });
   }
 
   if (i.scheduledDue > 0) {
@@ -142,7 +187,7 @@ export function computeAlerts(i: AlertInput): Alert[] {
   }
 
   const rank = (a: Alert) => (a.level === 'warn' ? 0 : 1);
-  return out.sort((a, b) => rank(a) - rank(b));
+  return out.map((a) => ({ ...a, period: a.period ?? alertPeriod(a.id, i) })).sort((a, b) => rank(a) - rank(b));
 }
 
 /**

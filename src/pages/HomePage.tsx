@@ -6,21 +6,11 @@ import { formatCents } from '../lib/money';
 import { useToday } from '../ui/useToday';
 import { refreshAllPrices } from '../lib/prices';
 import { monthLabel, monthOf } from '../lib/dates';
-import { loadBudget } from '../lib/budget';
-import { dueInstances } from '../lib/schedule';
 import { loadNetWorth } from '../lib/netWorthLive';
 import { changeOver } from '../lib/snapshots';
 import { spendingSnapshot } from '../lib/spending';
-import { computeAlerts, forecastLowForAlert } from '../lib/alerts';
-import { buildIncomeModel } from '../lib/income';
-import { hsaYearImpact } from '../lib/hsa';
-import { netForTax, realizedFor } from '../lib/lots';
-import { estimatedDueDates } from '../lib/taxPlan';
-import { valueAgeDays } from '../lib/property';
-import { useTaxPlanData } from './useTaxPlanData';
 import ComingUp from './ComingUp';
-import { useCheckin } from './useCheckin';
-import { loadForecast } from '../lib/forecastLive';
+import { useLedgerAlerts } from './useLedgerAlerts';
 import { EmptyState, PageHeader, signedCents } from '../ui/components';
 import { BarList, Donut, NetWorthChart, PairedColumns, Ring } from '../ui/charts';
 import { CARD_IDS, DEFAULT_LAYOUT, addCard, loadLayout, moveCard, removeCard, saveLayout, toggleSize, type HomeCard } from '../lib/homeLayout';
@@ -39,60 +29,16 @@ export default function HomePage() {
   const today = useToday();
   const month = monthOf(today);
   const year = Number(today.slice(0, 4));
-  const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
-  const txns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
-  const invAccounts = useLiveQuery(() => db.invAccounts.toArray(), []) ?? [];
-  const holdings = useLiveQuery(() => db.holdings.toArray(), []) ?? [];
-  const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
-  const loans = useLiveQuery(() => db.loans.toArray(), []) ?? [];
   const snaps = useLiveQuery(() => db.netWorthSnapshots.toArray(), []) ?? [];
-  const props = useLiveQuery(() => db.properties.toArray(), []) ?? [];
-  const propValues = useLiveQuery(() => db.propertyValues.toArray(), []) ?? [];
-  const lots = useLiveQuery(() => db.taxLots.toArray(), []) ?? [];
-  const vests = useLiveQuery(() => db.rsuVests.toArray(), []) ?? [];
-  const people = useLiveQuery(() => db.people.toArray(), []) ?? [];
-  const profiles = useLiveQuery(() => db.incomeProfiles.toArray(), []) ?? [];
-  const bonuses = useLiveQuery(() => db.bonuses.toArray(), []) ?? [];
-  const taxSettings = useLiveQuery(() => db.taxSettings.toArray(), []) ?? [];
-  const sales = useLiveQuery(() => db.sales.toArray(), []) ?? [];
-  const hsaWithdrawals = useLiveQuery(() => db.hsaWithdrawals.toArray(), []) ?? [];
   const goals = useLiveQuery(() => db.goals.toArray(), []) ?? [];
-  const lastBackup = (useLiveQuery(() => db.settings.get('lastBackup'), []) as { value?: string } | undefined)?.value;
-  const due = useLiveQuery(() => dueInstances(db, today, 7), [today]) ?? [];
-  const budget = useLiveQuery(() => loadBudget(db, month), [month]);
+  // The alert list and everything that feeds it live in useLedgerAlerts, so the Today screen shows exactly the same alerts.
+  const { alerts, hasData, checkin, budget, accounts, txns, invAccounts, people, lastBackup } = useLedgerAlerts(today);
 
   const net = useLiveQuery(() => loadNetWorth(db, today), [today]);
   const spending = useMemo(() => spendingSnapshot(txns, categories, month), [txns, categories, month]);
 
   const change = changeOver(snaps);
-  const gains = useMemo(() => netForTax(realizedFor(sales, year)), [sales, year]);
-  const hsa = useMemo(() => hsaYearImpact(hsaWithdrawals, invAccounts, people, year), [hsaWithdrawals, invAccounts, people, year]);
-  const income = useMemo(
-    () => buildIncomeModel(year, people, profiles, bonuses, taxSettings.find((t) => t.year === year), { vests, securities }, { taxableCents: hsa.taxableCents, penaltyCents: hsa.penaltyCents }, gains),
-    [year, people, profiles, bonuses, taxSettings, vests, securities, hsa, gains],
-  );
-
-  const forecast = useLiveQuery(() => loadForecast(db, today), [today]);
-  const checkin = useCheckin();
-  const plan = useTaxPlanData(year);
-  const nextEstimated = estimatedDueDates(year).find((d) => d >= today) ?? null;
-  const overspent = (budget?.rows ?? []).filter((r) => r.kind === 'category' && r.available < 0).map((r) => r.name);
-  const hasData = accounts.length > 0 || invAccounts.length > 0 || loans.length > 0 || people.length > 0 || props.length > 0;
-  const cashIds = new Set(accounts.filter((a) => !a.closed && (a.kind === 'checking' || a.kind === 'savings')).map((a) => a.id!));
-  const alerts = computeAlerts({
-    today, hasData, lastBackup, scheduledDue: due.length, overspent, invAccounts, holdings, securities, lots, vests, people,
-    federalBalanceCents: income.household?.federal.balance ?? null,
-    propertyStale: props.filter((p) => !p.excluded && (valueAgeDays(propValues, p.id!, today) ?? 0) > 365).map((p) => p.name),
-    estimatedDue: nextEstimated && plan.wp ? { date: nextEstimated, amountCents: plan.wp.estimatedPaymentCents } : null,
-    harvestableCents: plan.candidates.reduce((s, c) => s + c.lossCents, 0),
-    yearEndTodo: plan.checklist.filter((c) => c.status === 'todo').length,
-    checkinLeft: checkin.ready && !checkin.progress.complete && Number(today.slice(8, 10)) >= 25 ? checkin.progress.left : 0,
-    forecastLow: forecastLowForAlert({
-      today, firstBelow: forecast?.result.firstBelow, thresholdCents: forecast?.settings.thresholdCents ?? 0,
-      cashAccounts: cashIds.size, cashTxnCount: txns.filter((t) => cashIds.has(t.accountId)).length, forecastEventCount: forecast?.result.events.length ?? 0,
-    }),
-  });
   const recent = [...txns].filter((t) => !t.transferTxnId).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0)).slice(0, 6);
   const acctName = (id: number) => accounts.find((a) => a.id === id)?.name ?? '';
   const first = !hasData;

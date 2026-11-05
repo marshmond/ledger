@@ -30,8 +30,9 @@ export default function ForecastPage() {
 
   if (!f) return <PageHeader title="Cash-flow forecast" description="Will you have the cash? Your balance, day by day." />;
   const { input, result } = f;
+  const level = f.thresholdCents;
   const below = result.firstBelow;
-  const thresholdLine = result.months.map(() => s.thresholdCents);
+  const thresholdLine = result.months.map(() => level);
   const upcoming = result.events.slice(0, 24);
 
   return (
@@ -42,14 +43,14 @@ export default function ForecastPage() {
       {f.cashAccounts === 0 && <p className="warn">No checking or savings accounts yet. Add them on the <Link to="/accounts">Accounts</Link> page.</p>}
 
       {below ? (
-        <div className="card rta-neg"><strong className="neg">Cash may drop below {formatCents(s.thresholdCents)} on {fmtDay(below.date)}</strong> (to {formatCents(below.balanceCents)}). Adjust a bill, move money in, or plan around it.</div>
+        <div className="card rta-neg"><strong className="neg">Cash may drop below {formatCents(level)} on {fmtDay(below.date)}</strong> (to {formatCents(below.balanceCents)}). Adjust a bill, move money in, or plan around it.</div>
       ) : (
-        <p className="ok">Your balance stays above {formatCents(s.thresholdCents)} for the next {s.months} months.</p>
+        <p className="ok">Your balance stays above {formatCents(level)} for the next {s.months} months.</p>
       )}
 
       <div className="tiles">
         <div className="tile"><div className="muted">Cash today</div><div className="v">{formatCents(input.startCents)}</div></div>
-        <div className="tile"><div className="muted">Lowest point</div><div className={`v ${result.low.balanceCents < s.thresholdCents ? 'neg' : ''}`}>{formatCents(result.low.balanceCents)}</div><div className="muted" style={{ fontSize: '0.8rem' }}>{fmtDay(result.low.date)}</div></div>
+        <div className="tile"><div className="muted">Lowest point</div><div className={`v ${result.low.balanceCents < level ? 'neg' : ''}`}>{formatCents(result.low.balanceCents)}</div><div className="muted" style={{ fontSize: '0.8rem' }}>{fmtDay(result.low.date)}</div></div>
         <div className="tile"><div className="muted">In {s.months} months</div><div className="v">{formatCents(result.endCents)}</div></div>
         <div className="tile"><div className="muted">Money in</div><div className="v pos">{formatCents(result.totalIn)}</div></div>
         <div className="tile"><div className="muted">Money out</div><div className="v">{formatCents(result.totalOut)}</div></div>
@@ -57,7 +58,7 @@ export default function ForecastPage() {
 
       <LinesChart
         title="Balance at the end of each month"
-        subtitle={`Dashed line: your warning level (${formatCents(s.thresholdCents)})`}
+        subtitle={`Dashed line: your warning level (${formatCents(level)})`}
         xLabels={result.months.map((m) => `${m.month}-01`)}
         series={[
           { label: 'End of month', color: 'var(--s1)', values: result.months.map((m) => Math.max(0, m.endCents)) },
@@ -78,7 +79,7 @@ export default function ForecastPage() {
                   <td className="num">{m.billsCents ? formatCents(m.billsCents) : '—'}</td><td className="num">{m.loansCents ? formatCents(m.loansCents) : '—'}</td>
                   <td className="num">{m.taxesCents ? formatCents(m.taxesCents) : '—'}</td><td className="num">{m.spendingCents ? formatCents(m.spendingCents) : '—'}</td><td className="num">{m.oneOffCents ? formatCents(m.oneOffCents) : '—'}</td>
                   <td className="num"><strong>{formatCents(m.endCents)}</strong></td>
-                  <td className={`num ${m.lowCents < s.thresholdCents ? 'neg' : ''}`}>{formatCents(m.lowCents)}<div className="muted" style={{ fontSize: '0.7rem' }}>{fmtDay(m.lowDate)}</div></td>
+                  <td className={`num ${m.lowCents < level ? 'neg' : ''}`}>{formatCents(m.lowCents)}<div className="muted" style={{ fontSize: '0.7rem' }}>{fmtDay(m.lowDate)}</div></td>
                 </tr>
               ))}
             </tbody>
@@ -93,7 +94,7 @@ export default function ForecastPage() {
               {upcoming.map((e, i) => (
                 <tr key={i}>
                   <td>{fmtDay(e.date)}</td><td><span className="badge">{KIND_LABEL[e.kind]}</span></td><td>{e.label}</td>
-                  <td className={`num ${e.cents > 0 ? 'pos' : ''}`}>{formatCents(e.cents)}</td><td className={`num muted ${e.balanceCents < s.thresholdCents ? 'neg' : ''}`}>{formatCents(e.balanceCents)}</td>
+                  <td className={`num ${e.cents > 0 ? 'pos' : ''}`}>{formatCents(e.cents)}</td><td className={`num muted ${e.balanceCents < level ? 'neg' : ''}`}>{formatCents(e.balanceCents)}</td>
                 </tr>
               ))}
             </tbody>
@@ -108,7 +109,7 @@ export default function ForecastPage() {
           </label>
           <MoneyField key={`e${s.everydayCents}`} label={`Everyday spending per month (estimate ${formatCents(f.estimateCents)})`} cents={s.everydayCents ?? f.estimateCents} onChange={(c) => setS({ everydayCents: c })} />
           <MoneyField key={`o${s.otherIncomeMonthlyCents}`} label="Other income per month" cents={s.otherIncomeMonthlyCents} onChange={(c) => setS({ otherIncomeMonthlyCents: c })} />
-          <MoneyField key={`t${s.thresholdCents}`} label="Warn me below" cents={s.thresholdCents} onChange={(c) => setS({ thresholdCents: c })} />
+          <MoneyField key={`t${s.thresholdCents}`} label={f.floorCents > 0 ? `Warn me below (not used: your account minimums add up to ${formatCents(f.floorCents)})` : "Warn me below"} cents={s.thresholdCents} onChange={(c) => setS({ thresholdCents: c })} />
         </div>
         {s.everydayCents !== null && <button className="link" onClick={() => setS({ everydayCents: null })}>use the estimate from my history</button>}
         <div className="checks wrap">

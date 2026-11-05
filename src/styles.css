@@ -650,3 +650,8 @@ details.pick label.chk:hover { background: var(--hover); }
 .syncpop { position: absolute; right: 0; top: calc(100% + 4px); width: min(300px, calc(100vw - 24px)); padding: var(--sp-3); background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); z-index: 60; }
 .syncpop p { margin: 0 0 var(--sp-2); }
 @media (prefers-reduced-motion: reduce) { .syncchip.busy .syncdot { animation: none; } }
+
+/* Accounts page: the optional "Keep at least" minimum balance, one tidy line under the account name */
+.acct-min { margin-top: var(--sp-1); font-size: var(--fs-sm); }
+.acct-min .f { flex-direction: row; align-items: center; gap: var(--sp-2); margin: 0; }
+.acct-min input { min-height: 32px; }

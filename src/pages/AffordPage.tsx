@@ -101,7 +101,7 @@ export default function AffordPage() {
       monthly.push({ date: d, label: 'New payment and costs', cents: -res.monthlyCostCents });
     }
     const i = { ...base.input, oneOffs: [...base.input.oneOffs, { date, label: 'Purchase: up front', cents: -res.upfrontCents }], scheduled: [...base.input.scheduled, ...(res.monthlyCostCents > 0 ? monthly : [])] };
-    return runForecast(i, base.settings.thresholdCents);
+    return runForecast(i, base.thresholdCents);
   }, [base, date, res.monthlyCostCents, res.upfrontCents]);
 
   // rent or buy
@@ -193,12 +193,12 @@ export default function AffordPage() {
           <p className="muted">Using your forecast for the next {base.input.months} months, with the up-front cost on {date} and the monthly cost starting the month after.</p>
           <table><tbody>
             <tr><td>Lowest balance without it</td><td className="num">{formatCents(base.result.low.balanceCents)}</td></tr>
-            <tr><td><strong>Lowest balance with it</strong></td><td className={`num ${withBuy.low.balanceCents < base.settings.thresholdCents ? 'neg' : ''}`}><strong>{formatCents(withBuy.low.balanceCents)}</strong> <span className="muted">on {withBuy.low.date}</span></td></tr>
+            <tr><td><strong>Lowest balance with it</strong></td><td className={`num ${withBuy.low.balanceCents < base.thresholdCents ? 'neg' : ''}`}><strong>{formatCents(withBuy.low.balanceCents)}</strong> <span className="muted">on {withBuy.low.date}</span></td></tr>
             <tr><td>Balance at the end, without / with</td><td className="num">{formatCents(base.result.endCents)} / {formatCents(withBuy.endCents)}</td></tr>
           </tbody></table>
           {withBuy.firstBelow
-            ? <p className="warn">Your cash would fall below your {formatCents(base.settings.thresholdCents)} warning level on {withBuy.firstBelow.date}.</p>
-            : <p className="ok">Your cash stays above your {formatCents(base.settings.thresholdCents)} warning level.</p>}
+            ? <p className="warn">Your cash would fall below your {formatCents(base.thresholdCents)} warning level on {withBuy.firstBelow.date}.</p>
+            : <p className="ok">Your cash stays above your {formatCents(base.thresholdCents)} warning level.</p>}
           <LinesChart
             title="Cash at the end of each month"
             xLabels={withBuy.months.map((m) => `${m.month}-01`)}

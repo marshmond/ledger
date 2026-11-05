@@ -17,6 +17,8 @@ export interface Account {
   budgetExcluded?: boolean;
   /** The day (YYYY-MM-DD) a balanced reconcile was last locked for this account. */
   lastReconciledDate?: string;
+  /** Checking/savings: never let the balance go below this (cents). Unset or 0 = no minimum. Drives the Today alert and the forecast warning level. */
+  minBalanceCents?: number;
 }
 
 export interface CategoryGroup {

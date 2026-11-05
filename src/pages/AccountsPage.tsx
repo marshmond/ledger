@@ -8,6 +8,7 @@ import { creditStatus, parseLimit } from '../lib/credit';
 import { canBePrimary, getPrimaryAccountId } from '../lib/primaryAccount';
 import { BACKUP_STALE_DAYS } from './BackupPage';
 import { Banner, PageHeader } from '../ui/components';
+import { MoneyField } from './fields';
 
 const KIND_LABEL: Record<AccountKind, string> = {
   checking: 'Checking',
@@ -87,6 +88,12 @@ export default function AccountsPage() {
                     <td className="acct-name">
                       <Link to={`/account/${a.id}`}>{a.name}</Link> {a.closed && <span className="badge">closed</span>}{' '}
                       {primaryId === a.id && canBePrimary(a) && <span className="badge" title="Quick add starts on this account"> primary</span>}
+                      {!a.closed && (a.kind === 'checking' || a.kind === 'savings') && (
+                        <div className="acct-min muted" title="Today and the cash forecast warn you when the balance would fall under this. Leave blank for no minimum.">
+                          <MoneyField key={`m${a.minBalanceCents ?? 0}`} label="Keep at least" cents={a.minBalanceCents ?? 0} width={110}
+                            onChange={(c) => { void db.accounts.update(a.id!, { minBalanceCents: c > 0 ? c : undefined }); }} />
+                        </div>
+                      )}
                       {a.kind === 'credit_card' && (() => { const s = creditStatus(balance, a.creditLimitCents); return s ? <div className="muted" style={{ fontSize: '0.85rem' }}>Credit left <span className={s.level === 'over' ? 'neg' : s.level === 'high' ? 'warn' : ''}>{formatCents(s.available)}</span> of {formatCents(s.limit)} ({Math.round(s.usedPct)}% used)</div> : null; })()}
                     </td>
                     <td className="acct-rec muted">
