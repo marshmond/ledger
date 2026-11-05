@@ -1,7 +1,7 @@
 import type { FinanceDB } from '../db';
 import type { ProjectRef, Split, Txn, TxnStatus } from '../types';
 import { validateSplits } from './ledger';
-import { checkProjectRef, checkRefEffect } from './txnProject';
+import { checkProjectRef, checkRefEffect, checkRefundAmount } from './txnProject';
 
 /**
  * The one way to add an ordinary (non-transfer) transaction. The Add form, the quick-add box and, later, an assistant all call this, so
@@ -34,7 +34,9 @@ export async function createTxn(d: FinanceDB, input: NewTxn): Promise<number> {
     if (!(await d.accounts.get(input.accountId))) throw new Error('Account not found');
     if (input.project) {
       await checkProjectRef(d, input.project);
-      checkRefEffect(input.project, splits ? splits.filter((s) => !s.project).map((s) => s.amountCents) : [input.amountCents]);
+      const amounts = splits ? splits.filter((s) => !s.project).map((s) => s.amountCents) : [input.amountCents];
+      checkRefEffect(input.project, amounts);
+      await checkRefundAmount(d, input.project, amounts);
     }
     const row: Txn = {
       accountId: input.accountId,

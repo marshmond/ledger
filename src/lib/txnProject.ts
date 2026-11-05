@@ -1,5 +1,6 @@
 import type { FinanceDB } from '../db';
 import type { ProjectRef, Split, Txn } from '../types';
+import { formatCents } from './money';
 import { isSetupTxn } from './setupCategory';
 import { updateTxn } from './transfers';
 
@@ -105,6 +106,8 @@ export interface ProjectSummary {
   /** Quotes waiting. Shown, never counted. */
   quotedCents: number;
   lines: LineSummary[];
+  /** For every commitment id: what has been paid net on its whole contract (the original plus its change orders), never below zero. */
+  paidByCommitment: Record<number, number>;
   flags: {
     overBudget: boolean;
     linesOverBudget: boolean;
@@ -114,6 +117,8 @@ export interface ProjectSummary {
     paidOnInactive: number[];
     /** Contracts where credit refunds came back but the agreed amount was not lowered by as much (commitment ids of the original contract). */
     creditsNotReflected: number[];
+    /** Contracts where reversals and credits add up to more than was ever paid on them (commitment ids of the original contract). */
+    reversalsExceedPayments: number[];
     /** Money coming back on a contract with no reversal/credit choice (old or foreign data; new entries are refused). */
     unmarkedRefunds: number;
     /** Pieces dated outside the project's dates (count), when dates are given. */
@@ -173,12 +178,16 @@ export function summariseProject(a: {
   let agreedCents = 0, leftToPayCents = 0, quotedCents = 0;
   const overpaid: number[] = [];
   const creditsNotReflected: number[] = [];
+  const reversalsExceedPayments: number[] = [];
+  const paidByCommitment: Record<number, number> = {};
+  for (const c of commitments) paidByCommitment[c.id] = Math.max(0, groups.get(rootOf(c).id)?.paidOut ?? 0);
   const paidOnInactive: number[] = [];
   for (const c of commitments) {
     if (c.status === 'quoted') quotedCents += c.amountCents;
     if (c.status === 'accepted' && rootOf(c).status === 'accepted') { agreedCents += c.amountCents; agg(lineOf(c)).agreed += c.amountCents; }
   }
   for (const g of groups.values()) {
+    if (g.paidOut < 0) reversalsExceedPayments.push(g.root.id);
     if (g.root.status === 'accepted') {
       const paidNet = Math.max(0, g.paidOut);
       const left = Math.max(0, g.agreed - paidNet);
@@ -218,17 +227,18 @@ export function summariseProject(a: {
     agreedCents, paidCents, leftToPayCents, expectedTotalCents,
     leftInBudgetCents: budgetCents - expectedTotalCents, cashLeftCents: budgetCents - paidCents, quotedCents,
     lines: lineRows,
-    flags: { overBudget: expectedTotalCents > budgetCents, linesOverBudget: plannedTotalCents > budgetCents, overpaid, paidOnInactive, creditsNotReflected, unmarkedRefunds, outsideDates },
+    paidByCommitment,
+    flags: { overBudget: expectedTotalCents > budgetCents, linesOverBudget: plannedTotalCents > budgetCents, overpaid, paidOnInactive, creditsNotReflected, reversalsExceedPayments, unmarkedRefunds, outsideDates },
   };
 }
 
 /** Reads the project's records and its tagged transactions, and works out the summary. Returns null if the project does not exist. */
-export async function loadProjectSummary(d: FinanceDB, projectId: number): Promise<ProjectSummary | null> {
+export async function loadProjectSummary(d: FinanceDB, projectId: number, opts: { excludeTxnId?: number } = {}): Promise<ProjectSummary | null> {
   const rows = (await d.moduleRecords.where('module').equals(PROJECTS_MODULE).toArray()).filter(live) as Row[];
   const p = rows.find((r) => r.kind === 'project' && r.id === projectId);
   if (!p) return null;
   const mine = (r: Row) => num(r.data.projectId) === projectId;
-  const txns = await d.txns.filter((t) => t.project?.projectId === projectId || (t.splits ?? []).some((s) => s.project?.projectId === projectId)).toArray();
+  const txns = await d.txns.filter((t) => t.id !== opts.excludeTxnId && (t.project?.projectId === projectId || (t.splits ?? []).some((s) => s.project?.projectId === projectId))).toArray();
   // A split that points at another project must not count here.
   const forThis = txns.map((t) => ({ ...t, project: t.project?.projectId === projectId ? t.project : undefined, splits: t.splits?.map((s) => (s.project && s.project.projectId !== projectId ? { ...s, project: undefined, amountCents: 0 } : s)) }));
   return summariseProject({
@@ -268,6 +278,18 @@ export function checkRefEffect(ref: ProjectRef, amounts: number[]): void {
   if (ref.commitmentId !== undefined && anyIn && !ref.effect) throw new Error('Money coming back on a contract must be marked as a reversal (a payment undone) or a credit (a price reduction).');
 }
 
+/**
+ * Money coming back on a contract cannot be more than what was paid on it (reversals and credits included). `amounts` are the pieces the
+ * reference will apply to; `excludeTxnId` is the transaction being changed, so its current tag is not counted twice.
+ */
+export async function checkRefundAmount(d: FinanceDB, ref: ProjectRef, amounts: number[], excludeTxnId?: number): Promise<void> {
+  if (!ref.effect || ref.commitmentId === undefined) return;
+  const back = amounts.filter((a) => a > 0).reduce((n, a) => n + a, 0);
+  if (back === 0) return;
+  const paid = (await loadProjectSummary(d, ref.projectId, { excludeTxnId }))?.paidByCommitment[ref.commitmentId] ?? 0;
+  if (back > paid) throw new Error(`That is more than the ${formatCents(paid)} paid on this contract so far, so it cannot be money coming back.`);
+}
+
 /** Only keep the fields that are set, so a reference never stores `undefined` keys. */
 const clean = (r: ProjectRef): ProjectRef => ({ projectId: r.projectId, ...(r.budgetLineId !== undefined ? { budgetLineId: r.budgetLineId } : {}), ...(r.commitmentId !== undefined ? { commitmentId: r.commitmentId } : {}), ...(r.effect ? { effect: r.effect } : {}) });
 
@@ -280,7 +302,9 @@ export async function setTxnProject(d: FinanceDB, txnId: number, ref: ProjectRef
       if (t.transferTxnId) throw new Error('A transfer moves money between your accounts; it is not project spending.');
       if (isSetupTxn(t)) throw new Error('Initial setup entries are not project spending.');
       await checkProjectRef(d, ref);
-      checkRefEffect(ref, opts.splitIndex !== undefined ? [t.splits?.[opts.splitIndex]?.amountCents ?? t.amountCents] : amountsFor(t));
+      const amounts = opts.splitIndex !== undefined ? [t.splits?.[opts.splitIndex]?.amountCents ?? t.amountCents] : amountsFor(t);
+      checkRefEffect(ref, amounts);
+      await checkRefundAmount(d, ref, amounts, t.id);
     }
     if (opts.splitIndex !== undefined) {
       const splits = t.splits?.map((s) => ({ ...s }));
@@ -296,7 +320,7 @@ export async function setTxnProject(d: FinanceDB, txnId: number, ref: ProjectRef
 /** The amounts a transaction-level reference would apply to: the whole amount, or the splits that have no reference of their own. */
 const amountsFor = (t: Txn): number[] => (t.splits?.length ? t.splits.filter((s) => !s.project).map((s) => s.amountCents) : [t.amountCents]);
 
-export interface BulkProjectResult { updated: number; skippedTransfers: number; /** Money coming back that needs a reversal/credit choice first (not changed). */ needsChoice?: number }
+export interface BulkProjectResult { updated: number; skippedTransfers: number; /** Money coming back that needs a reversal/credit choice first (not changed). */ needsChoice?: number; /** Money coming back that is more than was paid on the contract (not changed). */ exceedsPayments?: number }
 
 /** Sets (or clears) the project on many transactions at once. Transfers are skipped and counted. */
 export async function bulkSetTxnProject(d: FinanceDB, ids: number[], ref: ProjectRef | null): Promise<BulkProjectResult> {
@@ -309,6 +333,7 @@ export async function bulkSetTxnProject(d: FinanceDB, ids: number[], ref: Projec
       if (ref && (t.transferTxnId || isSetupTxn(t))) { res.skippedTransfers++; continue; }
       if (ref) {
         try { checkRefEffect(ref, amountsFor(t)); } catch { res.needsChoice = (res.needsChoice ?? 0) + 1; continue; }
+        try { await checkRefundAmount(d, ref, amountsFor(t), t.id); } catch { res.exceedsPayments = (res.exceedsPayments ?? 0) + 1; continue; }
       }
       await updateTxn(d, id, { project: ref ? clean(ref) : undefined });
       res.updated++;

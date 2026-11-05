@@ -41,7 +41,9 @@ describe('the one way to add a transaction', () => {
     const { d, acct } = await setup();
     const project = (await d.moduleRecords.add({ module: 'projects', kind: 'project', data: { name: 'Fence' } } as never)) as number;
     const cm = (await d.moduleRecords.add({ module: 'projects', kind: 'commitment', data: { projectId: project, title: 'Fence', status: 'accepted', amountCents: 100 } } as never)) as number;
+    await createTxn(d, { accountId: acct, date: '2026-11-03', amountCents: -1000, project: { projectId: project, commitmentId: cm } });
     await expect(createTxn(d, { accountId: acct, date: '2026-11-04', amountCents: 500, project: { projectId: project, commitmentId: cm } })).rejects.toThrow(/reversal/);
+    await expect(createTxn(d, { accountId: acct, date: '2026-11-04', amountCents: 5000, project: { projectId: project, commitmentId: cm, effect: 'reversal' } })).rejects.toThrow(/more than/);
     const id = await createTxn(d, { accountId: acct, date: '2026-11-04', amountCents: 500, project: { projectId: project, commitmentId: cm, effect: 'credit' } });
     expect((await d.txns.get(id))!.project?.effect).toBe('credit');
   });

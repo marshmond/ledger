@@ -106,6 +106,16 @@ describe('worked example 1: cabinets from quote to refund', () => {
     expect(s.leftToPayCents).toBe($(1000));
   });
 
+  it('a reversal bigger than the payments is flagged, and Paid on the contract never goes below zero', () => {
+    const s = sum([tx(-3000, { projectId: P, commitmentId: 1 }), tx(5000, { projectId: P, commitmentId: 1, effect: 'reversal' })], [com(1, { amountCents: $(10000) })], []);
+    expect(s.flags.reversalsExceedPayments).toEqual([1]);
+    expect(s.leftToPayCents).toBe($(10000));
+    expect(s.paidByCommitment[1]).toBe(0);
+    const ok = sum([tx(-3000, { projectId: P, commitmentId: 1 }), tx(1000, { projectId: P, commitmentId: 1, effect: 'reversal' })], [com(1, { amountCents: $(10000) })], []);
+    expect(ok.flags.reversalsExceedPayments).toEqual([]);
+    expect(ok.paidByCommitment[1]).toBe($(2000));
+  });
+
   it('old or foreign data with an unmarked refund on a contract is counted and flagged', () => {
     const s = sum([tx(-1000, { projectId: P, commitmentId: 1 }), tx(100, { projectId: P, commitmentId: 1 })], [com(1, { amountCents: $(1000) })], []);
     expect(s.flags.unmarkedRefunds).toBe(1);
@@ -225,6 +235,7 @@ describe('tagging transactions', () => {
   it('money coming back on a contract must be marked reversal or credit; the mark means nothing otherwise', async () => {
     const { d, project, cm, add } = await setup();
     const out = await add(-1000);
+    await setTxnProject(d, out, { projectId: project, commitmentId: cm });
     const back = await add(300);
     await expect(setTxnProject(d, back, { projectId: project, commitmentId: cm })).rejects.toThrow(/reversal.*credit/);
     await setTxnProject(d, back, { projectId: project, commitmentId: cm, effect: 'reversal' });
@@ -233,6 +244,36 @@ describe('tagging transactions', () => {
     await expect(setTxnProject(d, back, { projectId: project, effect: 'credit' })).rejects.toThrow(/only applies/);
     await setTxnProject(d, back, { projectId: project }); // money in with no contract needs no choice
     expect((await d.txns.get(back))!.project).toEqual({ projectId: project });
+  });
+
+  it('money coming back cannot be more than what was paid on the contract', async () => {
+    const { d, project, cm, add } = await setup();
+    const dep = await add(-3000);
+    await setTxnProject(d, dep, { projectId: project, commitmentId: cm });
+    const tooMuch = await add(5000);
+    await expect(setTxnProject(d, tooMuch, { projectId: project, commitmentId: cm, effect: 'reversal' })).rejects.toThrow('more than the $3,000.00 paid');
+    expect((await d.txns.get(tooMuch))!.project).toBeUndefined();
+    const part = await add(1000);
+    await setTxnProject(d, part, { projectId: project, commitmentId: cm, effect: 'reversal' }); // partial reversal is fine
+    const s = (await loadProjectSummary(d, project))!;
+    expect(s.paidCents).toBe($(2000));
+    expect(s.leftToPayCents).toBe($(17000));
+    // a second one that would take it past what is left to reverse is refused
+    const again = await add(2500);
+    await expect(setTxnProject(d, again, { projectId: project, commitmentId: cm, effect: 'reversal' })).rejects.toThrow(/more than/);
+    // changing the existing reversal does not count it against itself
+    await setTxnProject(d, part, { projectId: project, commitmentId: cm, effect: 'credit' });
+    expect((await d.txns.get(part))!.project?.effect).toBe('credit');
+  });
+
+  it('bulk tagging counts money coming back that exceeds the payments and leaves it alone', async () => {
+    const { d, project, cm, add } = await setup();
+    const dep = await add(-100);
+    await setTxnProject(d, dep, { projectId: project, commitmentId: cm });
+    const back = await add(900);
+    const r = await bulkSetTxnProject(d, [back], { projectId: project, commitmentId: cm, effect: 'reversal' });
+    expect(r).toEqual({ updated: 0, skippedTransfers: 0, exceedsPayments: 1 });
+    expect((await d.txns.get(back))!.project).toBeUndefined();
   });
 
   it('bulk tagging leaves money coming back on a contract untouched and counts it', async () => {
