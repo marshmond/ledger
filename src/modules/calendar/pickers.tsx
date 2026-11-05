@@ -25,8 +25,14 @@ export function TagPicker({ value, onChange }: { value: number[]; onChange: (ids
         ))}
       </div>
       <div className="row grow">
-        <input list="cal-tag-list" value={text} placeholder="Add a tag" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void add(); } }} aria-label="Tag name" />
-        <datalist id="cal-tag-list">{tags.filter((t) => !value.includes(t.id!)).map((t) => <option key={t.id} value={t.name} />)}</datalist>
+        {/* A plain menu for existing tags: the browser's suggestion pop-up (datalist) can open far from the box. */}
+        {tags.some((t) => !value.includes(t.id!)) && (
+          <select value="" onChange={(e) => { const id = Number(e.target.value); if (e.target.value && !value.includes(id)) onChange([...value, id]); }} aria-label="Pick an existing tag">
+            <option value="">Pick a tag…</option>
+            {tags.filter((t) => !value.includes(t.id!)).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        )}
+        <input value={text} placeholder="or type a new tag" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void add(); } }} aria-label="Tag name" />
         <button type="button" className="btn" onClick={() => void add()} disabled={!text.trim()}>Add</button>
       </div>
     </div>
@@ -54,8 +60,14 @@ export function ContactPicker({ value, onChange }: { value: number[]; onChange: 
         ))}
       </div>
       <div className="row grow">
-        <input list="cal-contact-list" value={text} placeholder={left.length ? 'Pick or type a name' : 'Type a name to add a contact'} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addNew(); } }} aria-label="Contact name" />
-        <datalist id="cal-contact-list">{left.map((c) => <option key={c.id} value={c.name} />)}</datalist>
+        {/* A plain menu for existing people: the browser's suggestion pop-up (datalist) can open far from the box. */}
+        {left.length > 0 && (
+          <select value="" onChange={(e) => { const id = Number(e.target.value); if (e.target.value && !value.includes(id)) onChange([...value, id]); }} aria-label="Pick an existing person">
+            <option value="">Pick a person…</option>
+            {left.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+        <input value={text} placeholder={left.length ? 'or type a new name' : 'Type a name to add a contact'} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addNew(); } }} aria-label="Contact name" />
         <button type="button" className="btn" onClick={() => void addNew()} disabled={!text.trim()}>Add</button>
       </div>
     </div>

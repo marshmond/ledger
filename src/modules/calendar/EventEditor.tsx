@@ -73,6 +73,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   const [rule, setRule] = useState<Recurrence | null>(ev?.recurrence ?? null);
   const [trackDone, setTrackDone] = useState(ev?.trackDone ?? false);
   const [type, setType] = useState(ev?.type ?? '');
+  const [preset, setPreset] = useState('');
   const [handoff, setHandoff] = useState<ReturnType<typeof buildSeed> | null>(null);
   const [error, setError] = useState('');
   const [ask, setAsk] = useState<null | { kind: 'save'; fields: EventFields } | { kind: 'delete' }>(null);
@@ -233,7 +234,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
             </label>
             {type === 'finance' && (
               <label className="f">Start from
-                <select value="" onChange={(e) => startFrom(e.target.value)}>
+                <select value={preset} onChange={(e) => { setPreset(e.target.value); startFrom(e.target.value); }}>
                   <option value="">Pick one…</option>
                   {FINANCE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                 </select>

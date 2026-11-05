@@ -6,6 +6,7 @@ import { db } from '../db';
 import type { Frequency, RecurringRule } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { deleteRule, dueInstances, postInstance, skipInstance, type DueInstance } from '../lib/schedule';
+import Modal from '../shell/Modal';
 import { PageHeader } from '../ui/components';
 
 const FREQ: Record<Frequency, string> = {
@@ -83,6 +84,8 @@ export default function ScheduledPage() {
   const [semi2, setSemi2] = useState('15');
   const [memo, setMemo] = useState('');
   const [error, setError] = useState('');
+  // An in-app confirmation (the browser's own pop-up can be blocked, which made Delete look broken).
+  const [askDelete, setAskDelete] = useState<RecurringRule | null>(null);
 
   const acctName = (id: number | null | undefined) => accounts.find((a) => a.id === id)?.name ?? '?';
   const catName = (id: number | null) => cats.find((c) => c.id === id)?.name ?? 'Uncategorized';
@@ -195,7 +198,7 @@ export default function ScheduledPage() {
                   <TaskActions module="ledger" id={`scheduled:${r.id}`} label={r.payee} />
                   <button className="link" onClick={() => load(r)}>edit</button>
                   <button className="link" onClick={() => db.recurring.update(r.id!, { active: !r.active })}>{r.active ? 'pause' : 'resume'}</button>
-                  <button className="link danger" onClick={() => confirm(`Delete "${r.payee}"? Transactions already posted are kept.`) && deleteRule(db, r.id!)}>delete</button>
+                  <button className="link danger" onClick={() => setAskDelete(r)}>delete</button>
                 </div>
               </td>
             </tr>
@@ -260,6 +263,16 @@ export default function ScheduledPage() {
         </div>
         {error && <div className="error">{error}</div>}
       </div>
+
+      {askDelete && (
+        <Modal title="Delete this recurring item?" onClose={() => setAskDelete(null)}>
+          <p>Delete “{askDelete.payee}”? Its upcoming dates will disappear (from the Calendar too). Transactions already posted are kept.</p>
+          <div className="row">
+            <button className="primary danger" onClick={async () => { const id = askDelete.id!; setAskDelete(null); if (editing === id) reset(); await deleteRule(db, id); }}>Delete</button>
+            <button onClick={() => setAskDelete(null)}>Cancel</button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }
