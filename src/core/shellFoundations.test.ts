@@ -81,6 +81,13 @@ describe('module hooks', () => {
     expect(() => registerModule(mod('hk-f', { quickAdd: q('hk-event', 'HT') }))).toThrow(/clashes/);
     expect(allQuickAdds().some((x) => x.id === 'hk-task' && x.moduleId === 'hk-e')).toBe(true);
   });
+  it('a module can offer several quick-add destinations, and a whole-word alias counts as taken too', () => {
+    const q = (id: string, prefix: string, aliases: string[] = []) => ({ id, label: id, prefix, aliases });
+    registerModule(mod('hk-m', { quickAdd: [q('hk-m1', 'mm', ['mmword']), q('hk-m2', 'mn')] }));
+    expect(allQuickAdds().filter((x) => x.moduleId === 'hk-m').map((x) => x.id)).toEqual(['hk-m1', 'hk-m2']);
+    expect(() => registerModule(mod('hk-n', { quickAdd: q('hk-n1', 'nn', ['MMWORD']) }))).toThrow(/clashes/);
+    expect(() => registerModule(mod('hk-o', { quickAdd: [q('hk-o1', 'oo'), q('hk-o2', 'oo')] }))).toThrow(/clashes/);
+  });
   it('lists search sources with the module name', () => {
     const s = mod('hk-g', { searchSource: { search: () => [] } });
     expect(allSearchSources([s])).toEqual([{ moduleId: 'hk-g', moduleName: 'hk-g', source: s.contributes!.searchSource }]);

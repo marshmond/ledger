@@ -14,7 +14,50 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): Phase 3 PART C BUILT (global search across Ledger, Calendar, Tasks and Today). SIGNED OFF 2026-11-05 and pushed (steps 10 and 11, phone and real-data speed, to be checked by the owner after the push). Owner note on step 3: searching by an event's notes seems to show the note, while a location match does not seem to show the location; location search itself works in tests and in the browser, so this is about what the result line displays. Not yet clarified or changed. Parts D and E not started.
+## STATUS 2026-11-05 (newest): Phase 3 PART D BUILT (global quick-add, the Add box). NOT committed, NOT pushed. Waiting for the owner's Part D checklist sign-off. Part E not started.
+
+**Owner's first checklist pass (2026-11-05):** steps 1, 2, 6, 8, 10 passed; 11 to be tested later. Steps 3, 4, 7, 9 failed on one bug: after typing a shortcut (`t `, `e `) the next keystroke dropped the destination and went back to the opening question. FIXED the same day (the choice now sticks while typing; checked in a real browser with typed keystrokes: `t buy milk tomorrow` stays on Task, clicking Event keeps the words). Also fixed: the cursor now starts in the text box when the box opens and after each choice. Step 5: the payee suggestion list opens off to the left (the browser's own pop-up list, the same quirk seen earlier in Ledger's quick form). FIXED the same day: the payee box in both transaction forms (the quick form and the full form) now uses an in-app suggestion list directly under the box (new `src/ui/PayeeInput.tsx`; up to 6 matches, click, arrow keys and Enter, Esc closes) instead of the browser pop-up. Checked in a real browser. Other boxes that still use the browser pop-up (giving charities, investment tickers, RSU grant tickers) are unchanged. Awaiting re-test of 3, 4, 5, 7, 9.
+
+Owner decisions that shaped it: (1) shortcuts both short and whole-word; (2) a date with no time is all-day; (3) no calendar named means the default calendar; (4) a transaction uses Ledger's existing quick form. (The Part C event-location note was answered "Not a problem": no change.)
+
+**What was built (Part D):**
+- **One Add box, from every module.** The "+" (round on phones) and Add button open one box with four choice buttons: **Task, Event, Transaction, Scheduled payment**. Shortcuts: `t `/`task `, `e `/`event `, `$ `/`txn `, `b `/`bill ` (a colon is fine: `task: ...`). The buttons show the short ones. With no choice and no shortcut it **asks** ("What kind of thing is this?") and never guesses.
+- **"Will add:" preview** for Task and Event: a summary line plus one pill per understood field (event: when, calendar, repeat, priority, tags; "(new)" on tags that do not exist yet). You edit by changing the text; "Use as plain title" turns the shorthand off. Cancel, Esc and clicking outside save nothing.
+- **Task:** the Tasks bar's own `parseQuickAdd`, unchanged, saved the same way. **Event:** new small parser (`modules/calendar/quickEvent.ts`) that reads time ranges (`3-4pm`, `3pm-4:30pm`, `from 3 to 4pm`, `11-1pm` = 11am to 1pm) and hands the rest (dates, `!priority`, `#tag`, repeats with the same number words, `@calendar`) to the Tasks parser so both bars agree. No date means today; no time means all-day; one time means one hour. Undo appears after saving either one.
+- **Transaction:** Ledger's existing quick form (payee and category suggestions, amount math, account default, Save and add another) shown inside the box under "Will add: a transaction". **Scheduled payment:** a button that opens Ledger's Scheduled screen (not parsed inline).
+- **Wrong shortcut recovery:** type `t dentist sat at 3pm`, click Event, and the shortcut is replaced by your choice and the words are kept.
+- **Event bridge** (`core/eventBridge.ts`, `requestEvent({title, date})`) like `requestTask`: opens the box on Event with the text filled in. The search action "Add an event" now uses it (it used to open a blank Calendar form). `ledger:add-transaction` (and `openAddTransaction`) still work and open the box on Transaction.
+- **Hooks:** `contributes.quickAdd` may now be a list, a destination may have `aliases`, `start()` (so the preview can name calendars, lists and tags), a `Form` (transaction) or an `open()` (scheduled payment); `parse` and `commit` are optional for the form kinds and `commit` may return an undo. Clashing shortcuts or whole words are rejected at start-up. See `docs/module-hooks.md`.
+
+**Verified:** 1,046 tests (23 new: time ranges, event parsing and fields, shortcut routing, multi-destination registry rules), type check and production build clean. In a real browser (invented data, all removed again): event with range, priority, tag and an unknown `@name` saved, shown in the Calendar Agenda, with the right preview; task saved and undone; wrong-shortcut recovery; Cancel saved nothing; Transaction form and the Scheduled button; the old transaction event; 375 px width has no sideways scroll and the round button sits under the dimmed overlay. NOT verified: saving a transaction through the box (the form is unchanged Ledger code), a real iPhone, the 641 to 899 px range (Part E).
+
+**Judgment calls (please review):**
+1. **Edit before saving = edit the text.** The preview updates as you type; there is no separate field editor or "open the full event form" button.
+2. **An `@word` that is not one of your calendars stays in the title** (so `@nothere` shows in the event name) instead of vanishing; a matching calendar name picks that calendar. Only your own local calendars can be named.
+3. **Tags typed in an event are created if new**, same as tasks.
+4. **The Transaction shortcut `$ coffee 4.50` only picks the form**; the words are not copied into it (the form has no way to take them yet).
+5. **`b` / `bill` / `scheduled`** is my choice of shortcut for Scheduled payment.
+6. **Old pop-up menu removed:** "Log a trade" and "New paycheck scenario" are now small links at the bottom of the box; "Add a scheduled item" became the Scheduled payment button.
+7. **A shortcut needs a space after it** (`t buy milk`); `tomorrow call mom` is never read as a shortcut. Only the first word counts.
+8. **Time ranges need am or pm on the end** (`3-4pm`, not `15-16`), so a date like 2026-11-12 is never read as a time. 24-hour `15:00` still works as a single time.
+9. **Events are one-day only**: a range crossing midnight or a multi-day event is not parsed (use the full Calendar form).
+
+**NOT built in Part D (by design or later):** event reminders and location in the line; an event for a date range; copying text into the transaction form; a "Save and add another" for tasks and events; phone-speed and 641 to 899 px checks (Part E).
+
+**Part D checklist (for the owner):**
+1. On desktop, from Calendar, Tasks, Today and Ledger click Add. The box opens with Task, Event, Transaction and Scheduled payment, and the shortcuts listed under it.
+2. Type a line with no shortcut ("buy milk"): it asks what kind of thing this is and the Add button stays off. Click Task: a "Will add:" preview appears.
+3. Task: type `t pay contractor fri !high #renovation every week`. The preview shows the date, priority, tag and repeat. Press Enter: a toast says Added, with Undo. Check it in Tasks, then try Undo on another.
+4. Event: type `e lunch with sam fri 12-1pm`, then `e dentist tomorrow`, then `e call mom at 3pm`, then `e standup mon 9-9:30am every monday`. The preview shows all-day, timed, one hour and a repeat as expected. Save one and find it in the Calendar. Try `@` plus one of your calendar names, and `#newtag`.
+5. Transaction: pick Transaction (or type `$ `). Ledger's quick form appears under "Will add: a transaction"; save one the usual way, including Save and add another.
+6. Scheduled payment: pick it and press the button: Ledger's Scheduled screen opens.
+7. Wrong shortcut: type `t dentist sat at 3pm`, then click Event: the shortcut disappears and the preview becomes an event.
+8. Cancel, Esc and clicking outside the box: nothing is saved in any of the three.
+9. Use as plain title: with `e lunch fri 12-1pm !high` ticked, the whole line becomes the title.
+10. Search (Ctrl+K) then "add event" opens the Add box on Event; "add task" and "add transaction" still work; Ledger's old shortcuts still work.
+11. On the phone (or 375 px): the round "+" sits at the screen edge in Calendar, Tasks and Today and above the tab bar in Ledger; the box fits with no sideways scrolling; nothing overlaps the "+".
+
+## STATUS 2026-11-05: Phase 3 PART C BUILT (global search across Ledger, Calendar, Tasks and Today). SIGNED OFF 2026-11-05 and pushed (steps 10 and 11, phone and real-data speed, to be checked by the owner after the push). Owner note on step 3: searching by an event's notes seems to show the note, while a location match does not seem to show the location; location search itself works in tests and in the browser, so this is about what the result line displays. Not yet clarified or changed. Parts D and E not started.
 
 Part B was signed off and pushed (b9d3bab) before this started.
 

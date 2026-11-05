@@ -95,6 +95,11 @@ export async function createEvent(data: EventData, d: FinanceDB = db): Promise<n
   return rows(d).put({ module: MODULE, kind: 'event', data: { ...data } });
 }
 
+/** Deletes a whole event by id (soft, like every delete). Used by Undo after the Add box creates one. */
+export async function removeEventById(id: number, d: FinanceDB = db): Promise<void> {
+  await rows(d).remove(id);
+}
+
 async function save(id: number, data: EventData, d: FinanceDB) {
   await rows(d).put({ id, module: MODULE, kind: 'event', data: { ...data } });
 }

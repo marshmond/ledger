@@ -1,5 +1,6 @@
 import type { ModuleDef } from '../../core/registry';
 import { tasksDueProvider } from './dueProvider';
+import { taskQuickAdd } from './quickAddDef';
 import { tasksSearchSource } from './searchSource';
 import TasksModule, { TASKS_BASE } from './TasksModule';
 
@@ -11,5 +12,5 @@ export const tasksModule: ModuleDef = {
   Component: TasksModule,
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: tasksDueProvider, searchSource: tasksSearchSource },
+  contributes: { dueProvider: tasksDueProvider, searchSource: tasksSearchSource, quickAdd: taskQuickAdd },
 };

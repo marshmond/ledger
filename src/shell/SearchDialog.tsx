@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withBasePath } from '../core/paths';
+import { requestEvent } from '../core/eventBridge';
 import { requestTask } from '../core/taskBridge';
 import { allSearchSources, type SearchResult } from '../core/registry';
 import { filterActions } from './searchActions';
@@ -12,7 +13,7 @@ import { openAddTransaction } from './QuickAdd';
 // `to` is written the way Ledger writes its pages (/budget); the dialog lives outside Ledger, so it adds the /ledger prefix itself.
 const ACTIONS: { title: string; words: string; to?: string; full?: string; run?: () => void }[] = [
   { title: 'Add a task', words: 'add new task todo to-do reminder', run: () => requestTask() },
-  { title: 'Add an event', words: 'add new event appointment meeting calendar', full: '/calendar?new=1' },
+  { title: 'Add an event', words: 'add new event appointment meeting calendar', run: () => requestEvent() },
   { title: 'Add a transaction', words: 'add new transaction expense income spend log', run: openAddTransaction },
   { title: 'Log a trade', words: 'log buy sell trade investment stock', to: '/investments' },
   { title: 'Add a scheduled item', words: 'add new scheduled recurring bill', to: '/scheduled' },

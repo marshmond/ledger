@@ -50,7 +50,7 @@ export interface ModuleDef {
     /** What global search can find in this module. See docs/module-hooks.md. */
     searchSource?: SearchSource;
     /** What the global quick-add box can create in this module. See docs/module-hooks.md. */
-    quickAdd?: QuickAddDef;
+    quickAdd?: QuickAddDef | QuickAddDef[];
   };
 }
 
@@ -114,10 +114,18 @@ export interface QuickAddDef {
   label: string;
   /** Typed shortcut: text starting with `<prefix> ` picks this destination. One short token (`t`, `e`, `$`). */
   prefix: string;
-  /** Understands the text (prefix already removed), or returns null when it is not something this destination can make. */
-  parse(text: string): QuickAddPreview | null;
-  /** Creates the record. Only called after the user has seen the preview and pressed Add. */
-  commit(preview: QuickAddPreview): Promise<void>;
+  /** Other words that also pick this destination when typed first (`task`, `event`, `txn`). */
+  aliases?: string[];
+  /** Understands the text (prefix already removed), or returns null when it is not something this destination can make. `plain` turns the shorthand off. */
+  parse?(text: string, opts?: { plain?: boolean }): QuickAddPreview | null;
+  /** Creates the record. Only called after the user has seen the preview and pressed Add. May return a function that undoes it. */
+  commit?(preview: QuickAddPreview): Promise<void | (() => Promise<void>)>;
+  /** Called when the Add box opens; returns a function called when it closes. Lets `parse` (which is not async) know about existing calendars, lists and tags. */
+  start?(): () => void;
+  /** For a destination that is a form rather than a line of text (a transaction): the box shows this form instead of a preview. */
+  Form?: ComponentType<{ onDone: () => void }>;
+  /** For a destination that is another screen's own form (a scheduled payment): the box offers a button that calls this. */
+  open?(ctx: { navigate: (to: string) => void }): void;
 }
 
 /** What the Calendar knows about an event, in plain terms, when it offers a handoff. Nothing here is Ledger-specific. */
@@ -195,12 +203,15 @@ function checkHooks(m: ModuleDef) {
     if (!c.id.startsWith(`${m.id}.`)) throw new Error(`Today card "${c.id}" must start with "${m.id}.".`);
     if (allTodayCards().some((x) => x.id === c.id)) throw new Error(`Today card "${c.id}" is registered twice.`);
   }
-  const q = m.contributes?.quickAdd;
-  if (q) {
-    const clash = allQuickAdds().find((x) => x.prefix.toLowerCase() === q.prefix.toLowerCase() || x.id === q.id);
+  const mine: QuickAddDef[] = [];
+  for (const q of quickAddList(m)) {
+    const words = (d: QuickAddDef) => [d.prefix, ...(d.aliases ?? [])].map((w) => w.toLowerCase());
+    const clash = [...allQuickAdds(), ...mine].find((x) => x.id === q.id || words(x).some((w) => words(q).includes(w)));
     if (clash) throw new Error(`Quick-add "${q.id}" (prefix "${q.prefix}") clashes with "${clash.id}" (prefix "${clash.prefix}").`);
+    mine.push(q);
   }
 }
+const quickAddList = (m: ModuleDef): QuickAddDef[] => { const q = m.contributes?.quickAdd; return q ? (Array.isArray(q) ? q : [q]) : []; };
 export const allModules = (): readonly ModuleDef[] => modules;
 /** Every Today card offered by any module, in default-layout order. */
 export function allTodayCards(mods: readonly ModuleDef[] = modules): (TodayCardDef & { moduleId: string })[] {
@@ -212,7 +223,7 @@ export function allSearchSources(mods: readonly ModuleDef[] = modules): { module
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {
-  return mods.flatMap((m) => (m.contributes?.quickAdd ? [{ ...m.contributes.quickAdd, moduleId: m.id }] : []));
+  return mods.flatMap((m) => quickAddList(m).map((q) => ({ ...q, moduleId: m.id })));
 }
 export const recordSource = (moduleId: string) => modules.find((m) => m.id === moduleId)?.contributes?.records;
 /** The module that offers to take over events of this type, if any. */

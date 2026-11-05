@@ -1,7 +1,7 @@
 # Module hooks for Today, search and quick-add
 
 Added in Phase 3. These sit next to the due-provider contract (`docs/due-provider.md`) in `ModuleDef.contributes`. **`todayCards` is in use
-since Part B** (the Today module and Ledger each offer cards); `searchSource` is in use since Part C (Ledger, Calendar, Tasks and Today each offer one); `quickAdd` (Part D) is not used yet. A module that
+since Part B** (the Today module and Ledger each offer cards); `searchSource` is in use since Part C (Ledger, Calendar, Tasks and Today each offer one); `quickAdd` is in use since Part D (Tasks, Calendar and Ledger each offer destinations). A module that
 offers none of them behaves exactly as before. The types live in `src/core/registry.ts`.
 
 ```ts
@@ -65,21 +65,33 @@ module name). A linear scan is fine; do not build an index unless a measurement 
 
 ## `quickAdd`: what the global add box can create
 
+`contributes.quickAdd` is one destination or a list. Each one is a button in the Add box.
+
 | Field | Meaning |
 |---|---|
 | `id`, `label` | Permanent id and the chooser text ("Task"). |
-| `prefix` | Typed shortcut: text starting with `<prefix> ` picks this destination (`t`, `e`, `$`). Two modules with the same prefix (any case) or id are rejected at start-up. |
-| `parse(text)` | Understands the text after the prefix and returns a `QuickAddPreview` (`summary`, `fields`, opaque `payload`), or `null` if it cannot. The box always shows the preview before saving. |
-| `commit(preview)` | Creates the record. Only called after the user has seen the preview and pressed Add. |
+| `prefix`, `aliases?` | Typed shortcuts: text starting with one of them and a space picks this destination (`t `, `task `, `task: `). Two destinations that share a prefix or alias (any case), or an id, are rejected at start-up. |
+| `parse(text, {plain})` | Understands the text after the shortcut and returns a `QuickAddPreview` (`summary`, `fields`, opaque `payload`), or `null`. The box always shows it as "Will add: ..." before saving. `plain` turns the shorthand off (the whole text is the title). |
+| `commit(preview)` | Creates the record, only after the user has seen the preview and pressed Add. May return a function that undoes it (shown as Undo in the toast). |
+| `start()` | Optional. Called when the box opens, returns a stop function. Lets the synchronous `parse` know existing calendars, lists and tags (so the preview can say "(new)"). |
+| `Form` | Optional. For a destination that is a form, not a line of text (Ledger's transaction): the box shows this component instead of a preview. |
+| `open({navigate})` | Optional. For a destination that is another screen's own form (Ledger's scheduled payment): the box shows a button that calls this. |
 
-The box never guesses a destination: no prefix and no choice means it asks. `allQuickAdds()` lists the destinations.
+The box never guesses a destination: no shortcut and no choice means it asks. `allQuickAdds()` lists the destinations; the pure routing is `routeQuickAdd()` in `src/core/quickAddRoute.ts`.
+
+### How the Add box uses them (Part D)
+
+- `src/shell/AddBox.tsx` is the one box (the "+" / Add button, `openAddBox({dest, text})` in `core/globalEvents.ts`, and the old `ledger:add-transaction` event all open it). Choices read Task, Event, Transaction, Scheduled payment; destinations from new modules follow.
+- **Destinations in use.** Tasks: `task` (`modules/tasks/quickAddDef.ts`, the Tasks bar's own parser). Calendar: `event` (`modules/calendar/quickAddDef.ts`, parser in `quickEvent.ts`). Ledger: `transaction` (the quick transaction form) and `scheduled` (opens Ledger Scheduled) in `modules/ledger/quickAddDef.tsx`.
+- **Events from anywhere:** `requestEvent({title, date})` (`core/eventBridge.ts`) opens the box on Event with that text, like `requestTask` for tasks.
+- **Event words:** the same date, priority, tag and repeat words as the Tasks bar (it reuses that parser), plus time ranges (`3-4pm`), `@calendar`. No date = today, no time = all-day, one time = one hour.
 
 ## The shell around them (also Part A)
 
 - **Search and the Add button belong to the whole app.** `src/shell/GlobalFrame.tsx` owns the search dialog and its shortcuts
   (Ctrl/Cmd+K, or `/` when not typing); `src/core/ModuleBar.tsx` shows the Search and Add buttons and mounts the single quick-add
   (`src/shell/QuickAdd.tsx`). Anything can open search with `openSearch()` (`src/core/globalEvents.ts`) and the transaction form with
-  `openAddTransaction()` (the `ledger:add-transaction` event still works). Their menu and hits are still Ledger's until Parts C and D.
+  `openAddTransaction()` (the `ledger:add-transaction` event still works)..
 - **Bottom-of-phone rule.** `ModuleDef.hasTabBar` says whether a module draws its own bottom tab bar (only Ledger). `GlobalFrame` sets
   `data-tabbar` on the page; the CSS variable `--tab-h` is then the tab bar's height (57 px) or 0. The round "+" button, the toasts and
   the page's bottom padding are all placed relative to `--tab-h`, so they sit at the screen edge in Calendar, Tasks and Today and above

@@ -1,3 +1,4 @@
+import PayeeInput from '../ui/PayeeInput';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -158,10 +159,10 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
         <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {!isTransfer && (
           <label className="f">Payee
-            <input
-              list="txn-payees"
+            <PayeeInput
               value={payee}
-              onChange={(e) => setPayee(e.target.value)}
+              onChange={setPayee}
+              options={recentPayees(history)}
               onBlur={() => {
                 // A new transaction with no category yet: fill it in from your rules or how you filed this payee before.
                 if (editing || choice !== '' || splitOn) return;
@@ -172,7 +173,6 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
                 }
               }}
             />
-            <datalist id="txn-payees">{recentPayees(history).map((p) => <option key={p} value={p} />)}</datalist>
           </label>
         )}
         <label className="f">Type

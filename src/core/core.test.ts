@@ -86,7 +86,7 @@ describe('page addresses', () => {
   it('pages only get Link / NavLink / useNavigate / useLocation from the module router, never from react-router-dom', () => {
     const bad: string[] = [];
     for (const f of sources) {
-      if (/src[\\/](core|main|App)/.test(f) || f.endsWith('LedgerModule.tsx') || f.endsWith('SettingsPage.tsx') || /shell[\\/](QuickAdd|SearchDialog|GlobalFrame)\.tsx$/.test(f)) continue; // Settings and the app-wide search and quick add are the shell's own, and live outside any module
+      if (/src[\\/](core|main|App)/.test(f) || f.endsWith('LedgerModule.tsx') || f.endsWith('SettingsPage.tsx') || /shell[\\/](QuickAdd|AddBox|SearchDialog|GlobalFrame)\.tsx$/.test(f)) continue; // Settings and the app-wide search and quick add are the shell's own, and live outside any module
       const text = readFileSync(f, 'utf8');
       for (const m of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*'react-router-dom'/g)) {
         const names = m[1].split(',').map((s) => s.trim());

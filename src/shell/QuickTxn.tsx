@@ -6,6 +6,7 @@ import { formatCents, parseAmountMath, todayISO } from '../lib/money';
 import { recentPayees, suggestCategory } from '../lib/rules';
 import TxnForm from '../pages/TxnForm';
 import AmountInput from '../pages/AmountInput';
+import PayeeInput from '../ui/PayeeInput';
 import { pickPrimary } from '../lib/primaryAccount';
 
 const LAST_KEY = 'ledger-quick-account';
@@ -82,8 +83,7 @@ export default function QuickTxn({ accounts, primaryId, onDone }: { accounts: Ac
         <select value={acct} onChange={(e) => setAcct(e.target.value)}>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
       </label>
       <label className="f">Payee
-        <input ref={payeeRef} list="quick-payees" value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="Who was it?" autoComplete="off" />
-        <datalist id="quick-payees">{payees.map((p) => <option key={p} value={p} />)}</datalist>
+        <PayeeInput ref={payeeRef} value={payee} onChange={setPayee} options={payees} placeholder="Who was it?" />
       </label>
       <div className="row">
         <label className="f" style={{ flex: 1 }}>Amount

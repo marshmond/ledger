@@ -1,83 +1,40 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { withBasePath } from '../core/paths';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
-import QuickTxn from './QuickTxn';
-import { getPrimaryAccountId } from '../lib/primaryAccount';
-import Modal from './Modal';
+import { openAddBox } from '../core/globalEvents';
+import AddBox from './AddBox';
 
-/** Anything can ask for the "add a transaction" form by sending this event (the command palette and page buttons do). */
+/** Anything can ask for the "add a transaction" form by sending this event (the command palette and page buttons do). It opens the Add box on Transaction. */
 export const ADD_TXN_EVENT = 'ledger:add-transaction';
 export const openAddTransaction = () => window.dispatchEvent(new Event(ADD_TXN_EVENT));
 
 /**
- * Quick add, one for the whole app (mounted next to the module bar): an "Add" button in the module bar on a computer, a round
- * button on a phone. The round button sits above Ledger's tab bar, or at the screen's bottom edge in modules without one (see `--tab-h`).
- * The menu closes on Escape, on a click elsewhere, and when you change page.
+ * The Add button, one for the whole app (mounted next to the module bar): an "Add" button in the module bar on a computer, a round
+ * button on a phone. It opens the Add box (`AddBox`). The round button sits above Ledger's tab bar, or at the screen's bottom edge in
+ * modules without one (see `--tab-h`).
  */
 export default function QuickAdd() {
-  const nav = useNavigate();
-  const loc = useLocation();
-  const accounts = (useLiveQuery(() => db.accounts.toArray(), []) ?? []).filter((a) => !a.closed && a.kind !== 'loan');
-  const primaryId = useLiveQuery(() => getPrimaryAccountId(db), []);
   const phone = usePhone();
-  const [menu, setMenu] = useState(false);
-  const [form, setForm] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMenu(false), [loc.pathname]);
   useEffect(() => {
-    const open = () => { setMenu(false); setForm(true); };
+    const open = () => openAddBox({ dest: 'transaction' });
     window.addEventListener(ADD_TXN_EVENT, open);
     return () => window.removeEventListener(ADD_TXN_EVENT, open);
   }, []);
-  useEffect(() => {
-    if (!menu) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false);
-    const onDown = (e: MouseEvent) => { if (!wrap.current?.contains(e.target as Node)) setMenu(false); };
-    document.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onDown);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onDown);
-    };
-  }, [menu]);
-
-  const go = (to: string) => {
-    setMenu(false);
-    nav(withBasePath('/ledger', to));
-  };
 
   const button = (
-      <div className="qa" ref={wrap}>
-        {menu && (
-          <div className="qa-menu" role="menu">
-            <button role="menuitem" onClick={() => { setMenu(false); setForm(true); }}>Add a transaction</button>
-            <button role="menuitem" onClick={() => go('/investments')}>Log a trade</button>
-            <div className="qa-sep" role="separator" />
-            <button role="menuitem" onClick={() => go('/scheduled')}>Add a scheduled item</button>
-            <button role="menuitem" onClick={() => go('/paycheck')}>New paycheck scenario</button>
-          </div>
-        )}
-        <button className="qa-btn" aria-label="Quick add" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>
-          <span className="qa-plus" aria-hidden="true">{menu ? '×' : '+'}</span>
-          <span className="qa-label">Add</span>
-        </button>
-      </div>
+    <div className="qa">
+      <button className="qa-btn" aria-label="Quick add" aria-haspopup="dialog" onClick={() => openAddBox()}>
+        <span className="qa-plus" aria-hidden="true">+</span>
+        <span className="qa-label">Add</span>
+      </button>
+    </div>
   );
 
   return (
     <>
       {/* On a phone the round button is pinned to the screen; keeping it inside the sticky header makes some phone browsers nudge it while scrolling. */}
       {phone ? createPortal(button, document.body) : button}
-      {form && createPortal(
-        <Modal title="Add a transaction" onClose={() => setForm(false)} wide>
-          <QuickTxn key={`${accounts.length}-${primaryId ?? ''}`} accounts={accounts} primaryId={primaryId} onDone={() => setForm(false)} />
-        </Modal>,
-        document.body,
-      )}
+      <AddBox />
     </>
   );
 }
