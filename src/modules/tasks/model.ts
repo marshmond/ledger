@@ -3,7 +3,7 @@
  * Two kinds: 'task' and 'list' (an optional one-level grouping such as "Renovation").
  */
 import type { ModuleRecord, Priority, RecordId } from '../../core/entities';
-import { normalizeRule, type Recurrence } from '../calendar/recurrence';
+import { normalizeRule, type Recurrence } from '../../core/recurrence';
 
 export const MODULE = 'tasks';
 
@@ -55,6 +55,9 @@ export interface TaskList {
   name: string;
 }
 
+/** Fields this reader understands. Anything else in a stored record (written by another module or a newer version) is carried through untouched. */
+const TASK_KEYS = new Set(['title', 'notes', 'status', 'priority', 'dueDate', 'dueTime', 'startDate', 'repeat', 'tagIds', 'contactIds', 'checklist', 'listId', 'createdFrom', 'completedAt', 'recurFrom']);
+
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const nums = (v: unknown): number[] => (Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : []);
@@ -69,6 +72,7 @@ export function asTask(r: ModuleRecord): TaskRecord {
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     data: {
+      ...(Object.fromEntries(Object.entries(d).filter(([k, v]) => !TASK_KEYS.has(k) && v !== undefined)) as object),
       title: str(d.title, '(no title)'),
       notes: str(d.notes),
       status,

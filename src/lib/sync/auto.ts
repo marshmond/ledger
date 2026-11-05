@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { db } from '../../db';
-import { dexieMeta, SyncEngine, type SyncSummary } from './engine';
+import { dexieMeta, syncStats, SyncEngine, type SyncStats, type SyncSummary } from './engine';
 import { githubRemote, SYNC_FILE } from './github';
 import { setChangeListener } from './track';
 import type { Conflict } from './merge';
@@ -50,6 +50,8 @@ export interface SyncStatus {
   lastSyncedAt?: number;
   error?: string;
   last?: SyncSummary;
+  /** File size, record count and how often it was uploaded (for the Sync page). */
+  stats?: SyncStats;
 }
 let status: SyncStatus = { configured: false, auto: false, state: 'idle', conflicts: 0 };
 const subs = new Set<() => void>();
@@ -70,7 +72,7 @@ export function useSyncStatus(): SyncStatus {
 
 let running: Promise<void> | null = null;
 /** Syncs now. Never throws: problems show up as the status error. Several calls at once share one run. */
-export function syncNow(): Promise<void> {
+export function syncNow(opts: { auto?: boolean } = {}): Promise<void> {
   if (running) return running;
   const c = readConfig();
   if (!c) return Promise.resolve();
@@ -85,8 +87,8 @@ export function syncNow(): Promise<void> {
       } catch (snapErr) {
         throw new Error(`Sync paused: the automatic safety copy could not be saved (${snapErr instanceof Error ? snapErr.message : String(snapErr)}). Free some browser storage or export a backup, then try again.`);
       }
-      const last = await e.sync();
-      emit({ state: 'idle', last, lastSyncedAt: await e.lastSyncedAt(), error: undefined, conflicts: ((await meta.get<Conflict[]>('conflicts')) ?? []).length });
+      const last = await e.sync({ allowSkip: opts.auto });
+      emit({ state: 'idle', last, stats: await syncStats(meta), lastSyncedAt: await e.lastSyncedAt(), error: undefined, conflicts: ((await meta.get<Conflict[]>('conflicts')) ?? []).length });
     } catch (err) {
       emit({ state: 'error', error: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -97,7 +99,7 @@ export function syncNow(): Promise<void> {
 }
 
 export async function loadLastSynced() {
-  emit({ lastSyncedAt: await meta.get<number>('lastSyncedAt'), conflicts: ((await meta.get<Conflict[]>('conflicts')) ?? []).length });
+  emit({ stats: await syncStats(meta), lastSyncedAt: await meta.get<number>('lastSyncedAt'), conflicts: ((await meta.get<Conflict[]>('conflicts')) ?? []).length });
 }
 
 /** Call after the list of overwritten edits changed (restored or cleared), so the status in the top bar follows. */
@@ -111,7 +113,7 @@ export function startAutoSync() {
   emit();
   loadLastSynced();
   const go = () => {
-    if (readConfig()?.auto && navigator.onLine !== false) syncNow();
+    if (readConfig()?.auto && navigator.onLine !== false) syncNow({ auto: true });
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   setChangeListener(() => {

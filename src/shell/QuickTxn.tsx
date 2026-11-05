@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { createTxn } from '../lib/txnCreate';
 import { db } from '../db';
 import type { Account } from '../types';
 import { formatCents, parseAmountMath, todayISO } from '../lib/money';
@@ -58,7 +59,7 @@ export default function QuickTxn({ accounts, primaryId, onDone }: { accounts: Ac
     const abs = cents === null ? 0 : Math.abs(cents);
     if (abs === 0) return setMsg('Enter an amount');
     const rule = suggestion?.source === 'rule' && suggestion.rename && !catTouched ? suggestion.rename : null;
-    await db.txns.add({
+    await createTxn(db, {
       accountId: account!.id!,
       date,
       amountCents: dir === 'out' ? -abs : abs,

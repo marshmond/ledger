@@ -1,6 +1,6 @@
 /** Which tasks each view shows, and in what order. Pure, so it is tested without a screen. */
 import { addDays } from '../../lib/dates';
-import { PRIORITIES, PRIORITY_LABEL } from '../calendar/model';
+import { PRIORITIES, PRIORITY_LABEL } from '../../core/priority';
 import type { Priority } from '../../core/entities';
 import type { TaskList, TaskRecord } from './model';
 

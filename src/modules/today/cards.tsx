@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type { TodayCardDef, TodayCardProps } from '../../core/registry';
-import { dayLabel } from '../calendar/time';
+import { dayLabel } from '../../core/time';
 import { limitOverdue, overdueGroups, overdueMorePath, reminderItems, todayList, upcomingDays, dayHeading } from './logic';
 import { moduleName, useTodayData } from './TodayData';
 import { TodayRow } from './TodayRow';

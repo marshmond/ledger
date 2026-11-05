@@ -14,7 +14,75 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): Phase 3 PART E BUILT (verification and tuning). SIGNED OFF 2026-11-05 (all final checklist items passed, including the open Part A, C and D steps), committed and pushed. PHASE 3 IS COMPLETE. Phase 4 is NOT started.
+## DECISION 2026-11-05 (owner): refunds versus credits in Projects. DECIDED AND BUILT into the project layer (uncommitted, with Phase 0). 1,108 tests pass.
+
+The owner asked that money coming back be split into a **reversal** (undoes a payment) and a **credit** (reduces the contract), and that this be settled before the Projects dashboard is built. This replaces the single refund rule (plan edge case 7 and decision O2).
+
+| Kind | Example | Agreed | Paid | Left to pay |
+|---|---|---|---|---|
+| Reversal | bounced cheque, duplicate charge returned, deposit returned to be paid again | unchanged | down | goes back up |
+| Credit | discount, damaged item, scope cut | down, by a negative change order | down only if cash comes back | agreed minus paid, never below zero |
+| Other money in (no contract) | insurance payout, rebate | no change | down | no change |
+
+A credit applied to the balance has no transaction at all: it is only the negative change order.
+
+**Owner's test case (becomes a test):** accept a $10,000 contract (paid $0, outstanding $10,000); pay a $3,000 deposit (paid $3,000, outstanding $7,000); the deposit is refunded and the contract stays active, marked Reversal (paid $0, outstanding must go back to $10,000). Under the old single refund rule outstanding would have stayed $7,000, which is wrong. Also test the same refund marked Credit with a -$3,000 change order (agreed $7,000, paid $0, outstanding $7,000).
+
+Owner answers: (1) a refund tagged to a contract **must be marked** Reversal or Credit before it can be saved (no default); (2) marking a credit **offers a pre-filled negative change order** for the same amount, which can be unticked; if skipped, the dashboard flags "credit of $X has no matching reduction in the agreed amount".
+
+**What was changed (done):** `ProjectRef` gets an optional `effect: 'reversal' | 'credit'`, used only on money-in tagged to a contract; `summariseProject` subtracts both reversals and credits from what was paid on the contract (so a credit with no matching negative change order makes the contract look owed again); new flags `creditsNotReflected` (credit with no matching reduction) and `unmarkedRefunds` (old or foreign data); `setTxnProject`, `bulkSetTxnProject` (counts `needsChoice`) and `createTxn` refuse money-in tagged to a contract with no mark, and refuse a mark on a payment or without a contract; the owner's $10,000 case, the credit version, a credit with and without its change order, and the database paths are tests; plan updated (edge case 7, rules, example 1 step 7, R5, O2). Not built: the "must choose" prompt and the offered change order (Projects screens). The "must choose" prompt and the offered change order belong to the Projects screens.
+
+## STATUS 2026-11-05: PHASE 0 BUILT (all nine items), NOT COMMITTED. Projects is NOT started.
+
+Owner said "go all" after the plan below. **1,098 tests pass** (was 1,050), type check and production build clean.
+
+**What was built (numbers match the queue below):**
+1. **Backup completeness test** (`src/lib/backupCoverage.test.ts`): fails if any database table is missing from the export, the file checker or the sync snapshot; one invented row per table is exported and restored; an old version-1 file restores empty. Did NOT change the backup code to build its lists automatically (offered as a later step).
+2. **Unknown fields kept** on tasks and events (`asTask`, `asEvent` now carry fields they do not know). Tests (`src/modules/tasks/unknownFields.test.ts`): survive edit, bulk change, complete, reopen, repeat-spawn, event save; clearing a known field still clears.
+3. **Finance project layer, no screens** (`src/lib/txnProject.ts`, `ProjectRef` on `Txn` and `Split` in `src/types.ts`): tag and untag a transaction or one split, bulk tag, refusals (transfers, setup entries, wrong project's line or commitment), tag cleared when a transaction becomes a transfer or is paired, bulk category change reports dropped split tags, and `summariseProject` / `loadProjectSummary` implementing the rules in the plan (change orders roll into their contract; refunds never re-open what is owed). The three worked examples from the plan are tests and match to the cent; reports and budget give identical results with and without tags; the field survives backup, restore and sync. No database version change, no index.
+4. **Date fixes**: `asEvent` default date, Calendar search fallback, encrypted export filename now use the local day. `dateZones.test.ts` (Los Angeles, Auckland, UTC) and `dateGuard.test.ts` (fails if a new UTC-day slice appears outside five allowed files).
+5. **Shared code moved**: `time` and `recurrence` to `src/core/`, priority names to `src/core/priority.ts`, `pickers`, `RepeatFields`, `PriorityMark` to `src/ui/`. One-line re-exports remain at the old Calendar paths. Tasks, Today and Ledger now import from the new places. CSS and the Calendar tests were not moved.
+6. **Linkable Tasks and Calendar events** (`records.ts` in each): the "Link a record" picker now offers Ledger, Calendar and Tasks; a deleted target shows "(no longer exists)".
+7. **Sync visibility**: Sync page shows file size, record count, uploads today and in 30 days, and a note past 5 MB. Automatic runs skip the download when GitHub's file is the version this device last saw and nothing changed here (Sync now always does a full run). Tests in `src/lib/sync/skip.test.ts`.
+8. **Security policy** added to the production build only (`src/shell/csp.ts`, plugin in `vite.config.ts`): this site only, GitHub and the price service for connections, two inline theme scripts allowed by hash. A test fails if the app fetches from a host not on the list.
+9. **One create path** (`src/lib/txnCreate.ts`): the Add form and the quick Add box now use `createTxn`.
+
+**Checked in a real browser (desktop and 375 px, invented data, then removed):** Tasks, Calendar, Today open with no errors and no sideways scroll; the task editor shows the repeat box and the Link picker with Ledger, Calendar and Tasks; a transaction added through the quick Add box changed the balance correctly. On the production build the policy is in place, a connection to a non-listed host was blocked, and the dark-theme setting still applied (so the allowed inline script runs).
+
+**NOT verified (honest list):** the offline service worker under the new policy (the preview browser cannot register a service worker even without the policy, so this needs your phone or Chrome after publishing); real GitHub sync with the skip logic and the new Sync page figures (tests use an in-memory copy only); two real devices; phone speed; the "More options" transaction form and the edit form were not opened after the create-path change (type-checked and unit-tested only); price lookups and sync under the policy (hosts are on the list; not exercised).
+
+**Judgment calls (please review):**
+1. Unknown fields are carried in `asTask`/`asEvent` (not merged at save time), so every writer, including spawn and bulk, keeps them. Calendar layers and task lists were not changed.
+2. A transaction tag is one small object (`project`, optional `budgetLineId`, `commitmentId`) on the transaction and on each split; a split's own tag wins. Splits with no tag inherit the transaction's.
+3. A change order is a commitment with `parentId`; payments tagged to the original or the change order count toward the whole contract. Payments on a quoted, declined or cancelled contract appear as "paid on inactive" and still count as paid.
+4. "Expected total" ignores a contract's overpayment (shown as a flag only).
+5. The skip check treats any changed record, any change in record counts, or any record without a timestamp as "changed here" and falls back to a full run. Device-only price key changes are ignored.
+6. The policy allows inline styles (`'unsafe-inline'` for styles only) because screens set styles directly.
+7. The Calendar tests stayed where they were and import through the old paths.
+8. No test for `headSha` in the GitHub client itself (the listing code was refactored and the existing GitHub tests still pass).
+
+**NOT built / still queued:** deriving the backup lists from the database automatically; compressing the weekly encrypted backup; passphrase hint (plan item B7, not in the nine); Projects itself (its own plan: record types, screens, dashboard, transaction "Project" field, Today card, Search, Add, vendor details on contacts); owner actions (GitHub two-step sign-in, token check, other-Pages-sites check, optional two-device test).
+
+## PREVIOUS STATUS 2026-11-05: PHASE 0 PLANNED, DECISIONS RECORDED.
+
+Full report: `docs/PHASE0-PLAN-2026-11-05.md` (read-only validation of sync, backup, credentials, shared code, Finance writes and dates; the Projects money model; the Phase 0 plan and the order of work). The earlier audit is `docs/AUDIT-2026-11-05.md`.
+
+**Owner decisions (2026-11-05): all recommended defaults R1 to R16 and O1 to O8 in the plan are approved.** In plain words:
+1. Project spending still counts in the monthly budget (nothing changes there).
+2. A refund lowers what was paid but does not make a contract look unpaid again; a reduced job is a negative change order.
+3. No "billed so far" figure on contracts in the first release.
+4. If another GitHub Pages site shares the app's address, decide between a custom domain and a separate GitHub account after the check.
+5. Projects with money attached are archived or cancelled, not deleted.
+6. Sync is redesigned only if the encrypted file passes about 5 MB, the repository about 800 MB, or a sync takes about 3 seconds on the phone.
+7. Shared Calendar code is moved (with old paths kept working) before the Projects screens are built.
+8. The security policy is added before any AI work, not before.
+9. Stay without a server through Projects; decide on one at the AI phase.
+
+**Queued work, in order (nothing started):** owner actions (GitHub two-step sign-in, token check, look for other Pages sites, optional two-device test); 1 backup completeness test; 2 keep unknown fields on tasks and events (blocker for Projects); 3 Finance project layer, no screens (blocker); 4 date fixes and guard test; 5 shared-code move; 6 linkable Tasks and Calendar records; 7 sync visibility; 8 security policy; 9 one create path for transactions (optional). Then Projects, as its own plan.
+
+A bare "go" means everything queued above; or name the numbers to build.
+
+## STATUS 2026-11-05: Phase 3 PART E BUILT (verification and tuning). SIGNED OFF 2026-11-05 (all final checklist items passed, including the open Part A, C and D steps), committed and pushed. PHASE 3 IS COMPLETE. Phase 4 is NOT started.
 
 Owner decisions: heavy invented data; also replace the remaining browser suggestion pop-ups; fix only obvious speed problems.
 

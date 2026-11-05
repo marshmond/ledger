@@ -90,20 +90,28 @@ export function githubRemote(cfg: GhConfig, f: typeof fetch = (...a) => fetch(..
   const call = caller(cfg, f);
   const checkRepo = async () => ({ private: Boolean(((await (await call(base)).json()) as { private?: boolean }).private) });
 
+  /** The sync file's entry in the repository listing (no download), or null if there is none yet. */
+  async function listing(): Promise<{ name: string; sha: string } | null> {
+    let list: { name: string; sha: string }[];
+    try {
+      list = (await (await call(`${base}/contents`)).json()) as { name: string; sha: string }[];
+    } catch (e) {
+      if (e instanceof GhError && e.status === 404) {
+        await checkRepo(); // throws if the repo itself is missing; otherwise it is simply empty
+        return null;
+      }
+      throw e;
+    }
+    return (Array.isArray(list) ? list.find((x) => x.name === SYNC_FILE) : undefined) ?? null;
+  }
+
   return {
     checkRepo,
+    async headSha(): Promise<string | null> {
+      return (await listing())?.sha ?? null;
+    },
     async getFile(): Promise<RemoteFile | null> {
-      let list: { name: string; sha: string }[];
-      try {
-        list = (await (await call(`${base}/contents`)).json()) as { name: string; sha: string }[];
-      } catch (e) {
-        if (e instanceof GhError && e.status === 404) {
-          await checkRepo(); // throws if the repo itself is missing; otherwise it is simply empty
-          return null;
-        }
-        throw e;
-      }
-      const hit = Array.isArray(list) ? list.find((x) => x.name === SYNC_FILE) : undefined;
+      const hit = await listing();
       if (!hit) return null;
       // Read the exact version we listed, so what we merge and the version we replace always match.
       const blob = await call(`${base}/git/blobs/${hit.sha}`, {}, true);

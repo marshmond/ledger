@@ -1,7 +1,7 @@
 import type { TaskList, TaskRecord } from './model';
 import { STATUS_LABEL } from './model';
-import { PriorityMark } from '../calendar/parts';
-import { dayLabel } from '../calendar/time';
+import { PriorityMark } from '../../ui/PriorityMark';
+import { dayLabel } from '../../core/time';
 import { isOverdue } from './views';
 
 const timeText = (hm: string) => {

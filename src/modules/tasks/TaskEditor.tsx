@@ -5,10 +5,10 @@ import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
-import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../calendar/model';
-import { ContactPicker, RecordLinks, RefLabel, TagPicker, refKey } from '../calendar/pickers';
-import RepeatFields from '../calendar/RepeatFields';
-import { normalizeRule, type Recurrence } from '../calendar/recurrence';
+import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
+import { ContactPicker, RecordLinks, RefLabel, TagPicker, refKey } from '../../ui/pickers';
+import RepeatFields from '../../ui/RepeatFields';
+import { normalizeRule, type Recurrence } from '../../core/recurrence';
 import { completeTask, createList, loadLists, removeTasks, reopenTask, restoreTasks, saveTask } from './data';
 import { MODULE, STATUSES, STATUS_LABEL, type ChecklistItem, type TaskRecord, type TaskStatus } from './model';
 

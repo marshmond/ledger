@@ -17,6 +17,8 @@ export interface RemoteStore {
   getFile(): Promise<RemoteFile | null>;
   /** Writes the file; `sha` is the version being replaced (none for the first write). Returns the new version. */
   putFile(bytes: Uint8Array, sha: string | undefined, message: string): Promise<string>;
+  /** Optional and cheap: the version of the file without downloading it (null = no file yet). Lets an automatic sync skip a pointless download. */
+  headSha?(): Promise<string | null>;
 }
 /** The remote changed since we read it (another device synced at the same moment). */
 export class RemoteConflict extends Error {}
@@ -38,6 +40,7 @@ export function dexieMeta(name = 'ledger-sync-meta'): MetaStore {
 
 /** Settings that stay on each device. */
 const LOCAL_ONLY_SETTINGS = new Set(['priceApiKey']);
+const count = (s: Snapshot) => Object.values(s.tables).reduce((n, rows) => n + Object.keys(rows).length, 0);
 const keyField = (table: string) => (table === 'settings' ? 'key' : 'id');
 const toKey = (table: string, id: string): string | number => (table === 'settings' ? id : Number(id));
 
@@ -60,9 +63,35 @@ export interface SyncSummary {
   removedHere: number;
   pushed: boolean;
   conflicts: Conflict[];
+  /** True when nothing had changed on either side, so the file was not even downloaded. */
+  skipped?: boolean;
 }
 
+/** What the Sync page shows about size and activity. */
+export interface SyncStats {
+  fileBytes?: number;
+  records?: number;
+  uploadsToday: number;
+  uploads30d: number;
+  lastUploadAt?: number;
+}
+interface UploadEntry { at: number; bytes: number }
+const LOG_KEEP_DAYS = 60;
+
 const MAX_CONFLICTS = 50;
+
+/** Size and activity figures kept by the engine, readable without a passphrase or a connection. */
+export async function syncStats(meta: MetaStore, now = Date.now()): Promise<SyncStats> {
+  const log = (await meta.get<UploadEntry[]>('uploadLog')) ?? [];
+  const startOfDay = new Date(now).setHours(0, 0, 0, 0);
+  return {
+    fileBytes: await meta.get<number>('fileBytes'),
+    records: await meta.get<number>('recordCount'),
+    uploadsToday: log.filter((e) => e.at >= startOfDay).length,
+    uploads30d: log.filter((e) => e.at >= now - 30 * 86400000).length,
+    lastUploadAt: log.length ? log[log.length - 1].at : undefined,
+  };
+}
 
 export class SyncEngine {
   constructor(private d: FinanceDB, private meta: MetaStore, private remote: RemoteStore, private pass: string) {}
@@ -76,8 +105,11 @@ export class SyncEngine {
   async conflicts() {
     return (await this.meta.get<Conflict[]>('conflicts')) ?? [];
   }
+  stats(now = Date.now()): Promise<SyncStats> {
+    return syncStats(this.meta, now);
+  }
   async forget() {
-    for (const k of ['base', 'lastSync', 'lastSyncedAt', 'conflicts']) await this.meta.set(k, undefined);
+    for (const k of ['base', 'lastSync', 'lastSyncedAt', 'conflicts', 'remoteSha', 'fileBytes', 'recordCount', 'uploadLog']) await this.meta.set(k, undefined);
   }
 
   /** Does the remote already hold a synced copy? */
@@ -113,15 +145,44 @@ export class SyncEngine {
       if (keep) await this.d.settings.put(keep);
     });
     await this.meta.set('base', idsOf(remote));
+    await this.meta.set('remoteSha', file.sha);
+    await this.meta.set('fileBytes', file.bytes.length);
+    await this.meta.set('recordCount', count(remote));
     await this.meta.set('lastSync', Date.now());
     await this.meta.set('lastSyncedAt', Date.now());
     await this.meta.set('conflicts', []);
   }
 
-  async sync(): Promise<SyncSummary> {
+  /** Has anything changed on this device since the last sync? Cheap (no network, no encryption). When unsure it says yes. */
+  private async changedHere(base: BaseIds, lastSync: number): Promise<boolean> {
+    for (const t of this.d.tables) {
+      let n = 0;
+      let stamped = false;
+      await t.each((r: Rec) => {
+        if (t.name === 'settings' && LOCAL_ONLY_SETTINGS.has(String(r.key))) return;
+        n++;
+        if (typeof r.updatedAt !== 'number' || r.updatedAt > lastSync) stamped = true;
+      });
+      if (stamped || n !== (base[t.name]?.length ?? 0)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * `allowSkip`: for the automatic runs. If the file on GitHub is the version this device saw last time and nothing changed here,
+   * there is nothing to do, so the file is not downloaded. The Sync now button always does a full run.
+   */
+  async sync(opts: { allowSkip?: boolean } = {}): Promise<SyncSummary> {
     const base = await this.meta.get<BaseIds>('base');
     if (!base) throw new Error('This device is not set up for sync yet.');
     const lastSync = (await this.meta.get<number>('lastSync')) ?? 0;
+    if (opts.allowSkip && this.remote.headSha) {
+      const known = await this.meta.get<string>('remoteSha');
+      if (known && (await this.remote.headSha()) === known && !(await this.changedHere(base, lastSync))) {
+        await this.meta.set('lastSyncedAt', Date.now());
+        return { pulled: 0, removedHere: 0, pushed: false, conflicts: [], skipped: true };
+      }
+    }
     for (let attempt = 0; ; attempt++) {
       const now = Date.now();
       const local = await snapshotOf(this.d);
@@ -130,16 +191,25 @@ export class SyncEngine {
       const m = mergeSnapshots({ local, remote, base, lastSync, now });
       const { pulled, removedHere } = await this.applyLocal(local, m.put, m.del);
       let pushed = false;
+      let sha = file?.sha;
+      let bytes = file?.bytes.length;
       if (m.remoteChanged || !file) {
         try {
-          await this.remote.putFile(await encodeSnapshot(m.merged, this.pass), file?.sha, `sync ${new Date(now).toISOString()}`);
+          const out = await encodeSnapshot(m.merged, this.pass);
+          sha = await this.remote.putFile(out, file?.sha, `sync ${new Date(now).toISOString()}`);
+          bytes = out.length;
           pushed = true;
+          const log = ((await this.meta.get<UploadEntry[]>('uploadLog')) ?? []).filter((e) => e.at > now - LOG_KEEP_DAYS * 86400000);
+          await this.meta.set('uploadLog', [...log, { at: Date.now(), bytes: out.length }]);
         } catch (e) {
           if (e instanceof RemoteConflict && attempt < 2) continue; // someone synced meanwhile; merge again with theirs
           throw e;
         }
       }
       await this.meta.set('base', idsOf(m.merged));
+      if (sha) await this.meta.set('remoteSha', sha);
+      if (bytes !== undefined) await this.meta.set('fileBytes', bytes);
+      await this.meta.set('recordCount', count(m.merged));
       await this.meta.set('lastSync', now);
       await this.meta.set('lastSyncedAt', Date.now());
       if (m.conflicts.length) await this.meta.set('conflicts', [...m.conflicts, ...(await this.conflicts())].slice(0, MAX_CONFLICTS));

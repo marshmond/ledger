@@ -1,6 +1,7 @@
 import type { ModuleDef } from '../../core/registry';
 import CalendarModule, { CALENDAR_BASE } from './CalendarModule';
 import { eventQuickAdd } from './quickAddDef';
+import { eventRecords } from './records';
 import { calendarSearchSource } from './searchSource';
 
 /** Calendar, module #2: your own events, plus dated things other modules work out (shown as read-only layers). */
@@ -11,5 +12,5 @@ export const calendarModule: ModuleDef = {
   Component: CalendarModule,
   routePaths: ['/'],
   nav: [],
-  contributes: { searchSource: calendarSearchSource, quickAdd: eventQuickAdd },
+  contributes: { records: eventRecords, searchSource: calendarSearchSource, quickAdd: eventQuickAdd },
 };

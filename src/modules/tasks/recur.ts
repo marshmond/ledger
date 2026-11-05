@@ -6,7 +6,7 @@
  */
 import { addDays, addMonths } from '../../lib/dates';
 import { daysBetween } from '../../lib/money';
-import { generateDates, type Recurrence } from '../calendar/recurrence';
+import { generateDates, type Recurrence } from '../../core/recurrence';
 import type { TaskData } from './model';
 
 /** The next due date, or null if the repeat has run out. `completedOn` is today's local date. */

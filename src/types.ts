@@ -79,9 +79,23 @@ export interface RecurringLog {
 
 export type TxnStatus = 'pending' | 'cleared' | 'reconciled';
 
+/** Which project (and optionally budget line and commitment) a transaction, or one split of it, is spending on. See lib/txnProject.ts. */
+export interface ProjectRef {
+  projectId: number;
+  budgetLineId?: number;
+  commitmentId?: number;
+  /**
+   * Only for money coming BACK (a positive amount) that is tagged to a contract. `reversal` undoes a payment (the contract is still owed);
+   * `credit` is a refund of a price reduction (the agreed amount is lowered by a negative change order). Required in that case.
+   */
+  effect?: 'reversal' | 'credit';
+}
+
 export interface Split {
   categoryId: number | null;
   amountCents: number;
+  /** Overrides the transaction-level project for this part only. */
+  project?: ProjectRef;
 }
 
 export interface Txn {
@@ -106,6 +120,8 @@ export interface Txn {
   importBatchId?: number | null;
   /** Set when approved from a scheduled (recurring) item. */
   recurringId?: number;
+  /** The project this spending belongs to. Never set on a transfer. */
+  project?: ProjectRef;
 }
 
 export interface ImportBatch {

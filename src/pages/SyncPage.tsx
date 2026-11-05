@@ -8,6 +8,9 @@ import { db } from '../db';
 import { downloadText } from '../lib/download';
 import { listSnapshots, readSnapshot, restoreLostVersion, takeSnapshot } from '../lib/sync/safety';
 
+/** The encrypted file passes this size: time to think about a faster way to sync (see docs/PHASE0-PLAN-2026-11-05.md). */
+const BIG_FILE = 5 * 1024 * 1024;
+const fileSize = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString() : 'never');
 
 /** Keep your phone and computer in step through a private GitHub repository. The data is encrypted before it leaves the device. */
@@ -135,6 +138,12 @@ export default function SyncPage() {
               <span className="badge">{s.state === 'syncing' ? 'syncing…' : s.state === 'error' ? 'problem' : 'up to date'}</span>
             </div>
             <p className="muted">Last synced: {when(s.lastSyncedAt)}.{s.last && s.state === 'idle' && ` Last run: ${s.last.pulled} changed here, ${s.last.removedHere} removed here, ${s.last.pushed ? 'sent your changes' : 'nothing to send'}.`}</p>
+            {s.stats?.fileBytes !== undefined && (
+              <p className="muted">
+                Synced file: {fileSize(s.stats.fileBytes)}{s.stats.records !== undefined && `, ${s.stats.records.toLocaleString()} records`}. Sent to GitHub {s.stats.uploadsToday} {s.stats.uploadsToday === 1 ? 'time' : 'times'} today and {s.stats.uploads30d} in the last 30 days (each one adds a copy to the repository's history).
+                {s.stats.fileBytes > BIG_FILE && ' The file is getting large; a faster way to sync may be needed soon.'}
+              </p>
+            )}
             {s.state === 'error' && <div className="error">{s.error}</div>}
             <div className="row">
               <button className="primary" disabled={s.state === 'syncing'} onClick={() => syncNow()}>Sync now</button>

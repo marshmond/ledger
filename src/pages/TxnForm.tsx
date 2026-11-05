@@ -5,6 +5,7 @@ import { db } from '../db';
 import type { Account, Category, CategoryGroup, Split, Txn, TxnStatus } from '../types';
 import { formatCents, parseAmountMath, todayISO } from '../lib/money';
 import { validateSplits } from '../lib/ledger';
+import { createTxn } from '../lib/txnCreate';
 import { convertToTransfer, createTransfer, moveTxn, updateTxn } from '../lib/transfers';
 import { recentPayees, suggestCategory } from '../lib/rules';
 import AmountInput from './AmountInput';
@@ -124,7 +125,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
           const [from, to] = dir === 'out' ? [account.id!, Number(other)] : [Number(other), account.id!];
           await createTransfer(db, { fromAccountId: from, toAccountId: to, date, amountCents: abs, memo, status });
         } else {
-          await db.txns.add({
+          await createTxn(db, {
             accountId: account.id!,
             date,
             amountCents: signed,

@@ -7,7 +7,7 @@ import { cashOutlook } from '../../lib/cashOutlook';
 import { formatCents } from '../../lib/money';
 import { loadForecast } from '../../lib/forecastLive';
 import { useLedgerAlerts } from '../../pages/useLedgerAlerts';
-import { dayLabel } from '../calendar/time';
+import { dayLabel } from '../../core/time';
 import { maskAmounts } from '../today/logic';
 import { alertKey, isAlertHidden, isValidSnoozeDate, loadAlertMemory, rememberAlert, restoreAlert, snoozeUntil } from '../today/settings';
 

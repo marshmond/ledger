@@ -61,6 +61,7 @@ async function link(d: FinanceDB, a: Txn, b: Txn) {
     transferTxnId: other.id,
     categoryId: null,
     splits: undefined,
+    project: undefined, // a transfer moves money, it is never project spending
   });
   await d.txns.update(a.id!, { ...patch(b), payee: `Transfer ${a.amountCents < 0 ? 'to' : 'from'} ${await name(d, b.accountId)}` });
   await d.txns.update(b.id!, { ...patch(a), payee: `Transfer ${b.amountCents < 0 ? 'to' : 'from'} ${await name(d, a.accountId)}` });
@@ -103,6 +104,7 @@ export async function convertToTransfer(
       transferTxnId: otherId,
       categoryId: null,
       splits: undefined,
+      project: undefined,
       payee: `Transfer ${t.amountCents < 0 ? 'to' : 'from'} ${await name(d, otherAccountId)}`,
     });
     return { linkedExisting: false, otherTxnId: otherId };

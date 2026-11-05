@@ -9,6 +9,8 @@ export interface BulkResult {
   updated: number;
   skippedTransfers: number;
   splitsCleared: number;
+  /** Project references that sat on individual splits and went with them. */
+  splitProjectRefsDropped?: number;
 }
 
 /** Sets one category on many transactions. Transfers have no category and are skipped; splits are replaced by the single category. */
@@ -23,6 +25,8 @@ export async function bulkSetCategory(d: FinanceDB, ids: number[], categoryId: n
         continue;
       }
       if (t.splits?.length) res.splitsCleared++;
+      const dropped = (t.splits ?? []).filter((s) => s.project).length;
+      if (dropped) res.splitProjectRefsDropped = (res.splitProjectRefsDropped ?? 0) + dropped;
       await d.txns.update(id, { categoryId, splits: undefined });
       res.updated++;
     }

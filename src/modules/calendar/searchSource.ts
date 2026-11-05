@@ -6,13 +6,13 @@ import { todayISO } from '../../lib/money';
 import { loadEvents } from './data';
 import type { EventRecord } from './model';
 import { occurrencesOf } from './occurrences';
-import { dayLabel } from './time';
+import { dayLabel, localISO } from './time';
 
 /** The occurrence a hit should open: the next one from today, else the first one the event has. */
 export function occurrenceToOpen(ev: EventRecord, today: string) {
   const soon = occurrencesOf(ev, today, addDays(today, 400))[0];
   if (soon) return soon;
-  const first = ev.data.allDay ? ev.data.startDate : new Date(ev.data.startAt).toISOString().slice(0, 10);
+  const first = ev.data.allDay ? ev.data.startDate : localISO(ev.data.startAt);
   return occurrencesOf(ev, addDays(first, -1), addDays(first, 400))[0] ?? null;
 }
 

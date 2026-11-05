@@ -4,6 +4,7 @@
  */
 import type { ModuleRecord, Priority } from '../../core/entities';
 import { normalizeRule, type Recurrence } from './recurrence';
+import { todayISO } from '../../lib/money';
 
 export const MODULE = 'calendar';
 
@@ -27,10 +28,7 @@ export interface CalendarLayer extends LayerData {
   id: number;
 }
 
-export const PRIORITIES: Priority[] = ['high', 'medium', 'low', 'reminder'];
-export const PRIORITY_LABEL: Record<Priority, string> = { high: 'High', medium: 'Medium', low: 'Low', reminder: 'Reminder' };
-/** A shape as well as a colour, so priority never depends on colour alone. */
-export const PRIORITY_ICON: Record<Priority, string> = { high: '▲', medium: '◆', low: '▽', reminder: '○' };
+export { PRIORITIES, PRIORITY_LABEL, PRIORITY_ICON } from '../../core/priority';
 
 /** The fields of an event that a single occurrence can change on its own. */
 export interface EventFields {
@@ -74,6 +72,9 @@ export interface EventRecord {
   data: EventData;
 }
 
+/** Fields this reader understands. Anything else in a stored record (written by another module or a newer version) is carried through untouched. */
+const EVENT_KEYS = new Set(['title', 'allDay', 'startDate', 'endDate', 'startAt', 'endAt', 'location', 'notes', 'priority', 'reminders', 'calendarId', 'tagIds', 'contactIds', 'recurrence', 'skipped', 'overrides', 'doneKeys', 'trackDone', 'type', 'retired']);
+
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -83,7 +84,7 @@ const priority = (v: unknown): Priority => (v === 'high' || v === 'medium' || v 
 /** Reads a stored record defensively: a record from another device or an older version can never crash a screen. */
 export function asEvent(r: ModuleRecord): EventRecord {
   const d = r.data as Partial<EventData>;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const startAt = num(d.startAt, Date.now());
   const allDay = d.allDay === true;
   const startDate = isDate(d.startDate) ? d.startDate : today;
@@ -92,6 +93,7 @@ export function asEvent(r: ModuleRecord): EventRecord {
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     data: {
+      ...(Object.fromEntries(Object.entries(d).filter(([k, v]) => !EVENT_KEYS.has(k) && v !== undefined)) as object),
       title: str(d.title, '(no title)'),
       allDay,
       startDate,

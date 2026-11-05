@@ -7,7 +7,7 @@ import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
 import { Link } from '../core/router';
 import PlainBackupCard from './PlainBackupCard';
-import { recordBackup } from '../lib/backupFile';
+import { localDay, recordBackup } from '../lib/backupFile';
 import { PageHeader } from '../ui/components';
 import {
   AUTO_BACKUP_KEEP, AUTO_BACKUP_MIN_PASSPHRASE, autoBackupNow, clearAutoBackup, readAutoBackup, readAutoStatus, saveAutoBackup,
@@ -132,7 +132,7 @@ export default function BackupPage() {
     if (pass.length < 8) return setErr('Use a passphrase of at least 8 characters. You cannot recover the backup without it.');
     try {
       const text = await encryptText(JSON.stringify(await exportAll(db)), pass);
-      const how = await saveOrShare(`ledger-${new Date().toISOString().slice(0, 10)}.ledgerbackup`, text);
+      const how = await saveOrShare(`ledger-${localDay()}.ledgerbackup`, text);
       await db.settings.put({ key: 'lastBackup', value: new Date().toISOString() });
       recordBackup(); // this device's reminder clock
       setMsg(how === 'shared' ? 'Encrypted backup shared.' : 'Encrypted backup downloaded.');
