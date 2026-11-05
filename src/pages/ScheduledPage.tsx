@@ -1,6 +1,7 @@
 import TaskActions from '../modules/tasks/TaskActions';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useLocation } from '../core/router';
 import { db } from '../db';
 import type { Frequency, RecurringRule } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
@@ -113,6 +114,15 @@ export default function ScheduledPage() {
     setMemo(r.memo);
     window.scrollTo({ top: document.body.scrollHeight });
   }
+
+  // The Calendar's "Edit in Ledger" opens this page with ?rule=<id>: show that item in the edit form below.
+  const { search } = useLocation();
+  const wanted = Number(new URLSearchParams(search).get('rule')) || null;
+  useEffect(() => {
+    const r = wanted ? rules.find((x) => x.id === wanted) : undefined;
+    if (r && editing !== r.id) load(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, rules.length]);
 
   async function save() {
     setError('');

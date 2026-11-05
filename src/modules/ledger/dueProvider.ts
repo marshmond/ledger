@@ -86,7 +86,8 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery): Promise<Derived
       priority: financePriority(cls, date, q.today, prios[cls]),
       status: 'open',
       detail: rule.transferAccountId ? 'Scheduled transfer to approve.' : rule.amountCents < 0 ? 'Scheduled payment to approve.' : 'Scheduled income to approve.',
-      openSource: () => goTo('/ledger/scheduled'),
+      // Opens that item in the Scheduled page's edit form (the date and amount are changed there, never in the Calendar).
+      openSource: () => goTo(`/ledger/scheduled?rule=${rule.id}`),
       sourceLabel: 'Edit in Ledger',
       // The same id the existing "Add to my calendar" file uses, so phone calendars do not show a bill twice.
       icsUid: `bill-${rule.id}-${date}@ledger.local`,

@@ -3,6 +3,7 @@ import { GROUPS } from '../../shell/nav';
 import LedgerModule, { LEDGER_BASE, LEDGER_ROUTES } from './LedgerModule';
 import { ledgerDueProvider } from './dueProvider';
 import { ledgerRecords } from './records';
+import ScheduledFromEvent from './ScheduledFromEvent';
 
 /** Ledger, module #1: personal finance. Its pages, sidebar and calculations are unchanged; this only registers them. */
 export const ledgerModule: ModuleDef = {
@@ -13,5 +14,10 @@ export const ledgerModule: ModuleDef = {
   routePaths: LEDGER_ROUTES.map(([p]) => p),
   nav: GROUPS.map((g) => ({ id: g.id, label: g.label, to: g.to, items: g.items })),
   // What Ledger offers the other modules: dated things for the Calendar (read-only, computed), and records others can link to.
-  contributes: { dueProvider: ledgerDueProvider, records: ledgerRecords },
+  // Also: a Calendar event of type Bill can be turned into a Ledger scheduled item (the Calendar draws Ledger's own form).
+  contributes: {
+    dueProvider: ledgerDueProvider,
+    records: ledgerRecords,
+    createFromEvent: { types: ['bill'], label: 'Create scheduled item in Ledger', ownerName: 'Ledger', Form: ScheduledFromEvent },
+  },
 };

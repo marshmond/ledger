@@ -145,6 +145,20 @@ export async function removeOccurrence(occ: Occurrence, scope: Scope, d: Finance
   });
 }
 
+/**
+ * Retires an event because another module (Ledger) took it over: the event is soft-deleted, with a note saying where it went, so it
+ * is no longer on the calendar (the other module's own item is) but nothing is lost. Returns false if the event is already gone.
+ */
+export async function retireEvent(id: number, to: { module: string; recordId: string | number; note: string }, d: FinanceDB = db): Promise<boolean> {
+  return d.transaction('rw', d.moduleRecords, async () => {
+    const r = await rows(d).get(id);
+    if (!r || r.module !== MODULE || r.kind !== 'event') return false;
+    await save(id, { ...asEvent(r).data, retired: to }, d);
+    await rows(d).remove(id);
+    return true;
+  });
+}
+
 /** Puts back exactly what an earlier change replaced (used by Undo). */
 export async function restoreEventData(id: number, data: EventData | null, d: FinanceDB = db): Promise<void> {
   await d.transaction('rw', d.moduleRecords, async () => {

@@ -4,7 +4,58 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-04 (newest): Phase 2 PART B BUILT (owner review fixes applied) (Tasks module, quick-add, Calendar Tasks layer, create-a-task-from-anywhere, Ledger "Add task"). Committed locally, NOT pushed. Part A was signed off and pushed (e810001). Waiting for the owner's Part B checklist sign-off before Part C.
+## DECISION FOR LATER (2026-11-04): push notifications to iPhone / Apple Watch. NOT being built now.
+
+What it would take (from general knowledge of Apple's rules; nothing here was tested on the owner's devices):
+- Ledger installed to the iPhone Home Screen (iOS 16.4 or newer), a small install file and background script, and a one-time permission prompt.
+- Something always on that sends the notification at the due time (the app is a static page with no server): a free Cloudflare Worker on a timer is the likeliest fit; a GitHub Actions timer can run many minutes late. It also needs the phone's notification address and a list of what is due (read from the synced data, or handed over by the app at each sync).
+- Privacy: notification text passes through Apple's servers. Keep it vague ("Task due: ...") and send only titles and times, never amounts or balances.
+- Apple Watch needs nothing extra: iPhone notifications mirror to it when the phone is locked or not in use. No Watch screen for Ledger.
+- Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
+- Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
+
+## STATUS 2026-11-04 (newest): Phase 2 PART C BUILT (Ledger on the calendar: click-through, Bill event -> Ledger scheduled item, Finance and Birthday event types). NOT committed or pushed. Part B signed off and pushed (94aa7f4); Part A pushed (e810001). Waiting for the owner's Part C checklist sign-off. Phase 3 not started.
+
+**What Part C covers (and what was already there):**
+- **C1, Ledger provider.** Already built in Part A (it was needed for the Finance layer to show anything). Rechecked against the Part C list and left as is: scheduled items come from `dueInstances()` (unhandled only; posted, skipped, deleted, ended, paused drop out), vests/tax/RMD/pay milestones/next loan payment from `loadCalendar()`, 30-day overdue window as a Calendar setting, all-day only, default priorities by class editable in Settings > Calendar, budget goals/windfalls/goals/donations/HSA left out. Existing tests cover each of these.
+- **C2, click-through.** Finance items offer **Edit in Ledger** only (no date moving, posting or skipping in the Calendar). For a scheduled item it now opens that item in the Scheduled page's edit form (`/ledger/scheduled?rule=<id>`; before, it opened the page without picking the item). Other Finance items open their Ledger page as before (Income, Tax plan, Debt). Ledger's record source gained `openSource`, so a record linked from an event opens the same way.
+- **C3, calendar-first creation.** Event **Type** menu in the event form. For **Bill / scheduled payment** a button **Create scheduled item in Ledger…** opens Ledger's own form, prefilled (name from the title, first date, repeat mapped to weekly / every 2 weeks / monthly / quarterly / yearly), asking for account, in or out, amount and category or transfer. Repeats that do not fit (daily, every 3 weeks, several weekdays, "2nd Tuesday") say so and ask you to pick; "twice a month" is offered in the menu but never guessed. A **Review** step lists what will be created and what happens to the event, then **Create it in Ledger**, **Back** or **Keep it as a calendar event**. On create, the Ledger rule owns the item and the calendar event is soft-deleted with a note linking to the rule. Declining leaves an ordinary Personal event. Done through a registry hook (`contributes.createFromEvent`, plus `RecordSource.openSource`) so another module can offer the same; documented in `docs/due-provider.md`.
+- **C4, Finance-adjacent dates (no Ledger changes).** **Finance date** type: starts at medium priority, "1 day before" reminder, "keep as overdue until done", tagged "Finance" (shared tag, created if missing), plus a "Start from" menu (card payment due, card statement closes: monthly; subscription renewal, tax-prep reminder: yearly; no date invented). **Birthday** type: all-day, yearly, low priority, "1 day before"; picking one person under People titles it "<Name>'s birthday" and links it to the shared contact. No birthday field on contacts, and Ledger's `people` table is not used.
+
+**Verified:** 944 tests (17 new in `calendar/handoff.test.ts`: all six repeat mappings and the does-not-fit cases, one-time and ending repeats, next-date seed for old bills, registry offers the hook for `bill` only, one item remains after conversion with the dates matching Ledger's, the retired event keeps its note and can be restored, click-through paths, type defaults). Type check clean. Browser pane with invented data: Bill event -> Ledger form prefilled -> Review -> Create (new event: only the Ledger item appears; existing event: event retired, one Finance item remains, High priority when due today), Decline kept an ordinary Personal event with no Ledger item, "Edit in Ledger" opened the item in the edit form, Birthday defaults and auto title and contact link, empty-title error, phone width (375px) no sideways scroll. NOT checked in a browser: the Finance-date "Start from" menu, dark mode, a real second device, the .ics export after a conversion (tests cover export ids from Part A), converting a repeating event that has single skipped or changed dates.
+
+**Judgment calls (please review):**
+1. **A repeating bill starts the Ledger item at its NEXT date**, not its original first date, so an old event does not leave a pile of overdue items on the Scheduled page. The form warns if you move the first date into the past.
+2. **A one-time bill** becomes a Ledger rule that ends on its date (Ledger rules always repeat), and says so.
+3. **Single dates you skipped or changed on a repeating event do not carry over**; the form and the confirm text say so.
+4. **Linked people, tags and notes on the event are not carried to Ledger** (Ledger has no place for them); the retired event keeps them. Notes become the rule's memo.
+5. **If the Ledger item is created but retiring the event fails** (very unlikely), the form says so and asks you to delete the event by hand; no automatic rollback. There is no Undo for the conversion (the retired event can be restored from the database, but there is no screen for it).
+6. **Choosing a type fills in starting values only on NEW events.** On an existing event it sets only the type and its tag, so nothing you set is overwritten.
+7. **Birthday date:** it repeats from whatever date you enter (the real date or the next one). No age ("turns 41") is shown.
+8. **Only Bill offers Ledger's button.** Finance date events stay Calendar events, as asked.
+9. **Finance events live on Personal** (the Finance layer is read-only and worked out by Ledger), tagged "Finance". The tag, not the layer, groups them.
+
+**Worth adding to Ledger's data model later (not done, per the brief):**
+- **Credit card statement close day and payment due day on the account.** The biggest gap: today these are hand-made events, so they drift from the real card. Ledger could then show them on the Finance layer and compute minimum-payment reminders.
+- **A renewal date and "cancel by" date on scheduled items** (annual subscriptions are already expressible as yearly scheduled items; only the cancel-by reminder is missing).
+- **Birthday (and other special dates) on shared contacts** so one entry feeds the Calendar, gift reminders and Tasks. Better in the shared store than in Ledger.
+- **Insurance, registration and other annual bills as yearly scheduled items** need nothing new, but a "document or policy number" field would help the "tax-prep" style reminders.
+- **Tax-prep reminders** could derive from Ledger's tax-year data (filing deadline, estimated-payment dates are already shown); only the owner's own "gather documents by" date is manual.
+- **A "last paid" date on bills** so the Calendar can show "paid" rather than dropping the item.
+Not worth adding: a time of day (bills are all-day events), and per-occurrence editing of Ledger dates in the Calendar.
+
+**Not built (Part C):** push, text or email reminders (see the push-notification decision above); Google Calendar; subscriptions; the Today dashboard (Phase 3); Undo for a conversion; a screen for retired events; changing Ledger's own calendar views or its existing .ics export; removing the unused `dueItems` table (still unused, still safe to drop later with a database version bump).
+
+**Part C checklist (for the owner):**
+1. Open Calendar > Finance layer. Scheduled items, RSU vests, tax dates and loan payments match Home's "Coming up" and the Scheduled page. Approve or skip one in Ledger: it leaves the Calendar. Delete a scheduled item in Ledger: all its dates leave.
+2. Click a Finance item for a scheduled bill, then **Edit in Ledger**: the Scheduled page opens with that item in the edit form. There is no way to move or approve it from the Calendar.
+3. In Settings > Calendar set the overdue window to a small number and see old unhandled items drop off the Calendar (they stay on the Scheduled page). Put it back to 30.
+4. Add event > Type: Bill / scheduled payment > give it a title > **Create scheduled item in Ledger…**. Pick an account and amount, Review, then **Keep it as a calendar event**: nothing is created and the event is unchanged. Save the event, reopen it, convert it for real: afterward ONE item appears (the Ledger one, on the Finance layer) and the event is gone.
+5. Try a repeat that does not fit (every 3 weeks): the form says so and asks you to pick.
+6. Add event > Type: Finance date > "Start from" a card payment due: it gets a name, a monthly repeat, a reminder and the Finance tag. Add event > Birthday > add a person: it is titled for them, yearly, all day.
+7. Export a calendar file with "Also include the Finance layer" on: the bill ids are the same as Ledger's own "Add to my calendar" file.
+8. If you have two devices: convert a bill on one, sync, and confirm the other shows one item (not two). Create a backup and import it: events, Ledger items and the Finance layer come back the same. (Both covered by tests from Parts A and B; not run on real devices.)
+9. Phone width (375px): the Bill form and the Ledger form fit the screen.
 
 **Owner review of Part B (same day), fixed before push:** (1) quick-add now reads "every two weeks", "every other week/day", "biweekly", "fortnightly" (number words one to twelve). (2) Upcoming and Completed now obey the Sort box (Completed gains "Recently completed", its default); sorting Upcoming by anything but date shows one list. (3) "Add task" for an account moved off the Accounts list and into the account's own page (transaction and scheduled-item buttons unchanged). (4) Completed tasks stay hidden on the Calendar (owner's choice). NOT reproduced: the Calendar showing a done task until you switch tabs (it clears within a fraction of a second in Agenda and Month). NOT reproduced: a repeating task with no due date creating a next task dated today (it comes out one interval later, e.g. 14 days for "every 2 weeks", in both repeat modes); asked the owner for the exact steps. Tests: 927.
 

@@ -40,6 +40,12 @@ Built on the `DueItem` shape (`src/core/entities.ts`), never stored:
 
 `contributes.records` (`RecordSource`: `search`, `describe`) lets other modules link to your records through the shared Links table and show them by name. Ids are text because a module can have several kinds (`account:12`, `scheduled:7`, `loan:3`).
 
+`RecordSource.openSource(id)` (optional) opens the record in its own module and says whether it still exists. Ledger's scheduled items open at `/ledger/scheduled?rule=<id>`, which puts that item straight into the edit form.
+
+## Handing a Calendar event to a module (optional): `contributes.createFromEvent`
+
+A module can offer "turn this event into one of mine". It names the event types it handles (`types`, e.g. `['bill']`), a button `label`, an `ownerName`, and a `Form` component the Calendar shows in a dialog. The Calendar passes an `EventSeed` (title, the date to start from, notes, the repeat in plain units, whether single dates were changed) and a `consequence` sentence. The module's form does its own confirming and writing, then calls `onCreated({ recordId, label })`. Only then does the Calendar retire the event (`retireEvent`: soft-deleted, with `retired: { module, recordId, note }` so nothing is lost). `onCancel` leaves the event untouched. Ledger registers this for the `bill` type (`src/modules/ledger/ScheduledFromEvent.tsx`, mapping in `fromEvent.ts`).
+
 ## Ledger's provider (`src/modules/ledger/dueProvider.ts`)
 
 Reuses `dueInstances()` for scheduled items and `loadCalendar()` for vests, tax dates, RMDs, pay milestones and the next loan payment, so it matches Home, the sidebar count and the Scheduled page. Scheduled items past due drop off after the overdue window (Calendar settings, default 30 days). Not included: budget bill goals (month only), windfalls and goals (year only), donations and HSA withdrawals (records of past actions).

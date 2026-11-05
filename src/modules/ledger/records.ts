@@ -1,4 +1,5 @@
 import { db } from '../../db';
+import { goTo } from '../../core/dueProvider';
 import type { RecordChoice, RecordSource } from '../../core/registry';
 
 /**
@@ -7,7 +8,7 @@ import type { RecordChoice, RecordSource } from '../../core/registry';
  */
 const KINDS = {
   account: { label: 'Account', path: (n: number) => `/ledger/account/${n}` },
-  scheduled: { label: 'Scheduled item', path: () => '/ledger/scheduled' },
+  scheduled: { label: 'Scheduled item', path: (n: number) => `/ledger/scheduled?rule=${n}` },
   loan: { label: 'Loan', path: () => '/ledger/debt' },
   // Transactions are found by the page they sit on, not searched (there can be thousands).
   txn: { label: 'Transaction', path: (n: number) => '/ledger/account/' + n },
@@ -41,5 +42,11 @@ export const ledgerRecords: RecordSource = {
     if (!row) return null;
     const label = 'payee' in row ? row.payee : row.name;
     return { label, kind: KINDS[p.kind].label, path: KINDS[p.kind].path(p.n) };
+  },
+  async openSource(id) {
+    const info = await ledgerRecords.describe(id);
+    if (!info) return false;
+    goTo(info.path);
+    return true;
   },
 };

@@ -3,12 +3,16 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { addDays } from '../../lib/dates';
 import { daysBetween } from '../../lib/money';
 import type { RecordRef } from '../../core/entities';
+import { handoffFor, type HandoffResult } from '../../core/registry';
 import { store } from '../../core/store';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
+import { todayISO } from '../../lib/money';
 import {
-  createEvent, markOccurrenceDone, newEventData, removeOccurrence, restoreEventData, saveEdit, snapshotEvent, type Scope,
+  createEvent, markOccurrenceDone, newEventData, removeOccurrence, restoreEventData, retireEvent, saveEdit, snapshotEvent, type Scope,
 } from './data';
+import { EVENT_TYPES, FINANCE_PRESETS, birthdayTitle, buildSeed, defaultsFor } from './eventTypes';
+import HandoffDialog from './HandoffDialog';
 import { MODULE, PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL, type CalendarLayer, type EventFields } from './model';
 import { REMINDER_CHOICES, reminderLabel, type Occurrence } from './occurrences';
 import RepeatFields from './RepeatFields';
@@ -68,6 +72,8 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   const [contactIds, setContactIds] = useState<number[]>(ev?.contactIds ?? []);
   const [rule, setRule] = useState<Recurrence | null>(ev?.recurrence ?? null);
   const [trackDone, setTrackDone] = useState(ev?.trackDone ?? false);
+  const [type, setType] = useState(ev?.type ?? '');
+  const [handoff, setHandoff] = useState<ReturnType<typeof buildSeed> | null>(null);
   const [error, setError] = useState('');
   const [ask, setAsk] = useState<null | { kind: 'save'; fields: EventFields } | { kind: 'delete' }>(null);
   const [busy, setBusy] = useState(false);
@@ -120,7 +126,58 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
     return f;
   };
 
-  const extras = () => ({ calendarId, tagIds, contactIds, recurrence: rule ? normalizeRule(rule) : null, trackDone, ...(ev?.type ? { type: ev.type } : {}) });
+  const extras = () => ({ calendarId, tagIds, contactIds, recurrence: rule ? normalizeRule(rule) : null, trackDone, type: type || undefined });
+
+  /** Choosing a type fills in its starting values. A new event takes all of them; an existing one only gets the type and its tag, so nothing you set is overwritten. */
+  const pickType = async (t: string) => {
+    setType(t);
+    const d = defaultsFor(t, !!rule);
+    if (!d) return;
+    if (!occ) {
+      setPriority(d.priority); setReminders(d.reminders); setTrackDone(d.trackDone);
+      if (d.allDay) setAllDay(true);
+      if (d.repeat) setRule(d.repeat);
+    }
+    if (d.tag) {
+      const name = d.tag;
+      const tags = await store.shared.tags.query();
+      const id = tags.find((x) => x.name.toLowerCase() === name.toLowerCase())?.id ?? (await store.shared.tags.put({ name }));
+      setTagIds((cur) => (cur.includes(id as number) ? cur : [...cur, id as number]));
+    }
+  };
+  const startFrom = (id: string) => {
+    const p = FINANCE_PRESETS.find((x) => x.id === id);
+    if (!p) return;
+    if (!title.trim() || FINANCE_PRESETS.some((x) => x.title === title)) setTitle(p.title);
+    setRule(p.repeat);
+  };
+  /** A birthday about one person is titled for them, unless you already typed a title. */
+  const onContacts = async (ids: number[]) => {
+    setContactIds(ids);
+    if (type !== 'birthday' || ids.length !== 1 || (title.trim() && !title.endsWith("'s birthday"))) return;
+    const c = (await store.shared.contacts.query()).find((x) => x.id === ids[0]);
+    if (c) setTitle(birthdayTitle(c.name));
+  };
+
+  /** "Create scheduled item in Ledger" (or whatever module offers it for this type): checks the event, then opens that module's form. */
+  const offerHandoff = () => {
+    const f = build();
+    if (!f) return;
+    const exceptions = !!ev && (ev.skipped.length > 0 || Object.keys(ev.overrides).length > 0);
+    setHandoff(buildSeed({ title: f.title, startDate: f.startDate, notes: f.notes }, rule ? normalizeRule(rule) : null, todayISO(), exceptions));
+  };
+  const handedOver = async (r: HandoffResult) => {
+    const h = handoffFor(type);
+    const owner = h?.ownerName ?? 'the other module';
+    try {
+      if (occ) await retireEvent(occ.eventId, { module: h?.moduleId ?? 'unknown', recordId: r.recordId, note: `Now owned by ${owner}: ${r.label}` });
+      toast(occ ? `Created in ${owner}: ${r.label}. The calendar event was removed so it is listed once.` : `Created in ${owner}: ${r.label}`);
+      onClose();
+    } catch (e) {
+      setHandoff(null);
+      setError(`Created in ${owner}, but the calendar event could not be removed (${e instanceof Error ? e.message : 'unknown problem'}). Delete the event by hand so it is not listed twice.`);
+    }
+  };
 
   const applyLinks = async (eventId: number) => {
     for (const e of existing) if (removed.has(refKey(e.ref))) await store.shared.links.remove(e.linkId);
@@ -166,6 +223,30 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
           <label className="f">Title
             <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="What is it?" />
           </label>
+
+          <div className="cal-when">
+            <label className="f">Type
+              <select value={type} onChange={(e) => void pickType(e.target.value)}>
+                {EVENT_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                {type && !EVENT_TYPES.some((t) => t.id === type) && <option value={type}>{type}</option>}
+              </select>
+            </label>
+            {type === 'finance' && (
+              <label className="f">Start from
+                <select value="" onChange={(e) => startFrom(e.target.value)}>
+                  <option value="">Pick one…</option>
+                  {FINANCE_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+          {EVENT_TYPES.find((t) => t.id === type)?.hint && <p className="muted small">{EVENT_TYPES.find((t) => t.id === type)?.hint}</p>}
+          {handoffFor(type) && (
+            <p className="row">
+              <button type="button" className="btn" onClick={offerHandoff}>{handoffFor(type)!.label}…</button>
+              <span className="muted small">Optional. Only if you want {handoffFor(type)!.ownerName} to keep track of it. Otherwise it stays a normal calendar event.</span>
+            </p>
+          )}
 
           <label className="row cal-check"><input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day</label>
           <div className="cal-when">
@@ -216,7 +297,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
           <label className="row cal-check"><input type="checkbox" checked={trackDone} onChange={(e) => setTrackDone(e.target.checked)} /> Keep it as overdue until I mark it done</label>
 
           <div className="f"><span>Tags</span><TagPicker value={tagIds} onChange={setTagIds} /></div>
-          <div className="f"><span>People</span><ContactPicker value={contactIds} onChange={setContactIds} /></div>
+          <div className="f"><span>People</span><ContactPicker value={contactIds} onChange={(ids) => void onContacts(ids)} /></div>
           <div className="f"><span>Linked records</span>
             <RecordLinks
               existing={existing.map((e) => e.ref)} added={added} removed={removed}
@@ -241,6 +322,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
           </div>
         </form>
       </Modal>
+      {handoff && handoffFor(type) && <HandoffDialog handoff={handoffFor(type)!} seed={handoff} replacing={!!occ} onCreated={(r) => void handedOver(r)} onClose={() => setHandoff(null)} />}
       {ask?.kind === 'save' && <ScopeDialog verb="Change" onClose={() => setAsk(null)} onPick={(s) => { const f = ask.fields; setAsk(null); void doSave(f, s); }} />}
       {ask?.kind === 'delete' && <ScopeDialog verb="Delete" onClose={() => setAsk(null)} onPick={(s) => { setAsk(null); void doDelete(s); }} />}
     </>
