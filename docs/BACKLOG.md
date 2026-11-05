@@ -38,6 +38,8 @@ The prompt is `phase-3-today-prompt.md` (in the Claude project folder, not the r
 7. **The search and quick-add files import `react-router-dom` directly** (they live outside any module, so the module router's prefixing does not apply) and add the `/ledger` prefix themselves; the router-import test now allows exactly those three files.
 8. **A leftover test task** ("Sample list check") exists in the preview browser's own invented data; it is not in your real data.
 
+**Owner sign-off (2026-11-05):** Part A signed off. Steps 1-4, 6, 7, 10 passed; step 5 (real phone) to be checked after the push; step 9 (midnight) assumed to pass, not run by the owner. Step 8 led to a new idea, queued (not built, questions not yet asked): **a minimum balance ("floor") per account**, e.g. never let checking go below $2,000, to drive the cash-low alert and forecast instead of a single global level.
+
 **NOT built in Part A (by design):** the Today cards, search sources for tasks/events/contacts, the new quick-add box and event parser (Parts B to D); measurements on phone-sized profiles with realistic data (Part E); the two-device sync checks; the 38 other `confirm()` pop-ups.
 
 **Part A checklist (for the owner):**
