@@ -53,6 +53,8 @@
 .tk-actions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1); }
 .tk-linked { position: relative; display: inline-block; }
 .tk-linked-list { display: grid; gap: 2px; margin-top: 2px; padding: var(--sp-2); min-width: 160px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: var(--shadow-2); position: absolute; z-index: 6; left: 0; font-size: var(--fs-sm); }
+.tk-linked-item { display: flex; align-items: center; gap: var(--sp-2); }
+.tk-linked-item .tk-check { flex: none; }
 .tk-linked-list a { padding: 4px 6px; border-radius: 4px; }
 .tk-linked-list a:hover { background: var(--hover); }
 

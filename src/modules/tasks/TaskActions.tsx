@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { RecordId } from '../../core/entities';
 import { createTaskFrom } from '../../core/taskBridge';
+import { todayISO } from '../../lib/money';
+import { useToast } from '../../ui/Toast';
+import { completeTask, reopenTask } from './data';
 import { useLinkedTasks } from './linked';
 
 /**
@@ -10,6 +13,12 @@ import { useLinkedTasks } from './linked';
 export default function TaskActions({ module, id, label, title }: { module: string; id: RecordId; label: string; title?: string }) {
   const tasks = useLinkedTasks(module, id);
   const [open, setOpen] = useState(false);
+  const toast = useToast();
+  /** Mark done right here, without leaving the page. Undo puts it back (and removes a repeat's untouched next copy). */
+  const finish = async (taskId: number, name: string) => {
+    await completeTask(taskId, todayISO());
+    toast(`Done: ${name}`, () => reopenTask(taskId));
+  };
   return (
     <span className="tk-actions">
       {tasks.length > 0 && (
@@ -19,7 +28,12 @@ export default function TaskActions({ module, id, label, title }: { module: stri
           </button>
           {open && (
             <span className="tk-linked-list" role="list">
-              {tasks.map((t) => <a key={t.id} role="listitem" href={`#/tasks?task=${t.id}`}>{t.data.title}</a>)}
+              {tasks.map((t) => (
+                <span key={t.id} role="listitem" className="tk-linked-item">
+                  <button type="button" className="tk-check" role="checkbox" aria-checked="false" aria-label={`Mark done: ${t.data.title}`} onClick={() => void finish(t.id, t.data.title)} />
+                  <a href={`#/tasks?task=${t.id}`}>{t.data.title}</a>
+                </span>
+              ))}
             </span>
           )}
         </span>
