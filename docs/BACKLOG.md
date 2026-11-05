@@ -14,7 +14,46 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-04 (newest): Phase 2 PART C BUILT (Ledger on the calendar: click-through, Bill event -> Ledger scheduled item, Finance and Birthday event types). NOT committed or pushed. Part B signed off and pushed (94aa7f4); Part A pushed (e810001). Waiting for the owner's Part C checklist sign-off. Phase 3 not started.
+## STATUS 2026-11-04 (newest): Phase 3 PART A BUILT (foundations: app-wide search and Add, hooks for Today/search/quick-add, Today module shell, landing setting, four defect fixes). Committed locally, NOT pushed. Waiting for the owner's Part A checklist sign-off. Parts B to E not started.
+
+The prompt is `phase-3-today-prompt.md` (in the Claude project folder, not the repo); the facts behind it are `docs/phase3-audit.md`. Its decisions are fixed as written there.
+
+**What was built (Part A):**
+- **App-wide search and Add.** The search dialog and Ctrl+K and `/` moved out of Ledger's shell (`src/shell/GlobalFrame.tsx`); the Search and Add buttons now live in the top module bar and work in every module. Ledger's sidebar Search button stays. What they offer is still Ledger's (Parts C and D widen it).
+- **One bottom-of-phone rule.** The round + button, the toasts and the page's bottom padding sit above the module's tab bar if it has one (Ledger) and at the screen edge if not (Today, Calendar, Tasks). Toasts now sit above the + button instead of overlapping it.
+- **Registry hooks** `todayCards`, `searchSource`, `quickAdd` (typed, checked at start-up, documented in `docs/module-hooks.md`). No module uses them yet.
+- **Today module** (first in the switcher): an empty frame with the date. **Landing setting** in Settings > General (Today / last used / a module), shared across devices. `/` and unknown addresses follow it; old Ledger addresses (`#/budget`) still reach Ledger. `legacyTarget` now validates the landing module and never lets a one-page module claim an old address.
+- **Defects fixed:** (1) search actions split on the letter s instead of whitespace; (2) "Cash may drop to $0.00 today" no longer shows for a cash account with no transactions and nothing scheduled (real shortfalls still show); (3) midnight rollover: Ledger Home, Ledger's sidebar badge and net-worth snapshot, Tasks and Today now update their date when the day changes; (4) the Tasks List box uses a menu plus a new-name box, no browser pop-up.
+- **Backup:** the per-device Today keys (`today.layout.v1`, `today.hideAmounts.v1`) are in the preference list now, so they survive a restore once Part B writes them.
+
+**Verified:** 967 tests (23 new in `core/shellFoundations.test.ts`: landing, address routing, hook registry, palette word-splitting, the cash alert, backup keys), type check and build clean. In a real browser (invented data): the app opens to Today; Ctrl+K and `/` open search from Tasks and Calendar and an action opens the right Ledger page; Settings > General changes where `#/` goes (tried Tasks, then put back to Today); the + button and tab bar positions measured at 375 px in Today, Tasks, Calendar and Ledger (16 px clear of the edge or the tab bar) and at 700 px in Calendar; no sideways scroll; Add a transaction opens from Tasks; the task List menu shows. **Not run:** the toast position (only from the CSS), a real iPhone, the cash-alert fix in the browser (tests only), midnight rollover, backup restore and sync to a second device.
+
+**Judgment calls (please review):**
+1. **Search and Add moved to the top module bar** for every module, including Ledger on a computer (its top-bar Add button and phone search icon are gone; one set in the module bar instead). Ledger's sidebar Search button stays.
+2. **The Add menu is still Ledger's four items** in Calendar, Tasks and Today. I did not add "Add a task" or "Add event" (that is Part D), because Part A was to change nothing visible except the frame.
+3. **The cash alert rule:** shown only if a cash account exists AND there is something to forecast from (any transaction in a cash account, or any dated item in the forecast), and the dip is within 90 days. The Check-in page's own cash step uses a separate check that I did not change; it may still say something similar on an empty account (not verified).
+4. **Midnight rollover covers** Ledger Home, Ledger's sidebar badge and snapshot, Tasks and Today (checked every 30 s and on returning to the tab). Other Ledger pages and the quick-task form read the date when they open, so a page left open overnight keeps yesterday until you navigate. Say if you want those too.
+5. **Landing "Today" is the default for everyone**, including existing installs: the first launch after this goes to Today, which is an empty frame until Part B.
+6. **The landing setting is shared** (a settings row), like the other Today options. Per device would have meant a second storage place.
+7. **The search and quick-add files import `react-router-dom` directly** (they live outside any module, so the module router's prefixing does not apply) and add the `/ledger` prefix themselves; the router-import test now allows exactly those three files.
+8. **A leftover test task** ("Sample list check") exists in the preview browser's own invented data; it is not in your real data.
+
+**NOT built in Part A (by design):** the Today cards, search sources for tasks/events/contacts, the new quick-add box and event parser (Parts B to D); measurements on phone-sized profiles with realistic data (Part E); the two-device sync checks; the 38 other `confirm()` pop-ups.
+
+**Part A checklist (for the owner):**
+1. Open the app address with nothing after it: it opens **Today** (an empty frame with the date). The top bar shows the module switcher, Search, Add, sync, Settings.
+2. From **Calendar** and from **Tasks**: press Ctrl+K (or `/` when not typing) or click Search. Type "scheduled": the Ledger action opens Ledger's Scheduled page. Click **Add > Add a transaction**: the form opens on top of Calendar or Tasks.
+3. In Ledger: Ctrl+K and `/` still work, the sidebar Search button works, and the Add button is now in the top bar.
+4. **Settings > General**: change "Open to" to Tasks, then open the app address with nothing after it: it opens Tasks. Put it back to Today. Old links such as `#/budget` still open Ledger's Budget.
+5. **Phone** (or a narrow window, 375 px): the round + sits bottom right in Today, Calendar and Tasks with space below it, and above the tab bar in Ledger. Scroll to the bottom of a page: the last line is not hidden behind the button. Do the same at about 700 px.
+6. Add a task: the "added" message sits above the + button, not on it. Open a task: **List** shows a menu (and a box for a new list), no browser pop-up.
+7. In Search, type "add sched", then "new   transaction" (extra spaces): each finds its action.
+8. The $0 account alert: with a brand-new checking account that has no transactions and nothing scheduled, Ledger Home no longer says "Cash may drop to $0.00 today".
+9. Midnight: leave Today or Home open past midnight (or move the computer's clock past 12:00 am and wait half a minute): the date updates by itself.
+10. Backup and restore, and sync to a second device: the only new stored thing is the "Open to" choice (a normal settings row). Confirm it follows you to the other device.
+
+
+## STATUS 2026-11-04: Phase 2 PART C BUILT (Ledger on the calendar: click-through, Bill event -> Ledger scheduled item, Finance and Birthday event types). NOT committed or pushed. Part B signed off and pushed (94aa7f4); Part A pushed (e810001). Waiting for the owner's Part C checklist sign-off. Phase 3 not started.
 
 **Owner review of Part C (same day), fixed after commit 2d66089:** (1) Delete on the Scheduled page did nothing in the owner's browser: it used the browser's own confirm pop-up, which can be blocked. It now asks in an in-app dialog (Cancel keeps it, Delete removes it and its Calendar dates). About 38 other places in the app still use the browser pop-up and could behave the same way; not changed. (2) "Start from" now shows the chosen item. (3) The People and Tag boxes used the browser's suggestion pop-up, which opened far to the left of the box; they now use a normal menu ("Pick a person…", "Pick a tag…") plus a box for a new name. The Tasks form's List box uses the same suggestion pop-up and was not changed. Tests: 944.
 
