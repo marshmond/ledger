@@ -9,7 +9,7 @@ import { loadForecast } from '../../lib/forecastLive';
 import { useLedgerAlerts } from '../../pages/useLedgerAlerts';
 import { dayLabel } from '../calendar/time';
 import { maskAmounts } from '../today/logic';
-import { alertKey, isAlertHidden, loadAlertMemory, rememberAlert, restoreAlert, snoozeUntil } from '../today/settings';
+import { alertKey, isAlertHidden, isValidSnoozeDate, loadAlertMemory, rememberAlert, restoreAlert, snoozeUntil } from '../today/settings';
 
 /** Ledger's own address from an in-Ledger one (`/budget` becomes `#/ledger/budget`). */
 const ledgerHref = (to: string) => `#/ledger${to.startsWith('/') ? to : `/${to}`}`;
@@ -24,6 +24,7 @@ function AttentionCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
   const memory = useLiveQuery(() => loadAlertMemory(db), []);
   const [snoozing, setSnoozing] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);
+  const [customDate, setCustomDate] = useState('');
 
   const shown = alerts.filter((a) => !isAlertHidden(memory?.[alertKey(a)], today));
   const hidden = alerts.filter((a) => isAlertHidden(memory?.[alertKey(a)], today));
@@ -51,7 +52,10 @@ function AttentionCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
                         <span className="muted">Snooze until</span>
                         <button className="link" onClick={() => { void rememberAlert(key, { state: 'snoozed', until: snoozeUntil(today, 1) }); setSnoozing(null); }}>tomorrow</button>
                         <button className="link" onClick={() => { void rememberAlert(key, { state: 'snoozed', until: snoozeUntil(today, 7) }); setSnoozing(null); }}>next week</button>
-                        <button className="link" onClick={() => setSnoozing(null)}>Cancel</button>
+                        <span className="muted">or</span>
+                        <input type="date" aria-label="Snooze until a date" value={customDate} min={snoozeUntil(today, 1)} onChange={(e) => setCustomDate(e.target.value)} style={{ minHeight: 32, width: 'auto' }} />
+                        <button className="link" disabled={!isValidSnoozeDate(customDate, today)} onClick={() => { void rememberAlert(key, { state: 'snoozed', until: customDate }); setSnoozing(null); setCustomDate(''); }}>Snooze</button>
+                        <button className="link" onClick={() => { setSnoozing(null); setCustomDate(''); }}>Cancel</button>
                       </>
                     ) : (
                       <>

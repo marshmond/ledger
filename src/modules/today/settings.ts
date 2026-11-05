@@ -64,6 +64,13 @@ export function isAlertHidden(mem: AlertMemory | undefined, today: string): bool
 
 export const snoozeUntil = (today: string, days: number) => addDays(today, days);
 
+/** A custom snooze date must be a real calendar date after today (YYYY-MM-DD). */
+export function isValidSnoozeDate(date: string, today: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const d = new Date(`${date}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === date && date > today;
+}
+
 export async function loadAlertMemory(d: FinanceDB = db): Promise<AlertMemoryMap> {
   const rows = await d.settings.where('key').startsWith(ALERT_PREFIX).toArray();
   const out: AlertMemoryMap = {};

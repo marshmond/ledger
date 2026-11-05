@@ -11,6 +11,7 @@ import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn 
 import TxnForm from './TxnForm';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
 import CreditLimit from './CreditLimit';
+import MinBalance from './MinBalance';
 import RenameAccount from './RenameAccount';
 import { canBePrimary, getPrimaryAccountId, setPrimaryAccountId } from '../lib/primaryAccount';
 import { EmptyState, signedCents } from '../ui/components';
@@ -99,6 +100,7 @@ export default function LedgerPage() {
       )}
 
       {account.kind === 'credit_card' && <CreditLimit account={account} balance={balance} />}
+      {!account.closed && (account.kind === 'checking' || account.kind === 'savings') && <MinBalance account={account} balance={balance} />}
 
       {myCandidates.length > 0 && (
         <div className="card">

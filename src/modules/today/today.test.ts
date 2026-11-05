@@ -4,7 +4,7 @@ import { cashOutlook } from '../../lib/cashOutlook';
 import type { CalItem } from '../calendar/useCalendarData';
 import { dayHeading, maskAmounts, moduleOf, overdueGroups, reminderItems, todayList, upcomingDays } from './logic';
 import { defaultLayout, HIDE_AMOUNTS_KEY, LAYOUT_KEY, loadHideAmounts, loadLayout, moveEntry, resolveLayout, saveHideAmounts, saveLayout, toggleEntryHidden, toggleEntrySize } from './layout';
-import { alertKey, DEFAULT_TODAY_SETTINGS, isAlertHidden, loadAlertMemory, loadTodaySettings, normalizeAlertMemory, normalizeTodaySettings, rememberAlert, restoreAlert, saveTodaySettings } from './settings';
+import { alertKey, DEFAULT_TODAY_SETTINGS, isAlertHidden, isValidSnoozeDate, loadAlertMemory, loadTodaySettings, normalizeAlertMemory, normalizeTodaySettings, rememberAlert, restoreAlert, saveTodaySettings } from './settings';
 
 const TODAY = '2026-11-05';
 let n = 0;
@@ -180,6 +180,20 @@ describe('dismissed and snoozed alerts (shared)', () => {
     expect(isAlertHidden({ state: 'snoozed', until: '2026-11-06', at: 1 }, '2026-11-06')).toBe(false);
     expect(isAlertHidden({ state: 'snoozed', at: 1 }, TODAY)).toBe(false);
     expect(isAlertHidden({ state: 'active', at: 1 }, TODAY)).toBe(false);
+  });
+  it('a custom snooze date must be a real date after today', () => {
+    expect(isValidSnoozeDate('2026-11-06', TODAY)).toBe(true);
+    expect(isValidSnoozeDate('2027-02-01', TODAY)).toBe(true);
+    expect(isValidSnoozeDate(TODAY, TODAY)).toBe(false);
+    expect(isValidSnoozeDate('2026-11-01', TODAY)).toBe(false);
+    expect(isValidSnoozeDate('', TODAY)).toBe(false);
+    expect(isValidSnoozeDate('2026-02-30', TODAY)).toBe(false);
+    expect(isValidSnoozeDate('tomorrow', TODAY)).toBe(false);
+  });
+  it('a snooze to a custom date hides until that day, then shows again', () => {
+    const m = { state: 'snoozed' as const, until: '2026-12-25', at: 1 };
+    expect(isAlertHidden(m, '2026-12-24')).toBe(true);
+    expect(isAlertHidden(m, '2026-12-25')).toBe(false);
   });
   it('ignores bad stored values', () => {
     expect(normalizeAlertMemory(null)).toBeNull();
