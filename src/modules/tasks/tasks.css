@@ -1,6 +1,6 @@
 /* Tasks module. Builds on calendar.css (forms, chips, priority marks) and the app's design tokens. */
 
-.tk { max-width: 900px; }
+.tk { max-width: none; }
 .tk-quick { margin: var(--sp-2) 0 var(--sp-3); }
 .tk-preview { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
 .tk-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); font-weight: 600; font-size: var(--fs-xs); }

@@ -1,7 +1,7 @@
 /* Projects module. Uses the app's design tokens; everything is a stack of cards that is one column on a phone. */
 
-.pj-main { padding-bottom: var(--sp-6, 48px); }
-.pj { max-width: 900px; }
+.pj-main { padding-bottom: var(--sp-6, 48px); max-width: min(1500px, 100%); } /* same width as Today, Calendar and Tasks */
+.pj { max-width: none; }
 
 .pj-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; padding: var(--sp-1) 0 var(--sp-2); scrollbar-width: none; }
 .pj-tabs::-webkit-scrollbar { display: none; }
