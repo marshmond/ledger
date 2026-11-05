@@ -63,6 +63,11 @@ export interface DueProvider {
    * must not write anything, and may be called often (it is re-run when the module's data changes).
    */
   getDueItems(q: DueQuery): Promise<DerivedItem[]> | DerivedItem[];
+  /**
+   * Optional. How many OPEN items are dated before `cutoff` (older than the Today screen's overdue window), and where to see them in
+   * the module's own view. Today shows this as "N older items". Read-only, like `getDueItems`.
+   */
+  olderThan?(cutoff: string, today: string): Promise<{ count: number; path: string } | null> | { count: number; path: string } | null;
 }
 
 const providers: DueProvider[] = [];

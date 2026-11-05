@@ -101,4 +101,9 @@ export const ledgerDueProvider: DueProvider = {
   layerName: 'Finance',
   color: LEDGER_LAYER_COLOR,
   getDueItems: (q) => ledgerDueItems(db, q),
+  /** Scheduled items never approved or skipped and dated before the cutoff, for Today's "N older items" link to Ledger Scheduled. */
+  olderThan: async (cutoff, today) => {
+    const count = (await dueInstances(db, today, 0)).filter((x) => x.date < cutoff).length;
+    return count > 0 ? { count, path: '/ledger/scheduled' } : null;
+  },
 };

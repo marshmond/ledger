@@ -45,4 +45,9 @@ export const tasksDueProvider: DueProvider = {
   layerName: 'Tasks',
   color: TASKS_LAYER_COLOR,
   getDueItems: (q) => taskDueItems(db, q),
+  /** Open tasks due before the cutoff, for Today's "N older items" link to the Tasks Overdue view. */
+  olderThan: async (cutoff) => {
+    const count = (await loadTasks(db)).filter((t) => t.data.status !== 'done' && !!t.data.dueDate && t.data.dueDate < cutoff).length;
+    return count > 0 ? { count, path: '/tasks?v=overdue' } : null;
+  },
 };

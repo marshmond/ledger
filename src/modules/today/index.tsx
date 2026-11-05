@@ -1,4 +1,5 @@
 import type { ModuleDef } from '../../core/registry';
+import { TODAY_CARDS } from './cards';
 import TodayModule, { TODAY_BASE } from './TodayModule';
 
 /** Today, module #4 (listed first): one screen across all modules. Cards are contributed by the modules through `contributes.todayCards`. */
@@ -9,4 +10,6 @@ export const todayModule: ModuleDef = {
   Component: TodayModule,
   routePaths: ['/'],
   nav: [],
+  // Dated things (events, tasks, bills, vests, tax dates) come from every module's due provider; these cards present them.
+  contributes: { todayCards: TODAY_CARDS },
 };

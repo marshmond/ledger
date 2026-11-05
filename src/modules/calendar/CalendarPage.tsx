@@ -77,6 +77,15 @@ export default function CalendarPage() {
 
   const openItem = (i: CalItem) => (i.derived ? setDetail(i) : i.occ && setEditor({ occ: i.occ }));
 
+  // A link such as #/calendar?d=2026-11-05&open=e:12:2026-11-05 (from the Today screen) opens that event, then tidies the address.
+  const openParam = sp.get('open');
+  useEffect(() => {
+    if (!openParam || !data) return;
+    const found = data.items.find((i) => i.key === openParam);
+    const next = new URLSearchParams(sp); next.delete('open'); setSp(next, { replace: true });
+    if (found) openItem(found);
+  }, [openParam, data]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const step = (dir: 1 | -1) => {
     if (view === 'month') go({ d: addMonths(`${anchor.slice(0, 7)}-01`, dir, 1) });
     else if (view === 'agenda') go({ d: addDays(anchor, dir * rangeDays) });
