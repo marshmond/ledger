@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { cashOutlook } from '../../lib/cashOutlook';
 import type { CalItem } from '../calendar/useCalendarData';
-import { dayHeading, maskAmounts, moduleOf, overdueGroups, reminderItems, todayList, upcomingDays } from './logic';
+import { dayHeading, limitOverdue, maskAmounts, overdueMorePath, moduleOf, overdueGroups, reminderItems, todayList, upcomingDays } from './logic';
 import { defaultLayout, HIDE_AMOUNTS_KEY, LAYOUT_KEY, loadHideAmounts, loadLayout, moveEntry, resolveLayout, saveHideAmounts, saveLayout, toggleEntryHidden, toggleEntrySize } from './layout';
 import { alertKey, DEFAULT_TODAY_SETTINGS, isAlertHidden, isValidSnoozeDate, loadAlertMemory, loadTodaySettings, normalizeAlertMemory, normalizeTodaySettings, rememberAlert, restoreAlert, saveTodaySettings } from './settings';
 
@@ -57,6 +57,29 @@ describe('Overdue card', () => {
   it('names the module an item belongs to', () => {
     expect(moduleOf(item({ module: 'ledger' }))).toBe('ledger');
     expect(moduleOf(item({}))).toBe('calendar');
+  });
+});
+
+describe('Overdue list limit', () => {
+  const mk = (n: number) => Array.from({ length: n }, (_, i) => ({ key: 'k' + i }) as unknown as CalItem);
+  const groups = [{ moduleId: 'tasks', items: mk(8) }, { moduleId: 'ledger', items: mk(6) }, { moduleId: 'calendar', items: mk(2) }];
+  it('lists the first rows across the groups in order and counts what each module has beyond that', () => {
+    const { shown, more } = limitOverdue(groups, 10);
+    expect(shown.map((g) => [g.moduleId, g.items.length])).toEqual([['tasks', 8], ['ledger', 2]]);
+    expect(more).toEqual([{ moduleId: 'ledger', count: 4 }, { moduleId: 'calendar', count: 2 }]);
+  });
+  it('shows everything when the limit is large enough, and nothing hidden is lost', () => {
+    const all = limitOverdue(groups, 25);
+    expect(all.more).toEqual([]);
+    expect(all.shown.reduce((s, g) => s + g.items.length, 0)).toBe(16);
+    const few = limitOverdue(groups, 5);
+    expect(few.shown.reduce((s, g) => s + g.items.length, 0) + few.more.reduce((s, m) => s + m.count, 0)).toBe(16);
+  });
+  it('points each module to the screen that lists all of its overdue items', () => {
+    expect(overdueMorePath('tasks', '2026-11-05', 30)).toBe('/tasks?v=overdue');
+    expect(overdueMorePath('ledger', '2026-11-05', 30)).toBe('/ledger/scheduled');
+    expect(overdueMorePath('calendar', '2026-11-05', 30)).toBe('/calendar?v=agenda&d=2026-10-06');
+    expect(overdueMorePath('vault', '2026-11-05', 30)).toBe('/vault');
   });
 });
 
@@ -160,11 +183,19 @@ describe('Today settings (shared)', () => {
     expect(normalizeTodaySettings({ lookAheadDays: 14 }).lookAheadDays).toBe(14);
     expect(normalizeTodaySettings({ lookAheadDays: 2.5 }).lookAheadDays).toBe(7);
   });
+  it('the overdue list length is one of 5, 10, 15, 20, 25 (default 25)', () => {
+    expect(DEFAULT_TODAY_SETTINGS.overdueRows).toBe(25);
+    for (const n of [5, 10, 15, 20, 25]) expect(normalizeTodaySettings({ overdueRows: n }).overdueRows).toBe(n);
+    for (const bad of [0, 7, 30, 'x', null]) expect(normalizeTodaySettings({ overdueRows: bad }).overdueRows).toBe(25);
+    expect(normalizeTodaySettings({ lookAheadDays: 14 })).toEqual({ lookAheadDays: 14, overdueRows: 25 });
+  });
   it('saves and loads from the settings table', async () => {
     const d = new FinanceDB('test-today-settings');
     expect((await loadTodaySettings(d)).lookAheadDays).toBe(7);
     await saveTodaySettings({ lookAheadDays: 14 }, d);
     expect((await loadTodaySettings(d)).lookAheadDays).toBe(14);
+    await saveTodaySettings({ overdueRows: 10 }, d);
+    expect(await loadTodaySettings(d)).toEqual({ lookAheadDays: 14, overdueRows: 10 });
   });
 });
 

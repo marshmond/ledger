@@ -10,7 +10,7 @@ import '../calendar/calendar.css';
 import './today.css';
 import CardBoundary from './CardBoundary';
 import { HIDE_AMOUNTS_KEY, loadHideAmounts, loadLayout, moveEntry, resetLayout, saveHideAmounts, saveLayout, toggleEntryHidden, toggleEntrySize, type LayoutEntry } from './layout';
-import { LOOK_AHEAD_CHOICES, loadTodaySettings, saveTodaySettings } from './settings';
+import { LOOK_AHEAD_CHOICES, OVERDUE_ROWS_CHOICES, loadTodaySettings, saveTodaySettings } from './settings';
 import { TodayDataProvider } from './TodayData';
 
 export const TODAY_BASE = '/today';
@@ -83,10 +83,15 @@ function TodayScreen({ today }: { today: string }) {
       {editing && (
         <div className="card edit-panel">
           <div className="card-head"><strong>Edit Today</strong><button className="link" onClick={reset}>Reset to default</button></div>
-          <p className="muted">Use the arrows to reorder, the width button to make a card wider or narrower (computer screens), and Hide to take one off. The layout is saved on this device only. The look-ahead below is shared with your other devices.</p>
+          <p className="muted">Use the arrows to reorder, the width button to make a card wider or narrower (computer screens), and Hide to take one off. The layout is saved on this device only. The two settings below are shared with your other devices.</p>
           <label className="f" style={{ maxWidth: 260 }}>Coming up looks ahead
             <select value={settings?.lookAheadDays ?? 7} onChange={(e) => void saveTodaySettings({ lookAheadDays: Number(e.target.value) })}>
               {LOOK_AHEAD_CHOICES.map((n) => <option key={n} value={n}>{n} days</option>)}
+            </select>
+          </label>
+          <label className="f" style={{ maxWidth: 260 }}>Overdue lists up to
+            <select value={settings?.overdueRows ?? 25} onChange={(e) => void saveTodaySettings({ overdueRows: Number(e.target.value) })}>
+              {OVERDUE_ROWS_CHOICES.map((n) => <option key={n} value={n}>{n} items</option>)}
             </select>
           </label>
           {hiddenCards.length > 0

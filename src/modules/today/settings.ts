@@ -11,15 +11,22 @@ import { addDays } from '../../lib/dates';
 export interface TodaySettings {
   /** How many days ahead "Coming up" looks. */
   lookAheadDays: number;
+  /** How many overdue items the Overdue card lists before pointing to the module that holds the rest. */
+  overdueRows: number;
 }
-export const DEFAULT_TODAY_SETTINGS: TodaySettings = { lookAheadDays: 7 };
+export const DEFAULT_TODAY_SETTINGS: TodaySettings = { lookAheadDays: 7, overdueRows: 25 };
 export const LOOK_AHEAD_CHOICES = [3, 7, 14, 30] as const;
+export const OVERDUE_ROWS_CHOICES = [5, 10, 15, 20, 25] as const;
 const SETTINGS_KEY = 'todaySettings';
 
 export function normalizeTodaySettings(raw: unknown): TodaySettings {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Partial<TodaySettings>;
   const n = Number(r.lookAheadDays);
-  return { lookAheadDays: Number.isInteger(n) && n >= 1 && n <= 60 ? n : DEFAULT_TODAY_SETTINGS.lookAheadDays };
+  const rows = Number(r.overdueRows);
+  return {
+    lookAheadDays: Number.isInteger(n) && n >= 1 && n <= 60 ? n : DEFAULT_TODAY_SETTINGS.lookAheadDays,
+    overdueRows: (OVERDUE_ROWS_CHOICES as readonly number[]).includes(rows) ? rows : DEFAULT_TODAY_SETTINGS.overdueRows,
+  };
 }
 export async function loadTodaySettings(d: FinanceDB = db): Promise<TodaySettings> {
   return normalizeTodaySettings((await d.settings.get(SETTINGS_KEY))?.value);

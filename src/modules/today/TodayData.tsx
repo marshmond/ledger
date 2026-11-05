@@ -27,10 +27,11 @@ export interface TodayData {
   items: CalItem[] | undefined;
   overdueDays: number;
   lookAheadDays: number;
+  overdueRows: number;
   older: OlderLink[];
 }
 
-const Ctx = createContext<TodayData>({ today: '', items: undefined, overdueDays: 30, lookAheadDays: 7, older: [] });
+const Ctx = createContext<TodayData>({ today: '', items: undefined, overdueDays: 30, lookAheadDays: 7, overdueRows: 25, older: [] });
 export const useTodayData = () => useContext(Ctx);
 
 export const moduleName = (id: string) => (id === 'calendar' ? 'Calendar' : getModule(id)?.name ?? id);
@@ -40,6 +41,7 @@ export function TodayDataProvider({ today, children }: { today: string; children
   const settings = useLiveQuery(() => loadTodaySettings(), []);
   const calSettings = useLiveQuery(() => loadCalendarSettings(), []);
   const lookAheadDays = settings?.lookAheadDays ?? 7;
+  const overdueRows = settings?.overdueRows ?? 25;
   const overdueDays = calSettings?.overdueDays ?? 30;
   const data = useCalendarData(today, addDays(today, lookAheadDays), true, now);
 
@@ -58,8 +60,8 @@ export function TodayDataProvider({ today, children }: { today: string; children
   });
 
   const value = useMemo<TodayData>(
-    () => ({ today, items: data?.items, overdueDays, lookAheadDays, older: olderRaw ?? [] }),
-    [today, data, overdueDays, lookAheadDays, olderRaw],
+    () => ({ today, items: data?.items, overdueDays, lookAheadDays, overdueRows, older: olderRaw ?? [] }),
+    [today, data, overdueDays, lookAheadDays, overdueRows, olderRaw],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

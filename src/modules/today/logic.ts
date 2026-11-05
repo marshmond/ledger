@@ -36,6 +36,28 @@ export function overdueGroups(items: CalItem[], today: string, overdueDays: numb
   return groups;
 }
 
+/** The first `max` overdue items across the groups, in order, plus how many each module has beyond that. */
+export function limitOverdue(groups: OverdueGroup[], max: number): { shown: OverdueGroup[]; more: { moduleId: string; count: number }[] } {
+  let left = Math.max(0, max);
+  const shown: OverdueGroup[] = [];
+  const more: { moduleId: string; count: number }[] = [];
+  for (const g of groups) {
+    const take = g.items.slice(0, left);
+    left -= take.length;
+    if (take.length > 0) shown.push({ ...g, items: take });
+    if (g.items.length > take.length) more.push({ moduleId: g.moduleId, count: g.items.length - take.length });
+  }
+  return { shown, more };
+}
+
+/** Where to see every overdue item of a module (a full address such as `/tasks?v=overdue`). */
+export function overdueMorePath(moduleId: string, today: string, overdueDays: number): string {
+  if (moduleId === 'tasks') return '/tasks?v=overdue';
+  if (moduleId === 'ledger') return '/ledger/scheduled';
+  if (moduleId === 'calendar') return `/calendar?v=agenda&d=${addDays(today, -Math.max(0, overdueDays))}`;
+  return `/${moduleId}`;
+}
+
 export interface UpcomingDay {
   date: string;
   items: CalItem[];

@@ -1,3 +1,4 @@
+import PayeeInput from '../ui/PayeeInput';
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, seedAssetClassesIfEmpty } from '../db';
@@ -66,8 +67,7 @@ function HoldingForm({ account, securities, classes, onDone }: { account: InvAcc
   return (
     <div className="card">
       <div className="grid">
-        <label className="f">Ticker<input value={ticker} onChange={(e) => setTicker(e.target.value)} placeholder="VTI" list={`tk-${account.id}`} />
-          <datalist id={`tk-${account.id}`}>{securities.map((s) => <option key={s.id} value={s.ticker}>{s.name}</option>)}</datalist>
+        <label className="f">Ticker<PayeeInput value={ticker} onChange={setTicker} options={securities.map((s) => s.ticker)} placeholder="VTI" />
         </label>
         <label className="f">Shares<input value={shares} onChange={(e) => setShares(e.target.value)} inputMode="decimal" placeholder="0" /></label>
         <MoneyField label="Total cost basis (optional)" cents={basis} onChange={setBasis} />

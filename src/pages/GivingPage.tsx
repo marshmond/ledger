@@ -1,3 +1,4 @@
+import PayeeInput from '../ui/PayeeInput';
 import { useMemo, useState } from 'react';
 import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -85,8 +86,7 @@ export default function GivingPage() {
       <Collapsible id="giving.add" title="Log a gift">
         <div className="row">
           <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-          <label className="f">Charity<input list="charities" value={charity} onChange={(e) => setCharity(e.target.value)} placeholder="Food Bank" /></label>
-          <datalist id="charities">{charities.map((c) => <option key={c} value={c} />)}</datalist>
+          <label className="f">Charity<PayeeInput value={charity} onChange={setCharity} options={charities} placeholder="Food Bank" /></label>
           <label className="f">What you gave
             <select value={kind} onChange={(e) => setKind(e.target.value as Donation['kind'])}>{(Object.keys(KIND) as Donation['kind'][]).map((k) => <option key={k} value={k}>{KIND[k]}</option>)}</select>
           </label>

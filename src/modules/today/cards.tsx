@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type { TodayCardDef, TodayCardProps } from '../../core/registry';
 import { dayLabel } from '../calendar/time';
-import { overdueGroups, reminderItems, todayList, upcomingDays, dayHeading } from './logic';
+import { limitOverdue, overdueGroups, overdueMorePath, reminderItems, todayList, upcomingDays, dayHeading } from './logic';
 import { moduleName, useTodayData } from './TodayData';
 import { TodayRow } from './TodayRow';
 
@@ -27,9 +27,11 @@ function AgendaCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
 }
 
 function OverdueCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
-  const { items, overdueDays, older } = useTodayData();
+  const { items, overdueDays, overdueRows, older } = useTodayData();
   const groups = useMemo(() => (items ? overdueGroups(items, today, overdueDays) : []), [items, today, overdueDays]);
   const total = groups.reduce((s, g) => s + g.items.length, 0);
+  // The first rows are listed (the number is a setting); the rest are one link away in the module that holds them. The badge shows the true total.
+  const { shown, more } = useMemo(() => limitOverdue(groups, overdueRows), [groups, overdueRows]);
   useReportEmpty(!!items && total === 0 && older.length === 0, reportEmpty);
   return (
     <section className="card" aria-label="Overdue">
@@ -37,12 +39,19 @@ function OverdueCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
       {!items ? <Loading /> : (
         <>
           {total === 0 && <p className="muted" style={{ margin: 0 }}>Nothing overdue in the last {overdueDays} days.</p>}
-          {groups.map((g) => (
+          {shown.map((g) => (
             <div key={g.moduleId} className="td-group">
               <h3>{moduleName(g.moduleId)}</h3>
               <ul className="plain td-list">{g.items.map((i) => <TodayRow key={i.key} item={i} hideAmounts={hideAmounts} when={dayLabel(i.firstDay)} />)}</ul>
             </div>
           ))}
+          {more.length > 0 && (
+            <p className="td-older">
+              {more.map((m, k) => (
+                <span key={m.moduleId}>{k > 0 && ' · '}<a href={`#${overdueMorePath(m.moduleId, today, overdueDays)}`}>Show {m.count} more overdue {m.count === 1 ? 'item' : 'items'} in {moduleName(m.moduleId)}</a></span>
+              ))}
+            </p>
+          )}
           {older.length > 0 && (
             <p className="td-older">
               {older.map((o, k) => (

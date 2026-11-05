@@ -1,4 +1,4 @@
-import { forwardRef, useState, type FocusEventHandler } from 'react';
+import { forwardRef, useState, type CSSProperties, type FocusEventHandler } from 'react';
 
 /**
  * A text box with an in-app suggestion list directly under it (the browser's own suggestion pop-up, `datalist`, can open far from the box).
@@ -9,8 +9,10 @@ const PayeeInput = forwardRef<HTMLInputElement, {
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
+  /** Style for the wrapper (for example a fixed width). */
+  style?: CSSProperties;
   onBlur?: FocusEventHandler<HTMLInputElement>;
-}>(function PayeeInput({ value, onChange, options, placeholder, onBlur }, ref) {
+}>(function PayeeInput({ value, onChange, options, placeholder, style, onBlur }, ref) {
   const [open, setOpen] = useState(false);
   const [cur, setCur] = useState(-1);
   const q = value.trim().toLowerCase();
@@ -18,7 +20,7 @@ const PayeeInput = forwardRef<HTMLInputElement, {
   const pick = (o: string) => { onChange(o); setOpen(false); setCur(-1); };
 
   return (
-    <span className="payee-wrap">
+    <span className="payee-wrap" style={style}>
       <input
         ref={ref}
         value={value}

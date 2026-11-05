@@ -14,7 +14,59 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): Phase 3 PART D BUILT (global quick-add, the Add box). NOT committed, NOT pushed. Waiting for the owner's Part D checklist sign-off. Part E not started.
+## STATUS 2026-11-05 (newest): Phase 3 PART E BUILT (verification and tuning). SIGNED OFF 2026-11-05 (all final checklist items passed, including the open Part A, C and D steps), committed and pushed. PHASE 3 IS COMPLETE. Phase 4 is NOT started.
+
+Owner decisions: heavy invented data; also replace the remaining browser suggestion pop-ups; fix only obvious speed problems.
+
+**What was done (Part E):**
+- **Speed measured** (desktop browser, no slowdown, 20,000 transactions + 1,500 tasks + 600 events + 150 scheduled items, switching screens inside the app; 4 runs each; 'settled' = nothing on screen changed for 0.35 s; 'longest block' = the longest time the page was frozen):
+  - Calendar: first content 0.15 to 0.3 s, settled about 0.25 s, longest block about 0.1 to 0.14 s.
+  - Tasks: first content 0.1 to 0.2 s, settled 0.1 to 0.2 s, longest block 0.06 to 0.13 s.
+  - Ledger Home: first content 0.03 to 0.5 s, settled about 0.9 to 1.0 s, longest block 0.13 to 0.21 s.
+  - Today BEFORE the fix: settled 0.95 to 1.5 s, longest block 0.49 to 0.69 s, about 9,700 page elements.
+  - Today AFTER the fix: first content 0.03 to 0.24 s, settled 0.57 to 0.87 s, longest block 0.16 to 0.23 s, about 2,000 elements.
+  - Search (from Part C, same data): about 25 ms per search, about 130 ms from typing to results.
+- **The one obvious problem, fixed:** with that much data, Today's Overdue card drew 643 rows at once. It now lists the first rows only (a shared setting: **Edit layout > Overdue lists up to 5, 10, 15, 20 or 25 items**, default 25, next to the look-ahead setting) and, beyond that, shows a link per module such as "Show 35 more overdue items in Tasks" that opens the module's own list (Tasks: Overdue view; Ledger: Scheduled; Calendar: Agenda from the start of the overdue window). The count badge always shows the true total. Checked in a real browser with 40 invented overdue tasks (set to 25: 25 rows and "Show 15 more"; set to 5: 5 rows and "Show 35 more"); removed again.
+- **Slowest remaining part** is about 0.6 to 0.9 s of waiting for the cash forecast (about 0.18 s of it) and alerts to finish over 20,000 transactions; Ledger Home does the same work. Not changed (proposal: none needed unless it feels slow on your phone).
+- **Widths:** at 700 px (the 641 to 899 range) and at 320 px (narrow phone), Today, Calendar, Tasks and Ledger have no sideways scroll; the round + sits in the bottom corner (above the tab bar in Ledger) and nothing was under it; the search dialog and Add box fit the screen.
+- **Real backup and restore, run in the browser:** built a 5.3 MB backup of the heavy data, deleted 63 transactions and changed the Today layout and Hide amounts settings, then restored: all 20,009 transactions came back and both settings came back exactly. 
+- **Pop-ups replaced:** the giving charity box, the investment ticker box and the RSU grant ticker box now use the in-app suggestion list (like the payee box). No browser pop-up lists remain in the app.
+- Test data was all removed again (the browser is back to its original counts).
+
+**Verified:** 1,046 tests, type check and production build clean.
+
+**NOT verified (honest list):** speed on a phone-speed processor (my machine has no slowdown, and the preview tool cannot throttle it; your phone is the real test); the round + on a real iPhone; two real devices syncing; midnight rollover (see steps below); the new suggestion list on the Investments and RSU grant screens (type-checked, and the Giving screen was opened in a browser, but I did not open an investment account or the grant form); Today with 30-day look-ahead on heavy data.
+
+**Judgment calls (please review):**
+1. Overdue lists 25 rows by default (your choice of 5 to 25 in Edit layout). The "more" link goes to each module's own screen rather than expanding in place. The Calendar link opens the Agenda from the start of the overdue window, which shows only the next 14 days from there, so it may not list every Calendar item (Calendar events are rarely the overdue ones).
+2. Only Overdue is capped. Coming up (up to 30 days) and Today's own list are not; they were 105 and 35 rows in the test.
+3. I did not slow the processor, so I cannot say how a phone will feel; the numbers above are a desktop baseline.
+4. The ticker boxes list tickers only (the company name is not shown next to each suggestion any more).
+
+**Deferred or skipped, and why:**
+- Phone-speed measurement: needs a real device.
+- Two-device and midnight checks: need your real devices (steps below).
+- A cap or collapse for the other cards: not needed on these numbers.
+- Ledger fields for card due days and subscriptions, and real push notifications (see the notes at the top of this file): later phase.
+- Part D item still open from you: re-test steps 3, 4, 5, 7, 9 and 11.
+
+**Final Phase 3 checklist (for the owner):**
+Part E items
+1. Open Today on your real data, on desktop and phone. Does it feel quick? Note anything slow and on which device. Overdue lists up to the number you choose in Edit layout (5, 10, 15, 20 or 25); if there are more, a link such as "Show N more overdue items in Tasks" opens that module's own list. Try changing the number.
+2. Narrow and mid widths: at about 700 px wide (a small window on desktop, or a tablet) and on a small phone, open Today, Calendar, Tasks and Ledger. No sideways scrolling; the + button covers nothing; open Search and the Add box and check they fit.
+3. Suggestion lists: Giving (charity), an investment account (ticker) and the RSU grant form (ticker): each shows a list directly under the box as you type, and picking one fills the box.
+4. Backup round trip on your real data: Settings > Backup, export, then restore the same file. Afterwards your accounts, tasks and events are all there, Today's layout and Hide amounts are as you had them.
+Two-device checks (I cannot do these)
+5. Today layout is per device: on the phone, hide a card or change its width; the desktop layout does not change (and the other way round). Hide amounts is also per device.
+6. Dismissed or snoozed alerts are shared: on the desktop, dismiss an alert on Today; after the next sync the phone no longer shows it (and Bring back on one returns it on the other).
+7. Edit on both: add a task on the phone and an event on the desktop; after syncing, both appear on both devices and on Today.
+Midnight
+8. Leave Today open on a screen past midnight (or set the computer clock to a few minutes before midnight). Within about 30 seconds after midnight the date heading changes, the Today list switches to the new day, and what was due yesterday moves to Overdue.
+Earlier parts still open
+9. Part D steps 3, 4, 5, 7, 9 and 11 (re-test after the fixes); Part C steps 10 and 11; Part A step 5 (the round + on a real phone).
+10. Check the GitHub Actions tab shows green after the Part D push and after any push of this part.
+
+## STATUS 2026-11-05: Phase 3 PART D BUILT (global quick-add, the Add box). Committed and pushed (78fc303). Owner re-test of steps 3, 4, 5, 7, 9 and 11 still open.
 
 **Owner's first checklist pass (2026-11-05):** steps 1, 2, 6, 8, 10 passed; 11 to be tested later. Steps 3, 4, 7, 9 failed on one bug: after typing a shortcut (`t `, `e `) the next keystroke dropped the destination and went back to the opening question. FIXED the same day (the choice now sticks while typing; checked in a real browser with typed keystrokes: `t buy milk tomorrow` stays on Task, clicking Event keeps the words). Also fixed: the cursor now starts in the text box when the box opens and after each choice. Step 5: the payee suggestion list opens off to the left (the browser's own pop-up list, the same quirk seen earlier in Ledger's quick form). FIXED the same day: the payee box in both transaction forms (the quick form and the full form) now uses an in-app suggestion list directly under the box (new `src/ui/PayeeInput.tsx`; up to 6 matches, click, arrow keys and Enter, Esc closes) instead of the browser pop-up. Checked in a real browser. Other boxes that still use the browser pop-up (giving charities, investment tickers, RSU grant tickers) are unchanged. Awaiting re-test of 3, 4, 5, 7, 9.
 

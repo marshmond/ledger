@@ -1,3 +1,4 @@
+import PayeeInput from '../ui/PayeeInput';
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -245,8 +246,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
             <>
               <div className="row">
                 <label className="f">Stock ticker
-                  <input list="grant-tickers" style={{ width: 120 }} value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="e.g. ACME" />
-                  <datalist id="grant-tickers">{securities.map((s) => <option key={s.id} value={s.ticker}>{s.name}</option>)}</datalist>
+                  <PayeeInput style={{ width: 120 }} value={ticker} onChange={(v) => setTicker(v.toUpperCase())} options={securities.map((s) => s.ticker)} placeholder="e.g. ACME" />
                 </label>
                 <span className="muted">
                   {hasKey ? 'The price is looked up with your price key when the grant is saved, and the refresh button on the grant updates it.' : 'No price key on this device, so the price stays manual. Add a key under Prices & assumptions on the Investments tab to look prices up automatically.'}
