@@ -14,7 +14,7 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): Phase 3 PART C BUILT (global search across Ledger, Calendar, Tasks and Today). Committed locally, NOT pushed. Waiting for the owner's Part C checklist sign-off. Parts D and E not started.
+## STATUS 2026-11-05 (newest): Phase 3 PART C BUILT (global search across Ledger, Calendar, Tasks and Today). SIGNED OFF 2026-11-05 and pushed (steps 10 and 11, phone and real-data speed, to be checked by the owner after the push). Owner note on step 3: searching by an event's notes seems to show the note, while a location match does not seem to show the location; location search itself works in tests and in the browser, so this is about what the result line displays. Not yet clarified or changed. Parts D and E not started.
 
 Part B was signed off and pushed (b9d3bab) before this started.
 
