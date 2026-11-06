@@ -1,8 +1,8 @@
 /**
  * Permanent deletion of an asset, with the dependency rules in plain words. Modelled on projects/deletion.ts.
  *
- *  - BLOCKS: a live child asset; another live asset marked as replaced by this one; a live record of a dependent kind (service, warranty:
- *    none exist in H1, but the check is written from ASSET_DEPENDENT_KINDS so later phases cannot forget it); a COMPLETED task linked to
+ *  - BLOCKS: a live child asset; another live asset marked as replaced by this one; a live record of a dependent kind (service, warranty;
+ *    service records exist from H2, warranties come in H4; the check is written from ASSET_DEPENDENT_KINDS so later phases cannot forget it); a COMPLETED task linked to
  *    it (completed tasks are maintenance history: unlink them first).
  *  - UNLINKS (kept): open tasks and Calendar events, and every shared link that points at the asset. They are never deleted.
  *  - DELETES: the asset record only, as a soft delete with a marker (`permanentlyDeletedAt`) so the deletion also holds on other devices

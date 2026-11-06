@@ -9,6 +9,7 @@ import { EmptyState } from '../../ui/components';
 import { useToday } from '../../ui/useToday';
 import { useToast } from '../../ui/Toast';
 import AssetForm from './AssetForm';
+import AssetWork from './AssetWork';
 import DeleteAsset from './DeleteAsset';
 import LinkedWork from './LinkedWork';
 import RetireDialog from './RetireDialog';
@@ -158,6 +159,7 @@ export default function AssetPage() {
         )}
       </section>
 
+      <AssetWork asset={asset} today={today} />
       <LinkedWork assetId={asset.id} />
 
       {editing && <AssetForm asset={asset} onClose={() => setEditing(false)} />}
