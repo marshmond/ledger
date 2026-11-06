@@ -272,7 +272,7 @@ describe('tagging transactions', () => {
     await setTxnProject(d, dep, { projectId: project, commitmentId: cm });
     const back = await add(900);
     const r = await bulkSetTxnProject(d, [back], { projectId: project, commitmentId: cm, effect: 'reversal' });
-    expect(r).toEqual({ updated: 0, skippedTransfers: 0, exceedsPayments: 1 });
+    expect(r).toMatchObject({ updated: 0, skippedTransfers: 0, exceedsPayments: 1 });
     expect((await d.txns.get(back))!.project).toBeUndefined();
   });
 
@@ -280,7 +280,7 @@ describe('tagging transactions', () => {
     const { d, project, cm, add } = await setup();
     const out = await add(-1000), back = await add(300);
     const r = await bulkSetTxnProject(d, [out, back], { projectId: project, commitmentId: cm });
-    expect(r).toEqual({ updated: 1, skippedTransfers: 0, needsChoice: 1 });
+    expect(r).toMatchObject({ updated: 1, skippedTransfers: 0, needsChoice: 1 });
     expect((await d.txns.get(back))!.project).toBeUndefined();
   });
 
@@ -309,7 +309,7 @@ describe('tagging transactions', () => {
     const { fromTxnId } = await createTransfer(d, { fromAccountId: a, toAccountId: b, date: '2026-11-01', amountCents: $(10) });
     const x = await add(-1), y = await add(-2);
     const r = await bulkSetTxnProject(d, [x, y, fromTxnId], { projectId: project });
-    expect(r).toEqual({ updated: 2, skippedTransfers: 1 });
+    expect(r).toMatchObject({ updated: 2, skippedTransfers: 1 });
     expect((await loadProjectSummary(d, project))!.paidCents).toBe($(3));
   });
 

@@ -50,21 +50,21 @@ export interface BudgetLineRecord {
   data: BudgetLineData;
 }
 
-const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
+export const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 /** A real calendar date written YYYY-MM-DD (so 2026-02-30 is not one). */
-const isDate = (v: unknown): v is string => {
+export const isDate = (v: unknown): v is string => {
   if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
   const [y, m, d] = v.split('-').map(Number);
   const t = new Date(Date.UTC(y, m - 1, d));
   return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
 };
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+export const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const ids = (v: unknown): number[] => (Array.isArray(v) ? [...new Set(v.filter((x): x is number => typeof x === 'number' && Number.isFinite(x)))] : []);
 
 /** Fields these readers understand. Anything else in a stored record (another module, a newer version) is carried through untouched. */
 const PROJECT_KEYS = new Set(['name', 'notes', 'status', 'startDate', 'targetDate', 'budgetCents', 'vendorContactIds', 'archived']);
 const LINE_KEYS = new Set(['projectId', 'name', 'plannedCents', 'sort']);
-const extras = (d: object, known: Set<string>) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !known.has(k) && v !== undefined)) as object;
+export const extras = (d: object, known: Set<string>) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !known.has(k) && v !== undefined)) as object;
 
 /** Reads a stored record defensively, so a record from another device or version can never crash a screen. */
 export function asProject(r: ModuleRecord): ProjectRecord {

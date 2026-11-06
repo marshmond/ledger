@@ -66,3 +66,53 @@
   .pj-row { align-items: flex-start; flex-direction: column; }
   .pj-row-side { align-items: flex-start; text-align: left; flex-direction: row; flex-wrap: wrap; gap: var(--sp-2); }
 }
+
+/* ---- commitments, warnings, budget by line ---- */
+.pj-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.pj-card-head h2 { margin: 0; }
+.pj-sub { margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-sm, 0.9rem); color: var(--muted); font-weight: 600; text-transform: none; }
+.pj-stat.as-btn { text-align: left; cursor: pointer; font: inherit; color: inherit; align-items: flex-start; }
+.pj-stat.as-btn:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+
+.pj-warnings { border-color: var(--warn, #9a6700); }
+.pj-warn { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.pj-warn > span { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+
+.pj-table { width: 100%; border-collapse: collapse; }
+.pj-table th, .pj-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: baseline; }
+.pj-table thead th { font-size: var(--fs-xs); color: var(--muted); font-weight: 600; }
+.pj-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pj-table tbody th { font-weight: 600; }
+.pj-table tr.focus { background: var(--accent-soft); }
+.pj-table .neg { color: var(--neg); }
+
+.pj-contracts { margin: 0 0 var(--sp-3); padding: 0; display: grid; gap: var(--sp-3); }
+.pj-contract { padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); }
+.pj-contract-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
+.pj-contract-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.pj-figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: var(--sp-2); margin: var(--sp-2) 0; }
+.pj-figures div { display: flex; flex-direction: column; gap: 2px; }
+.pj-figures dt { font-size: var(--fs-xs); color: var(--muted); }
+.pj-figures dd { margin: 0; font-variant-numeric: tabular-nums; }
+.pj-figures .neg, .pj-amount.neg { color: var(--neg); }
+.pj-flag { margin: var(--sp-2) 0; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md, 8px); border: 1px solid var(--warn, #9a6700); }
+.pj-changes { margin: var(--sp-2) 0; padding: 0; border-top: 1px solid var(--line); }
+.pj-change { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.pj-change-main { display: flex; flex-direction: column; flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.pj-contract-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.pj-pay summary, .pj-closed summary { cursor: pointer; margin: var(--sp-2) 0; color: var(--muted); }
+.pj-pay ul { margin: 0 0 var(--sp-2) var(--sp-3); }
+.pj-paylist { margin: 0; padding: 0; }
+.pj-payrow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.pj-payrow-main { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.pj-amount.pos { color: var(--pos, #1a7f37); }
+
+@media (max-width: 640px) {
+  .pj-table thead { position: absolute; left: -9999px; }
+  .pj-table, .pj-table tbody, .pj-table tr, .pj-table th, .pj-table td { display: block; }
+  .pj-table tr { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line-strong); }
+  .pj-table th, .pj-table td { border: 0; padding: 2px 0; }
+  .pj-table td { display: flex; justify-content: space-between; gap: var(--sp-3); }
+  .pj-table td::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-xs); }
+}
+.pj-table th { background: transparent; }

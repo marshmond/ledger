@@ -89,8 +89,31 @@ export interface LineSummary {
   agreedCents: number;
   paidCents: number;
   leftToPayCents: number;
+  /** Paid + left to pay. */
+  expectedCents: number;
   /** Planned minus (paid + left to pay). Negative = over plan. */
   varianceCents: number;
+}
+/** One contract (a commitment with its change orders) as the money sees it. */
+export interface ContractSummary {
+  rootId: number;
+  status: CommitmentStatus;
+  /** The original agreement's amount, whatever its status. */
+  originalCents: number;
+  /** Accepted change orders added up (negative = price went down). Zero unless the contract is accepted. */
+  changesCents: number;
+  /** What is agreed now: original + accepted changes. Zero unless the contract is accepted. */
+  agreedCents: number;
+  /** Paid net of reversals and credits, never below zero. */
+  paidCents: number;
+  /** Agreed minus paid, never below zero. Zero unless accepted. */
+  leftCents: number;
+  /** Paid beyond the agreed amount. */
+  overpaidCents: number;
+  /** Credits received (price-reduction refunds). */
+  creditsCents: number;
+  /** Credits received minus the accepted negative change orders. Above zero = the agreed amount has not been lowered enough. */
+  creditGapCents: number;
 }
 export interface ProjectSummary {
   budgetCents: number;
@@ -106,6 +129,8 @@ export interface ProjectSummary {
   /** Quotes waiting. Shown, never counted. */
   quotedCents: number;
   lines: LineSummary[];
+  /** One row per original contract (not per change order), in the order the commitments were given. */
+  contracts: ContractSummary[];
   /** For every commitment id: what has been paid net on its whole contract (the original plus its change orders), never below zero. */
   paidByCommitment: Record<number, number>;
   flags: {
@@ -149,12 +174,13 @@ export function summariseProject(a: {
   const paidCents = 0 - pieces.reduce((s, p) => s + p.amountCents, 0);
 
   // Group each contract with its change orders. Outflows paid against any member count toward the group.
-  const groups = new Map<number, { root: CommitmentInfo; agreed: number; paidOut: number; reduced: number; credits: number }>();
+  const groups = new Map<number, { root: CommitmentInfo; agreed: number; changes: number; paidOut: number; reduced: number; credits: number }>();
   for (const c of commitments) {
     const root = rootOf(c);
-    const g = groups.get(root.id) ?? { root, agreed: 0, paidOut: 0, reduced: 0, credits: 0 };
+    const g = groups.get(root.id) ?? { root, agreed: 0, changes: 0, paidOut: 0, reduced: 0, credits: 0 };
     if (root.status === 'accepted' && c.status === 'accepted') {
       g.agreed += c.amountCents;
+      if (c.id !== root.id) g.changes += c.amountCents;
       if (c.amountCents < 0) g.reduced += -c.amountCents;
     }
     groups.set(root.id, g);
@@ -186,11 +212,19 @@ export function summariseProject(a: {
     if (c.status === 'quoted') quotedCents += c.amountCents;
     if (c.status === 'accepted' && rootOf(c).status === 'accepted') { agreedCents += c.amountCents; agg(lineOf(c)).agreed += c.amountCents; }
   }
+  const contracts: ContractSummary[] = [];
   for (const g of groups.values()) {
     if (g.paidOut < 0) reversalsExceedPayments.push(g.root.id);
-    if (g.root.status === 'accepted') {
-      const paidNet = Math.max(0, g.paidOut);
-      const left = Math.max(0, g.agreed - paidNet);
+    const accepted = g.root.status === 'accepted';
+    const paidNet = Math.max(0, g.paidOut);
+    const left = accepted ? Math.max(0, g.agreed - paidNet) : 0;
+    contracts.push({
+      rootId: g.root.id, status: g.root.status, originalCents: g.root.amountCents,
+      changesCents: accepted ? g.changes : 0, agreedCents: accepted ? g.agreed : 0,
+      paidCents: paidNet, leftCents: left, overpaidCents: accepted ? Math.max(0, paidNet - g.agreed) : 0,
+      creditsCents: g.credits, creditGapCents: accepted ? Math.max(0, g.credits - g.reduced) : 0,
+    });
+    if (accepted) {
       leftToPayCents += left;
       agg(g.root.budgetLineId).left += left;
       if (paidNet > g.agreed) overpaid.push(g.root.id);
@@ -208,7 +242,7 @@ export function summariseProject(a: {
 
   const mk = (lineId: number | null, name: string, plannedCents: number): LineSummary => {
     const v = lineAgg.get(lineId) ?? { agreed: 0, paid: 0, left: 0 };
-    return { lineId, name, plannedCents, agreedCents: v.agreed, paidCents: v.paid, leftToPayCents: v.left, varianceCents: plannedCents - (v.paid + v.left) };
+    return { lineId, name, plannedCents, agreedCents: v.agreed, paidCents: v.paid, leftToPayCents: v.left, expectedCents: v.paid + v.left, varianceCents: plannedCents - (v.paid + v.left) };
   };
   const known = new Set(lines.map((l) => l.id));
   const lineRows = lines.map((l) => mk(l.id, l.name, l.plannedCents));
@@ -216,7 +250,7 @@ export function summariseProject(a: {
   const loose = [...lineAgg.keys()].filter((k) => k === null || !known.has(k));
   if (loose.length) {
     const sum = loose.reduce((s, k) => { const v = lineAgg.get(k)!; return { agreed: s.agreed + v.agreed, paid: s.paid + v.paid, left: s.left + v.left }; }, { agreed: 0, paid: 0, left: 0 });
-    lineRows.push({ lineId: null, name: 'No budget line', plannedCents: 0, agreedCents: sum.agreed, paidCents: sum.paid, leftToPayCents: sum.left, varianceCents: 0 - (sum.paid + sum.left) });
+    lineRows.push({ lineId: null, name: 'No budget line', plannedCents: 0, agreedCents: sum.agreed, paidCents: sum.paid, leftToPayCents: sum.left, expectedCents: sum.paid + sum.left, varianceCents: 0 - (sum.paid + sum.left) });
   }
 
   const { startDate, targetDate } = project;
@@ -227,9 +261,25 @@ export function summariseProject(a: {
     agreedCents, paidCents, leftToPayCents, expectedTotalCents,
     leftInBudgetCents: budgetCents - expectedTotalCents, cashLeftCents: budgetCents - paidCents, quotedCents,
     lines: lineRows,
+    contracts,
     paidByCommitment,
     flags: { overBudget: expectedTotalCents > budgetCents, linesOverBudget: plannedTotalCents > budgetCents, overpaid, paidOnInactive, creditsNotReflected, reversalsExceedPayments, unmarkedRefunds, outsideDates },
   };
+}
+
+/** Keeps only what belongs to one project: a split that points at another project must not count here. */
+export function onlyThisProject(txns: Txn[], projectId: number): Txn[] {
+  return txns
+    .filter((t) => t.project?.projectId === projectId || (t.splits ?? []).some((s) => s.project?.projectId === projectId))
+    .map((t) => ({ ...t, project: t.project?.projectId === projectId ? t.project : undefined, splits: t.splits?.map((s) => (s.project && s.project.projectId !== projectId ? { ...s, project: undefined, amountCents: 0 } : s)) }));
+}
+
+/** The project's tagged transactions, newest first, as pieces (one per split that belongs to it). */
+export async function loadProjectPieces(d: FinanceDB, projectId: number): Promise<(ProjectPiece & { payee: string; accountId: number })[]> {
+  const txns = await d.txns.filter((t) => t.project?.projectId === projectId || (t.splits ?? []).some((s) => s.project?.projectId === projectId)).toArray();
+  return onlyThisProject(txns, projectId)
+    .flatMap((t) => projectAllocations(t).map((p) => ({ ...p, payee: t.payee, accountId: t.accountId })))
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || (b.txnId ?? 0) - (a.txnId ?? 0));
 }
 
 /** Reads the project's records and its tagged transactions, and works out the summary. Returns null if the project does not exist. */
@@ -239,8 +289,7 @@ export async function loadProjectSummary(d: FinanceDB, projectId: number, opts: 
   if (!p) return null;
   const mine = (r: Row) => num(r.data.projectId) === projectId;
   const txns = await d.txns.filter((t) => t.id !== opts.excludeTxnId && (t.project?.projectId === projectId || (t.splits ?? []).some((s) => s.project?.projectId === projectId))).toArray();
-  // A split that points at another project must not count here.
-  const forThis = txns.map((t) => ({ ...t, project: t.project?.projectId === projectId ? t.project : undefined, splits: t.splits?.map((s) => (s.project && s.project.projectId !== projectId ? { ...s, project: undefined, amountCents: 0 } : s)) }));
+  const forThis = onlyThisProject(txns, projectId);
   return summariseProject({
     project: { ...asProject(p), startDate: typeof p.data.startDate === 'string' ? p.data.startDate : null, targetDate: typeof p.data.targetDate === 'string' ? p.data.targetDate : null },
     lines: rows.filter((r) => r.kind === 'budgetLine' && mine(r)).map(asBudgetLine),
@@ -290,6 +339,59 @@ export async function checkRefundAmount(d: FinanceDB, ref: ProjectRef, amounts: 
   if (back > paid) throw new Error(`That is more than the ${formatCents(paid)} paid on this contract so far, so it cannot be money coming back.`);
 }
 
+/**
+ * All the project checks for a transaction that is being created or edited, in one place: the transaction-level reference and every
+ * split's own reference must point at things that exist and belong together, money coming back on a contract must say what it is, and
+ * it cannot be more than was paid. `excludeTxnId` is the transaction being edited, so its current tags are not counted twice.
+ */
+export async function checkTxnProjects(d: FinanceDB, a: { amountCents: number; project?: ProjectRef; splits?: Split[]; excludeTxnId?: number }): Promise<void> {
+  const splits = a.splits?.length ? a.splits : undefined;
+  if (a.project) {
+    await checkProjectRef(d, a.project);
+    const amounts = splits ? splits.filter((s) => !s.project).map((s) => s.amountCents) : [a.amountCents];
+    checkRefEffect(a.project, amounts);
+    await checkRefundAmount(d, a.project, amounts, a.excludeTxnId);
+  }
+  for (const s of splits ?? []) {
+    if (!s.project) continue;
+    await checkProjectRef(d, s.project);
+    checkRefEffect(s.project, [s.amountCents]);
+    await checkRefundAmount(d, s.project, [s.amountCents], a.excludeTxnId);
+  }
+}
+
+// ---- what a transaction form can offer ----
+
+export interface ProjectChoice {
+  id: number;
+  name: string;
+  archived: boolean;
+  status: string;
+  lines: { id: number; name: string }[];
+  /** The original contracts only (change orders roll into them). */
+  contracts: { id: number; title: string; status: CommitmentStatus; lineId: number | null; vendorContactId: number | null }[];
+}
+
+/** Every live project with its budget lines and contracts, so a form can offer only what belongs together. Name order; budget lines in their own order. */
+export async function loadProjectChoices(d: FinanceDB): Promise<ProjectChoice[]> {
+  const rows = (await d.moduleRecords.where('module').equals(PROJECTS_MODULE).toArray()).filter(live) as Row[];
+  const sorted = (a: Row, b: Row) => ((num(a.data.sort) ?? 0) - (num(b.data.sort) ?? 0)) || (a.id as number) - (b.id as number);
+  return rows.filter((r) => r.kind === 'project').map((p) => {
+    const mine = (r: Row) => num(r.data.projectId) === p.id;
+    return {
+      id: p.id as number,
+      name: asProject(p).name,
+      archived: p.data.archived === true,
+      status: typeof p.data.status === 'string' ? p.data.status : 'planning',
+      lines: rows.filter((r) => r.kind === 'budgetLine' && mine(r)).sort(sorted).map((r) => ({ id: r.id as number, name: asBudgetLine(r).name })),
+      contracts: rows.filter((r) => r.kind === 'commitment' && mine(r) && num(r.data.parentId) === null).sort(sorted).map((r) => {
+        const c = asCommitment(r);
+        return { id: c.id, title: c.title, status: c.status, lineId: c.budgetLineId, vendorContactId: num(r.data.vendorContactId) };
+      }),
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+}
+
 /** Only keep the fields that are set, so a reference never stores `undefined` keys. */
 const clean = (r: ProjectRef): ProjectRef => ({ projectId: r.projectId, ...(r.budgetLineId !== undefined ? { budgetLineId: r.budgetLineId } : {}), ...(r.commitmentId !== undefined ? { commitmentId: r.commitmentId } : {}), ...(r.effect ? { effect: r.effect } : {}) });
 
@@ -320,20 +422,63 @@ export async function setTxnProject(d: FinanceDB, txnId: number, ref: ProjectRef
 /** The amounts a transaction-level reference would apply to: the whole amount, or the splits that have no reference of their own. */
 const amountsFor = (t: Txn): number[] => (t.splits?.length ? t.splits.filter((s) => !s.project).map((s) => s.amountCents) : [t.amountCents]);
 
-export interface BulkProjectResult { updated: number; skippedTransfers: number; /** Money coming back that needs a reversal/credit choice first (not changed). */ needsChoice?: number; /** Money coming back that is more than was paid on the contract (not changed). */ exceedsPayments?: number }
+/** Why a transaction was left alone by a bulk tagging. */
+export type BulkSkipReason = 'transfer' | 'split' | 'alreadyTagged' | 'needsChoice' | 'ambiguousRefund' | 'exceedsPayments';
+export interface BulkSkip { txnId: number; reason: BulkSkipReason }
+export interface BulkProjectResult {
+  updated: number;
+  skippedTransfers: number;
+  /** Money coming back on a contract that needs a reversal/credit choice first (not changed). */
+  needsChoice?: number;
+  /** Money coming back that is more than was paid on the contract (not changed). */
+  exceedsPayments?: number;
+  /** Money coming back on a project that has accepted contracts, with no word on whether it belongs to one (not changed). */
+  ambiguousRefunds?: number;
+  /** Transactions that already carry a different project tag (not changed unless replacing was asked for). */
+  alreadyTagged?: number;
+  /** Split transactions: tag the individual splits by editing the transaction instead (not changed). */
+  splitsSkipped?: number;
+  /** Every transaction that was left alone, and why. Only present when there is one. */
+  skipped?: BulkSkip[];
+}
 
-/** Sets (or clears) the project on many transactions at once. Transfers are skipped and counted. */
-export async function bulkSetTxnProject(d: FinanceDB, ids: number[], ref: ProjectRef | null): Promise<BulkProjectResult> {
+export interface BulkProjectOptions {
+  /** Replace a different project tag a transaction already has. Without it such transactions are skipped and counted. */
+  replace?: boolean;
+  /** Money coming back with no contract is a general refund or reimbursement for the project, even if the project has accepted contracts. */
+  refundsAreProjectLevel?: boolean;
+}
+
+const sameRef = (a: ProjectRef | undefined, b: ProjectRef) =>
+  !!a && a.projectId === b.projectId && a.budgetLineId === b.budgetLineId && a.commitmentId === b.commitmentId && (a.effect ?? undefined) === (b.effect ?? undefined);
+
+/**
+ * Sets (or clears) the project on many transactions at once. Only transactions that can be tagged safely are changed; the rest are left
+ * alone and counted with the reason: transfers and setup entries, split transactions (tag a split by editing it), transactions that
+ * already carry a different tag, and money coming back that needs a choice (reversal or credit, or whether it belongs to a contract).
+ */
+export async function bulkSetTxnProject(d: FinanceDB, ids: number[], ref: ProjectRef | null, opts: BulkProjectOptions = {}): Promise<BulkProjectResult> {
   const res: BulkProjectResult = { updated: 0, skippedTransfers: 0 };
+  const skip = (txnId: number, reason: BulkSkipReason, key?: keyof BulkProjectResult) => {
+    (res.skipped ??= []).push({ txnId, reason });
+    if (key) (res[key] as number | undefined) = ((res[key] as number | undefined) ?? 0) + 1;
+  };
   await d.transaction('rw', d.txns, d.moduleRecords, async () => {
-    if (ref) await checkProjectRef(d, ref);
+    let hasContracts = false;
+    if (ref) {
+      await checkProjectRef(d, ref);
+      hasContracts = (await loadProjectChoices(d)).find((p) => p.id === ref.projectId)?.contracts.some((c) => c.status === 'accepted') ?? false;
+    }
     for (const id of ids) {
       const t = await d.txns.get(id);
       if (!t) continue;
-      if (ref && (t.transferTxnId || isSetupTxn(t))) { res.skippedTransfers++; continue; }
       if (ref) {
-        try { checkRefEffect(ref, amountsFor(t)); } catch { res.needsChoice = (res.needsChoice ?? 0) + 1; continue; }
-        try { await checkRefundAmount(d, ref, amountsFor(t), t.id); } catch { res.exceedsPayments = (res.exceedsPayments ?? 0) + 1; continue; }
+        if (t.transferTxnId || isSetupTxn(t)) { res.skippedTransfers++; skip(id, 'transfer'); continue; }
+        if (t.splits?.length) { skip(id, 'split', 'splitsSkipped'); continue; }
+        if (t.project && !sameRef(t.project, ref) && !opts.replace) { skip(id, 'alreadyTagged', 'alreadyTagged'); continue; }
+        try { checkRefEffect(ref, amountsFor(t)); } catch { skip(id, 'needsChoice', 'needsChoice'); continue; }
+        if (ref.commitmentId === undefined && t.amountCents > 0 && hasContracts && !opts.refundsAreProjectLevel) { skip(id, 'ambiguousRefund', 'ambiguousRefunds'); continue; }
+        try { await checkRefundAmount(d, ref, amountsFor(t), t.id); } catch { skip(id, 'exceedsPayments', 'exceedsPayments'); continue; }
       }
       await updateTxn(d, id, { project: ref ? clean(ref) : undefined });
       res.updated++;

@@ -5,7 +5,10 @@ import { db } from '../db';
 import type { Account, Category, CategoryGroup, Split, Txn, TxnStatus } from '../types';
 import { formatCents, parseAmountMath, todayISO } from '../lib/money';
 import { validateSplits } from '../lib/ledger';
-import { createTxn } from '../lib/txnCreate';
+import { createTxn, editTxn } from '../lib/txnCreate';
+import { buildRef, EMPTY_TAG, tagFromRef, type TagState } from '../lib/txnProjectTag';
+import { useToast } from '../ui/Toast';
+import ProjectTag, { useProjectChoices } from './ProjectTag';
 import { convertToTransfer, createTransfer, moveTxn, updateTxn } from '../lib/transfers';
 import { recentPayees, suggestCategory } from '../lib/rules';
 import AmountInput from './AmountInput';
@@ -65,11 +68,14 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   );
   const [other, setOther] = useState<string>(otherAccountId ? String(otherAccountId) : '');
   const [splitOn, setSplitOn] = useState(!!editing?.splits?.length);
-  const [splits, setSplits] = useState<{ cat: string; amt: string }[]>(
+  const [splits, setSplits] = useState<{ cat: string; amt: string; tag: TagState }[]>(
     editing?.splits?.length
-      ? editing.splits.map((s) => ({ cat: s.categoryId ? String(s.categoryId) : '', amt: centsToField(s.amountCents) }))
-      : [{ cat: '', amt: '' }, { cat: '', amt: '' }],
+      ? editing.splits.map((s) => ({ cat: s.categoryId ? String(s.categoryId) : '', amt: centsToField(s.amountCents), tag: tagFromRef(s.project) }))
+      : [{ cat: '', amt: '', tag: EMPTY_TAG }, { cat: '', amt: '', tag: EMPTY_TAG }],
   );
+  const [tag, setTag] = useState<TagState>(tagFromRef(editing?.project));
+  const projects = useProjectChoices();
+  const toast = useToast();
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
   // When editing, the account can be changed (an entry made on the wrong account). The one it is on now is always offered.
@@ -101,15 +107,24 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
       } else {
         let splitData: Split[] | undefined;
         if (splitOn && !wantsTransfer) {
-          splitData = splits.map((r) => ({
-            categoryId: r.cat ? Number(r.cat) : null,
-            amountCents: Math.abs(parseAmountMath(r.amt) ?? 0) * (dir === 'out' ? -1 : 1),
-          }));
+          splitData = [];
+          for (const r of splits) {
+            const built = buildRef(r.tag, projects, dir === 'in', { compact: true });
+            if (built.error) return setError(built.error);
+            splitData.push({
+              categoryId: r.cat ? Number(r.cat) : null,
+              amountCents: Math.abs(parseAmountMath(r.amt) ?? 0) * (dir === 'out' ? -1 : 1),
+              ...(built.ref ? { project: built.ref } : {}),
+            });
+          }
           const err = validateSplits(signed, splitData);
           if (err) return setError(err.includes('at least') ? err : 'Split amounts must add up to the total');
         }
+        const whole = wantsTransfer ? {} : buildRef(tag, projects, dir === 'in');
+        if (whole.error) return setError(whole.error);
+        const credits = [whole.ref, ...(splitData ?? []).map((s) => s.project)].filter((r) => r?.effect === 'credit').length;
         if (editing) {
-          await updateTxn(db, editing.id!, {
+          await editTxn(db, editing.id!, {
             date,
             payee: payee.trim(),
             memo,
@@ -117,6 +132,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             amountCents: signed,
             categoryId: wantsTransfer || splitData ? null : choice ? Number(choice) : null,
             splits: splitData,
+            project: wantsTransfer ? undefined : whole.ref,
           });
           // Move first, so a transfer made in the same edit is set up against the new account.
           if (moving) await moveTxn(db, editing.id!, Number(acctId));
@@ -134,8 +150,10 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             status,
             categoryId: splitData ? null : choice ? Number(choice) : null,
             splits: splitData,
+            ...(whole.ref ? { project: whole.ref } : {}),
           });
         }
+        if (credits) toast('Credit saved. Open the project to lower the agreed amount by the same, so the contract does not look owed again.');
       }
       onDone();
     } catch (e) {
@@ -208,7 +226,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             </label>
           )}
           {choice !== 'transfer' && (
-            <button className="link" onClick={() => setSplitOn(!splitOn)}>
+            <button className="link" onClick={() => { if (splitOn && splits.some((r) => r.tag.projectId) && !confirm('Using a single category removes the project tags on the individual splits. Continue?')) return; setSplitOn(!splitOn); }}>
               {splitOn ? 'Use a single category' : 'Split across categories'}
             </button>
           )}
@@ -234,10 +252,11 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
                 onChange={(t) => setSplits(splits.map((x, j) => (j === i ? { ...x, amt: t } : x)))}
               />
               {splits.length > 2 && <button className="link danger" onClick={() => setSplits(splits.filter((_, j) => j !== i))}>remove</button>}
+              {projects.length > 0 && <ProjectTag compact label={`Project for split ${i + 1}`} value={r.tag} onChange={(t) => setSplits(splits.map((x, j) => (j === i ? { ...x, tag: t } : x)))} choices={projects} moneyIn={dir === 'in'} />}
             </div>
           ))}
           <div className="row">
-            <button onClick={() => setSplits([...splits, { cat: '', amt: '' }])}>+ category</button>
+            <button onClick={() => setSplits([...splits, { cat: '', amt: '', tag: EMPTY_TAG }])}>+ category</button>
             {total === null || total === 0 ? (
               <span className="warn">Enter the amount above, then split it</span>
             ) : (
@@ -249,6 +268,12 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
               </span>
             )}
           </div>
+        </div>
+      )}
+
+      {!isTransfer && choice !== 'transfer' && projects.length > 0 && (
+        <div className="ptag-box">
+          <ProjectTag value={tag} onChange={(t) => { setTag(t); setError(''); }} choices={projects} moneyIn={dir === 'in'} label={splitOn ? 'Project for splits without their own' : 'Project'} />
         </div>
       )}
 

@@ -6,7 +6,7 @@ import { store } from '../../core/store';
 import { db } from '../../db';
 import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
-import { addNewVendor, addVendor, projectsUsingContact, removeVendor } from './data';
+import { addNewVendor, addVendor, commitmentsWithVendor, projectsUsingContact, removeVendor } from './data';
 
 /**
  * The people and businesses involved in a project. They are the shared contacts: adding someone who already exists (same name) reuses
@@ -69,7 +69,8 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
                     <button className="link" onClick={() => setEditing(c)}>Edit</button>
                     <button className="link danger" onClick={() => void run(async () => {
                       const others = (await projectsUsingContact(c.id as number)).filter((p) => p.id !== projectId).length;
-                      if (!confirm(`Take ${c.name} off this project?${others ? ` They stay on ${others} other project${others === 1 ? '' : 's'} and in your contacts.` : ' They stay in your contacts.'}`)) return;
+                      const used = await commitmentsWithVendor(projectId, c.id as number);
+                      if (!confirm(`Take ${c.name} off this project?${used ? ` They are still the vendor on ${used} commitment${used === 1 ? '' : 's'}, which keep${used === 1 ? 's' : ''} them.` : ''}${others ?` They stay on ${others} other project${others === 1 ? '' : 's'} and in your contacts.` : ' They stay in your contacts.'}`)) return;
                       await removeVendor(projectId, c.id as number);
                     })}>Remove</button>
                   </span>

@@ -16,6 +16,7 @@ import { useToast } from '../ui/Toast';
 import { openAddTransaction } from '../shell/QuickAdd';
 import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, STATUSES, TxnFilterPanel, filterChips, toggleList } from './TxnFilterUi';
 import TxnForm from './TxnForm';
+import BulkProject from './BulkProject';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
 
 const COLS: { key: SortKey; label: string; cls?: string; first: 'asc' | 'desc' }[] = [
@@ -236,6 +237,7 @@ export default function TransactionsPage() {
             <button className="danger" onClick={() => doBulk('delete')}>Delete selected</button>
             <button className="link" onClick={() => setSel(new Set())}>Clear selection</button>
           </div>
+          <BulkProject ids={selIds} txns={txns} onDone={() => setSel(new Set())} />
         </div>
       )}
 

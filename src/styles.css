@@ -679,3 +679,17 @@ details.pick label.chk:hover { background: var(--hover); }
 .payee-list { position: absolute; left: 0; right: 0; top: 100%; z-index: 60; margin: 2px 0 0; padding: var(--sp-1); list-style: none; max-height: 240px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-2); }
 .payee-list li { padding: 8px var(--sp-3); border-radius: var(--r-sm); cursor: pointer; }
 .payee-list li.on { background: var(--hover); }
+
+/* Project box on a transaction, and bulk project tagging */
+.ptag-box { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.ptag { flex: 1 1 100%; min-width: 0; }
+.ptag-row { align-items: flex-end; gap: var(--sp-2, 8px); }
+.ptag-row .f { min-width: 160px; flex: 1 1 160px; }
+.ptag-ask { border: 1px solid var(--line); border-radius: var(--r-md, 8px); padding: 6px 10px; margin: 4px 0; flex: 1 1 100%; min-width: 0; }
+.ptag-ask legend { font-size: var(--fs-sm, 0.85rem); padding: 0 4px; }
+.ptag-ask .chk { display: flex; margin: 3px 0; }
+.bulk-project { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.bulk-project .row.small { margin-top: 6px; }
+.bulk-result { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r-md, 8px); background: var(--bg-soft, var(--accent-soft)); }
+.bulk-result details { margin-top: 4px; }
+.bulk-result ul { margin: 4px 0 0 12px; }

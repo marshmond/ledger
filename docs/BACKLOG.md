@@ -14,7 +14,35 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): PROJECTS P1 (PROJECT FOUNDATION) BUILT AND COMMITTED, NOT PUSHED. P2 is NOT started.
+## STATUS 2026-11-05 (newest): PROJECTS P2 (COMMITMENTS AND FINANCIAL INTEGRATION) BUILT, NOT COMMITTED, NOT PUSHED. P3 is NOT started.
+
+Full report: `docs/PROJECTS-P2-REPORT-2026-11-05.md`. **1,194 tests pass** (was 1,138; 56 new), type check and production build clean. No database, backup or sync change. Waiting for the owner's review before any commit or push.
+
+**What was built:**
+- **Commitments** on the project page: quotes, accepted agreements, change orders (positive or negative), declined and cancelled kept for reference; one optional vendor and budget line each; what is paid and left per agreement; payments listed.
+- **Project money dashboard:** budget, planned, agreed, paid, left to pay, expected total, left in budget, unplanned amount, quotes waiting (never counted); budget by line (with a "No budget line" row); plain-words "Needs attention" warnings; click a figure or a line to see the commitments and transactions behind it.
+- **Project box on transactions:** Add and Edit form (project, then only its lines and accepted contracts; a contract implies its line), per-split project and line, and a Project row in the Transactions bulk bar with a clear report of what was changed and what was left alone and why.
+- **Refunds, credits, reversals:** money coming back on a project with contracts asks if it belongs to one; on a contract it must be a Reversal or a Credit (explained on the form); a credit not matched by a negative change order shows a warning and a button that opens a pre-filled change order (saves nothing until Add).
+- **Safer editing:** a new `editTxn` runs the same project checks as creating, and the edit form no longer drops split tags.
+
+**Tests added (56):** `src/modules/projects/commitments.test.ts` (33) and `src/modules/projects/txnTagging.test.ts` (23); see the report for the list.
+
+**Checked in a real browser (invented data, deleted afterwards):** desktop and 375 px; see the report for what was and was not exercised.
+
+**Judgment calls (please review):**
+1. Payments are tagged to the original agreement, never to a change order directly (they reconcile on the agreement).
+2. Only accepted agreements are offered for new payments (a chosen one stays visible even if later cancelled).
+3. Bulk tagging cannot set reversal or credit and skips split transactions; both are reported with the reason.
+4. Splits take a project and budget line but no contract.
+5. Picking a vendor on a commitment adds that contact to the project's vendors automatically (no duplicate contact), and says so.
+6. The quick Add box has no Project box; "More options" opens the full form that has it.
+7. Three older bulk tests were loosened from exact match to "contains these fields" because the bulk result gained fields.
+8. A change order cannot change another change order (this also rules out loops); change orders follow their agreement's budget line.
+9. Until a credit has its matching negative change order, the contract shows as owed again (deliberate, with the warning).
+
+**NOT built:** project-linked tasks, milestones or Calendar events; a Today card; project timeline; documents or file storage; a Project box in the quick Add box; vendor notes; re-attaching an orphaned change order; a link from a project transaction row to Finance. Not verified in a browser: accepting or declining a quote with the buttons, the Edit commitment form, removing a tag from the form, saving a tagged split through the form, offline use, real two-device sync.
+
+## STATUS 2026-11-05: PROJECTS P1 (PROJECT FOUNDATION) BUILT AND COMMITTED, NOT PUSHED. P2 is NOT started.
 
 Owner asked for the first usable Projects module: data model, module, budget lines, vendors. **1,138 tests pass** (was 1,111), type check and production build clean.
 

@@ -10,6 +10,10 @@ import { isLive, repo } from '../../core/store';
 import {
   asBudgetLine, asProject, MODULE, sortLines, type BudgetLineRecord, type ProjectData, type ProjectRecord, type ProjectStatus,
 } from './model';
+import {
+  asCommitment, checkStatusChange, changeOrdersOf, validateCommitment, type CommitmentData, type CommitmentRecord, type CommitmentStatus,
+} from './commitmentModel';
+import { todayISO } from '../../lib/money';
 
 const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
 
@@ -121,6 +125,8 @@ export async function removeLine(id: number, d: FinanceDB = db): Promise<void> {
   await d.transaction('rw', d.moduleRecords, d.txns, async () => {
     const l = await getLine(id, d);
     if (!l) return;
+    const commitments = (await loadCommitments(l.data.projectId, d)).filter((c) => c.data.budgetLineId === id).length;
+    if (commitments) throw new Error(`${commitments} commitment${commitments === 1 ? ' is' : 's are'} filed under this line, so it cannot be removed. Move them to another line first.`);
     const used = await d.txns.filter((t) => t.project?.budgetLineId === id || (t.splits ?? []).some((s) => s.project?.budgetLineId === id)).count();
     if (used) throw new Error(`${used} transaction${used === 1 ? ' is' : 's are'} tagged to this line, so it cannot be removed. Untag them first.`);
     await rows(d).remove(id);
@@ -144,4 +150,127 @@ export async function moveLine(projectId: number, id: number, dir: -1 | 1, d: Fi
       if (l.data.sort !== sort) await rows(d).put({ id: l.id, module: MODULE, kind: 'budgetLine', data: { ...l.data, sort } });
     }
   });
+}
+
+// ---- commitments ----
+
+export async function loadCommitments(projectId: number, d: FinanceDB = db): Promise<CommitmentRecord[]> {
+  return (await d.moduleRecords.where('[module+kind]').equals([MODULE, 'commitment']).toArray()).filter(isLive).map(asCommitment)
+    .filter((c) => c.data.projectId === projectId)
+    .sort((a, b) => a.createdAt - b.createdAt || a.id - b.id);
+}
+
+export async function getCommitment(id: number, d: FinanceDB = db): Promise<CommitmentRecord | undefined> {
+  const r = await d.moduleRecords.get(id);
+  return r && r.module === MODULE && r.kind === 'commitment' && isLive(r) ? asCommitment(r) : undefined;
+}
+
+/** What a screen can change on a commitment. `amountCents` is signed (a change order may be negative). */
+export interface CommitmentFields {
+  title: string;
+  amountCents: number;
+  status: CommitmentStatus;
+  /** The agreement a change order changes; null for an agreement or quote. */
+  parentId: number | null;
+  budgetLineId: number | null;
+  vendorContactId: number | null;
+  acceptedDate: string | null;
+  notes: string;
+}
+
+const amountText = (cents: number) => (cents / 100).toFixed(2);
+
+async function checkFields(projectId: number, f: CommitmentFields, editingId: number | undefined, d: FinanceDB) {
+  if (!(await getProject(projectId, d))) throw new Error('That project no longer exists.');
+  const lines = await loadBudgetLines(projectId, d);
+  const all = await loadCommitments(projectId, d);
+  const problem = validateCommitment(
+    { title: f.title, amount: amountText(f.amountCents), status: f.status, parentId: f.parentId, budgetLineId: f.budgetLineId, acceptedDate: f.acceptedDate ?? '' },
+    { lineIds: lines.map((l) => l.id), all, editingId },
+  );
+  if (problem) throw new Error(problem);
+  if (f.vendorContactId !== null) {
+    const c = await d.contacts.get(f.vendorContactId);
+    if (!c || !isLive(c)) throw new Error('That vendor is not in your contacts any more.');
+  }
+}
+
+/** The vendor goes on the project's vendor list too (once, no second copy of the contact). Returns true if it was newly added. */
+async function ensureProjectVendor(projectId: number, contactId: number | null, d: FinanceDB): Promise<boolean> {
+  if (contactId === null) return false;
+  const p = await getProject(projectId, d);
+  if (!p || p.data.vendorContactIds.includes(contactId)) return false;
+  await addVendor(projectId, contactId, d);
+  return true;
+}
+
+/** Adds a quote, an accepted agreement or a change order. Throws the plain-words problem if it does not hold together. */
+export async function createCommitment(projectId: number, f: CommitmentFields, d: FinanceDB = db): Promise<{ id: number; vendorAdded: boolean }> {
+  return d.transaction('rw', d.moduleRecords, d.contacts, async () => {
+    await checkFields(projectId, f, undefined, d);
+    const data: CommitmentData = {
+      projectId, budgetLineId: f.budgetLineId, vendorContactId: f.vendorContactId, title: f.title.trim(), status: f.status,
+      amountCents: Math.round(f.amountCents), parentId: f.parentId, notes: f.notes,
+      acceptedDate: f.status === 'accepted' ? f.acceptedDate || todayISO() : null,
+    };
+    const id = await rows(d).put({ module: MODULE, kind: 'commitment', data: { ...data } });
+    return { id, vendorAdded: await ensureProjectVendor(projectId, f.vendorContactId, d) };
+  });
+}
+
+/** Saves changes to a commitment. Fields this code does not know travel with the record and are kept. */
+export async function saveCommitment(id: number, f: CommitmentFields, d: FinanceDB = db): Promise<{ vendorAdded: boolean }> {
+  return d.transaction('rw', d.moduleRecords, d.contacts, async () => {
+    const c = await getCommitment(id, d);
+    if (!c) throw new Error('That commitment no longer exists.');
+    await checkFields(c.data.projectId, f, id, d);
+    const data: CommitmentData = {
+      ...c.data, budgetLineId: f.budgetLineId, vendorContactId: f.vendorContactId, title: f.title.trim(), status: f.status,
+      amountCents: Math.round(f.amountCents), parentId: f.parentId, notes: f.notes,
+      acceptedDate: f.status === 'accepted' ? f.acceptedDate || c.data.acceptedDate || todayISO() : c.data.acceptedDate,
+    };
+    await rows(d).put({ id, module: MODULE, kind: 'commitment', data: { ...data } });
+    return { vendorAdded: await ensureProjectVendor(c.data.projectId, f.vendorContactId, d) };
+  });
+}
+
+/**
+ * Moves a commitment between quote, accepted, declined and cancelled. Nothing is deleted: a declined or cancelled one stays on the
+ * project, and anything already paid on it stays visible in the totals.
+ */
+export async function setCommitmentStatus(id: number, status: CommitmentStatus, d: FinanceDB = db): Promise<void> {
+  await d.transaction('rw', d.moduleRecords, async () => {
+    const c = await getCommitment(id, d);
+    if (!c) throw new Error('That commitment no longer exists.');
+    const problem = checkStatusChange(c, status, await loadCommitments(c.data.projectId, d));
+    if (problem) throw new Error(problem);
+    await rows(d).put({ id, module: MODULE, kind: 'commitment', data: { ...c.data, status, acceptedDate: status === 'accepted' ? c.data.acceptedDate ?? todayISO() : c.data.acceptedDate } });
+  });
+}
+
+/** How many transactions (or splits) are tagged to a commitment. */
+export async function transactionsOnCommitment(id: number, d: FinanceDB = db): Promise<number> {
+  return d.txns.filter((t) => t.project?.commitmentId === id || (t.splits ?? []).some((s) => s.project?.commitmentId === id)).count();
+}
+
+/**
+ * Takes a commitment away (it is soft-deleted, so the removal syncs). Refused when money is tagged to it or it has change orders:
+ * cancel it instead, which keeps it and the payments visible.
+ */
+export async function removeCommitment(id: number, d: FinanceDB = db): Promise<void> {
+  await d.transaction('rw', d.moduleRecords, d.txns, async () => {
+    const c = await getCommitment(id, d);
+    if (!c) return;
+    const all = await loadCommitments(c.data.projectId, d);
+    const changes = changeOrdersOf(c, all).length;
+    if (changes) throw new Error(`This has ${changes} change order${changes === 1 ? '' : 's'}. Cancel it instead, or remove the change orders first.`);
+    const used = await transactionsOnCommitment(id, d);
+    if (used) throw new Error(`${used} transaction${used === 1 ? ' is' : 's are'} tagged to this. Cancel it instead, so what was paid stays visible.`);
+    await rows(d).remove(id);
+  });
+}
+
+/** How many live commitments name this contact as their vendor (for the warning before taking a vendor off a project). */
+export async function commitmentsWithVendor(projectId: number, contactId: number, d: FinanceDB = db): Promise<number> {
+  return (await loadCommitments(projectId, d)).filter((c) => c.data.vendorContactId === contactId).length;
 }
