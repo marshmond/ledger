@@ -10,10 +10,14 @@ import { loadHideAmounts } from '../today/layout';
 import ArrangementForm from './ArrangementForm';
 import { LifecycleDialog, RepairDialog, ScheduleDialog } from './Dialogs';
 import type { LifecycleAction, RepairKind } from './changes';
-import { ensureNextVisitTask } from './data';
+import { bookingTasksOf, ensureNextVisitTask } from './data';
+import { LogVisitDialog, OneOffDialog } from './VisitDialogs';
+import VisitList from './VisitList';
+import { addBookingReminder, unloggedVisits } from './visits';
+import { visitStats, type VisitStatus } from './visitModel';
 import { BASIS_LABEL, cadenceText, END_REASON_LABEL, STATUS_LABEL } from './model';
-import { arrangementRoute, providerRoute } from './paths';
-import { loadSnapshot, buildRow, type Row } from './views';
+import { arrangementRoute, providerRoute, visitRoute } from './paths';
+import { loadSnapshot, buildRow, visitRows, type Row } from './views';
 import { markersOf } from './schedule';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
@@ -26,6 +30,9 @@ export default function ArrangementPage({ id }: { id: number }) {
   const [edit, setEdit] = useState(false);
   const [sched, setSched] = useState(false);
   const [fix, setFix] = useState<{ kind: RepairKind; taskId: number | null } | null>(null);
+  const [logging, setLogging] = useState<{ taskId: number; status: VisitStatus } | null>(null);
+  const [past, setPast] = useState(false);
+  const bookings = useLiveQuery(() => bookingTasksOf(id), [id]) ?? [];
 
   if (!snap) return <div className="sv"><p className="muted">Loading…</p></div>;
   const a = snap.arrangements.find((x) => x.id === id);
@@ -36,6 +43,10 @@ export default function ArrangementPage({ id }: { id: number }) {
   const pred = d.predecessorId !== null ? snap.arrangements.find((x) => x.id === d.predecessorId) : undefined;
   const succ = snap.arrangements.find((x) => x.data.predecessorId === a.id);
   const money = (c: number) => (hide ? '$••••' : formatCents(c));
+  const mine = snap.visits.filter((v) => v.data.arrangementId === a.id);
+  const stats = visitStats(mine);
+  const unlogged = unloggedVisits([a], snap.tasksBy, snap.visits);
+  const alreadyLogged = row.open ? snap.visits.find((v) => v.data.taskId === row.open!.id) : undefined;
 
   return (
     <div className="sv">
@@ -73,6 +84,16 @@ export default function ArrangementPage({ id }: { id: number }) {
           {d.endDate && <div className="sv-fact"><dt>Ended</dt><dd>{day(d.endDate)}</dd></div>}
         </dl>
         <HealthBlock row={row} onFix={(kind, taskId) => setFix({ kind, taskId })} />
+        {row.open && d.status !== 'ended' && alreadyLogged && (
+          <p className="sv-warn small" role="alert">A visit was already logged for this task (maybe on another device). <Link to={visitRoute(alreadyLogged.id)}>Look at it</Link>. The task is open again, probably because it was edited on another device.</p>
+        )}
+        {row.open && d.status !== 'ended' && !alreadyLogged && (
+          <div className="sv-actionrow" role="group" aria-label="Log the upcoming visit">
+            <button className="btn primary" onClick={() => setLogging({ taskId: row.open!.id, status: 'completed' })}>Done, log it</button>
+            <button className="btn" onClick={() => setLogging({ taskId: row.open!.id, status: 'skipped' })}>Skip this visit</button>
+            <button className="btn" onClick={() => setLogging({ taskId: row.open!.id, status: 'cancelled' })}>Cancel this visit</button>
+          </div>
+        )}
         {d.status === 'active' && !row.open && !d.cadence && <OneOff id={a.id} />}
         {d.status === 'paused' && <p className="muted small">Paused. The schedule is kept; Resume brings it back with no catching up on missed visits.</p>}
       </section>
@@ -105,14 +126,49 @@ export default function ArrangementPage({ id }: { id: number }) {
         </section>
       )}
 
+      {unlogged.length > 0 && (
+        <section className="card sv-card" aria-labelledby="sv-unl-h">
+          <h2 id="sv-unl-h">Finished, not yet logged</h2>
+          <p className="muted small">These tasks were finished in Tasks or the Calendar, but no visit was saved. Nothing is saved until you choose.</p>
+          <ul className="plain sv-items">
+            {unlogged.map((u) => (
+              <li key={u.task.id}>
+                <strong>{u.task.data.title}</strong> <span className="muted small">finished {u.finishedOn ? day(u.finishedOn) : 'on an unknown day'}</span>
+                {u.staleCopy && <div className="small sv-warn">The next visit task still carries this one's old date. Logging this will fix it.</div>}
+                <div className="sv-actionrow">
+                  <button className="btn" onClick={() => setLogging({ taskId: u.task.id, status: 'completed' })}>Log it as done</button>
+                  <button className="btn" onClick={() => setLogging({ taskId: u.task.id, status: 'skipped' })}>It was skipped</button>
+                  <button className="btn" onClick={() => setLogging({ taskId: u.task.id, status: 'cancelled' })}>It was cancelled</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="card sv-card" aria-labelledby="sv-book-h">
+        <h2 id="sv-book-h">Reminders to book</h2>
+        <p className="muted small">A reminder such as "Book the furnace service" is an ordinary task. Finishing it does not log a visit.</p>
+        {bookings.length > 0 && <ul className="plain sv-items">{bookings.map((t) => <li key={t.id}><a href={`#/tasks?task=${t.id}`}>{t.data.title}</a><span className="muted small"> · {t.data.status === 'done' ? 'done' : t.data.dueDate ? day(t.data.dueDate) : 'no date'}</span></li>)}</ul>}
+        {d.status !== 'ended' && <BookingReminder id={a.id} />}
+      </section>
+
       <section className="card sv-card" aria-labelledby="sv-vis-h">
-        <h2 id="sv-vis-h">Past visits</h2>
-        <p className="muted">Visit history arrives in a later update. Finished visit tasks stay in Tasks until then.</p>
+        <div className="sv-card-head"><h2 id="sv-vis-h">Visit history</h2><button className="btn" onClick={() => setPast(true)}>Log a past visit</button></div>
+        {mine.length > 0 && (
+          <p className="sv-stats small" aria-label="Visit totals">
+            <span>Completed: <strong>{stats.completed}</strong></span><span>Skipped: <strong>{stats.skipped}</strong></span><span>Cancelled: <strong>{stats.cancelled}</strong></span>
+            <span>Last serviced: <strong>{stats.lastServiced ? day(stats.lastServiced) : 'never logged'}</strong></span>
+          </p>
+        )}
+        <VisitList rows={visitRows(snap, mine)} showProvider showArrangement={false} empty="No visits logged yet. Use Done, log it on an upcoming visit, or Log a past visit." />
       </section>
 
       {edit && <ArrangementForm arrangement={a} assetIds={row.assets.map((x) => x.id)} onClose={() => setEdit(false)} />}
       {sched && <ScheduleDialog arrangement={a} onClose={() => setSched(false)} />}
       {life && <LifecycleDialog arrangementId={a.id} action={life} onClose={() => setLife(null)} />}
+      {logging && <LogVisitDialog arrangementId={a.id} taskId={logging.taskId} status={logging.status} onClose={() => setLogging(null)} />}
+      {past && <OneOffDialog arrangementId={a.id} providerName={d.providerNameSnapshot} defaultTitle={d.title} onClose={() => setPast(false)} />}
       {fix && <RepairDialog kind={fix.kind} arrangementId={a.id} taskId={fix.taskId} onClose={() => setFix(null)} />}
     </div>
   );
@@ -173,6 +229,27 @@ function OneOff({ id }: { id: number }) {
         <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         <label className="f">Time (optional)<input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></label>
         <button type="submit" className="btn primary">Schedule</button>
+      </div>
+      {error && <div className="error" role="alert">{error}</div>}
+    </form>
+  );
+}
+
+/** Adds a "remind me to book" task for this arrangement. */
+function BookingReminder({ id }: { id: number }) {
+  const toast = useToast();
+  const [date, setDate] = useState('');
+  const [error, setError] = useState('');
+  async function go() {
+    setError('');
+    try { await addBookingReminder(id, date || null); toast('Reminder added to Tasks'); setDate(''); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Could not add it.'); }
+  }
+  return (
+    <form className="sv-oneoff" onSubmit={(e) => { e.preventDefault(); void go(); }}>
+      <div className="row">
+        <label className="f">Remind me to book on (optional)<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <button type="submit" className="btn">Add reminder</button>
       </div>
       {error && <div className="error" role="alert">{error}</div>}
     </form>

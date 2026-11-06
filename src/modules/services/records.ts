@@ -1,10 +1,13 @@
 import { db } from '../../db';
 import type { RecordChoice, RecordSource } from '../../core/registry';
 import { goTo } from '../../core/dueProvider';
+import { parseVisitRef } from './visitModel';
+import { getVisit } from './visits';
 import { arrangementRefId, parseArrangementRef, STATUS_LABEL, type ArrangementRecord } from './model';
 import { getArrangement, loadArrangements } from './data';
 
 export const arrangementPath = (id: number) => `/services/a/${id}`;
+export const visitPath = (id: number) => `/services/v/${id}`;
 export const providerPath = (contactId: number) => `/services/providers/${contactId}`;
 /** "House cleaning, Rosa's Cleaning (paused)". Title, provider name and status only; never contact details, notes, links or amounts. */
 export const arrangementLabel = (a: ArrangementRecord) =>
@@ -19,6 +22,11 @@ export const serviceRecords: RecordSource = {
     return rows.slice(0, 30).map<RecordChoice>((a) => ({ id: arrangementRefId(a.id), label: arrangementLabel(a), kind: 'Service' }));
   },
   async describe(id) {
+    const vn = parseVisitRef(id);
+    if (vn !== null) {
+      const v = await getVisit(vn, db);
+      return v ? { label: `${v.data.title}${v.data.providerNameSnapshot ? `, ${v.data.providerNameSnapshot}` : ''}`, kind: 'Visit', path: visitPath(v.id) } : null;
+    }
     const n = parseArrangementRef(id);
     const a = n === null ? undefined : await getArrangement(n, db);
     return a ? { label: arrangementLabel(a), kind: 'Service', path: arrangementPath(a.id) } : null;

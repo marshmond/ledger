@@ -39,7 +39,8 @@ describe('registration and prefix', () => {
     expect(new Set(words).size).toBe(words.length);
     expect(allSearchSources().some((s) => s.moduleId === 'services')).toBe(true);
     // a clash is refused at registration
-    const clash: ModuleDef = { ...servicesModule, id: 'services-clash' };
+    // (the clone drops its Today card, whose id must start with the module id, so the Quick Add clash is what is tested)
+    const clash: ModuleDef = { ...servicesModule, id: 'services-clash', contributes: { ...servicesModule.contributes, todayCards: undefined } };
     expect(() => registerModule(clash)).toThrow(/clashes/);
   });
   it('does not take over the words service or repair, which belong to Home & Assets', () => {

@@ -2,16 +2,16 @@
 
 > **Purpose:** The canonical, concise-but-complete transfer of architectural context and working agreements between ChatGPT conversations. This document is **not** a replacement for code, `CLAUDE.md`, `docs/BACKLOG.md`, or detailed phase reports. Maintain it alongside those sources.
 >
-> **Last reviewed:** 2026-11-06 (America/New_York), by Claude during Household Services S1. **Status evidence:** the S0 Revision 2 plan is committed (`e460c51`, local `main`; H5 `4422999` equals `origin/main` with Pages run #58 green, recorded in S0). S1 is built and tested locally and is UNCOMMITTED, NOT PUSHED, NOT DEPLOYED. **Data policy:** This file is suitable for the **public repository**: never add real household records, financial balances, addresses, personal identifiers, secrets, credentials, or production exports.
+> **Last reviewed:** 2026-11-06 (America/New_York), by Claude during Household Services S2. **Status evidence:** S1 is COMMITTED AND DEPLOYED (`7b8c33f`, `origin/main`; "Deploy to GitHub Pages" run **#60** `success`, read from the public Actions API at the start of S2; `gh` is not installed). S2 (visits, scheduling and history) is built and tested locally and is UNCOMMITTED, NOT PUSHED, NOT DEPLOYED. **Data policy:** This file is suitable for the **public repository**: never add real household records, financial balances, addresses, personal identifiers, secrets, credentials, or production exports.
 
 ## 1. Read this first — current snapshot
 
 - **Product:** Ledger, a local-first personal finance and household operating system, primarily a browser app. The owner is a **non-programmer** and uses ChatGPT for product/architecture oversight and Claude for local implementation.
 - **Repository:** `marshmond/ledger` (public GitHub), local folder convention `finance-app/`, canonical backlog `docs/BACKLOG.md`; all paths below are relative to repository root. The app deploys via GitHub Pages on pushes to `main`.
-- **Completed and deployed:** Projects P1–P5; Home & Assets H1–H5. Verified 2026-11-06 (start of S0): `origin/main` HEAD **`442299939c18052854d1e2175015d6115d32b937`** (`feat(assets): complete overview, Today integration and final acceptance`, H5) with a **successful** matching Pages run (**#58**). Earlier commits: Projects P4B `6545763`, P5 `47100bc`; Assets H1 `bf2d3d5`, H2 `f101e1b`, H3 `30118dd`, H4 `89ffde9` (run #57). The H5 Modal keyboard safeguard (`src/shell/modalKeys.ts`, 11 tests) is in the H5 commit.
-- **Current in-flight:** **Household Services S1 (providers and standing arrangements) is BUILT AND TESTED LOCALLY, UNCOMMITTED, NOT PUSHED, NOT DEPLOYED, NOT ACCEPTANCE-TESTED on real devices.** Report: `docs/HOUSEHOLD-SERVICES-S1-REPORT-2026-11-06.md`. S0 Revision 2 is final-approved and Q1–Q9 are accepted as option A. S2–S5 are not started. Awaiting ChatGPT architectural review of the S1 report and an explicit owner commit/push decision. Home & Assets is **not formally closed**: the owner's real-device checklist (H5 report section 17, 14 items) is entirely NOT TESTED and remains tracked.
-- **Latest reported test baseline:** **1,694 passing tests across 105 files** (S1 final run; H5 baseline was 1,629 across 102; 65 new in `src/modules/services/`). `npx tsc --noEmit` clean; `npm run build` succeeds (pre-existing chunk-size warning only). Dexie schema **15**, no new tables, migrations, backup/sync format changes or dependencies through S1.
-- **Backlog status:** S1 status entry added on top (built, tested, uncommitted); S0 Revision 2 entry marked earlier and final-approved.
+- **Completed and deployed:** Projects P1–P5; Home & Assets H1–H5; Household Services S0 (design, `e460c51`) and S1 (`7b8c33f`, Pages run **#60** success, verified 2026-11-06 at the start of S2). H5 verified 2026-11-06 (start of S0): `origin/main` HEAD **`442299939c18052854d1e2175015d6115d32b937`** (`feat(assets): complete overview, Today integration and final acceptance`, H5) with a **successful** matching Pages run (**#58**). Earlier commits: Projects P4B `6545763`, P5 `47100bc`; Assets H1 `bf2d3d5`, H2 `f101e1b`, H3 `30118dd`, H4 `89ffde9` (run #57). The H5 Modal keyboard safeguard (`src/shell/modalKeys.ts`, 11 tests) is in the H5 commit.
+- **Current in-flight:** **Household Services S2 (visits, scheduling and history) is BUILT AND TESTED LOCALLY, UNCOMMITTED, NOT PUSHED, NOT DEPLOYED, NOT ACCEPTANCE-TESTED on real devices.** Report: `docs/HOUSEHOLD-SERVICES-S2-REPORT-2026-11-06.md` (section 20 is the pre-commit correction after ChatGPT's review: repeat-after anchors, one-off idempotency, unsupported statuses, guarded Undo). S0 Revision 2 is final-approved. S3 to S5 are not started. Awaiting ChatGPT architectural review of the S2 report and an explicit owner commit/push decision. Home & Assets is **not formally closed**: the owner's real-device checklist (H5 report section 17, 14 items) is entirely NOT TESTED and is carried forward unchanged.
+- **Latest reported test baseline:** **1,812 passing tests across 109 files** (S2 after the pre-commit correction pass; S1 baseline was 1,694 across 105; 118 new, all in `src/modules/services/`: `visits.test.ts` 59, `visits-sync.test.ts` 10, `visits-hooks.test.ts` 14, `visits-correction.test.ts` 35; one existing S1 test was adjusted for the new Today card). `npx tsc --noEmit` clean; `npm run build` succeeds (pre-existing chunk-size warning only). Dexie schema **15**, no new tables, migrations, backup/sync format changes or dependencies through S2.
+- **Backlog status:** S2 status entry added on top (built, tested, uncommitted); S1 recorded as committed and deployed (`7b8c33f`, run #60).
 - **Owner expectation:** A new ChatGPT chat should read this file, verify present-day Git/deployment/backlog state, continue from the actual latest phase, review Claude reports, and give explicit commit/push verdicts and ready-to-paste Claude prompts.
 
 ## 2. Project goals and user experience
@@ -153,9 +153,22 @@ Report: `docs/HOME-ASSETS-H5-REPORT-2026-11-06.md` (including its final follow-u
 - **Not verified:** real screen reader, real phone, second device, offline reload, older build. All remain **NOT TESTED** in the report's owner checklist.
 - AI-readiness assessment (report section 14): no new interface is recommended yet; `loadOverview` and the pure readers are already a small read-only context surface.
 
-### Household Services S1 — providers and standing arrangements (BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; not real-device tested)
+### Household Services S1 — providers and standing arrangements (COMMITTED AND DEPLOYED `7b8c33f`, Pages run #60; not real-device tested)
 
 Report: `docs/HOUSEHOLD-SERVICES-S1-REPORT-2026-11-06.md`. Code: `src/modules/services/` (new) plus a 2-line registration in `src/modules/index.ts`; nothing else in `src/` changed. **Built:** module at `#/services` (overview, arrangement page `#/services/a/<id>`, provider page `#/services/providers/<contact>`); arrangement record (module `services`, kind `arrangement`, defensive reader, strict save-time validation, unknown fields preserved, no account/password/code/bank fields); provider = shared Contact via `findOrCreateContact` (no second contact for the same name) with a name snapshot; `ensureNextVisitTask` (re-reads live Tasks inside the transaction; one open visit Task; Task carries `servicesArrangement` and `servicesOccurrence` markers that the Task editor preserves, confirmed by test and in the browser); `scheduleHealth` (no-task, duplicate-open, rule-differs, stale-marker, off-cadence, moved-once) with seven previewed, stale-refusing fixes; Change schedule (move the current visit, or keep it and apply the new pattern after it); Pause, Resume, End, Replace provider (one transaction, all-or-nothing, Undo, H4-style shared-task warning, no duplicate successor); one-way asset linking (`serves`, from Services only, retired and removed assets handled); Search, Quick Add `hs`, record source `arrangement:<n>`. **Not built:** visits and "Done, log it" (S2), Finance (S3), Today card, Calendar layer, seasons, renewals, reverse Home & Assets UI (S4), AI. **Evidence:** automated (vitest, including real `SyncEngine` two-device and backup/restore), browser (pane database, desktop, 375 px, dark mode, invented data); real-device NOT done. Judgment calls 1–15 are listed in the S1 report and the backlog and await review.
+
+### Household Services S2 — visits, scheduling and history (BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; not real-device tested)
+
+Report: `docs/HOUSEHOLD-SERVICES-S2-REPORT-2026-11-06.md`. Code: `src/modules/services/` only. New: `visitModel.ts`, `visits.ts`, `VisitDialogs.tsx`, `VisitList.tsx`, `VisitPage.tsx`, `todayCards.tsx` and three test files. Edited inside the module: arrangement, overview and provider pages, `views.ts`, `schedule.ts`, `data.ts`, `changes.ts` (Recorder exported; Undo also clears a visit's links), `quickAddDef.ts`, `records.ts`, `searchSource.ts`, routes, css. No file outside `src/modules/services/` changed in `src/`; no schema, dependency, sync or backup change.
+- **Visit record** (module `services`, kind `visit`, `visit:<n>` refs): arrangement id or null (one-off), provider contact id plus name snapshot taken at the time, title, status `completed | skipped | cancelled`, `cancelledBy`, date (+ optional end date), notes, `chargedCents` + `chargeKind` (information only), originating `taskId`, `occurrence` (the cadence date the Task stood for), task title snapshot, document links (http/https only), asset links (`serves`, visit to asset). Defensive reader (an unknown, missing or malformed status reads as `unsupported` with the raw value kept: never service, skipped or cancelled, shown as "Needs review", written back unchanged by an ordinary edit), unknown fields preserved (S3 fields such as `payment`, `txnRefs` pass through untouched), strict validation (completed not in the future; skipped and cancelled may be future; cancelled never charged as service; whole non-negative cents; valid charge kind; real dates). No account, password, code or bank field. No delete.
+- **Done, log it / Skip / Cancel** (`logVisitFromTask`): ONE Dexie transaction: the existing `completeTask`, the next Task brought back to the arrangement's cadence (the Task Tasks spawned is re-dated, keeping its id and links), the visit written. Refuses on a stale preview, an already-logged Task or a booking reminder. Rollback proven by injected failures. Undo toast.
+- **Cadence-anchored next date** (`nextAfterVisit`, pure): fixed = first cadence date after both the occurrence dealt with and the visit date, not before today (`generateDates` via `nextCadenceDate`); repeat-after = Tasks' own `nextDueDate` from the service day. A one-time move never shifts later visits; the next Task's time is the arrangement's standing time. Proven with a Sunday move of an every-other-Friday visit (Tasks' own anchor gives a different date; the mutation test shows it).
+- **Booking reminders vs visits:** Task marker `servicesPurpose: 'book'`; no marker = visit Task (every S1 Task). Booking Tasks are excluded from the schedule, health, logging and "unlogged" lists.
+- **Finished, not yet logged** (`unloggedVisits`, read-only): finished visit Tasks with no visit; "Log this visit" keeps the real finished date, does not finish the Task again, and re-aligns a stale Tasks-made copy. Never automatic.
+- **One-off and late visits** (`logStandaloneVisit`): provider + work + date; no arrangement or Task is created; contact reuse; identical-twin guard; ended arrangements accept an explicitly logged late visit. **History** on the arrangement page, provider page (by provider at the time) and overview; completed-only "last serviced"; visit page with edit (provider, arrangement, Task and occurrence are not editable). **Duplicates** (`duplicateGroups`): same Task, same occurrence, or same-day hand-logged; flagged, never merged or deleted; no resolution workflow (deferred, needs destructive operations). One-off saves carry an `operationId` (one per press: a repeat saves once); matching one-offs are a weak "look-alike" notice, never rejected and not counted on Today. **Undo** of visit actions refuses (writing nothing) if any record it touched changed since (`Undo.after` sealed inside the transaction); S1 lifecycle Undos are not guarded.
+- **Today card** `services.attention` (counts only: finished-not-logged, possible duplicate visits, arrangements needing a schedule check; hidden when empty). **Quick Add** `hs visit <what> with <provider> [date] [$amount]` (preview first, Undo). **Search** finds visits by title and provider name only.
+- **Not built (deliberately):** seasonal scheduling (deferred, fallback documented), any Finance reference or payment (S3), Home & Assets handoff and reverse UI (S4), duplicate-resolution workflow, visit deletion, dismissing an unlogged item, any Calendar event, any AI. **Evidence:** automated (vitest, real `SyncEngine` two-device scenarios, backup/restore, failure injection, five mutation checks), browser (invented data, desktop, 375 px, dark mode, Escape and focus); real-device, screen-reader and offline NOT done.
+
 
 ### Household Services S0 — design (REVISION 2, FINAL-APPROVED; committed `e460c51`; Q1–Q9 accepted as option A)
 
@@ -174,187 +187,11 @@ Original model, still in force except where the above refines it:
 - Provider change = **successor arrangement**. History is preserved: no deletion-wins rule, no `merge.ts` change; arrangements with visits cannot be deleted; orphans repairable.
 - Boundaries: maintenance of a thing -> Home & Assets (explicit prefilled "Record in Home & Assets", saves only on Save, `recorded-as` link); defined scope and budget -> Projects; subscriptions, bills and scheduled payments -> Bills & Subscriptions (Services never posts or schedules payments).
 - Proposed phases (not authorized): S1 arrangements + provider page + next-visit Task; S2 visits and Today card; S3 Finance; S4 cross-module workflows, renewals and a sixth Calendar layer (`..._106`); S5 overview, insights, acceptance.
-- Q1–Q9 accepted as option A; S0 Revision 2 final-approved. S0 corrections applied at S1 start: 7.6 reconciliation is now claim-based (no simple identity; required S5 whole-versus-split cross-module test); no separate Calendar event for timed visits (one Task with a due time). Quick Add prefix `hs` is registered (`svc a b p t e # Ledger — ChatGPT Project Handoff and Continuity Record
-
-> **Purpose:** The canonical, concise-but-complete transfer of architectural context and working agreements between ChatGPT conversations. This document is **not** a replacement for code, `CLAUDE.md`, `docs/BACKLOG.md`, or detailed phase reports. Maintain it alongside those sources.
->
-> **Last reviewed:** 2026-11-06 (America/New_York), by Claude during Household Services S1. **Status evidence:** the S0 Revision 2 plan is committed (`e460c51`, local `main`; H5 `4422999` equals `origin/main` with Pages run #58 green, recorded in S0). S1 is built and tested locally and is UNCOMMITTED, NOT PUSHED, NOT DEPLOYED. **Data policy:** This file is suitable for the **public repository**: never add real household records, financial balances, addresses, personal identifiers, secrets, credentials, or production exports.
-
-## 1. Read this first — current snapshot
-
-- **Product:** Ledger, a local-first personal finance and household operating system, primarily a browser app. The owner is a **non-programmer** and uses ChatGPT for product/architecture oversight and Claude for local implementation.
-- **Repository:** `marshmond/ledger` (public GitHub), local folder convention `finance-app/`, canonical backlog `docs/BACKLOG.md`; all paths below are relative to repository root. The app deploys via GitHub Pages on pushes to `main`.
-- **Completed and deployed:** Projects P1–P5; Home & Assets H1–H5. Verified 2026-11-06 (start of S0): `origin/main` HEAD **`442299939c18052854d1e2175015d6115d32b937`** (`feat(assets): complete overview, Today integration and final acceptance`, H5) with a **successful** matching Pages run (**#58**). Earlier commits: Projects P4B `6545763`, P5 `47100bc`; Assets H1 `bf2d3d5`, H2 `f101e1b`, H3 `30118dd`, H4 `89ffde9` (run #57). The H5 Modal keyboard safeguard (`src/shell/modalKeys.ts`, 11 tests) is in the H5 commit.
-- **Current in-flight:** **Household Services S1 (providers and standing arrangements) is BUILT AND TESTED LOCALLY, UNCOMMITTED, NOT PUSHED, NOT DEPLOYED, NOT ACCEPTANCE-TESTED on real devices.** Report: `docs/HOUSEHOLD-SERVICES-S1-REPORT-2026-11-06.md`. S0 Revision 2 is final-approved and Q1–Q9 are accepted as option A. S2–S5 are not started. Awaiting ChatGPT architectural review of the S1 report and an explicit owner commit/push decision. Home & Assets is **not formally closed**: the owner's real-device checklist (H5 report section 17, 14 items) is entirely NOT TESTED and remains tracked.
-- **Latest reported test baseline:** **1,694 passing tests across 105 files** (S1 final run; H5 baseline was 1,629 across 102; 65 new in `src/modules/services/`). `npx tsc --noEmit` clean; `npm run build` succeeds (pre-existing chunk-size warning only). Dexie schema **15**, no new tables, migrations, backup/sync format changes or dependencies through S1.
-- **Backlog status:** S1 status entry added on top (built, tested, uncommitted); S0 Revision 2 entry marked earlier and final-approved.
-- **Owner expectation:** A new ChatGPT chat should read this file, verify present-day Git/deployment/backlog state, continue from the actual latest phase, review Claude reports, and give explicit commit/push verdicts and ready-to-paste Claude prompts.
-
-## 2. Project goals and user experience
-
-Ledger aims to be one cohesive household system, covering money, planning, activities, projects, possessions, upkeep, service relationships, bills, subscriptions, family coordination, contacts, documents, and eventually useful AI assistance. It is currently designed for one household, not a multi-tenant SaaS.
-
-Design goals:
-
-1. Simple everyday workflows, progressive disclosure, practical utility before complexity.
-2. Local-first; data belongs to the household, with explicit controls over what may be shared externally.
-3. One source of truth per domain; **link** records across modules instead of duplicating them.
-4. Existing deterministic Finance calculations remain authoritative; AI, charts and summaries **must not invent or recalculate balances**.
-5. Preserve historical records, deletion safety, backup/restore and synchronization behavior.
-6. Desktop and phone (~375px), dark mode, keyboard/accessibility, clear errors, and cautious confirmation for destructive operations.
-7. Keep development phased and reviewable; avoid broad refactors, unneeded dependencies, premature platforms/backends.
-
-## 3. Roles and standard development loop
-
-**Owner:** Sets priorities, approves material product decisions, authorizes commits/pushes, performs real-device acceptance. Explain consequences plainly and recommend defaults rather than asking technical questions without guidance.
-
-**ChatGPT:** Product partner, architect, skeptic and reviewer. Drafts detailed implementation prompts for Claude; examines plan/reports against prior decisions and architectural risk; demands tests/evidence; issues explicit **APPROVED TO COMMIT/PUSH**, **APPROVED WITH FOLLOW-UPS**, or **HOLD — FIX BEFORE COMMIT** verdicts. Does not assert it has inspected uncommitted files without receiving them. Makes pragmatic decisions about when AI adds value. May verify committed GitHub repository and Actions when connected.
-
-**Claude:** Works in the user's local repository; reads source and docs; implements only authorized scope; runs tests/typecheck/build and isolated browser checks with invented data; writes detailed dated implementation reports and updates backlog; **does not commit or push until specifically authorized**. Pushing `main` publishes the app; confirm green Actions afterwards.
-
-**Normal workflow** (continue this pattern):
-
-1. Plan/design milestone (when architectural questions are material); one concise recommended decision round if necessary.
-2. Owner approves design and ChatGPT provides precise, bounded Claude prompt.
-3. Claude builds, tests, documents, **stops before commit**.
-4. Owner uploads Claude report to ChatGPT; ChatGPT reviews financial integrity, sync/deletion, backward compatibility, test/browser evidence, risks. Request tightly scoped fixes if necessary.
-5. After explicit approval, Claude reruns `npm test`, `npx tsc --noEmit`, `npm run build`, checks working-tree scope, commits/pushes `main`, confirms successful deployment, reports SHA/status.
-6. Conduct remaining real-device/offline/backup acceptance. **Refresh this handoff and `docs/BACKLOG.md` as part of every completed phase/release and material architecture decision**, never after the fact only.
-7. Do not start the next phase until it is authorized.
-
-**Source-of-truth priority for changing facts:** live source/code and current Git + Actions > most recent completed test/build evidence > latest dated phase report > current backlog > this handoff's last snapshot > old conversation context. For **decisions**, latest expressly approved owner decision takes priority, with deviations documented. If sources disagree, say so and reconcile deliberately; do not silently overwrite history.
-
-## 4. Source map and crucial repo files
-
-Read as applicable:
-
-- `CLAUDE.md` — working rules, privacy constraints, conventions, commands, commit gates.
-- `docs/BACKLOG.md` — requested/built/deferred work and decisions; newest summary at top (may have stale status; verify).
-- `README.md` — app features and usage.
-- `docs/roadmap.md`, `docs/ledger-inventory.md`, `docs/module-hooks.md`, `docs/due-provider.md`, `docs/sync.md` — architecture/interfaces and known limitations.
-- `docs/HOME-ASSETS-H0-PLAN-2026-11-05.md` — **Revision 2** approved overall Home & Assets architecture, plus eight owner decisions later confirmed as recommended A choices.
-- `docs/HOME-ASSETS-H1-BRIEF-2026-11-05.md`, `docs/HOME-ASSETS-H1-REPORT-2026-11-06.md`.
-- `docs/HOME-ASSETS-H2-REPORT-2026-11-06.md` — read **FINAL FOLLOW-UP**, which supersedes some original judgment calls.
-- `docs/HOME-ASSETS-H3-REPORT-2026-11-06.md`.
-- Projects P1–P5 plan/report documents for specific commitments, reporting or deletion behavior.
-- `src/db.ts`, `src/core/store.ts`, `src/core/registry.ts`, `src/modules/index.ts`, `src/lib/sync/*`, `src/lib/txnProject.ts`, `src/modules/projects/*`, `src/modules/assets/*` for actual contracts.
-
-Suggested start of a new chat: “Continue as Ledger's architect and Claude implementation reviewer. Read attached `CHATGPT-HANDOFF.md` first, verify the current repo/backlog/deployment state, follow the working agreement, and help with [current task]. Do not assume the snapshot is current without checking.”
-
-## 5. Architecture invariants
-
-### Local-first and data ownership
-
-- Browser app with IndexedDB/Dexie; version 15 at H3. Cross-module module records (Tasks/Projects/Assets) use the shared `moduleRecords` system; shared `links` point to stable identifiers. No database table or schema change has been needed for Assets H1–H3.
-- Backup, restore and encrypted sync work over existing tables; new module-record kinds/fields ride established mechanisms. Sync is generally per-record last-writer-wins, with **narrow deletion precedence** rules for Projects and Assets. The app's plain export is **not encrypted** and can contain sensitive asset data; warn accordingly.
-- No passwords, API keys, household exports, bank balances, actual serials/VINs/addresses, or private document links in GitHub docs/tests/prompts; repo is PUBLIC. Use entirely invented fixtures.
-- Use existing Contacts records for people/providers, not duplicate vendor lists; existing Task recurrence and Calendar layers for due items; Finance owns transactions/valuations; Projects owns commitments/financial summaries; Assets owns physical assets/service history/warranties.
-
-### Financial integrity
-
-- Money stored in **whole cents**; Finance transaction balances, projects attribution and net worth use existing engines (`src/lib`); read them, don't recreate them in Assets.
-- Project spending attribution supports whole and split transactions, budget lines, commitments, change orders and signed values. P4A established multi-line commitments and reconciliation; P4B/P5 integrated reporting and visualizations.
-- H3 asset purchase/service expense is **one source at a time**: typed amount *or* refs to one/more existing Finance transaction pieces, never silently both. Switching source requires explicit confirmation; blank cost means unknown, not zero.
-- H3 ref shape: `txnId`, optional `splitIndex`, explanatory snapshot `{date,payee,amountCents}`, and for split refs fingerprint of split count, amount, category. Finance splits **lack stable IDs**; changed/missing/removed/moved split refs require review and contribute nothing until reselected; do not use snapshot as live spend. Identical split parts with matching amount/category cannot be distinguished; documented limitation. Whole-transaction refs use current live Finance amount and flag changes.
-- Spend totals computed on read; refunds reduce spend, transfers excluded, transaction pieces deduplicated across records and hierarchy. Whole transaction supersedes overlapping constituent split references within the same aggregate. Manually typed amounts cannot be deduplicated by coincidence.
-- Project paid-so-far is shown **separately** on assets as context; never add Project paid totals to direct asset spend (avoid double counting). Existing net-worth `properties` stay Finance-owned; Assets may link read-only to one.
-
-### Sync, deletion, history
-
-- Projects permanent deletion: block if financially referenced; cleanup links without erasing Tasks/Events; narrow merge policy resolves stale edits while safeguarding financial dependencies.
-- Assets H1: archive vs stored/sold/disposed/replaced status vs permanent deletion are different. Asset deletion uses tombstone/`permanentlyDeletedAt`; deletion wins stale edits unless live dependent child/history/reference needs preserving. `revivedAt` makes intentional backup restoration possible. A completed linked Task and live service/warranty records prevent deletion; H4 verified warranty deletion guards with real sync-engine tests. Replacement links are validated against cycles. Older app builds may lack the special merge rule; real-device testing remains important.
-- H2 maintenance plans are **ordinary linked Tasks**. A durable Asset `service` record holds date, kind, work, provider, optional cost, notes, document refs, origin task ID and title snapshot; it remains after task edits/reopens/deletes. "Done, log it" joins Tasks' own `completeTask` with service write in one Dexie transaction; repeat occurrence created once and retains asset link. Task completed elsewhere appears "not yet saved to history" until explicitly logged.
-- **H2 final follow-up:** duplicate records created for the same originating task on two offline devices are **preserved** and flagged for human review; no automatic deletion/merge; Undo can restore a record and warning. After-completion repeats use the entered actual service date as basis, while fixed repeats use the normal completion-day basis (no rewriting general Task recurrence).
-- Real physical two-device/offline/older-version behavior has **not** been fully acceptance-tested at H3; simulations using the real sync engine are reported. Never conflate simulations with field verification.
-
-### Privacy/UX
-
-- Assets may store optional address, serial/VIN and plate; mask until deliberately shown and do not expose in list titles, Search snippets, Calendar/ICS or Today. Public docs use hypothetical data only. External document references are safe HTTP(S) metadata, not uploaded file storage.
-- Rich UI must be accessible and responsive. Tests and 375px browser checks are required; label any unverified visual/keyboard/screen-reader paths rather than claiming success.
-
-## 6. Delivered functionality — historical overview
-
-### Projects P1–P5 — finished and deployed
-
-- P1/P2/P3: project registration, planning and tasks/milestones, budgets/commitments and management workflows; consult detailed reports for exact features.
-- **P4A:** agreement allocation across budget lines, change orders, payments/transaction tagging and reconciliation; pushed `1c478e0`.
-- **P4B:** safe project permanent deletion, `+project` Quick Add, bulk task project assignment, task/milestone summaries in project list, project labels in Search, project-filtered Finance trends; sync deletion precedence with safeguards for monetary dependencies; pushed `6545763`.
-- **P5:** "Where the money goes" segmented expected-cost bar, per-agreement allocations, paid vs left with signed exceptions, neutral/balancing "No budget line", filtered Reports deep link, project-filtered CSV with unchanged unfiltered output; pushed `47100bc`.
-- Projects acceptance was **assumed complete by owner** before Home & Assets started; some real-device/offline acceptance tasks remained on the backlog. Treat them as open known risks unless explicitly verified subsequently.
-
-### Home & Assets H0 — architecture
-
-- One generic asset kind (`property`, `area`, `system`, `appliance`, `vehicle`, `other`) with optional parent pointer, specs, contacts, warranty dates, refs and lifecycle. No forced hierarchy; parent link and cycle/depth checks.
-- Planned phases H1 registry; H2 maintenance/service records; H3 Finance/Projects linkage; H4 warranties/retirement/replacement/orphan repair; H5 overview/Today/final acceptance. H0 Revision 2 superseded an earlier suggestion to omit deletion-wins policy for Assets.
-- Owner confirmed eight recommended “A” defaults (reference rather than mutate Finance, durable maintenance records, restrictive deletion, separate net-worth entries, masked sensitive details, minimal Projects-side integration, editable generic maintenance suggestions, route/name Home & Assets).
-
-### H1 — asset registry (deployed `bf2d3d5`)
-
-- `#/assets`: flat/tree lists; in-use/stored/past/archived filters; asset add/edit with optional make/model/identifiers, acquisition/warranty info, shared Contacts, specs, external document refs; parent hierarchy and validation; links from Tasks/Events; Search and Quick Add prefix `a`; masking; archive/retire/restore and safe permanent deletion; narrow Assets merge rule. H0.5 prerequisites: improved sync conflict labels and plain-backup warning.
-- At H1 review: 1,407 tests passing.
-
-### H2 — maintenance and durable history (deployed `f101e1b`)
-
-- Asset maintenance from linked recurring Tasks with editable generic suggestions; atomic "Done, log it"; unscheduled service logs; service-history timeline; "Save to history" for tasks completed elsewhere; provider Contacts, typed costs, refs; service Search and Quick Add `svc`; deletion guards and sync tests. Follow-up: duplicate-warning and historically correct recurring-task basis.
-- At H2 final review: 1,464 tests passing.
-
-### H3 — Finance references and Project links (deployed `30118dd`)
-
-- Read-only Finance transaction/split selection for asset acquisition and service records; typed-or-Finance source switching with explicit confirmation; split fingerprint/review; spend summary and parent rollups with piece deduplication; Related Projects and Related Assets cards; Project -> asset prefilled service-record handoff requiring explicit save; read-only net-worth entry pointer. Minimal Projects UI file additions; Finance, Projects financial calculations and sync implementation unchanged.
-- At H3 review: 1,521 tests passing, 97 files; `tsc` and build green. Browser interacted with flows using isolated data but **no screenshot visual review**; pending visual/light-theme/a11y, stale ref replacement, handoff Save, unlink/Undo, refund UI, real phone/two devices/offline.
-- GitHub verified H3 pushed/deployed on 2026-11-06, even though H3 report and top backlog status were written before commit.
-
-### H4 — warranties and lifecycle (deployed `89ffde9`)
-
-Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06). Built atop deployed H3 `30118dd`. **At H4 final review: 1,586 passing tests across 100 files**, TypeScript and production build clean; Dexie 15; no Finance/Projects/Tasks/Contacts source modifications or backup/sync format changes. Committed and pushed as `89ffde9`; Pages run #57 succeeded.
-
-- Multiple durable warranty records with shared Contacts and safe document links; H1 simple warranty fields act as **implicit fallback** only when no live explicit warranty exists. Deleting last explicit warranty prompts whether to clear legacy fields; no silent deletion.
-- Fifth read-only Calendar layer `9_000_000_000_000_105` derives warranty expiration markers. Stored and active assets show markers; archived/sold/disposed/replaced do not; expired markers are informational, not overdue. Maintenance reminders stay Tasks-owned.
-- Atomic asset replacement with existing/new asset and review step; new asset gets only name/type/place, never copied sensitive identifiers or history. Existing service/financial/warranty/Projects history remains with old asset.
-- Previewed retirement/bulk retirement of property descendants; open tasks explicitly Keep linked (default), Move, Stop repeating or Delete. A shared Task's **Delete** choice now warns it will be deleted for all linked assets; this was the final follow-up fix, covered by a focused test.
-- Past-asset navigation, replacement links, orphan service/warranty/link detection and explicit re-home/clear/remove handling; protects absent-on-this-device sync cases.
-- Real sync-engine tests cover warranty versus deletion, replacement conflicts, orphan repair and backup revival. **Actual two-device/real-phone/offline and complete keyboard/screen-reader testing remain outstanding**.
-- Known limitation: simultaneous independent replacement on two devices may leave both created replacement assets, only one referenced as successor; other can be archived. Last writer wins per record. Other outstanding browser checks include some warranty editing/document rows, Undo, Stop repeating/Delete actions and shared-delete warning display.
-- **Handoff procedure:** installed 2026-11-06 (`docs/CHATGPT-HANDOFF.md`, rule appended to root `CLAUDE.md`; `docs/CLAUDE-HANDOFF-SOP.md` kept as the source text) and committed with H4.
-
-### H5 — overview, Today and acceptance (COMMITTED AND DEPLOYED `4422999`, Pages run #58; real-device acceptance NOT DONE)
-
-Report: `docs/HOME-ASSETS-H5-REPORT-2026-11-06.md` (including its final follow-up, the Modal keyboard tests). Built on deployed H4. **1,629 passing tests across 102 files**, `tsc` and build clean; Dexie 15; no Finance, Projects, Tasks, Contacts or Calendar source edits; no schema, backup or sync change.
-
-- `#/assets` now opens an **Overview** (Needs attention, Upcoming maintenance, Warranties ending soon, Recent service history, Spending on assets); the list is "All assets" at `#/assets/list`. One read-only reader (`overviewData.ts` → pure `overview.ts`) feeds both the page and the Today card; nothing is stored. It reuses Tasks' `isOverdue`, H4's `warrantyStatus` (60 days) and `effectiveWarranties`, H2's `unsavedTasks` and `duplicateTaskGroups`, H4's `detectOrphans`, and H3's `spend()` unchanged.
-- Spending: household total counts each payment once; a year narrows by each piece's own date (Finance payment by transaction date, typed cost by service/purchase date, undated typed costs only under All time); per-property rows can exceed the household total when one payment is linked in two properties (stated on screen); unknown cost is never $0; stale references are left out and counted; project money is never included.
-- Today card `assets.attention`: counts only, half width, hides when empty, no names/amounts/identifiers, does not list maintenance tasks (Tasks already do).
-- Archived and sold/disposed/replaced assets raise no attention (same rule as Calendar warranty markers); their history and spending still count.
-- Shared `shell/Modal.tsx` now keeps Tab inside the topmost dialog (found in the accessibility review); the logic is `shell/modalKeys.ts` with 11 tests (review follow-up).
-- **Not verified:** real screen reader, real phone, second device, offline reload, older build. All remain **NOT TESTED** in the report's owner checklist.
-- AI-readiness assessment (report section 14): no new interface is recommended yet; `loadOverview` and the pure readers are already a small read-only context surface.
-
-### Household Services S1 — providers and standing arrangements (BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; not real-device tested)
-
-Report: `docs/HOUSEHOLD-SERVICES-S1-REPORT-2026-11-06.md`. Code: `src/modules/services/` (new) plus a 2-line registration in `src/modules/index.ts`; nothing else in `src/` changed. **Built:** module at `#/services` (overview, arrangement page `#/services/a/<id>`, provider page `#/services/providers/<contact>`); arrangement record (module `services`, kind `arrangement`, defensive reader, strict save-time validation, unknown fields preserved, no account/password/code/bank fields); provider = shared Contact via `findOrCreateContact` (no second contact for the same name) with a name snapshot; `ensureNextVisitTask` (re-reads live Tasks inside the transaction; one open visit Task; Task carries `servicesArrangement` and `servicesOccurrence` markers that the Task editor preserves, confirmed by test and in the browser); `scheduleHealth` (no-task, duplicate-open, rule-differs, stale-marker, off-cadence, moved-once) with seven previewed, stale-refusing fixes; Change schedule (move the current visit, or keep it and apply the new pattern after it); Pause, Resume, End, Replace provider (one transaction, all-or-nothing, Undo, H4-style shared-task warning, no duplicate successor); one-way asset linking (`serves`, from Services only, retired and removed assets handled); Search, Quick Add `hs`, record source `arrangement:<n>`. **Not built:** visits and "Done, log it" (S2), Finance (S3), Today card, Calendar layer, seasons, renewals, reverse Home & Assets UI (S4), AI. **Evidence:** automated (vitest, including real `SyncEngine` two-device and backup/restore), browser (pane database, desktop, 375 px, dark mode, invented data); real-device NOT done. Judgment calls 1–15 are listed in the S1 report and the backlog and await review.
-
-### Household Services S0 — design (REVISION 2, FINAL-APPROVED; committed `e460c51`; Q1–Q9 accepted as option A)
-
-Document: `docs/HOUSEHOLD-SERVICES-S0-PLAN-2026-11-06.md` (section 0 lists every Revision 2 change). Design only; no source change. **Revision 2 refinements (from ChatGPT's review):**
-- **Scheduling authority:** arrangement owns the intended cadence (with `anchorDate`); the Task executes it. A reschedule moves one visit only; the standing cadence changes only via "Change schedule". At "Done, log it" (S2) Services sets the next due date from the cadence anchor via `generateDates` (no second engine). Drift (`scheduleHealth`) is detected and fixed only by explicit previewed choices. `ensureNextVisitTask` guarantees at most one open Task through pause/resume/replace; cross-device duplicates are detected, not auto-deleted. A timed visit is the Task with `dueTime`; no Calendar event in S1/S2. Regression lists in plan 6.10.
-- **Visits:** completed, skipped and cancelled are distinct; cancelled visits can carry a fee (`chargeKind`) and a payment but are never service delivered; a Finance payment never proves work occurred.
-- **Privacy:** no provider `accountNumber` in S1 (deferred); no codes, passwords or bank instructions in notes.
-- **Household total:** `householdHomeSpend` specified in plan 7.6 (each linked payment once; whole supersedes parts; `recorded-as` pair rule; typed amounts never matched by value; shared payments never apportioned; never an allocation; no Finance change).
-- **S1 scope:** arrangement-to-asset linking from the Services UI only; reverse Home & Assets UI is S4; S1 touches nothing under `src/modules/assets`.
-
-Original model, still in force except where the above refines it:
-
-- Provider = an ordinary shared **Contact** (no provider record; primary contact plus extra contacts; business-name snapshot). Two new `moduleRecords` kinds in module `services`: **arrangement** (standing relationship, cadence, expected cost, documents) and **visit** (created only when a visit is finished, skipped or cancelled; one-off visits need no arrangement). **No new table, schema stays 15.**
-- Scheduling reuses Tasks: the arrangement stores the cadence; one linked recurring Task is "the next visit"; a Calendar event only for timed appointments. Skip/cancel are visit statuses; "Done, log it" is atomic with `completeTask` (H2 pattern). Seasonal ("April to October") needs a small optional wrapper in Services or a yearly-reminder fallback; Tasks and core recurrence are not changed.
-- Money: H3-style read-only Finance references (`TxnRef`, `pieceKey`, live amount, split fingerprint); expected, quoted and charged amounts are labelled and **never counted as spent**; typed amounts only for "paid outside Finance"; one household-union helper de-duplicates by `pieceKey` (S5). Project money is shown beside, never added.
-- Provider change = **successor arrangement**. History is preserved: no deletion-wins rule, no `merge.ts` change; arrangements with visits cannot be deleted; orphans repairable.
-- Boundaries: maintenance of a thing -> Home & Assets (explicit prefilled "Record in Home & Assets", saves only on Save, `recorded-as` link); defined scope and budget -> Projects; subscriptions, bills and scheduled payments -> Bills & Subscriptions (Services never posts or schedules payments).
-- Proposed phases (not authorized): S1 arrangements + provider page + next-visit Task; S2 visits and Today card; S3 Finance; S4 cross-module workflows, renewals and a sixth Calendar layer (`..._106`); S5 overview, insights, acceptance.
- stay taken).
+- Q1–Q9 accepted as option A; S0 Revision 2 final-approved. S0 corrections applied at S1 start: 7.6 reconciliation is now claim-based (no simple identity; required S5 whole-versus-split cross-module test); no separate Calendar event for timed visits (one Task with a due time). Quick Add prefix `hs` is registered (the words `svc`, `a`, `b`, `p`, `t`, `e`, `$`, `service`, `repair` and the others stay taken).
 
 ## 7. Post-H5 product roadmap (recommended, not rigid)
 
-1. **Household Services** — S0 approved; S1 built and tested locally awaiting review (above); S2 next, not authorized. Ongoing cleaner, landscaper, pest-control, service-contract relationships; provider, schedule, rates, visits, history; reuse Contacts/Tasks/Calendar/Finance/Assets; distinguish ongoing relationship from an individual Asset service event.
+1. **Household Services** — S0 approved; S1 committed and deployed (`7b8c33f`); S2 (visits, scheduling, history, Today card) built and tested locally awaiting review (above); S3 (Finance) next, not authorized, then S4 (cross-module workflows, renewals) and S5 (overview, insights, acceptance). Ongoing cleaner, landscaper, pest-control, service-contract relationships; provider, schedule, rates, visits, history; reuse Contacts/Tasks/Calendar/Finance/Assets; distinguish ongoing relationship from an individual Asset service event.
 2. **Bills & Subscriptions:** enhance existing Finance scheduled payments into obligations, renewals, price changes and cancellation reminders; consider shared architecture with phase separation.
 3. **Family Management:** household member context, school/childcare calendars, family activities and responsibilities; reuse Tasks, Calendar, Contacts.
 4. **Personal CRM:** extend shared Contacts with relationship notes, interactions, important dates and follow-ups; no duplicate contact database.
@@ -385,7 +222,7 @@ Original model, still in force except where the above refines it:
 - Whole-record last-writer-wins means concurrent edits to different fields can overwrite one another; losing versions may surface as conflict notices.
 - Plain backups reveal sensitive details; no binary document storage. Do not accidentally put private data in public repo or tool output.
 - Historical Tasks completed before H2 may appear as “not yet saved” until logged; no bulk dismiss/save yet.
-- **Household Services design risks (S0 section 17):** seasonal schedules unsupported by Tasks; rescheduling a weekly Task may shift later weekdays and every-other-week parity (S1 RESOLVED the S1 part: weekly cadences always carry an explicit weekday, a one-time Task date change leaves the arrangement and later dates unchanged, tested; the completed-visit progression, "Done, log it" and next-date alignment are S2 and still untested); the Task editor preserving the Services markers is CONFIRMED (test and browser); no Contacts screen and no company/archive field on Contact; two devices finishing the same repeating Task create two "next" Tasks (existing Tasks behaviour); one payment cannot be apportioned across visits; typed amounts have no de-duplication key; `spend()` and `txnRef.ts` need a small test-protected extraction in S3.
+- **Household Services design risks (S0 section 17):** seasonal schedules unsupported by Tasks; rescheduling a weekly Task may shift later weekdays and every-other-week parity (S1 RESOLVED the S1 part: weekly cadences always carry an explicit weekday, a one-time Task date change leaves the arrangement and later dates unchanged, tested; the completed-visit progression, "Done, log it" and next-date alignment are S2 and still untested); the Task editor preserving the Services markers is CONFIRMED (test and browser); no Contacts screen and no company/archive field on Contact; two devices finishing the same repeating Task create two "next" Tasks (existing Tasks behaviour); one payment cannot be apportioned across visits; typed amounts have no de-duplication key; `spend()` and `txnRef.ts` need a small test-protected extraction in S3. **S2 update:** the completed-visit progression is now built and tested (cadence-anchored next date, early/late, moved-once, repeat-after); remaining S2 risks: two devices that both log one Task keep both visits (flagged, no resolution workflow) and each makes a next Task (flagged as duplicate-open); a later write on another device can reopen a logged Task (the visit survives and a second Done is refused, tested); Tasks finished elsewhere stay "not yet logged" until the owner logs them (no dismiss); an unrecognised stored visit status is shown as "Needs review" until the owner chooses a real outcome; the Undo guard relies on millisecond `updatedAt` and S1 lifecycle Undos are unguarded; an operation id lasts only as long as the open form or preview; seasonal scheduling is deferred.
 - Avoid building duplicate financial engines, calendar events, task recurrence or vendor lists.
 - Keep backlog and handoff accurate after **commit/deploy**, not merely after implementation reports. Never mark draft/plan features as built.
 
@@ -420,6 +257,8 @@ Original model, still in force except where the above refines it:
 
 ## 11. Change log for handoff itself
 
+- **2026-11-06 (S2 pre-commit correction, by Claude):** four findings from ChatGPT's review corrected and tested (report section 20): repeat-after anchoring for skipped or cancelled future visits, operation-id idempotency for one-offs (look-alikes warned, not rejected), unsupported visit statuses preserved and flagged, guarded Undo for visit actions. 1,812 tests in 109 files, tsc, build and diff check clean; five new mutation checks; two-device sync and browser checks. Handoff updated: yes. Nothing committed.
+- **2026-11-06 (Household Services S2, by Claude):** verified S1 committed (`7b8c33f`) and deployed (Pages run #60 success, public API), tree clean, baseline 1,694 tests; built S2 (see section 6): 1,776 tests, tsc and build green, five mutation checks, real `SyncEngine` two-device scenarios, browser-checked with invented data; repaired a defect in this file (the document had been pasted twice and spliced mid-bullet; the complete copy was kept and the S0 bullet restored); recorded S1 as deployed; added S2 report and backlog entry. Schema still 15, no new dependency, no change outside `src/modules/services/`. Handoff updated: yes. Nothing committed.
 - **2026-11-06 (Household Services S1, by Claude):** verified tree clean and baseline 1,629 tests; applied the two S0 documentation corrections (7.6 claim-based reconciliation; no separate Calendar event) and marked S0 approved / S1 in implementation; built S1 (see section 6): 1,694 tests, tsc and build green, browser-checked with invented data at desktop, 375 px and dark mode; added S1 report, backlog entry, README and module-hooks notes. Schema still 15, no new dependency, no Home & Assets / Projects / Tasks / Calendar / Finance / Contacts source change. Handoff updated: yes. Nothing committed, pushed or deployed.
 - **2026-11-06 (S0 Revision 2, by Claude):** applied ChatGPT's five refinements (scheduling authority, cancelled-visit fees and payments, no `accountNumber`, full `householdHomeSpend` spec, S1 one-way asset linking); recorded Q1–Q9 as accepted planning defaults and Revision 2 as awaiting final review; S1 still proposed, not authorized. No code, no test run. Handoff updated: yes. Nothing committed.
 
@@ -432,4 +271,4 @@ Original model, still in force except where the above refines it:
 
 ---
 
-**Next action as of 2026-11-06 (end of S1 build):** ChatGPT reviews `docs/HOUSEHOLD-SERVICES-S1-REPORT-2026-11-06.md` (especially judgment calls 1–15 and the NOT verified list). If approved, the owner explicitly authorizes the commit and push; Claude then reruns `npm test`, `npx tsc --noEmit`, `npm run build`, commits, pushes `main`, confirms the Actions run and reports the SHA. S2 (visits, "Done, log it", skip/cancel, Today card, cadence-anchored next date) does not start until separately authorized. In parallel and independent of code, the owner can work through the H5 real-device checklist (all 14 items NOT TESTED) so Home & Assets can be formally closed.
+**Next action as of 2026-11-06 (end of the S2 pre-commit correction):** ChatGPT reviews `docs/HOUSEHOLD-SERVICES-S2-REPORT-2026-11-06.md` (especially judgment calls and the NOT verified list). If approved, the owner explicitly authorizes the commit and push; Claude then reruns `npm test`, `npx tsc --noEmit`, `npm run build`, commits, pushes `main`, confirms the Actions run and reports the SHA. S3 (Finance references, payments, totals) does not start until separately authorized. In parallel and independent of code, the owner can work through the H5 real-device checklist (all 14 items NOT TESTED) so Home & Assets can be formally closed, and test S1/S2 on a phone and a second device.

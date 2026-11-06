@@ -3,13 +3,14 @@ import { db } from '../../db';
 import type { QuickAddDef } from '../../core/registry';
 import { createStore } from '../../core/store';
 import { nameKey } from '../../core/contacts';
-import { dayOfWeek } from '../../lib/dates';
-import { todayISO } from '../../lib/money';
+import { addDays, dayOfWeek } from '../../lib/dates';
+import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { dayLabel } from '../../core/time';
 import { parseQuickAdd } from '../tasks/quickAdd';
 import { applyUndo, type Undo } from './changes';
 import { createArrangement } from './data';
-import { blankArrangement, cadenceText, normalizeArrangement, tidy, validateArrangement, type ArrangementData } from './model';
+import { logStandaloneVisit } from './visits';
+import { blankArrangement, cadenceText, isDate, normalizeArrangement, tidy, validateArrangement, type ArrangementData } from './model';
 
 export interface ServiceQuick { data: ArrangementData; providerName: string; providerExists: boolean; firstDate: string | null }
 
@@ -35,7 +36,43 @@ export function parseServiceQuick(text: string, today: string, contacts: string[
   return { data, providerName: provider, providerExists: !!provider && contacts.some((c) => nameKey(c) === nameKey(provider)), firstDate: first };
 }
 
+let opCounter = 0;
+export interface OneOffQuick { title: string; providerName: string; providerExists: boolean; date: string; chargedCents: number | null; problem: string | null }
+
+/**
+ * Pure. `hs visit mowed the lawn with Maple Lawn Care yesterday $85` is a one-off completed visit: the words after the last " with " are the
+ * provider, "yesterday" or a date word sets the day (default today), and "$85" is the amount charged (information only). Only used when the text
+ * starts with the word "visit" and has no repeat; otherwise the text is an arrangement as before. A missing provider or a future date is
+ * shown in the preview and refused when Add is pressed, so nothing is half-understood silently.
+ */
+export function parseOneOffQuick(text: string, today: string, contacts: string[]): OneOffQuick | null {
+  const m = /^visit\s+(.+)$/i.exec(tidy(text));
+  if (!m) return null;
+  let rest = m[1];
+  let chargedCents: number | null = null;
+  const money = /\$\s?(\d[\d,]*(?:\.\d{1,2})?)/.exec(rest);
+  if (money) { chargedCents = parseAmountToCents(money[1]); rest = tidy(rest.replace(money[0], ' ')); }
+  let date: string | null = null;
+  if (/\byesterday\b/i.test(rest)) { date = addDays(today, -1); rest = tidy(rest.replace(/\byesterday\b/i, ' ')); }
+  const p = parseQuickAdd(rest, today);
+  if (p.repeat) return null;
+  let title = tidy(p.title);
+  let provider = '';
+  const at = title.toLowerCase().lastIndexOf(' with ');
+  if (at > 0 && tidy(title.slice(at + 6))) { provider = tidy(title.slice(at + 6)); title = tidy(title.slice(0, at)); }
+  const day = date ?? p.dueDate ?? today;
+  const problem = !title ? 'Say what was done.' : !provider ? 'Add the provider after the word "with", for example "with Maple Lawn Care".' : !isDate(day) ? 'That date is not a real date.' : day > today ? 'A visit that already happened cannot be dated in the future.' : null;
+  return { title, providerName: provider, providerExists: !!provider && contacts.some((c) => nameKey(c) === nameKey(provider)), date: day, chargedCents, problem };
+}
+
 let known: string[] = [];
+
+/** A contact made just for a Quick Add is removed again on Undo only if nothing else (an arrangement or a visit) uses it. */
+async function dropContactIfUnused(created: boolean, contactId: number | null) {
+  if (!created || contactId === null) return;
+  const used = (await db.moduleRecords.where('module').equals('services').toArray()).some((x) => x.deletedAt == null && (x.data as { providerContactId?: number }).providerContactId === contactId);
+  if (!used) await createStore(db).shared.contacts.remove(contactId);
+}
 
 /** The Add box's Household Services destination. Shows what was understood; nothing is saved until Add is pressed. */
 export const serviceQuickAdd: QuickAddDef = {
@@ -48,6 +85,17 @@ export const serviceQuickAdd: QuickAddDef = {
     return () => sub.unsubscribe();
   },
   parse(text, opts) {
+    const one = opts?.plain ? null : parseOneOffQuick(text, todayISO(), known);
+    if (one) {
+      const fields = [
+        { label: 'One-off visit', value: one.title || 'Missing' },
+        { label: 'Provider', value: one.providerName ? `${one.providerName} (${one.providerExists ? 'existing contact' : 'new contact'})` : 'Missing' },
+        { label: 'Date', value: dayLabel(one.date, { weekday: 'short', year: true }) },
+        ...(one.chargedCents !== null ? [{ label: 'Charged', value: `${formatCents(one.chargedCents)} (information only, not a payment)` }] : []),
+        ...(one.problem ? [{ label: 'Problem', value: one.problem }] : []),
+      ];
+      return { summary: `One-off visit: ${one.title || '?'}${one.providerName ? ` with ${one.providerName}` : ''}. No arrangement or task is created`, fields, payload: { kind: 'visit', one, operationId: `qa-${Date.now().toString(36)}-${++opCounter}` } };
+    }
     const p = parseServiceQuick(text, todayISO(), known, opts?.plain);
     if (!p) return null;
     const c = p.data.cadence;
@@ -60,16 +108,32 @@ export const serviceQuickAdd: QuickAddDef = {
     return { summary: `${p.data.title}${p.providerName ? ` with ${p.providerName}` : ''}, ${cadenceText(c)}${c ? '. A visit task is created' : ''}`, fields, payload: p };
   },
   async commit(preview) {
-    const p = preview.payload as ServiceQuick;
+    const pl = preview.payload as ServiceQuick | { kind: 'visit'; one: OneOffQuick; operationId: string };
+    if ('kind' in pl) {
+      const o = pl.one;
+      if (o.problem) throw new Error(o.problem);
+      const v = await logStandaloneVisit({
+        provider: { name: o.providerName }, today: todayISO(), operationId: pl.operationId,
+        input: { title: o.title, status: 'completed', cancelledBy: null, date: o.date, chargedCents: o.chargedCents, chargeKind: o.chargedCents === null ? null : 'service' },
+      });
+      if (v.repeated) return undefined;
+      return async () => {
+        try {
+          await applyUndo(v.undo);
+        } catch (e) {
+          // refused because the visit was changed since: say so, and keep the contact
+          if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(e instanceof Error ? e.message : 'Could not undo that.');
+          return;
+        }
+        await dropContactIfUnused(v.contactCreated, v.contactId);
+      };
+    }
+    const p = pl;
     const r = await createArrangement({ data: p.data, provider: p.providerName ? { name: p.providerName } : null, today: todayISO() });
     const undo: Undo = { arrangements: [], tasks: [], created: [r.id, ...(r.taskId !== null ? [r.taskId] : [])] };
     return async () => {
       await applyUndo(undo);
-      // A contact made just for this is removed again only if nothing else uses it.
-      if (r.contactCreated && r.contactId !== null) {
-        const used = (await db.moduleRecords.where('module').equals('services').toArray()).some((x) => x.deletedAt == null && (x.data as { providerContactId?: number }).providerContactId === r.contactId);
-        if (!used) await createStore(db).shared.contacts.remove(r.contactId);
-      }
+      await dropContactIfUnused(r.contactCreated, r.contactId);
     };
   },
 };

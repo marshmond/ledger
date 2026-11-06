@@ -11,6 +11,7 @@ import { projectsUsingContact } from '../projects/data';
 import { cadenceText, STATUS_LABEL } from './model';
 import { arrangementRoute } from './paths';
 import { buildProvider, loadSnapshot, type Row } from './views';
+import VisitList from './VisitList';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 
@@ -84,7 +85,13 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
       )}
       <section className="card sv-card" aria-labelledby="sv-pv-h">
         <h2 id="sv-pv-h">Visit history</h2>
-        <p className="muted">Visit history arrives in a later update.</p>
+        {p.visits.length > 0 && (
+          <p className="sv-stats small" aria-label="Visit totals">
+            <span>Completed: <strong>{p.stats.completed}</strong></span><span>Skipped: <strong>{p.stats.skipped}</strong></span><span>Cancelled: <strong>{p.stats.cancelled}</strong></span>
+            <span>Last serviced: <strong>{p.stats.lastServiced ? day(p.stats.lastServiced) : 'never logged'}</strong></span>
+          </p>
+        )}
+        <VisitList rows={p.visits} showProvider={false} empty="No visits logged with this provider yet." />
       </section>
       {editing && p.contact && <EditContact id={contactId} name={p.contact.name} phone={p.contact.phone ?? ''} email={p.contact.email ?? ''} relationship={p.contact.relationship ?? ''} onClose={() => setEditing(false)} />}
     </div>

@@ -3,13 +3,15 @@ import type { SearchResult, SearchSource } from '../../core/registry';
 import { norm, score } from '../../lib/search';
 import { cadenceText, STATUS_LABEL, type ArrangementRecord } from './model';
 import { loadArrangements } from './data';
-import { arrangementPath, providerPath } from './records';
+import { arrangementPath, providerPath, visitPath } from './records';
+import { statusWords, type VisitRecord } from './visitModel';
+import { loadVisits } from './visits';
 
 /**
  * Pure: the Household Services hits for a typed query. Matches the arrangement title and the provider's name. A result line shows the
  * title, provider name, how often and the status. It NEVER shows phone, email, notes, document links, amounts or the provider's address.
  */
-export function searchServicesData(raw: string, arrangements: ArrangementRecord[], cap = 8): SearchResult[] {
+export function searchServicesData(raw: string, arrangements: ArrangementRecord[], cap = 8, visits: VisitRecord[] = []): SearchResult[] {
   const query = norm(raw).split(/\s+/).filter(Boolean);
   if (query.length === 0) return [];
   const out: SearchResult[] = [];
@@ -26,6 +28,15 @@ export function searchServicesData(raw: string, arrangements: ArrangementRecord[
       subtitle: [a.data.providerNameSnapshot, cadenceText(a.data.cadence), a.data.status !== 'active' ? STATUS_LABEL[a.data.status] : ''].filter(Boolean).join(' · '),
     });
   }
+  // Visits: matched on title and provider name only. Notes, amounts, links and contact details are never searched or shown.
+  const vhits = visits
+    .map((v) => ({ v, s: score(query, v.data.title, v.data.providerNameSnapshot) - 1 }))
+    .filter((x) => x.s > 0)
+    .sort((x, y) => y.s - x.s || y.v.data.date.localeCompare(x.v.data.date) || x.v.id - y.v.id)
+    .slice(0, cap);
+  for (const { v, s } of vhits) {
+    out.push({ id: `visit:${v.id}`, title: v.data.title, kind: 'Visit', score: s, path: visitPath(v.id), subtitle: [statusWords(v.data), v.data.date, v.data.providerNameSnapshot].filter(Boolean).join(' · ') });
+  }
   const seen = new Set<number>();
   for (const a of arrangements) {
     const id = a.data.providerContactId;
@@ -40,6 +51,6 @@ export function searchServicesData(raw: string, arrangements: ArrangementRecord[
 export const servicesSearchSource: SearchSource = {
   group: 'Household Services',
   async search(query, limit) {
-    return searchServicesData(query, await loadArrangements(db), 8).slice(0, limit);
+    return searchServicesData(query, await loadArrangements(db), 8, await loadVisits(db)).slice(0, limit);
   },
 };

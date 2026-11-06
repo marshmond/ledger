@@ -11,7 +11,9 @@ import { loadAssets, publicLabel } from '../assets/data';
 import { parseAssetRef, STATUS_LABEL as ASSET_STATUS, TYPE_LABEL, type AssetRecord } from '../assets/model';
 import { ASSET_LINK, MODULE, parseArrangementRef, TASK_LINK, type ArrangementRecord } from './model';
 import { loadArrangements } from './data';
-import { openOf, scheduleHealth, type Health } from './schedule';
+import { loadVisits, unloggedVisits, type UnloggedItem } from './visits';
+import { byDateDesc, duplicateGroups, visitStats, type DuplicateGroup, type VisitRecord, type VisitStats } from './visitModel';
+import { isBooking, openOf, scheduleHealth, type Health } from './schedule';
 
 export interface AssetView { id: number; name: string; typeLabel: string; statusLabel: string; /** sold, disposed of or replaced */ past: boolean; archived: boolean; /** the asset no longer exists on this device */ missing: boolean; replacedBy: string | null }
 
@@ -33,9 +35,10 @@ export interface Snapshot {
   assetIdsBy: Map<number, number[]>;
   assets: AssetRecord[];
   contacts: Contact[];
+  visits: VisitRecord[];
 }
 export async function loadSnapshot(d: FinanceDB = db): Promise<Snapshot> {
-  const [arrangements, tasks, links, assets, contacts] = await Promise.all([loadArrangements(d), loadTasks(d), d.links.toArray(), loadAssets(d), createStore(d).shared.contacts.query()]);
+  const [arrangements, tasks, links, assets, contacts, visits] = await Promise.all([loadArrangements(d), loadTasks(d), d.links.toArray(), loadAssets(d), createStore(d).shared.contacts.query(), loadVisits(d)]);
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const tasksBy = new Map<number, TaskRecord[]>();
   const assetIdsBy = new Map<number, number[]>();
@@ -43,13 +46,13 @@ export async function loadSnapshot(d: FinanceDB = db): Promise<Snapshot> {
     if (!isLive(l)) continue;
     if (l.type === TASK_LINK && l.fromModule === 'tasks' && l.toModule === MODULE) {
       const arr = parseArrangementRef(l.toId); const t = byId.get(Number(l.fromId));
-      if (arr !== null && t) { const list = tasksBy.get(arr) ?? []; if (!list.includes(t)) list.push(t); tasksBy.set(arr, list); }
+      if (arr !== null && t && !isBooking(t)) { const list = tasksBy.get(arr) ?? []; if (!list.includes(t)) list.push(t); tasksBy.set(arr, list); }
     } else if (l.type === ASSET_LINK && l.fromModule === MODULE && l.toModule === 'assets') {
       const arr = parseArrangementRef(l.fromId); const as = parseAssetRef(l.toId);
       if (arr !== null && as !== null) { const list = assetIdsBy.get(arr) ?? []; if (!list.includes(as)) list.push(as); assetIdsBy.set(arr, list); }
     }
   }
-  return { arrangements, tasksBy, assetIdsBy, assets, contacts };
+  return { arrangements, tasksBy, assetIdsBy, assets, contacts, visits };
 }
 
 export interface Row {
@@ -74,7 +77,7 @@ export function buildRow(s: Snapshot, a: ArrangementRecord): Row {
   };
 }
 
-export interface Overview { rows: Row[]; active: Row[]; paused: Row[]; ended: Row[]; upcoming: Row[]; attention: AttentionItem[] }
+export interface Overview { needsReview: VisitRecord[]; rows: Row[]; active: Row[]; paused: Row[]; ended: Row[]; upcoming: Row[]; attention: AttentionItem[]; unlogged: UnloggedItem[]; duplicates: DuplicateGroup[]; recent: VisitRow[] }
 
 export function buildOverview(s: Snapshot): Overview {
   const rows = s.arrangements.map((a) => buildRow(s, a));
@@ -90,19 +93,23 @@ export function buildOverview(s: Snapshot): Overview {
     }
   }
   return {
-    rows, active, paused: rows.filter((r) => r.a.data.status === 'paused'), ended: rows.filter((r) => r.a.data.status === 'ended'),
+    needsReview: s.visits.filter((v) => v.data.status === 'unsupported'), rows, active, paused: rows.filter((r) => r.a.data.status === 'paused'), ended: rows.filter((r) => r.a.data.status === 'ended'),
     upcoming: active.filter((r) => r.nextDate).sort((x, y) => x.nextDate!.localeCompare(y.nextDate!)), attention,
+    unlogged: unloggedVisits(s.arrangements, s.tasksBy, s.visits), duplicates: duplicateGroups(s.visits), recent: visitRows(s, s.visits.slice(0, 10)),
   };
 }
 
-export interface ProviderView { contact: Contact | null; contactId: number; name: string; active: Row[]; past: Row[]; assets: AssetView[] }
+export interface ProviderView { contact: Contact | null; contactId: number; name: string; active: Row[]; past: Row[]; assets: AssetView[]; visits: VisitRow[]; stats: VisitStats }
 export function buildProvider(s: Snapshot, contactId: number): ProviderView {
   const rows = s.arrangements.filter((a) => a.data.providerContactId === contactId).map((a) => buildRow(s, a));
   const contact = s.contacts.find((c) => c.id === contactId) ?? null;
+  // History belongs to the provider AT THE TIME (the visit's own provider), not to whoever the arrangement points at now.
+  const mine = s.visits.filter((v) => v.data.providerContactId === contactId);
   const ids = [...new Set(rows.filter((r) => r.a.data.status !== 'ended').flatMap((r) => r.assets.map((x) => x.id)))];
   return {
     contact, contactId, name: contact?.name ?? rows[0]?.a.data.providerNameSnapshot ?? '', active: rows.filter((r) => r.a.data.status !== 'ended'),
     past: rows.filter((r) => r.a.data.status === 'ended'), assets: assetViews(ids, s.assets),
+    visits: visitRows(s, mine), stats: visitStats(mine),
   };
 }
 /** Providers (contacts with at least one arrangement), most active first. Names only. */
@@ -116,4 +123,38 @@ export function providerList(s: Snapshot): { contactId: number; name: string; ac
     m.set(id, e);
   }
   return [...m.values()].sort((x, y) => y.active - x.active || x.name.localeCompare(y.name));
+}
+
+/** One history line. Built from the visit's own saved facts, so a missing contact, arrangement or Task never stops it showing. */
+export interface VisitRow {
+  v: VisitRecord;
+  /** The arrangement's title now, or null for a one-off job or an arrangement that is gone. */
+  arrangementTitle: string | null;
+  arrangementGone: boolean;
+  providerName: string;
+  contactGone: boolean;
+  /** Part of a possible-duplicate group. */
+  possibleDuplicate: boolean;
+}
+export function visitRows(s: Snapshot, visits: VisitRecord[]): VisitRow[] {
+  const dup = new Set(duplicateGroups(s.visits).flatMap((g) => g.visits.map((v) => v.id)));
+  return [...visits].sort(byDateDesc).map((v) => {
+    const a = v.data.arrangementId !== null ? s.arrangements.find((x) => x.id === v.data.arrangementId) : undefined;
+    return {
+      v, arrangementTitle: a?.data.title ?? null, arrangementGone: v.data.arrangementId !== null && !a, providerName: v.data.providerNameSnapshot,
+      contactGone: v.data.providerContactId !== null && !s.contacts.some((c) => c.id === v.data.providerContactId), possibleDuplicate: dup.has(v.id),
+    };
+  });
+}
+/** The counts the Today card shows. Counts only. */
+export interface AttentionCounts { unlogged: number; duplicateGroups: number; scheduleChecks: number; needsReview: number }
+export function attentionCounts(s: Snapshot): AttentionCounts {
+  const ov = buildOverview(s);
+  return {
+    unlogged: ov.unlogged.length,
+    // look-alike one-offs may be two real visits: they are shown on the pages but not counted on Today
+    duplicateGroups: ov.duplicates.filter((g) => g.reason !== 'lookalike').length,
+    needsReview: ov.needsReview.length,
+    scheduleChecks: ov.rows.filter((r) => r.health.needsAttention).length,
+  };
 }

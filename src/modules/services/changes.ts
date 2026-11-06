@@ -19,6 +19,7 @@ import {
   arrangementRef, arrangementRefId, blankArrangement, normalizeArrangement, validateArrangement, cadenceText, END_REASON_LABEL, KIND, MODULE, STATUS_LABEL,
   withExplicitWeekday, type ArrangementData, type ArrangementRecord, type Cadence, type EndReason,
 } from './model';
+import { visitRef } from './visitModel';
 import { markersOf, nearestCadenceDate, openOf, scheduleHealth, taskRepeatOf, withMarkers, type Health } from './schedule';
 import { normalizeRule } from '../../core/recurrence';
 
@@ -40,22 +41,41 @@ export interface Undo {
   tasks: { id: number; data: TaskData; wasDeleted: boolean }[];
   /** Records this change created (tasks, arrangements): removed again by Undo. */
   created: number[];
+  /**
+   * When present (visit logging), each record this change touched with its `updatedAt` as the change left it. Undo refuses, and writes nothing,
+   * if any of them is different now (edited here or on another device, or acted upon since).
+   */
+  after?: Record<number, number>;
 }
-class Recorder {
+export const UNDO_REFUSED = 'This can no longer be undone, because something it changed has been changed since (maybe on another device). Nothing was changed. Edit the records yourself if you still want to.';
+export class Recorder {
   undo: Undo = { arrangements: [], tasks: [], created: [] };
   arr(a: ArrangementRecord) { if (!this.undo.arrangements.some((x) => x.id === a.id)) this.undo.arrangements.push({ id: a.id, data: structuredClone(a.data) }); }
   task(t: TaskRecord) { if (!this.undo.tasks.some((x) => x.id === t.id)) this.undo.tasks.push({ id: t.id, data: structuredClone(t.data), wasDeleted: false }); }
   made(id: number | null | undefined) { if (id != null) this.undo.created.push(id); }
+  /** Call last, inside the same transaction: remembers how every touched record looks now, so a later Undo can tell if it changed. */
+  async seal(d: FinanceDB): Promise<void> {
+    const after: Record<number, number> = {};
+    for (const id of [...this.undo.created, ...this.undo.tasks.map((t) => t.id)]) { const r = await d.moduleRecords.get(id); if (r) after[id] = r.updatedAt; }
+    this.undo.after = after;
+  }
 }
 /** Takes a change back. Records deleted since are skipped; nothing here can fail half way. */
 export function applyUndo(u: Undo, d: FinanceDB = db): Promise<void> {
   return d.transaction('rw', d.moduleRecords, d.links, async () => {
+    for (const [id, at] of Object.entries(u.after ?? {})) {
+      const r = await d.moduleRecords.get(Number(id));
+      if (!r || r.updatedAt !== at) throw new Error(UNDO_REFUSED);
+    }
     const links = createStore(d).shared.links;
     for (const id of u.created) {
       const r = await d.moduleRecords.get(id);
       if (!r) continue;
       await rows(d).remove(id);
-      if (r.module === MODULE) for (const l of await links.linkedTo(arrangementRef(id))) await links.remove(l.id as number);
+      if (r.module === MODULE) {
+        for (const l of await links.linkedTo(arrangementRef(id))) await links.remove(l.id as number);
+        for (const l of await links.linkedTo(visitRef(id))) await links.remove(l.id as number);
+      }
     }
     for (const t of u.tasks) {
       const r = await d.moduleRecords.get(t.id);

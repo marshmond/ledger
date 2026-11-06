@@ -30,6 +30,21 @@ export function withMarkers(data: TaskData, m: { occurrence?: string | null; arr
   return out as unknown as TaskData;
 }
 
+/**
+ * What a linked Task is FOR. `servicesPurpose: 'book'` marks a reminder to arrange service ("Book the furnace service"): finishing it is not
+ * evidence that anything happened and never makes a visit. A Task with no marker (every S1 Task, and any Task a person linked by hand) is a
+ * visit Task. The marker lives in the Task's carried-through unknown fields, like the other two; the Tasks module is not changed.
+ */
+export const PURPOSE_KEY = 'servicesPurpose';
+export type TaskPurpose = 'visit' | 'book';
+export const purposeOf = (t: { data: TaskData }): TaskPurpose => ((t.data as unknown as Record<string, unknown>)[PURPOSE_KEY] === 'book' ? 'book' : 'visit');
+export const isBooking = (t: { data: TaskData }) => purposeOf(t) === 'book';
+export function withPurpose(data: TaskData, purpose: TaskPurpose): TaskData {
+  const out = { ...data } as unknown as Record<string, unknown>;
+  if (purpose === 'book') out[PURPOSE_KEY] = 'book'; else delete out[PURPOSE_KEY];
+  return out as unknown as TaskData;
+}
+
 /** The repeat to write on the Task for a cadence (a copy). */
 export const taskRepeatOf = (c: Cadence): TaskRepeat => ({ mode: c.mode, rule: { ...c.rule, ...(c.rule.byWeekday ? { byWeekday: [...c.rule.byWeekday] } : {}) } });
 

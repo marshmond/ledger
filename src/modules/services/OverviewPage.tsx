@@ -7,7 +7,10 @@ import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import ArrangementForm from './ArrangementForm';
 import { cadenceText } from './model';
-import { arrangementRoute, providerRoute } from './paths';
+import { arrangementRoute, providerRoute, visitRoute } from './paths';
+import VisitList from './VisitList';
+import { LogVisitDialog, OneOffDialog } from './VisitDialogs';
+import { statusWords } from './visitModel';
 import { buildOverview, loadSnapshot, providerList, type Row } from './views';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
@@ -35,6 +38,8 @@ export default function OverviewPage() {
   const today = useToday() || todayISO();
   const snap = useLiveQuery(() => loadSnapshot(), []);
   const [adding, setAdding] = useState(false);
+  const [oneOff, setOneOff] = useState(false);
+  const [logging, setLogging] = useState<{ arrangementId: number; taskId: number } | null>(null);
   if (!snap) return <div className="sv"><PageHeader title="Household Services" /><p className="muted">Loading…</p></div>;
   const ov = buildOverview(snap);
   const providers = providerList(snap);
@@ -44,7 +49,7 @@ export default function OverviewPage() {
       <PageHeader
         title="Household Services"
         description="Who comes to the house, how often, and when they are next due."
-        actions={<button className="btn primary" onClick={() => setAdding(true)}>Add arrangement</button>}
+        actions={<><button className="btn" onClick={() => setOneOff(true)}>Log a one-off visit</button><button className="btn primary" onClick={() => setAdding(true)}>Add arrangement</button></>}
       />
       {ov.rows.length === 0 ? (
         <EmptyState title="No services yet" action={<button className="btn primary" onClick={() => setAdding(true)}>Add your first arrangement</button>}>
@@ -62,6 +67,48 @@ export default function OverviewPage() {
               </ul>
             )}
           </section>
+
+          {ov.unlogged.length > 0 && (
+            <section className="card sv-card" aria-labelledby="sv-unl-h">
+              <h2 id="sv-unl-h">Finished, not yet logged ({ov.unlogged.length})</h2>
+              <p className="muted small">These visit tasks were finished in Tasks or the Calendar, but no visit was saved. Nothing is saved until you choose.</p>
+              <ul className="plain sv-items">
+                {ov.unlogged.map((u) => {
+                  const a = ov.rows.find((r) => r.a.id === u.arrangementId)?.a;
+                  return (
+                    <li key={u.task.id}>
+                      <Link to={arrangementRoute(u.arrangementId)}><strong>{a?.data.title ?? u.task.data.title}</strong></Link>
+                      <span className="muted small"> · finished {u.finishedOn ? day(u.finishedOn) : 'on an unknown day'}</span>
+                      <div className="sv-actionrow"><button className="btn" onClick={() => setLogging({ arrangementId: u.arrangementId, taskId: u.task.id })}>Log this visit…</button></div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
+          {ov.needsReview.length > 0 && (
+            <section className="card sv-card" aria-labelledby="sv-rev-h">
+              <h2 id="sv-rev-h" className="sv-dup">⚠ Visits needing review ({ov.needsReview.length})</h2>
+              <p className="muted small">These visits have a status this version does not understand. They count as nothing and are kept exactly as found.</p>
+              <ul className="plain sv-items">{ov.needsReview.map((v) => <li key={v.id}><Link to={visitRoute(v.id)}>{day(v.data.date)}, {v.data.title}</Link></li>)}</ul>
+            </section>
+          )}
+
+          {ov.duplicates.length > 0 && (
+            <section className="card sv-card" aria-labelledby="sv-dup-h">
+              <h2 id="sv-dup-h" className="sv-dup">⚠ Possible duplicate visits ({ov.duplicates.length})</h2>
+              <p className="muted small">The same visit may have been logged twice, for example on two devices. Nothing was merged or removed. Open each one to look.</p>
+              <ul className="plain sv-items">
+                {ov.duplicates.map((g) => (
+                  <li key={g.key}>
+                    {g.visits.map((v, i) => <span key={v.id}>{i ? ' and ' : ''}<Link to={visitRoute(v.id)}>{day(v.data.date)}, {statusWords(v.data).toLowerCase()}</Link></span>)}
+                    <span className="muted small"> · {g.visits[0].data.title}{g.reason === 'lookalike' ? ' (may be two real visits)' : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="card sv-card" aria-labelledby="sv-up-h">
             <h2 id="sv-up-h">Upcoming visits</h2>
@@ -90,6 +137,11 @@ export default function OverviewPage() {
             </section>
           )}
 
+          <section className="card sv-card" aria-labelledby="sv-rec-h">
+            <h2 id="sv-rec-h">Recent visits</h2>
+            <VisitList rows={ov.recent} empty="No visits logged yet." />
+          </section>
+
           {providers.length > 0 && (
             <section className="card sv-card" aria-labelledby="sv-prov-h">
               <h2 id="sv-prov-h">Providers</h2>
@@ -101,6 +153,8 @@ export default function OverviewPage() {
         </>
       )}
       {adding && <ArrangementForm onClose={() => setAdding(false)} />}
+      {oneOff && <OneOffDialog onClose={() => setOneOff(false)} />}
+      {logging && <LogVisitDialog arrangementId={logging.arrangementId} taskId={logging.taskId} status="completed" onClose={() => setLogging(null)} />}
     </div>
   );
 }

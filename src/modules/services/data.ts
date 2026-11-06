@@ -16,7 +16,7 @@ import {
   arrangementRef, asArrangement, ASSET_LINK, KIND, MODULE, nextCadenceDate, normalizeArrangement, parseArrangementRef, TASK_LINK, tidy,
   validateArrangement, type ArrangementData, type ArrangementRecord,
 } from './model';
-import { markersOf, nearestCadenceDate, openOf, taskRepeatOf, withMarkers } from './schedule';
+import { isBooking, markersOf, nearestCadenceDate, openOf, taskRepeatOf, withMarkers } from './schedule';
 
 export const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
 /** Every table an arrangement operation may touch. Operations that can create a provider also include `d.contacts`. */
@@ -43,8 +43,16 @@ export async function writeArrangement(id: number | undefined, data: Arrangement
 
 const isTaskEnd = (l: Link, arrId: number) => l.type === TASK_LINK && l.fromModule === 'tasks' && l.toModule === MODULE && l.toId === `arrangement:${arrId}`;
 
-/** The live Tasks linked to an arrangement as its visit tasks (any status). A task deleted since is not returned. */
+/** The live VISIT Tasks linked to an arrangement (any status). A task deleted since is not returned. Booking reminders are not visit tasks. */
 export async function tasksOfArrangement(arrId: number, d: FinanceDB = db): Promise<TaskRecord[]> {
+  return (await linkedTasks(arrId, d)).filter((t) => !isBooking(t));
+}
+/** The "remind me to book" Tasks linked to an arrangement. Finishing one is not a visit. */
+export async function bookingTasksOf(arrId: number, d: FinanceDB = db): Promise<TaskRecord[]> {
+  return (await linkedTasks(arrId, d)).filter(isBooking);
+}
+/** Every live Task linked to an arrangement (any status, any purpose). */
+async function linkedTasks(arrId: number, d: FinanceDB): Promise<TaskRecord[]> {
   const links = await createStore(d).shared.links.linkedTo(arrangementRef(arrId));
   const out: TaskRecord[] = [];
   const seen = new Set<number>();
@@ -62,7 +70,7 @@ export async function linkedAssetIds(arrId: number, d: FinanceDB = db): Promise<
   const links = await createStore(d).shared.links.linkedTo(arrangementRef(arrId));
   return [...new Set(links.flatMap((l) => (l.type === ASSET_LINK && l.fromModule === MODULE && l.toModule === 'assets' ? [parseAssetRef(l.toId)] : [])).filter((x): x is number => x !== null))];
 }
-async function assetExists(id: number, d: FinanceDB): Promise<boolean> {
+export async function assetExists(id: number, d: FinanceDB): Promise<boolean> {
   const r = await d.moduleRecords.get(id);
   return !!r && r.module === 'assets' && r.kind === 'asset' && isLive(r);
 }
