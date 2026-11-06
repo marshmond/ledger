@@ -92,6 +92,7 @@ export default function ProjectPage() {
           summary={summary}
           derived={b.derived}
           warnings={warnings}
+          projectId={project.id}
           focusLine={focusLine}
           onFocus={setFocusLine}
           onFix={(w: Warning) => {

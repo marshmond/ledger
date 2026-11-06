@@ -1,16 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { formatCents, todayISO } from '../lib/money';
 import { monthLabel } from '../lib/dates';
-import { categoryCsv, categoryStats, compareTotals, jumps, lastMonths, savingsRates, spendingMatrix, topPayees } from '../lib/reports';
+import { categoryCsv, categoryStats, projectCsvName, projectFromParam, resolveReportProject, compareTotals, jumps, lastMonths, savingsRates, spendingMatrix, topPayees } from '../lib/reports';
 import { downloadText } from '../lib/download';
 import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import PageTabs from './PageTabs';
 import FlowPanel from './FlowPanel';
 import { PageHeader } from '../ui/components';
-import { projectLabel, useProjectChoices } from '../core/projectLink';
+import { projectLabel, useProjectChoicesLoaded } from '../core/projectLink';
 import { projectOnlyTxns } from '../lib/txnProject';
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
@@ -30,22 +31,40 @@ function Delta({ now, then, label }: { now: number; then: number | null; label: 
 
 /** Where the money went: a flow diagram, and month-by-month totals, category trends, what jumped, and top payees. */
 export default function ReportsPage() {
+  // Arriving from a project (#/ledger/reports?project=3): open Trends filtered to it, then tidy the address.
+  const [sp, setSp] = useSearchParams();
+  const raw = sp.get('project');
+  const [start, setStart] = useState<{ id: number; n: number } | null>(null);
+  useEffect(() => {
+    if (raw === null) return;
+    const id = projectFromParam(raw);
+    if (id !== undefined) setStart((s) => ({ id, n: (s?.n ?? 0) + 1 }));
+    const next = new URLSearchParams(sp); next.delete('project'); setSp(next, { replace: true });
+  }, [raw]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <PageHeader title="Reports" description="Where the money went." />
-      <PageTabs id="reports" tabs={[{ id: 'trends', label: 'Trends', content: <Trends /> }, { id: 'flow', label: 'Flow diagram', content: <FlowPanel /> }]} />
+      <PageTabs id="reports" jumpTo={start ? { tab: 'trends', n: start.n } : undefined} tabs={[{ id: 'trends', label: 'Trends', content: <Trends start={start} /> }, { id: 'flow', label: 'Flow diagram', content: <FlowPanel /> }]} />
     </>
   );
 }
 
-function Trends() {
+function Trends({ start }: { start: { id: number; n: number } | null }) {
   const thisMonth = todayISO().slice(0, 7);
   const [end, setEnd] = useState(thisMonth);
   const [payeeRange, setPayeeRange] = useState<'month' | 'year'>('month');
   const allTxns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
-  const projects = useProjectChoices();
+  const { projects, loaded: projectsLoaded } = useProjectChoicesLoaded();
   // A project filter shows only that project's own pieces of transactions (each transaction once). Income and savings do not apply to it.
   const [projectId, setProjectId] = useState<number | null>(null);
+  // A link from a project selects it once the projects are known. An id that no longer exists leaves the filter off.
+  const applied = useRef(0);
+  useEffect(() => {
+    if (!start || !projectsLoaded || applied.current === start.n) return;
+    applied.current = start.n;
+    const id = resolveReportProject(start.id, projects);
+    if (id !== null) setProjectId(id);
+  }, [start, projectsLoaded, projects]);
   const projectMissing = projectId !== null && !projects.some((p) => p.id === projectId);
   const txns = useMemo(() => (projectId === null ? allTxns : projectOnlyTxns(allTxns, projectId)), [allTxns, projectId]);
   const net = projectId !== null;
@@ -139,7 +158,7 @@ function Trends() {
         )}
       </Collapsible>
 
-      <Collapsible id="reports.cats" title="Categories" right={<button className="link" disabled={matrix.cats.length === 0} onClick={() => downloadText(`spending-${months[1]}-to-${end}.csv`, 'text/csv', categoryCsv({ ...matrix, months: view, cats: matrix.cats.map((c) => ({ ...c, byMonth: c.byMonth.slice(1) })), spent: matrix.spent.slice(1), income: matrix.income.slice(1) }))}>download CSV</button>}>
+      <Collapsible id="reports.cats" title="Categories" right={<button className="link" disabled={matrix.cats.length === 0} onClick={() => downloadText(net && projectId !== null ? projectCsvName(projects.find((p) => p.id === projectId)?.name ?? '', months[1], end) : `spending-${months[1]}-to-${end}.csv`, 'text/csv', categoryCsv({ ...matrix, months: view, cats: matrix.cats.map((c) => ({ ...c, byMonth: c.byMonth.slice(1) })), spent: matrix.spent.slice(1), income: matrix.income.slice(1) }, { projectView: net }))}>download CSV</button>}>
         {top5.length > 0 && (
           <LinesChart title="Top categories over 12 months" xLabels={view.map((m) => `${m}-01`)} series={top5.map((c, i) => ({ label: c.name, color: SERIES[i], values: c.byMonth.slice(1) }))} />
         )}

@@ -117,6 +117,37 @@
 }
 .pj-table th { background: transparent; }
 
+/* ---- P5: segmented cost bars (colours are the shared chart tokens --s1..--s8, defined for light and dark on .viz) ---- */
+.pj-cost.viz { position: relative; }
+.pj-cost-inline { margin: var(--sp-3) 0; padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+.pj-cost-inline h3 { font-size: 1rem; margin: 0; }
+.pj-cost-inline .pj-cost-total strong { font-size: 1.2rem; }
+.pj-cost-total { margin: 0 0 var(--sp-2); display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+.pj-cost-total strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.pj-cost-bar { display: flex; gap: 2px; height: 28px; margin: var(--sp-1) 0; }
+.pj-seg { position: relative; min-width: 3px; border-radius: 4px; overflow: hidden; background: var(--seg, var(--muted)); display: flex; }
+.pj-seg:focus-visible { outline: 2px solid var(--ink, currentColor); outline-offset: 2px; }
+.pj-seg:hover { filter: brightness(1.12); }
+/* "No budget line": neutral and hatched, so it is never mistaken for a budget line's colour */
+.pj-seg.none, .swatch.none { background: repeating-linear-gradient(45deg, var(--muted) 0 3px, transparent 3px 6px); border: 1px solid var(--muted); }
+/* Paid and left: the dark part is paid, the rest is lighter */
+.pj-cost-bar .pj-seg:not(.none) { background: var(--seg); }
+.pj-cost-bar.paidview .pj-seg:not(.none), .pj-seg.has-paid:not(.none) { background: color-mix(in srgb, var(--seg) 30%, transparent); }
+.pj-seg-paid { display: block; height: 100%; background: var(--seg, var(--muted)); }
+.pj-seg.none .pj-seg-paid { background: var(--muted); opacity: 0.6; }
+/* A line paid beyond its share: a notch at the end, plus words in the legend */
+.pj-seg.over::after { content: ''; position: absolute; right: 0; top: 0; border-style: solid; border-width: 0 10px 10px 0; border-color: transparent var(--neg) transparent transparent; }
+.swatch.off { background: transparent; border: 1px dashed var(--muted); }
+.pj-cost-caption { min-height: 1.4em; margin: 0 0 var(--sp-2); }
+.pj-cost-note { margin: var(--sp-1) 0; }
+.pj-cost-table .key { display: inline-flex; align-items: center; gap: 8px; }
+.pj-cost-table .pj-cost-sub td { border-bottom: 1px solid var(--line); padding-top: 0; }
+.pj-cost-link { margin: var(--sp-2) 0 0; }
+@media (max-width: 640px) {
+  .pj-cost-table .pj-cost-sub { display: block; }
+  .pj-cost-table .pj-cost-sub td { display: block; }
+}
+
 /* ---- P4B: progress on the Projects list, deleting ---- */
 .pj-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); margin-top: 2px; }
 .pj-chip { font-size: var(--fs-xs); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--text); white-space: nowrap; }

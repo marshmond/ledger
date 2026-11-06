@@ -144,13 +144,32 @@ export function compareTotals(m: Matrix): Comparison {
 
 const d = (c: number) => (c / 100).toFixed(2);
 
-/** The category table as CSV (plain dollar numbers). */
-export function categoryCsv(m: Matrix): string {
+/** The address of Reports filtered to one project (Trends tab). */
+export const reportProjectLink = (projectId: number) => `#/ledger/reports?project=${projectId}`;
+/** The project id in a Reports address, or undefined when it is missing or not a whole number. */
+export const projectFromParam = (raw: string | null): number | undefined => (raw !== null && /^\d+$/.test(raw) ? Number(raw) : undefined);
+/** The project to filter to for an arriving link: only one that still exists. A deleted or unknown id leaves the filter off (null). */
+export const resolveReportProject = (id: number | undefined, existing: { id: number }[]): number | null => (id !== undefined && existing.some((p) => p.id === id) ? id : null);
+
+/**
+ * A safe file name for one project's spending download: `project-<name>-spending-<from>-to-<to>.csv`. The name is reduced to lower-case
+ * letters, digits and single hyphens (no path characters, no spaces, no dots), cut to 40 characters, and falls back to "project".
+ */
+export function projectCsvName(projectName: string, from: string, to: string): string {
+  const slug = projectName.normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/g, '') || 'project';
+  return `project-${slug}-spending-${from}-to-${to}.csv`;
+}
+
+/**
+ * The category table as CSV (plain dollar numbers). With `projectView` (one project's spending, see `projectOnlyTxns`) the Income row is
+ * left out because income does not belong to one project; without it the output is exactly what it always was.
+ */
+export function categoryCsv(m: Matrix, opts: { projectView?: boolean } = {}): string {
   const head = ['Category', ...m.months, 'Total'];
   const q = (s: string) => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
   const lines = [head.map(q).join(',')];
   for (const c of m.cats) lines.push([q(c.name), ...c.byMonth.map(d), d(c.total)].join(','));
   lines.push(['Total spending', ...m.spent.map(d), d(m.spent.reduce((a, b) => a + b, 0))].join(','));
-  lines.push(['Income', ...m.income.map(d), d(m.income.reduce((a, b) => a + b, 0))].join(','));
+  if (!opts.projectView) lines.push(['Income', ...m.income.map(d), d(m.income.reduce((a, b) => a + b, 0))].join(','));
   return lines.join('\r\n') + '\r\n';
 }

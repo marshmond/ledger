@@ -8,7 +8,8 @@ import { useToast } from '../../ui/Toast';
 import { activeSplit, COMMITMENT_LABEL, creditChangeOrderDraft, type CommitmentRecord, type CommitmentStatus } from './commitmentModel';
 import type { CommitmentDraft } from './CommitmentForm';
 import { removeCommitment, setCommitmentStatus } from './data';
-import type { ContractGroups, ContractRow } from './financialView';
+import CostBar from './CostBar';
+import { agreementCostBar, type ContractGroups, type ContractRow } from './financialView';
 import type { BudgetLineRecord } from './model';
 
 const signed = (c: number) => `${c < 0 ? '−' : '+'}${formatCents(Math.abs(c))}`;
@@ -147,6 +148,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
             </button>
           </p>
         )}
+        {m?.split && <CostBar title="Where this agreement goes" totalLabel="Agreed now" partLabel="Agreed" model={agreementCostBar(m, (id) => lineName(id))} inline />}
         {splitTable(row)}
         {m?.split && row.changes.some((x) => x.data.status === 'accepted' && !activeSplit(x)) && <p className="pj-flag" role="status">A change order on this agreement is not split across lines, so its amount shows under "No budget line". Edit it to split it.</p>}
         {changes(row)}

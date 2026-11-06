@@ -134,3 +134,129 @@ export function projectWarnings(s: ProjectSummary, commitments: CommitmentRecord
   }
   return out;
 }
+
+// ---------- P5: the segmented cost bars ----------
+//
+// Presentation only. Every figure comes from `ProjectSummary` (project bar) or `ContractSummary.split` (agreement bar); the only
+// arithmetic here is adding existing figures together (the "Other lines" group) and turning a part into a share of the parts drawn.
+// The legend always carries the exact figures, signed, for every row, drawn or not. The bar never hides a mismatch: it is only drawn
+// when its parts are positive, and it says so in words when offsetting or omitted amounts mean the parts do not add up to the total.
+
+export interface CostRow {
+  key: string;
+  name: string;
+  kind: 'line' | 'none' | 'other';
+  /** What the bar is made of: expected cost (project) or agreed amount (agreement). Exact, signed. */
+  cents: number;
+  paidCents: number;
+  /** Left to pay, signed: below zero means paid beyond its share. */
+  leftCents: number;
+  /** Said under the legend row (what "No budget line" holds, which lines an "Other" group has). */
+  note?: string;
+  /** For an "Other lines" group: the rows inside it, with exact figures. */
+  members?: CostRow[];
+}
+export interface DrawnSegment extends CostRow { slot: number | 'none'; pct: number }
+export interface CostBarModel {
+  /** `empty`: nothing to show. `zero` / `negative`: the total is not above zero, so no bar is drawn. */
+  state: 'ok' | 'empty' | 'zero' | 'negative';
+  totalCents: number;
+  /** The parts drawn, in order. */
+  drawn: DrawnSegment[];
+  /** Sum of the parts drawn. */
+  drawnCents: number;
+  /** True only when the parts drawn add up to the total exactly. When false the bar says why. */
+  reconciles: boolean;
+  /** Every row with its exact figures: drawn rows (grouped), then the rows that are not drawn. */
+  legend: CostRow[];
+  /** Rows left out of the bar (zero or negative). */
+  undrawn: CostRow[];
+  /** Plain-words explanations to show under the bar. */
+  notes: string[];
+}
+
+const MAX_SEPARATE = 7;
+/** Money with a real minus sign, the same in every note and in the legend. */
+const money = (c: number) => (c < 0 ? `−${formatCents(-c)}` : formatCents(c));
+
+export function buildCostBar(rows: CostRow[], totalCents: number, opts: { maxSeparate?: number; totalWord?: string } = {}): CostBarModel {
+  const word = opts.totalWord ?? 'expected total';
+  const max = opts.maxSeparate ?? MAX_SEPARATE;
+  const base = { totalCents, drawn: [] as DrawnSegment[], drawnCents: 0, reconciles: false, undrawn: [] as CostRow[], notes: [] as string[] };
+  if (rows.length === 0) return { ...base, state: 'empty', legend: [] };
+  if (totalCents <= 0) {
+    const notes = [totalCents === 0
+      ? `The ${word} is $0.00, so there is nothing to show as parts of a whole. The exact figures per row are listed below.`
+      : `Money coming back is larger than what was spent: the ${word} is ${money(totalCents)}. A bar cannot show that, so the exact figures per row are listed below.`];
+    return { ...base, state: totalCents === 0 ? 'zero' : 'negative', legend: rows, undrawn: rows, notes };
+  }
+
+  const positive = rows.filter((r) => r.cents > 0);
+  const undrawn = rows.filter((r) => r.cents <= 0);
+  const lines = positive.filter((r) => r.kind === 'line');
+  const none = positive.find((r) => r.kind === 'none');
+  // Colour follows the line's place in the project's own order, so it does not jump when amounts change.
+  const order = rows.filter((r) => r.kind === 'line').map((r) => r.key);
+  let separate = lines;
+  let other: CostRow | undefined;
+  if (lines.length > max) {
+    const keepKeys = new Set([...lines].sort((a, b) => b.cents - a.cents || order.indexOf(a.key) - order.indexOf(b.key)).slice(0, max).map((r) => r.key));
+    separate = lines.filter((r) => keepKeys.has(r.key));
+    const members = lines.filter((r) => !keepKeys.has(r.key));
+    other = {
+      key: 'other', name: `Other lines (${members.length})`, kind: 'other',
+      cents: members.reduce((n, r) => n + r.cents, 0), paidCents: members.reduce((n, r) => n + r.paidCents, 0), leftCents: members.reduce((n, r) => n + r.leftCents, 0),
+      members, note: 'The smallest lines, grouped so the bar stays readable. Their exact figures are listed here.',
+    };
+  }
+  const grouped = lines.length > max;
+  const drawnRows: CostRow[] = [...separate, ...(other ? [other] : []), ...(none ? [none] : [])];
+  const drawnCents = drawnRows.reduce((n, r) => n + r.cents, 0);
+  const slotOf = (r: CostRow, i: number): number | 'none' => (r.kind === 'none' ? 'none' : r.kind === 'other' ? 7 : grouped ? i : Math.max(0, order.indexOf(r.key)) % 8);
+  const drawn = drawnRows.map((r, i) => ({ ...r, slot: slotOf(r, i), pct: (r.cents / drawnCents) * 100 }));
+  const reconciles = drawnCents === totalCents;
+
+  const notes: string[] = [];
+  const offsets = undrawn.filter((r) => r.cents < 0);
+  if (!reconciles) {
+    notes.push(`The parts drawn add up to ${formatCents(drawnCents)}, not to the ${word} of ${formatCents(totalCents)}, because ${offsets.map((r) => `${r.name} (${money(r.cents)})`).join(' and ')} offset${offsets.length === 1 ? 's' : ''} part of it. Shares below are of the parts drawn.`);
+  }
+  for (const r of undrawn) {
+    if (r.kind === 'none') notes.push(`"No budget line" is not drawn: it only balances other figures (paid ${money(r.paidCents)}, left to pay ${money(r.leftCents)}), so it is not a cost.`);
+  }
+  if (rows.some((r) => r.kind !== 'none' && r.leftCents < 0)) notes.push('A line marked "paid beyond its share" has been paid more than its part of the plan; the extra is taken out of other lines, so the total is unchanged.');
+
+  const kept = new Set(separate.map((r) => r.key));
+  const legend: CostRow[] = [
+    ...rows.filter((r) => r.kind === 'line' && r.cents > 0 && kept.has(r.key)),
+    ...(other ? [other] : []),
+    ...(none ? [none] : []),
+    ...undrawn,
+  ];
+  return { state: 'ok', totalCents, drawn, drawnCents, reconciles, legend, undrawn, notes };
+}
+
+/** The project's bar, from the Finance summary: one row per budget line plus "No budget line", each by its expected cost. */
+export function projectCostBar(s: ProjectSummary): CostBarModel {
+  const none = noLineNotes(s).join(' ');
+  const rows: CostRow[] = s.lines.map((l) => ({
+    key: l.lineId === null ? 'none' : String(l.lineId), name: l.lineId === null ? 'No budget line' : l.name, kind: l.lineId === null ? 'none' : 'line',
+    cents: l.expectedCents, paidCents: l.paidCents, leftCents: l.leftToPayCents, ...(l.lineId === null && none ? { note: none } : {}),
+  }));
+  return buildCostBar(rows, s.expectedTotalCents, { totalWord: 'expected total cost' });
+}
+
+/** One split agreement's bar, from its Finance summary: each line by its agreed amount. `lineName` gives a line's name. */
+export function agreementCostBar(c: ContractSummary, lineName: (id: number) => string): CostBarModel {
+  if (!c.split) return buildCostBar([], 0);
+  const rows: CostRow[] = c.split.lines.map((l) => {
+    const unassigned = l.lineId === null && l.agreedCents === 0;
+    return {
+      key: l.lineId === null ? 'none' : String(l.lineId), kind: l.lineId === null ? 'none' : 'line',
+      name: l.lineId === null ? (unassigned ? 'Paid, line not chosen' : 'No budget line') : lineName(l.lineId) || 'A removed line',
+      cents: l.agreedCents, paidCents: l.paidCents, leftCents: l.leftCents,
+      ...(unassigned ? { note: 'Paid on this agreement without choosing a line. Open the transaction and choose one; until then the lines show that much too much left to pay.' } : {}),
+    };
+  });
+  return buildCostBar(rows, c.agreedCents, { totalWord: 'agreed total' });
+}

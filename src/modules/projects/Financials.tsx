@@ -1,7 +1,9 @@
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
+import { reportProjectLink } from '../../lib/reports';
 import type { ProjectPiece, ProjectSummary } from '../../lib/txnProject';
-import { noLineNotes, type Warning } from './financialView';
+import CostBar from './CostBar';
+import { noLineNotes, projectCostBar, type Warning } from './financialView';
 
 const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -13,10 +15,12 @@ interface Props {
   focusLine: number | null | undefined;
   onFocus: (line: number | null | undefined) => void;
   onFix: (w: Warning) => void;
+  /** For the link to this project's filtered Finance report. */
+  projectId?: number;
 }
 
 /** The money picture of one project: the headline figures, what needs attention, and the budget lines side by side. All figures come from Finance. */
-export default function Financials({ summary: s, derived, warnings, focusLine, onFocus, onFix }: Props) {
+export default function Financials({ summary: s, derived, warnings, focusLine, onFocus, onFix, projectId }: Props) {
   const left = s.leftInBudgetCents;
   return (
     <>
@@ -50,6 +54,16 @@ export default function Financials({ summary: s, derived, warnings, focusLine, o
           </ul>
         </section>
       )}
+
+      <CostBar
+        title="Where the money goes"
+        totalLabel="Expected total cost"
+        partLabel="Expected cost"
+        model={projectCostBar(s)}
+        linkSlot={projectId !== undefined && (
+          <p className="pj-cost-link small"><a className="link" href={reportProjectLink(projectId)}>See spending over time</a> <span className="muted">(Finance reports, this project only)</span></p>
+        )}
+      />
 
       <section className="card pj-card" id="pj-breakdown" aria-labelledby="pj-break-h">
         <div className="pj-card-head">
