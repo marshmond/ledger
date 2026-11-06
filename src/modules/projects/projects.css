@@ -116,3 +116,15 @@
   .pj-table td::before { content: attr(data-label); color: var(--muted); font-size: var(--fs-xs); }
 }
 .pj-table th { background: transparent; }
+
+/* ---- P3: tasks, milestones and events on a project ---- */
+.pj-note { margin: 0 0 var(--sp-3); }
+.pj-progress { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.pj-progress-bar { flex: 1 1 auto; max-width: 260px; height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.pj-progress-bar > span { display: block; height: 100%; background: var(--accent); }
+.pj-worklist { margin: 0; padding: 0; }
+.pj-work { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.pj-work.done .pj-work-title { text-decoration: line-through; opacity: 0.65; }
+.pj-work-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.pj-work.late .pj-work-main .muted { color: var(--neg); }
+.pj-tabs { margin-bottom: var(--sp-2); }

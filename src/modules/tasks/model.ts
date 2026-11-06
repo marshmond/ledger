@@ -43,6 +43,10 @@ export interface TaskData {
   completedAt: number | null;
   /** For a task made automatically when a repeating task was completed: the one it came from. */
   recurFrom?: number;
+  /** The project this task belongs to (at most one). Only the id is stored; the project's name is read when shown. */
+  projectId?: number;
+  /** A milestone is a task that marks a project checkpoint ("Permit approved"). It always belongs to a project and never repeats. */
+  isMilestone?: boolean;
 }
 export interface TaskRecord {
   id: number;
@@ -56,7 +60,7 @@ export interface TaskList {
 }
 
 /** Fields this reader understands. Anything else in a stored record (written by another module or a newer version) is carried through untouched. */
-const TASK_KEYS = new Set(['title', 'notes', 'status', 'priority', 'dueDate', 'dueTime', 'startDate', 'repeat', 'tagIds', 'contactIds', 'checklist', 'listId', 'createdFrom', 'completedAt', 'recurFrom']);
+const TASK_KEYS = new Set(['title', 'notes', 'status', 'priority', 'dueDate', 'dueTime', 'startDate', 'repeat', 'tagIds', 'contactIds', 'checklist', 'listId', 'createdFrom', 'completedAt', 'recurFrom', 'projectId', 'isMilestone']);
 
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -88,6 +92,8 @@ export function asTask(r: ModuleRecord): TaskRecord {
       ...(d.createdFrom && typeof d.createdFrom.module === 'string' ? { createdFrom: { module: d.createdFrom.module, id: d.createdFrom.id, label: str(d.createdFrom.label) } } : {}),
       completedAt: typeof d.completedAt === 'number' ? d.completedAt : null,
       ...(typeof d.recurFrom === 'number' ? { recurFrom: d.recurFrom } : {}),
+      // A milestone only makes sense inside a project, so the flag is read only together with a project id.
+      ...(typeof d.projectId === 'number' && Number.isFinite(d.projectId) ? { projectId: d.projectId, ...(d.isMilestone === true ? { isMilestone: true } : {}) } : {}),
     },
   };
 }

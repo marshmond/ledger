@@ -9,7 +9,7 @@ import { allDueProviders } from '../../core/dueProvider';
 import { loadCalendarSettings } from '../../core/calendarSettings';
 import { createStore, isLive, repo } from '../../core/store';
 import {
-  asEvent, asLayer, FINANCE_ID, MODULE, PERSONAL_ID, SWATCHES, TASKS_ID,
+  asEvent, asLayer, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SWATCHES, TASKS_ID,
   type CalendarLayer, type EventData, type EventFields, type EventRecord, type LayerData,
 } from './model';
 import { endSeriesBefore, editAll, editOccurrence, setDone, skipOccurrence, splitFollowing, type SeriesExtras } from './series';
@@ -28,7 +28,7 @@ export async function loadEvents(d: FinanceDB = db): Promise<EventRecord[]> {
 }
 
 /**
- * Makes sure the built-in calendars exist: Personal (local), Finance (fed by Ledger's provider) and Tasks (fed by the Tasks provider).
+ * Makes sure the built-in calendars exist: Personal (local), Finance (fed by Ledger's provider), Tasks (fed by the Tasks provider) and Projects (project start and target dates, fed by the Projects provider).
  * Check-then-insert happens inside one transaction (React's dev mode runs effects twice). Built-ins use fixed ids so two devices
  * that each create them end up with one.
  */
@@ -40,6 +40,7 @@ export async function ensureCalendarSeed(d: FinanceDB = db): Promise<void> {
       [PERSONAL_ID, { name: 'Personal', color: SWATCHES[0], sourceType: 'local', builtin: true }],
       [FINANCE_ID, { name: 'Finance', color: allDueProviders().find((p) => p.id === 'ledger')?.color ?? '#2f8f6b', sourceType: 'derived', providerId: 'ledger', builtin: true }],
       [TASKS_ID, { name: 'Tasks', color: '#c0562f', sourceType: 'derived', providerId: 'tasks', builtin: true }],
+      [PROJECTS_ID, { name: 'Projects', color: allDueProviders().find((p) => p.id === 'projects')?.color ?? '#8a5cc7', sourceType: 'derived', providerId: 'projects', builtin: true }],
     ];
     for (const [id, data] of builtins) {
       if (!have.has(id)) await d.moduleRecords.add({ id, module: MODULE, kind: 'calendar', data: { ...data }, createdAt: now, updatedAt: now, deletedAt: null });
@@ -96,6 +97,27 @@ export async function createEvent(data: EventData, d: FinanceDB = db): Promise<n
 }
 
 /** Deletes a whole event by id (soft, like every delete). Used by Undo after the Add box creates one. */
+/**
+ * Puts a whole event (every date of a repeating one) on a project, or takes it off with `null`. Nothing else about the event changes,
+ * and fields this code does not know are kept. Throws if the event is gone or the project does not exist.
+ */
+export async function setEventProject(id: number, projectId: number | null, d: FinanceDB = db): Promise<void> {
+  await d.transaction('rw', d.moduleRecords, async () => {
+    const ev = await current(id, d);
+    if (projectId !== null) {
+      const p = await d.moduleRecords.get(projectId);
+      if (!p || p.module !== 'projects' || p.kind !== 'project' || !isLive(p)) throw new Error('That project no longer exists.');
+    }
+    const { projectId: _old, ...rest } = ev.data;
+    await save(id, projectId === null ? (rest as EventData) : { ...rest, projectId }, d);
+  });
+}
+
+/** The live events that belong to a project (a repeating event counts once). */
+export async function loadProjectEvents(projectId: number, d: FinanceDB = db): Promise<EventRecord[]> {
+  return (await loadEvents(d)).filter((e) => !e.data.retired && e.data.projectId === projectId);
+}
+
 export async function removeEventById(id: number, d: FinanceDB = db): Promise<void> {
   await rows(d).remove(id);
 }

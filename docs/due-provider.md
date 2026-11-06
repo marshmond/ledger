@@ -59,3 +59,7 @@ Reuses `dueInstances()` for scheduled items and `loadCalendar()` for vests, tax 
 ## Tasks' provider (src/modules/tasks/dueProvider.ts)
 
 Open tasks with a due date (or a "do on" date) appear on the Tasks layer. Tasks are stored records, so this provider sets `actions` (complete, reopen, reschedule) and the Calendar writes straight to the task: a normal edit, not a copy. Tasks without a date stay off the Calendar.
+
+## `projectId` on a derived item (added in Projects P3)
+
+`DerivedItem` has an optional `projectId`. A provider whose items come from a project-linked record (the Tasks provider, for a task or milestone with a project; the Projects provider, for a project's start and target dates) sets it, and the Calendar then shows the project's name on the item and links to the project. Providers with nothing to do with projects leave it out. It is display and navigation only.

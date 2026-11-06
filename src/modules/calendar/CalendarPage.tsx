@@ -81,8 +81,9 @@ export default function CalendarPage() {
   const wantNew = sp.get('new');
   useEffect(() => {
     if (!wantNew) return;
-    const next = new URLSearchParams(sp); next.delete('new'); setSp(next, { replace: true });
-    setEditor({ start: { date: anchor } });
+    const next = new URLSearchParams(sp); next.delete('new'); next.delete('project'); setSp(next, { replace: true });
+    const pid = Number(sp.get('project'));
+    setEditor({ start: { date: anchor, ...(Number.isInteger(pid) && pid > 0 ? { projectId: pid } : {}) } });
   }, [wantNew]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A link such as #/calendar?d=2026-11-05&open=e:12:2026-11-05 (from the Today screen) opens that event, then tidies the address.

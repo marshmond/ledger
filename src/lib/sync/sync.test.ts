@@ -485,9 +485,9 @@ describe('calendar data rides along with device sync', () => {
     await A.engine.sync();
     for (const x of [A, B]) {
       expect((await loadEvents(x.d)).map((e) => e.data.title)).toEqual(['Test dentist']);
-      expect((await loadLayers(x.d)).map((l) => l.name).sort()).toEqual(['Finance', 'Personal', 'Tasks']);
+      expect((await loadLayers(x.d)).map((l) => l.name).sort()).toEqual(['Finance', 'Personal', 'Projects', 'Tasks']);
     }
-    expect((await B.d.moduleRecords.toArray()).filter((r) => r.kind === 'calendar')).toHaveLength(3);
+    expect((await B.d.moduleRecords.toArray()).filter((r) => r.kind === 'calendar')).toHaveLength(4);
   });
 });
 

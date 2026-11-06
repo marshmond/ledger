@@ -16,6 +16,11 @@ export interface SeriesExtras {
   recurrence: Recurrence | null;
   trackDone: boolean;
   type?: string;
+  /**
+   * Leave the key out to keep whatever project the event has. Pass a number to set it, or `undefined` to take the event off its project.
+   * (A spread of an object with `projectId: undefined` replaces the old value, which is what "remove" needs.)
+   */
+  projectId?: number;
 }
 
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);

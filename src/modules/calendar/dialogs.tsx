@@ -53,6 +53,7 @@ export function DerivedDetail({ item, onClose }: { item: CalItem; onClose: () =>
         <dt>When</dt><dd>{dayLabel(item.firstDay, { weekday: 'long', year: true })}{item.lastDay !== item.firstDay ? ` to ${dayLabel(item.lastDay, { year: true })}` : ''} · all day{item.overdue && <> · <span className="cal-flag bad">Overdue</span></>}</dd>
         <dt>Calendar</dt><dd><span className="cal-swatch" style={{ background: item.color }} /> {item.layerName} <span className="muted">{act ? '(your tasks)' : `(read-only: worked out from your ${src.sourceModule === 'ledger' ? 'Ledger' : src.sourceModule} data)`}</span></dd>
         <dt>Priority</dt><dd><PriorityMark priority={item.priority} /> {PRIORITY_LABEL[item.priority]}</dd>
+        {item.project && <><dt>Project</dt><dd><a href={`#/projects/${item.project.id}`} onClick={onClose}>{item.project.label}</a></dd></>}
         {src.detail && <><dt>About</dt><dd>{src.detail}</dd></>}
       </dl>
       {act ? (

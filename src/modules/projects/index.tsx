@@ -1,4 +1,6 @@
 import type { ModuleDef } from '../../core/registry';
+import { PROJECTS_TODAY_CARDS } from './todayCards';
+import { projectsDueProvider } from './dueProvider';
 import ProjectsModule, { PROJECTS_BASE } from './ProjectsModule';
 import { projectQuickAdd } from './quickAddDef';
 import { projectRecords } from './records';
@@ -12,5 +14,5 @@ export const projectsModule: ModuleDef = {
   Component: ProjectsModule,
   routePaths: ['/'],
   nav: [],
-  contributes: { records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd },
+  contributes: { dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd },
 };

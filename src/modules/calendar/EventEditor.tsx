@@ -20,11 +20,14 @@ import { ContactPicker, RecordLinks, TagPicker, refKey } from './pickers';
 import { normalizeRule, type Recurrence } from './recurrence';
 import { fmtHM, localISO, minutesOfDay, msAt, parseHM } from './time';
 import type { Priority } from '../../core/entities';
+import { findProject, projectLabel, projectPath, selectableProjects, useProjectChoicesLoaded } from '../../core/projectLink';
 
 export interface EditorStart {
   date: string;
   /** Minutes after midnight when the user clicked a time slot; leave out for an all-day item. */
   minutes?: number;
+  /** Start the new event on this project (from a project page's "Add event"). */
+  projectId?: number;
 }
 
 const SCOPE_WORDS: Record<Scope, string> = { one: 'This event', following: 'This and following events', all: 'All events' };
@@ -73,6 +76,8 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   const [rule, setRule] = useState<Recurrence | null>(ev?.recurrence ?? null);
   const [trackDone, setTrackDone] = useState(ev?.trackDone ?? false);
   const [type, setType] = useState(ev?.type ?? '');
+  const [projectId, setProjectId] = useState<number | undefined>(ev?.projectId ?? start?.projectId);
+  const { projects, loaded: projectsLoaded } = useProjectChoicesLoaded();
   const [preset, setPreset] = useState('');
   const [handoff, setHandoff] = useState<ReturnType<typeof buildSeed> | null>(null);
   const [error, setError] = useState('');
@@ -127,7 +132,9 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
     return f;
   };
 
-  const extras = () => ({ calendarId, tagIds, contactIds, recurrence: rule ? normalizeRule(rule) : null, trackDone, type: type || undefined });
+  // The project key is sent only when it differs from what the event already has, so saving an unrelated edit never touches it.
+  const projectChanged = projectId !== (ev?.projectId);
+  const extras = () => ({ calendarId, tagIds, contactIds, recurrence: rule ? normalizeRule(rule) : null, trackDone, type: type || undefined, ...(projectChanged ? { projectId } : {}) });
 
   /** Choosing a type fills in its starting values. A new event takes all of them; an existing one only gets the type and its tag, so nothing you set is overwritten. */
   const pickType = async (t: string) => {
@@ -278,6 +285,19 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
                 {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_ICON[p]} {PRIORITY_LABEL[p]}{p === 'reminder' ? ' (a nudge, not a commitment)' : ''}</option>)}
               </select>
             </label>
+          </div>
+
+          <div className="f">
+            <label htmlFor="ev-project">Project <span className="muted">(optional)</span></label>
+            <span className="row grow">
+              <select id="ev-project" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value === '' ? undefined : Number(e.target.value))}>
+                <option value="">No project</option>
+                {selectableProjects(projects, projectId).map((p) => <option key={p.id} value={p.id}>{projectLabel(projects, p.id)}</option>)}
+                {projectsLoaded && projectId !== undefined && !findProject(projects, projectId) && <option value={projectId}>(project removed)</option>}
+              </select>
+              {projectId !== undefined && findProject(projects, projectId) && <a className="link" href={`#${projectPath(projectId)}`}>Open project</a>}
+            </span>
+            {occ?.recurring && <span className="muted small">The project applies to every date of a repeating event.</span>}
           </div>
 
           <RepeatFields rule={rule} onChange={setRule} start={startDate || localISO(Date.now())} />

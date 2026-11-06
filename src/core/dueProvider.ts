@@ -45,6 +45,8 @@ export interface DerivedItem extends Pick<DueItemInput, 'sourceModule' | 'source
     reopen?(): Promise<void>;
     reschedule?(date: string): Promise<void>;
   };
+  /** The project this item belongs to, when it comes from a project-linked record (a task, a milestone, a project date). */
+  projectId?: number;
   /** Calendar-file (.ics) export: the event id to use, so a phone calendar that already has the event does not get a duplicate. */
   icsUid?: string;
   /** Calendar-file export: add an alarm this many minutes before the event. */

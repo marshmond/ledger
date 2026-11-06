@@ -29,11 +29,12 @@ export function Chip({ item, onOpen, showTime = true }: { item: CalItem; onOpen:
       className={itemClass(item)}
       style={colorStyle(item)}
       onClick={(e) => { e.stopPropagation(); onOpen(item); }}
-      title={`${item.title}${item.allDay ? '' : ' · ' + timeLabel(item.startMs)} · ${item.layerName}`}
+      title={`${item.title}${item.allDay ? '' : ' · ' + timeLabel(item.startMs)} · ${item.layerName}${item.project ? ' · Project: ' + item.project.label : ''}`}
     >
       <PriorityMark priority={item.priority} />
       {showTime && !item.allDay && <span className="cal-chip-time">{timeLabel(item.startMs).replace(/ ?[AP]M$/i, (m) => m.trim().toLowerCase().slice(0, 1))}</span>}
       <span className="cal-chip-title">{item.title}</span>
+      {item.project && <span className="cal-chip-proj" aria-label={`Project: ${item.project.label}`}>◇</span>}
       {item.overdue && <span className="cal-chip-mark" aria-label="Overdue">!</span>}
     </button>
   );

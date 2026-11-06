@@ -20,6 +20,7 @@ export async function taskDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedIt
     const base = {
       sourceModule: 'tasks', priority: t.data.priority, status: 'open' as const, detail: t.data.notes || undefined,
       openSource: () => goTo(`/tasks?task=${t.id}`), sourceLabel: 'Open task',
+      projectId: t.data.projectId,
     };
     const move = (field: 'dueDate' | 'startDate') => async (date: string) => {
       const cur = await getTask(t.id, d);
@@ -31,7 +32,7 @@ export async function taskDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedIt
       reschedule: move(field),
     });
     if (t.data.dueDate && wanted(t.data.dueDate)) {
-      out.push({ ...base, id: derivedId('tasks', t.id, t.data.dueDate), sourceRecordId: t.id, title: t.data.title, date: t.data.dueDate, allDay: !t.data.dueTime, time: t.data.dueTime ?? undefined, actions: actions('dueDate') });
+      out.push({ ...base, id: derivedId('tasks', t.id, t.data.dueDate), sourceRecordId: t.id, title: t.data.isMilestone ? `◆ ${t.data.title}` : t.data.title, date: t.data.dueDate, allDay: !t.data.dueTime, time: t.data.dueTime ?? undefined, actions: actions('dueDate') });
     }
     if (t.data.startDate && t.data.startDate !== t.data.dueDate && wanted(t.data.startDate)) {
       out.push({ ...base, id: derivedId('tasks', `${t.id}-start`, t.data.startDate), sourceRecordId: t.id, title: `Start: ${t.data.title}`, date: t.data.startDate, allDay: true, actions: actions('startDate') });

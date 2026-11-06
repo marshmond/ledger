@@ -6,6 +6,7 @@ import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import { useToast } from '../../ui/Toast';
+import { projectLabel, useProjectChoices } from '../../core/projectLink';
 import { dayLabel } from '../../core/time';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
 import { completeTask, loadDeletedTasks, loadLists, loadTasks, removeTasks, reopenTask, restoreTasks, saveTask, updateTasks } from './data';
@@ -41,6 +42,7 @@ export default function TasksPage() {
   const deleted = useLiveQuery(() => loadDeletedTasks(), []) ?? [];
   const lists = useLiveQuery(() => loadLists(), []) ?? [];
   const tags = useLiveQuery(() => store.shared.tags.query(), []) ?? [];
+  const projects = useProjectChoices();
   const tagList = useMemo(() => tags.map((t) => ({ id: t.id as number, name: t.name })), [tags]);
 
   const view: ViewId = isView(sp.get('v')) ? (sp.get('v') as ViewId) : lastView();
@@ -71,11 +73,12 @@ export default function TasksPage() {
   // A link such as #/tasks?v=all&tag=3 or &contact=7 (from global search) shows just that tag or contact, then tidies the address.
   const wantTag = Number(sp.get('tag')) || '';
   const wantContact = Number(sp.get('contact')) || '';
+  const wantProject = Number(sp.get('project')) || '';
   useEffect(() => {
-    if (wantTag === '' && wantContact === '') return;
-    setFilter({ ...NO_FILTER, ...(wantTag !== '' ? { tagId: wantTag } : {}), ...(wantContact !== '' ? { contactId: wantContact } : {}) });
-    const next = new URLSearchParams(sp); next.delete('tag'); next.delete('contact'); setSp(next, { replace: true });
-  }, [wantTag, wantContact]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (wantTag === '' && wantContact === '' && wantProject === '') return;
+    setFilter({ ...NO_FILTER, ...(wantTag !== '' ? { tagId: wantTag } : {}), ...(wantContact !== '' ? { contactId: wantContact } : {}), ...(wantProject !== '' ? { projectId: wantProject } : {}) });
+    const next = new URLSearchParams(sp); next.delete('tag'); next.delete('contact'); next.delete('project'); setSp(next, { replace: true });
+  }, [wantTag, wantContact, wantProject]); // eslint-disable-line react-hooks/exhaustive-deps
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
   const filteredContact = filter.contactId ? contacts.find((c) => c.id === filter.contactId)?.name : undefined;
 
@@ -126,7 +129,11 @@ export default function TasksPage() {
   const [moveTo, setMoveTo] = useState('');
 
   if (!tasks) return <p className="muted">Loading…</p>;
-  const f = (patch: Partial<Filter>) => setFilter({ ...filter, ...patch });
+  const f = (patch: Partial<Filter>) => {
+    const next = { ...filter, ...patch };
+    if (next.projectId === '') delete next.projectId; // "Any project" is the same as no project filter at all
+    setFilter(next);
+  };
   const filtering = JSON.stringify(filter) !== JSON.stringify(NO_FILTER);
 
   return (
@@ -153,6 +160,11 @@ export default function TasksPage() {
         <select value={String(filter.tagId)} onChange={(e) => f({ tagId: e.target.value === '' ? '' : Number(e.target.value) })} aria-label="Filter by tag">
           <option value="">Any tag</option>{tagList.map((t) => <option key={t.id} value={t.id}>#{t.name}</option>)}
         </select>
+        {projects.length > 0 && (
+          <select value={String(filter.projectId ?? '')} onChange={(e) => f({ projectId: e.target.value === '' ? '' : e.target.value === 'none' ? 'none' : Number(e.target.value) })} aria-label="Filter by project">
+            <option value="">Any project</option><option value="none">No project</option>{projects.map((p) => <option key={p.id} value={p.id}>{projectLabel(projects, p.id)}</option>)}
+          </select>
+        )}
         {view === 'upcoming' && <select value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Upcoming range">{[7, 14, 30].map((d) => <option key={d} value={d}>Next {d} days</option>)}</select>}
         {filteredContact && <span className="badge">Contact: {filteredContact}</span>}
         {filtering && <button className="link" onClick={() => setFilter(NO_FILTER)}>Clear filters</button>}
@@ -186,7 +198,7 @@ export default function TasksPage() {
           <h3>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="muted">· {g.tasks.length}</span></h3>
           <ul className="plain">
             {g.tasks.map((t) => (
-              <TaskRow key={t.id} task={t} lists={lists} tags={tagList} today={today} selecting={selecting} selected={selected.has(t.id)}
+              <TaskRow key={t.id} task={t} lists={lists} tags={tagList} projects={projects} today={today} selecting={selecting} selected={selected.has(t.id)}
                 onSelect={(id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
                 onOpen={setEditing} onToggle={(x) => void toggle(x)}
                 restore={view === 'deleted' ? async (x) => { await restoreTasks([x.id]); toast('Task restored'); } : undefined} />

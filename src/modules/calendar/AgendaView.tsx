@@ -13,7 +13,7 @@ export function AgendaRow({ item, onOpen }: { item: CalItem; onOpen: (i: CalItem
         <span className="cal-row-main">
           <span className="cal-row-title"><PriorityMark priority={item.priority} /> {item.title}</span>
           <span className="cal-row-sub">
-            {item.layerName}{item.location ? ` · ${item.location}` : ''}{item.recurring ? ' · repeats' : ''} <Flags item={item} />
+            {item.layerName}{item.location ? ` · ${item.location}` : ''}{item.recurring ? ' · repeats' : ''}{item.project ? <span className="cal-proj" title="Project"> · ◇ {item.project.label}</span> : null} <Flags item={item} />
           </span>
         </span>
       </button>
@@ -45,7 +45,7 @@ export default function AgendaView({ from, days, today, items, onOpenItem, onCre
                   <span className="cal-row-dot" aria-hidden="true" />
                   <span className="cal-row-main">
                     <span className="cal-row-title"><PriorityMark priority={i.priority} /> {i.title}</span>
-                    <span className="cal-row-sub">{i.layerName}</span>
+                    <span className="cal-row-sub">{i.layerName}{i.project ? <span className="cal-proj"> · ◇ {i.project.label}</span> : null}</span>
                   </span>
                 </button>
               </li>

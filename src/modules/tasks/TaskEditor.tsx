@@ -6,6 +6,7 @@ import { todayISO } from '../../lib/money';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
+import { findProject, projectLabel, projectPath, selectableProjects, useProjectChoicesLoaded } from '../../core/projectLink';
 import { ContactPicker, RecordLinks, RefLabel, TagPicker, refKey } from '../../ui/pickers';
 import RepeatFields from '../../ui/RepeatFields';
 import { normalizeRule, type Recurrence } from '../../core/recurrence';
@@ -31,6 +32,9 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
   const [listTouched, setListTouched] = useState(false);
   const [tagIds, setTagIds] = useState(t.tagIds);
   const [contactIds, setContactIds] = useState(t.contactIds);
+  const [projectId, setProjectId] = useState<number | undefined>(t.projectId);
+  const [milestone, setMilestone] = useState(t.isMilestone === true);
+  const { projects, loaded: projectsLoaded } = useProjectChoicesLoaded();
   const [checklist, setChecklist] = useState<ChecklistItem[]>(t.checklist);
   const [newItem, setNewItem] = useState('');
   const [error, setError] = useState('');
@@ -54,8 +58,10 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
     try {
       const listId = listTouched ? (listName.trim() ? await createList(listName) : null) : t.listId;
       const done = status === 'done';
+      // The project fields are rebuilt from the screen, so choosing "No project" really removes them; everything else on the record is kept.
+      const { projectId: _p, isMilestone: _m, ...base } = t;
       await saveTask(task.id, {
-        ...t, title: title.trim(), notes: notes.trim(), status, priority, dueDate: dueDate || null, dueTime: dueDate && dueTime ? dueTime : null, startDate: startDate || null,
+        ...base, ...(projectId !== undefined ? { projectId, ...(milestone ? { isMilestone: true } : {}) } : {}), title: title.trim(), notes: notes.trim(), status, priority, dueDate: dueDate || null, dueTime: dueDate && dueTime ? dueTime : null, startDate: startDate || null,
         repeat: rule ? { mode, rule: normalizeRule(rule) ?? rule } : null, tagIds, contactIds, checklist: checklist.filter((c) => c.text.trim()), listId,
         completedAt: done ? t.completedAt ?? Date.now() : null,
       });
@@ -118,7 +124,27 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
           </span>
         </label>
 
-        <RepeatFields rule={rule} onChange={setRule} start={dueDate || today} mode={mode} onMode={setMode} />
+        <div className="f">
+          <label htmlFor="tk-project">Project <span className="muted">(optional)</span></label>
+          <span className="row grow">
+            <select id="tk-project" value={projectId ?? ''} onChange={(e) => { const v = e.target.value === '' ? undefined : Number(e.target.value); setProjectId(v); if (v === undefined) setMilestone(false); }}>
+              <option value="">No project</option>
+              {selectableProjects(projects, projectId).map((p) => <option key={p.id} value={p.id}>{projectLabel(projects, p.id)}</option>)}
+              {projectsLoaded && projectId !== undefined && !findProject(projects, projectId) && <option value={projectId}>(project removed)</option>}
+            </select>
+            {projectId !== undefined && findProject(projects, projectId) && <a className="link" href={`#${projectPath(projectId)}`}>Open project</a>}
+          </span>
+          {projectsLoaded && projectId !== undefined && !findProject(projects, projectId) && <span className="muted small">This project no longer exists (it may have been removed on another device). Choose "No project" to clear it.</span>}
+          {t.projectId !== undefined && projectId === undefined && <span className="muted small">Saving takes this task off its project. The task itself is kept.</span>}
+        </div>
+        {projectId !== undefined && (
+          <label className="row cal-check">
+            <input type="checkbox" checked={milestone} disabled={!milestone && !!rule} onChange={(e) => { setMilestone(e.target.checked); if (e.target.checked) setRule(null); }} />
+            Milestone <span className="muted small">(a checkpoint such as "Permit approved"; it does not repeat){rule ? (milestone ? ' This older milestone still repeats, so finishing one makes the next. Untick it, or turn the repeat off, to change that.' : ' Turn off the repeat first.') : ''}</span>
+          </label>
+        )}
+
+        {!(projectId !== undefined && milestone && !rule) && <RepeatFields rule={rule} onChange={setRule} start={dueDate || today} mode={mode} onMode={setMode} />}
         {rule && !dueDate && <p className="muted small">With no due date, the first due date is set when you complete it.</p>}
 
         <label className="f">Notes<textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>

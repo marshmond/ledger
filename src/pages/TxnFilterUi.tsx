@@ -33,6 +33,7 @@ export function filterChips(
   patch: (p: Partial<TxnFilter>) => void,
   setPreset: (p: DatePreset | 'custom') => void,
   accountLabel?: (f: TxnFilter) => string | null,
+  projectLabel?: (id: number) => string,
 ): Chip[] {
   const chips: Chip[] = [];
   const acct = accountLabel?.(filter);
@@ -44,6 +45,7 @@ export function filterChips(
   if (filter.hideTransfers) chips.push({ key: 'xfer', label: 'Transfers hidden', clear: () => patch({ hideTransfers: false }) });
   if (filter.uncategorizedOnly) chips.push({ key: 'uncat', label: 'Uncategorized only', clear: () => patch({ uncategorizedOnly: false }) });
   if (filter.pendingOnly) chips.push({ key: 'pend', label: 'Pending only', clear: () => patch({ pendingOnly: false }) });
+  if (filter.projectId !== undefined) chips.push({ key: 'proj', label: `Project: ${projectLabel?.(filter.projectId) ?? filter.projectId}`, clear: () => patch({ projectId: undefined }) });
   return chips;
 }
 
@@ -59,13 +61,15 @@ export function FilterChips({ chips, onClearAll }: { chips: Chip[]; onClearAll: 
   );
 }
 
-export function TxnFilterPanel({ id, filter, patch, setPreset, categories, groups, children }: {
+export function TxnFilterPanel({ id, filter, patch, setPreset, categories, groups, projects, children }: {
   id: string;
   filter: TxnFilter;
   patch: (p: Partial<TxnFilter>) => void;
   setPreset: (p: DatePreset | 'custom') => void;
   categories: Category[];
   groups: CategoryGroup[];
+  /** When given, adds a Project menu (the Transactions tab passes the projects). */
+  projects?: { id: number; name: string }[];
   /** Extra sections below "Show only" (the Transactions tab adds saved filters). */
   children?: ReactNode;
 }) {
@@ -87,6 +91,15 @@ export function TxnFilterPanel({ id, filter, patch, setPreset, categories, group
             ))}
           </div>
         </details>
+        {projects && (
+          <label className="f">Project
+            <select value={filter.projectId ?? ''} onChange={(e) => patch({ projectId: e.target.value === '' ? undefined : Number(e.target.value) })}>
+              <option value="">Any project</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {filter.projectId !== undefined && !projects.some((p) => p.id === filter.projectId) && <option value={filter.projectId}>(project removed)</option>}
+            </select>
+          </label>
+        )}
         <label className="f">From<input type="date" value={filter.from} onChange={(e) => { setPreset('custom'); patch({ from: e.target.value }); }} /></label>
         <label className="f">To<input type="date" value={filter.to} onChange={(e) => { setPreset('custom'); patch({ to: e.target.value }); }} /></label>
         <label className="f">Amount

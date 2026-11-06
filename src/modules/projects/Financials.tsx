@@ -80,6 +80,7 @@ export default function Financials({ summary: s, derived, warnings, focusLine, o
 }
 
 interface TxnProps {
+  projectId: number;
   pieces: (ProjectPiece & { payee: string })[];
   lineName: (id: number | undefined) => string;
   contractName: (id: number | undefined) => string;
@@ -88,19 +89,22 @@ interface TxnProps {
 }
 
 /** The transactions tagged to this project: the actual spending. These are the same transactions as in Finance; nothing is copied. */
-export function ProjectTxns({ pieces, lineName, contractName, focusLine, lineOfCommitment }: TxnProps) {
+export function ProjectTxns({ projectId, pieces, lineName, contractName, focusLine, lineOfCommitment }: TxnProps) {
   const lineOf = (p: ProjectPiece) => p.budgetLineId ?? lineOfCommitment(p.commitmentId);
   const shown = focusLine === undefined ? pieces : pieces.filter((p) => (lineOf(p) ?? null) === focusLine);
   return (
     <section className="card pj-card" id="pj-txns" aria-labelledby="pj-txn-h">
-      <h2 id="pj-txn-h">Transactions on this project</h2>
+      <div className="pj-card-head">
+        <h2 id="pj-txn-h">Transactions on this project</h2>
+        {pieces.length > 0 && <a className="link" href={`#/ledger/transactions?project=${projectId}`}>See in Finance</a>}
+      </div>
       {shown.length === 0 ? (
         <p className="muted">{pieces.length === 0 ? 'Nothing is tagged to this project yet. Open a transaction and choose this project, or select several on the Transactions page and use Project.' : 'Nothing under this budget line.'}</p>
       ) : (
         <ul className="plain pj-paylist">
           {shown.map((p, i) => (
             <li key={`${p.txnId}-${i}`} className="pj-payrow">
-              <span className="pj-payrow-main"><strong>{p.payee || '(no payee)'}</strong><span className="muted small">{p.date ? dayLabel(p.date, { year: true }) : ''}{[contractName(p.commitmentId), lineName(p.budgetLineId)].filter(Boolean).map((s) => ` · ${s}`).join('')}{p.effect ? ` · ${p.effect}` : ''}</span></span>
+              <span className="pj-payrow-main"><a href={`#/ledger/transactions?txn=${p.txnId}`} aria-label={`Open transaction: ${p.payee || 'no payee'}`}><strong>{p.payee || '(no payee)'}</strong></a><span className="muted small">{p.date ? dayLabel(p.date, { year: true }) : ''}{[contractName(p.commitmentId), lineName(p.budgetLineId)].filter(Boolean).map((s) => ` · ${s}`).join('')}{p.effect ? ` · ${p.effect}` : ''}</span></span>
               <span className={`pj-amount ${p.amountCents > 0 ? 'pos' : ''}`}>{p.amountCents > 0 ? `+${formatCents(p.amountCents)}` : formatCents(-p.amountCents)}</span>
             </li>
           ))}

@@ -16,6 +16,7 @@ import { archiveProject, getProject, loadBudgetLines, loadCommitments, restorePr
 import Financials, { ProjectTxns } from './Financials';
 import { countBrokenTags, groupContracts, projectWarnings, type Warning } from './financialView';
 import ProjectForm from './ProjectForm';
+import ProjectWork from './ProjectWork';
 import { budgetSummary, STATUSES, STATUS_LABEL, type ProjectStatus } from './model';
 import Vendors from './Vendors';
 
@@ -104,6 +105,13 @@ export default function ProjectPage() {
 
       {d.notes && <section className="card pj-card"><h2>Notes</h2><p className="pj-notes">{d.notes}</p></section>}
 
+      {(d.archived || d.status === 'cancelled' || d.status === 'completed') && (
+        <p className="muted small pj-note" role="note">
+          {d.archived ? 'This project is archived.' : d.status === 'cancelled' ? 'This project is cancelled.' : 'This project is completed.'} Its tasks, milestones and events are kept and still work, but it no longer appears as active work on Today.
+        </p>
+      )}
+      <ProjectWork project={project} />
+
       <Commitments
         groups={groups}
         lines={lines}
@@ -114,6 +122,7 @@ export default function ProjectPage() {
         onChange={(root, draft) => setForm({ draft: { parentId: root.id, ...draft } })}
       />
       <ProjectTxns
+        projectId={project.id}
         pieces={pieces}
         focusLine={focusLine}
         lineName={(cid) => lines.find((l) => l.id === cid)?.data.name ?? ''}

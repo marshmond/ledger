@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { allDueProviders, queryProviders, type DerivedItem } from '../../core/dueProvider';
+import { loadProjectChoices, projectLabel, readProjectId } from '../../core/projectLink';
 import { loadCalendarSettings, type CalendarSettings } from '../../core/calendarSettings';
 import type { Priority } from '../../core/entities';
 import { addDays } from '../../lib/dates';
@@ -37,6 +38,8 @@ export interface CalItem {
   recurring: boolean;
   occ?: Occurrence;
   source?: DerivedItem;
+  /** The project this event or task belongs to, with the words to show for it. Absent when it has none. */
+  project?: { id: number; label: string };
 }
 
 const HIDDEN_KEY = 'calendar-hidden-layers';
@@ -74,17 +77,19 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
   const raw = useLiveQuery(async () => {
     const settings = await loadCalendarSettings();
     const overdueDays = includeOverdue ? settings.overdueDays : 0;
-    const [layers, events, derived] = await Promise.all([
+    const [layers, events, derived, projects] = await Promise.all([
       loadLayers(),
       loadEvents(),
       queryProviders({ from, to, today, overdueDays }),
+      loadProjectChoices(),
     ]);
-    return { layers, events, derived, settings };
+    return { layers, events, derived, settings, projects };
   }, [from, to, includeOverdue, today]);
 
   return useMemo(() => {
     if (!raw) return undefined;
-    const { layers, events, derived, settings } = raw;
+    const { layers, events, derived, settings, projects } = raw;
+    const projectOf = (id: number | undefined) => (id === undefined ? undefined : { id, label: projectLabel(projects, id) });
     const byId = new Map(layers.map((l) => [l.id, l]));
     const fallback = byId.get(PERSONAL_ID) ?? { id: PERSONAL_ID, name: 'Personal', color: '#4a7bd0', sourceType: 'local' as const };
     const items: CalItem[] = [];
@@ -98,6 +103,7 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
           key: `e:${o.eventId}:${o.key}`, title: o.title || '(no title)', layerId: layer.id, layerName: layer.name, color: layer.color,
           derived: false, allDay: o.allDay, firstDay: o.firstDay, lastDay: o.lastDay, startMs: o.startMs, endMs: o.endMs,
           priority: o.priority, location: o.location, done: o.done, overdue: st.overdue, soon: st.soon, recurring: o.recurring, occ: o,
+          project: projectOf(readProjectId(o.event.data)),
         });
       }
     }
@@ -113,6 +119,7 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
           key: `d:${it.id}`, title: it.title, layerId: layer?.id ?? -1, layerName: layer?.name ?? p.layerName, color: layer?.color ?? p.color,
           derived: true, allDay: mins === null, firstDay: it.date, lastDay: it.endDate ?? it.date, startMs, endMs: mins === null ? msAt(addDays(it.endDate ?? it.date, 1)) : startMs + 30 * 60_000,
           priority: it.priority, location: '', done: !open, overdue: open && it.date < today, soon: false, recurring: false, source: it,
+          project: projectOf(it.projectId),
         });
       }
     }

@@ -29,6 +29,8 @@ export interface TxnFilter {
   colPayee?: string;
   colCategory?: string;
   colAmount?: string;
+  /** Only transactions tagged to this project (the whole transaction or any split piece). Optional so saved filters from before it existed still load. */
+  projectId?: number;
 }
 
 export const EMPTY_FILTER: TxnFilter = {
@@ -109,6 +111,10 @@ export function amountMatches(cents: number, query: string): boolean {
   return String(size % 100).padStart(2, '0').startsWith(frac);
 }
 
+/** True if the transaction, or any piece of a split, is tagged to the project. */
+export const touchesProject = (t: Txn, projectId: number): boolean =>
+  t.project?.projectId === projectId || (t.splits ?? []).some((s) => s.project?.projectId === projectId);
+
 export function matches(r: Row, f: TxnFilter): boolean {
   const t = r.txn;
   if (f.accountIds.length && !f.accountIds.includes(t.accountId)) return false;
@@ -146,6 +152,7 @@ export function matches(r: Row, f: TxnFilter): boolean {
   if (f.hideTransfers && t.transferTxnId) return false;
   if (f.uncategorizedOnly && (t.transferTxnId || !r.categoryIds.includes(null))) return false;
   if (f.pendingOnly && t.status !== 'pending') return false;
+  if (f.projectId !== undefined && !touchesProject(t, f.projectId)) return false;
   return true;
 }
 
@@ -252,6 +259,7 @@ export function activeFilterCount(f: TxnFilter): number {
     f.hideTransfers,
     f.uncategorizedOnly,
     f.pendingOnly,
+    f.projectId !== undefined,
     !!f.colDate?.trim() || !!f.colPayee?.trim() || !!f.colCategory?.trim() || !!f.colAmount?.trim(),
   ].filter(Boolean).length;
 }

@@ -17,6 +17,7 @@ import { openAddTransaction } from '../shell/QuickAdd';
 import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, STATUSES, TxnFilterPanel, filterChips, toggleList } from './TxnFilterUi';
 import TxnForm from './TxnForm';
 import BulkProject from './BulkProject';
+import { projectLabel, useProjectChoices } from '../core/projectLink';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
 
 const COLS: { key: SortKey; label: string; cls?: string; first: 'asc' | 'desc' }[] = [
@@ -44,8 +45,11 @@ export default function TransactionsPage() {
   const groups = useLiveQuery(() => db.categoryGroups.toArray(), []) ?? [];
   const saved = useLiveQuery(() => listSavedFilters(db), []) ?? [];
 
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const projectChoices = useProjectChoices();
   const startText = searchParams.get('q') ?? '';
+  const startProject = Number(searchParams.get('project')) || undefined;
+  const startTxn = Number(searchParams.get('txn')) || undefined;
   const [filter, setFilterState] = useState<TxnFilter>(() => ({ ...EMPTY_FILTER, text: startText }));
   const [sort, setSortState] = useState<Sort>(DEFAULT_SORT);
   const [preset, setPreset] = useState<DatePreset | 'custom'>('all');
@@ -67,6 +71,20 @@ export default function TransactionsPage() {
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
+
+  // Arriving from a project (#/ledger/transactions?project=3): show just that project's transactions, then tidy the address.
+  useEffect(() => {
+    if (startProject === undefined) return;
+    setFilterState((f) => ({ ...f, projectId: startProject })); setPage(0);
+    const next = new URLSearchParams(searchParams); next.delete('project'); setSearchParams(next, { replace: true });
+  }, [startProject]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ...or to one transaction (#/ledger/transactions?txn=42): open it for viewing and editing, as if its row had been clicked.
+  useEffect(() => {
+    if (startTxn === undefined || !txnsLoaded) return;
+    const t = txnsLoaded.find((x) => x.id === startTxn);
+    if (t) setEditing(t);
+    const next = new URLSearchParams(searchParams); next.delete('txn'); setSearchParams(next, { replace: true });
+  }, [startTxn, txnsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Arriving from search while already on this page: apply the new text.
   useEffect(() => { if (startText) { setFilterState((f) => ({ ...f, text: startText })); setPage(0); } }, [startText]);
@@ -108,7 +126,7 @@ export default function TransactionsPage() {
   const accountOf = (t: Txn) => accounts.find((a) => a.id === t.accountId);
 
   // What is filtering the list, as removable chips. The search box shows its own text, so it gets no chip.
-  const chips = filterChips(filter, patch, setPreset, (f) => (f.accountIds.length ? (f.accountIds.length === 1 ? accounts.find((a) => a.id === f.accountIds[0])?.name ?? '1 account' : `${f.accountIds.length} accounts`) : null));
+  const chips = filterChips(filter, patch, setPreset, (f) => (f.accountIds.length ? (f.accountIds.length === 1 ? accounts.find((a) => a.id === f.accountIds[0])?.name ?? '1 account' : `${f.accountIds.length} accounts`) : null), (id) => projectLabel(projectChoices, id));
   const clearAll = () => { setPreset('all'); setFilter(EMPTY_FILTER); };
 
   const setBulkStatusWithUndo = async () => {
@@ -171,7 +189,7 @@ export default function TransactionsPage() {
       </div>
 
       {panel && (
-        <TxnFilterPanel id="txn-filter-panel" filter={filter} patch={patch} setPreset={setPreset} categories={categories} groups={groups}>
+        <TxnFilterPanel id="txn-filter-panel" filter={filter} patch={patch} setPreset={setPreset} categories={categories} groups={groups} projects={projectChoices.map((p) => ({ id: p.id, name: projectLabel(projectChoices, p.id) }))}>
       <div>
         <h3>Saved filters</h3>
         <div className="row">

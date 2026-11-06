@@ -12,6 +12,7 @@ export const MODULE = 'calendar';
 export const PERSONAL_ID = 9_000_000_000_000_101;
 export const FINANCE_ID = 9_000_000_000_000_102;
 export const TASKS_ID = 9_000_000_000_000_103;
+export const PROJECTS_ID = 9_000_000_000_000_104;
 
 /** `local`: events stored here. `derived`: worked out by a module's due provider (read-only). `subscribed`: reserved for external .ics feeds later. */
 export type SourceType = 'local' | 'derived' | 'subscribed';
@@ -62,6 +63,8 @@ export interface EventData extends EventFields {
   trackDone: boolean;
   /** Free label such as 'bill' or 'finance' (used by Part C). */
   type?: string;
+  /** The project this event belongs to (at most one, for the whole series). Only the id is stored. Absent = no project. */
+  projectId?: number;
   /** If this event was retired because another module took it over: where it went. */
   retired?: { module: string; recordId: string | number; note: string };
 }
@@ -73,7 +76,7 @@ export interface EventRecord {
 }
 
 /** Fields this reader understands. Anything else in a stored record (written by another module or a newer version) is carried through untouched. */
-const EVENT_KEYS = new Set(['title', 'allDay', 'startDate', 'endDate', 'startAt', 'endAt', 'location', 'notes', 'priority', 'reminders', 'calendarId', 'tagIds', 'contactIds', 'recurrence', 'skipped', 'overrides', 'doneKeys', 'trackDone', 'type', 'retired']);
+const EVENT_KEYS = new Set(['title', 'allDay', 'startDate', 'endDate', 'startAt', 'endAt', 'location', 'notes', 'priority', 'reminders', 'calendarId', 'tagIds', 'contactIds', 'recurrence', 'skipped', 'overrides', 'doneKeys', 'trackDone', 'type', 'retired', 'projectId']);
 
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -114,6 +117,7 @@ export function asEvent(r: ModuleRecord): EventRecord {
       trackDone: d.trackDone === true,
       ...(d.type ? { type: str(d.type) } : {}),
       ...(d.retired ? { retired: d.retired } : {}),
+      ...(typeof d.projectId === 'number' && Number.isFinite(d.projectId) ? { projectId: d.projectId } : {}),
     },
   };
 }

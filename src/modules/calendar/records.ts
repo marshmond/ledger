@@ -10,7 +10,8 @@ import { occurrenceToOpen } from './searchSource';
 /** Lets other modules link to a Calendar event and show it by name. Event ids are plain numbers. */
 const num = (id: string | number) => (typeof id === 'number' ? id : /^\d+$/.test(id) ? Number(id) : NaN);
 
-function pathFor(ev: ReturnType<typeof asEvent>): string {
+/** The Calendar address that opens this event (the next date from today, or its first). */
+export function pathFor(ev: ReturnType<typeof asEvent>): string {
   const occ = occurrenceToOpen(ev, todayISO());
   const date = occ?.firstDay ?? ev.data.startDate;
   return occ ? `/calendar?v=agenda&d=${date}&open=${encodeURIComponent(`e:${ev.id}:${occ.key}`)}` : `/calendar?v=agenda&d=${date}`;

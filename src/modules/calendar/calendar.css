@@ -181,3 +181,7 @@
   .cal-more { min-height: 32px; }
 }
 @media print { .cal-toolbar, .cal-toolbar2, .cal-legend { display: none; } }
+
+/* A project marker on a calendar item: small and quiet, so it never competes with the title. */
+.cal-chip-proj { flex: none; font-size: 0.7em; opacity: 0.7; }
+.cal-proj { color: var(--muted, inherit); }

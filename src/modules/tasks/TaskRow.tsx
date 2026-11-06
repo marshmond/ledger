@@ -3,6 +3,7 @@ import { STATUS_LABEL } from './model';
 import { PriorityMark } from '../../ui/PriorityMark';
 import { dayLabel } from '../../core/time';
 import { isOverdue } from './views';
+import { projectLabel, type ProjectChoice } from '../../core/projectLink';
 
 const timeText = (hm: string) => {
   const [h, m] = hm.split(':').map(Number);
@@ -10,8 +11,8 @@ const timeText = (hm: string) => {
 };
 
 /** One task: a big tick box, the title, and a line of details. Tapping the title opens the task. */
-export default function TaskRow({ task, lists, tags, today, selecting, selected, onSelect, onOpen, onToggle, restore }: {
-  task: TaskRecord; lists: TaskList[]; tags: { id: number; name: string }[]; today: string;
+export default function TaskRow({ task, lists, tags, projects, today, selecting, selected, onSelect, onOpen, onToggle, restore }: {
+  task: TaskRecord; lists: TaskList[]; tags: { id: number; name: string }[]; projects?: ProjectChoice[]; today: string;
   selecting: boolean; selected: boolean; onSelect: (id: number) => void; onOpen: (t: TaskRecord) => void; onToggle: (t: TaskRecord) => void;
   /** In the Deleted view, a Restore button replaces the tick box. */
   restore?: (t: TaskRecord) => void;
@@ -40,6 +41,7 @@ export default function TaskRow({ task, lists, tags, today, selecting, selected,
           {when && <span className={late ? 'tk-late' : ''}>{when}</span>}
           {d.status !== 'todo' && d.status !== 'done' && <span className="tk-pill">{STATUS_LABEL[d.status]}</span>}
           {list && <span>{list.name}</span>}
+          {d.projectId !== undefined && <span className="tk-proj" title="Project">{d.isMilestone ? '◆' : '◇'} {projectLabel(projects ?? [], d.projectId)}</span>}
           {d.tagIds.map((id) => <span key={id}>#{tags.find((t) => t.id === id)?.name ?? '?'}</span>)}
           {steps && <span>{steps}</span>}
           {d.createdFrom && <span title="Made from another record">↗ {d.createdFrom.label}</span>}
