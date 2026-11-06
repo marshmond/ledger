@@ -1,5 +1,6 @@
 /** Checking an asset before it is saved. Plain-words messages, first problem only. Pure: parents are passed in as a lookup. */
 import { parseAmountToCents } from '../../lib/money';
+import { validateTxnRefs } from './txnRef';
 import { ASSET_STATUSES, ASSET_TYPES, isDate, tidy, type AssetData } from './model';
 
 export const MAX_DEPTH = 12;
@@ -62,6 +63,9 @@ export function validateAsset(d: AssetData, id: number | undefined, lookup: Asse
     if (v !== null && !isDate(v)) return `The ${label} is not a real date.`;
   }
   if (d.purchaseCents !== null && (!Number.isFinite(d.purchaseCents) || d.purchaseCents < 0)) return 'The price cannot be negative.';
+  if (d.purchaseCents !== null && d.purchaseTxnRefs.length) return 'The price is either typed or taken from Finance, not both. Choose one.';
+  const refProblem = validateTxnRefs(d.purchaseTxnRefs);
+  if (refProblem) return refProblem;
   if (d.statusNote.length > 500 || d.warrantyNote.length > 500) return 'A note is too long (500 characters at most).';
   if (d.notes.length > 5000) return 'The notes are too long.';
   if (d.manufacturer.length > 80 || d.model.length > 80) return 'The make or model is too long.';

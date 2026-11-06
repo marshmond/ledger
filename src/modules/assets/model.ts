@@ -7,6 +7,7 @@
  * outward string with `publicLabel` / `breadcrumb` (data.ts), which cannot read them.
  */
 import type { ModuleRecord } from '../../core/entities';
+import { readTxnRefs, type TxnRef } from './txnRef';
 
 export const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 /** A real calendar date written YYYY-MM-DD (so 2026-02-30 is not one). */
@@ -65,6 +66,10 @@ export interface AssetData {
   installDate: string | null;
   /** Whole cents, >= 0. Informational in H1: it feeds nothing. */
   purchaseCents: number | null;
+  /** H3: the Finance transaction pieces that paid for it. Either these or `purchaseCents`, never both (references win). */
+  purchaseTxnRefs: TxnRef[];
+  /** H3: an optional pointer to the matching Finance NET WORTH entry (Finance owns it; only read here). */
+  ledgerPropertyId: number | null;
   warrantyEndDate: string | null;
   warrantyNote: string;
   contacts: AssetContact[];
@@ -84,9 +89,8 @@ export interface AssetRecord {
 
 const ASSET_KEYS = new Set([
   'name', 'type', 'parentId', 'status', 'statusDate', 'statusNote', 'replacedById', 'archived', 'notes', 'manufacturer', 'model', 'serialNumber',
-  'purchaseDate', 'installDate', 'purchaseCents', 'warrantyEndDate', 'warrantyNote', 'contacts', 'specs', 'refs', 'address', 'plate',
+  'purchaseDate', 'installDate', 'purchaseCents', 'purchaseTxnRefs', 'ledgerPropertyId', 'warrantyEndDate', 'warrantyNote', 'contacts', 'specs', 'refs', 'address', 'plate',
 ]);
-// Reserved for later phases (ledgerPropertyId, txnRefs, purchaseTxnRef): not in ASSET_KEYS, so they travel as unknown fields.
 
 const list = <T,>(v: unknown, pick: (x: Record<string, unknown>) => T | null): T[] =>
   Array.isArray(v) ? v.flatMap((x) => { const r = x && typeof x === 'object' ? pick(x as Record<string, unknown>) : null; return r ? [r] : []; }) : [];
@@ -117,6 +121,8 @@ export function asAsset(r: ModuleRecord): AssetRecord {
       purchaseDate: isDate(d.purchaseDate) ? d.purchaseDate : null,
       installDate: isDate(d.installDate) ? d.installDate : null,
       purchaseCents: finite(d.purchaseCents) && d.purchaseCents >= 0 ? Math.round(d.purchaseCents) : null,
+      purchaseTxnRefs: readTxnRefs(d.purchaseTxnRefs),
+      ledgerPropertyId: id(d.ledgerPropertyId),
       warrantyEndDate: isDate(d.warrantyEndDate) ? d.warrantyEndDate : null,
       warrantyNote: str(d.warrantyNote),
       contacts: list(d.contacts, (x) => (finite(x.contactId) ? { contactId: x.contactId, role: str(x.role).trim() } : null)),
@@ -130,7 +136,7 @@ export function asAsset(r: ModuleRecord): AssetRecord {
 
 export const blankAsset = (over: Partial<AssetData> = {}): AssetData => ({
   name: '', type: 'other', parentId: null, status: 'active', statusDate: null, statusNote: '', replacedById: null, archived: false, notes: '',
-  manufacturer: '', model: '', serialNumber: '', purchaseDate: null, installDate: null, purchaseCents: null, warrantyEndDate: null, warrantyNote: '',
+  manufacturer: '', model: '', serialNumber: '', purchaseDate: null, installDate: null, purchaseCents: null, purchaseTxnRefs: [], ledgerPropertyId: null, warrantyEndDate: null, warrantyNote: '',
   contacts: [], specs: [], refs: [], address: '', plate: '', ...over,
 });
 

@@ -3,12 +3,13 @@
  * They live in the shared `moduleRecords` table, so backup, restore and device sync already cover them. Pure code only: reading and checking.
  *
  * Money is whole cents. `costCents: null` means "not recorded" and is NOT the same as 0. The cost is informational; it feeds nothing
- * (Finance links come in H3). Fields this reader does not know (for example H3's `txnRefs`) travel through every read and write.
+ * (a Finance link is an alternative, H3). Fields this reader does not know (for example H3's `txnRefs`) travel through every read and write.
  */
 import type { ModuleRecord } from '../../core/entities';
 import { parseAmountToCents } from '../../lib/money';
 import { finite, isDate, str, tidy, type AssetRef } from './model';
 import { isSafeUrl } from './validate';
+import { readTxnRefs, validateTxnRefs, type TxnRef } from './txnRef';
 
 export const SERVICE_KIND = 'service';
 export const SERVICE_KINDS = ['maintenance', 'repair', 'inspection', 'improvement', 'replacement', 'other'] as const;
@@ -34,11 +35,13 @@ export interface ServiceData {
   providerContactId: number | null;
   /** Whole cents >= 0, or null when not recorded. */
   costCents: number | null;
+  /** H3: Finance transaction pieces that paid for it. Either these or `costCents`, never both (references win). */
+  txnRefs: TxnRef[];
   /** The Task this was saved from, when there was one. One service record per task. */
   taskId: number | null;
   /** The task's title when the record was saved, so the origin stays readable if the task is renamed or deleted. */
   taskTitleSnapshot: string;
-  /** Reserved for H3 (a project link). Carried through, not offered anywhere yet. */
+  /** The Project this work was recorded from (H3). Information only; it adds no money anywhere. */
   projectId: number | null;
   refs: AssetRef[];
 }
@@ -49,7 +52,7 @@ export interface ServiceRecord {
   data: ServiceData;
 }
 
-const SERVICE_KEYS = new Set(['assetId', 'date', 'kind', 'title', 'notes', 'providerContactId', 'costCents', 'taskId', 'taskTitleSnapshot', 'projectId', 'refs']);
+const SERVICE_KEYS = new Set(['assetId', 'date', 'kind', 'title', 'notes', 'providerContactId', 'costCents', 'txnRefs', 'taskId', 'taskTitleSnapshot', 'projectId', 'refs']);
 const extras = (d: object) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !SERVICE_KEYS.has(k) && v !== undefined)) as object;
 const idOrNull = (v: unknown): number | null => (finite(v) ? v : null);
 
@@ -75,6 +78,7 @@ export function asService(r: ModuleRecord): ServiceRecord {
       notes: str(d.notes),
       providerContactId: idOrNull(d.providerContactId),
       costCents: finite(d.costCents) && d.costCents >= 0 ? Math.round(d.costCents) : null,
+      txnRefs: readTxnRefs(d.txnRefs),
       taskId: idOrNull(d.taskId),
       taskTitleSnapshot: str(d.taskTitleSnapshot),
       projectId: idOrNull(d.projectId),
@@ -84,7 +88,7 @@ export function asService(r: ModuleRecord): ServiceRecord {
 }
 
 export const blankService = (assetId: number, over: Partial<ServiceData> = {}): ServiceData => ({
-  assetId, date: '', kind: 'maintenance', title: '', notes: '', providerContactId: null, costCents: null, taskId: null, taskTitleSnapshot: '', projectId: null, refs: [], ...over,
+  assetId, date: '', kind: 'maintenance', title: '', notes: '', providerContactId: null, costCents: null, txnRefs: [], taskId: null, taskTitleSnapshot: '', projectId: null, refs: [], ...over,
 });
 
 /** Tidies what was typed: collapsed title, trimmed notes, whole-cent cost, blank document rows dropped. */
@@ -120,6 +124,9 @@ export function validateService(d: ServiceData, ctx: ServiceContext): string | n
   if (d.costCents !== null && (!Number.isFinite(d.costCents) || d.costCents < 0)) return 'The cost cannot be negative.';
   if (d.costCents !== null && d.costCents > 100_000_000_00) return 'That cost is too large.';
   if (d.providerContactId !== null && d.providerContactId !== ctx.keepContactId && !ctx.contactExists(d.providerContactId)) return 'That contact no longer exists. Pick another or clear it.';
+  if (d.costCents !== null && d.txnRefs.length) return 'A cost is either typed or taken from Finance, not both. Choose one.';
+  const refProblem = validateTxnRefs(d.txnRefs);
+  if (refProblem) return refProblem;
   if (d.taskTitleSnapshot.length > 300) return 'The task title is too long.';
   if (d.refs.length > 20) return 'That is too many documents (20 at most).';
   for (const r of d.refs) {

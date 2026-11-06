@@ -5,6 +5,7 @@ import { ToastProvider } from '../../ui/Toast';
 import AssetPage from './AssetPage';
 import AssetsPage from './AssetsPage';
 import './assets.css';
+import './h3.css';
 
 export const ASSETS_BASE = '/assets';
 

@@ -12,6 +12,9 @@ import AssetForm from './AssetForm';
 import AssetWork from './AssetWork';
 import DeleteAsset from './DeleteAsset';
 import LinkedWork from './LinkedWork';
+import NetWorthEntry from './NetWorthEntry';
+import RelatedProjects from './RelatedProjects';
+import SpendingCard from './SpendingCard';
 import RetireDialog from './RetireDialog';
 import SensitiveValue from './Sensitive';
 import { archiveAsset, childrenOf, loadAssets, restoreAsset, warrantyState } from './data';
@@ -103,15 +106,17 @@ export default function AssetPage() {
           {d.type === 'property' && <SensitiveValue label="Address" value={d.address} />}
           {d.purchaseDate && <Fact label="Bought">{date(d.purchaseDate)}</Fact>}
           {d.installDate && <Fact label="In use since">{date(d.installDate)}</Fact>}
-          {d.purchaseCents !== null && <Fact label="Price paid">{formatCents(d.purchaseCents)}</Fact>}
+          {d.purchaseCents !== null && <Fact label="Price paid">{formatCents(d.purchaseCents)} <span className="muted small">typed</span></Fact>}
+          {d.purchaseTxnRefs.length > 0 && <Fact label="Price paid"><span className="muted small">from Finance, see Spending below</span></Fact>}
           {d.warrantyEndDate && <Fact label="Warranty ends">{date(d.warrantyEndDate)}{d.warrantyNote ? ` · ${d.warrantyNote}` : ''}</Fact>}
         </dl>
-        {!d.manufacturer && !d.model && !d.serialNumber && !d.purchaseDate && !d.installDate && d.purchaseCents === null && !d.warrantyEndDate && !d.address && !d.plate && (
+        {!d.manufacturer && !d.model && !d.serialNumber && !d.purchaseDate && !d.installDate && d.purchaseCents === null && d.purchaseTxnRefs.length === 0 && !d.warrantyEndDate && !d.address && !d.plate && (
           <p className="muted">Only the name is filled in. Use Edit to add the make, dates, warranty and more, whenever you like.</p>
         )}
         {d.specs.length > 0 && (
           <dl className="as-facts as-specs">{d.specs.map((s, i) => <Fact key={i} label={s.label}>{s.value}</Fact>)}</dl>
         )}
+        {d.ledgerPropertyId !== null && <NetWorthEntry propertyId={d.ledgerPropertyId} />}
         {d.notes && <p className="as-notes">{d.notes}</p>}
       </section>
 
@@ -159,7 +164,9 @@ export default function AssetPage() {
         )}
       </section>
 
+      <SpendingCard asset={asset} onEdit={() => setEditing(true)} />
       <AssetWork asset={asset} today={today} />
+      <RelatedProjects asset={asset} />
       <LinkedWork assetId={asset.id} />
 
       {editing && <AssetForm asset={asset} onClose={() => setEditing(false)} />}

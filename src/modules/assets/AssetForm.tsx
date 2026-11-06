@@ -8,6 +8,8 @@ import { useToast } from '../../ui/Toast';
 import { db } from '../../db';
 import { createAsset, descendantIds, loadAssets, lookupOf, publicLabel, updateAsset } from './data';
 import { ASSET_STATUSES, ASSET_TYPES, blankAsset, CONTACT_ROLE_HINTS, STATUS_LABEL, TYPE_LABEL, type AssetData, type AssetRecord, type AssetStatus, type AssetType } from './model';
+import { chooseCost, initialChoice, type CostChoice } from './costSource';
+import { CostSourceField } from './TxnRefs';
 import { assetWarnings, priceFromText, validateAsset } from './validate';
 
 /**
@@ -30,6 +32,11 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
   const [purchaseDate, setPurchaseDate] = useState(base.purchaseDate ?? '');
   const [installDate, setInstallDate] = useState(base.installDate ?? '');
   const [price, setPrice] = useState(base.purchaseCents === null ? '' : (base.purchaseCents / 100).toFixed(2));
+  const [priceRefs, setPriceRefs] = useState(base.purchaseTxnRefs);
+  const [priceChoice, setPriceChoice] = useState<CostChoice>(initialChoice(base.purchaseCents, base.purchaseTxnRefs));
+  const [priceAck, setPriceAck] = useState(false);
+  const [ledgerProp, setLedgerProp] = useState<number | null>(base.ledgerPropertyId);
+  const netWorth = useLiveQuery(() => db.properties.toArray(), []) ?? [];
   const [warrantyEnd, setWarrantyEnd] = useState(base.warrantyEndDate ?? '');
   const [warrantyNote, setWarrantyNote] = useState(base.warrantyNote);
   const [notes, setNotes] = useState(base.notes);
@@ -48,11 +55,11 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
   const blocked = useMemo(() => (asset ? descendantIds(all, asset.id) : new Set<number>()), [all, asset]);
   const parentChoices = all.filter((a) => !blocked.has(a.id) && (!a.data.archived || a.id === parent) && publicLabel(all, a.id).toLowerCase().includes(parentFilter.trim().toLowerCase()));
   const losing = [type !== 'property' && address.trim() ? 'address' : '', type !== 'vehicle' && plate.trim() ? 'plate' : ''].filter(Boolean);
-  const priceCents = priceFromText(price);
+  const chosenPrice = chooseCost(priceChoice, price, priceRefs, priceFromText);
 
   const draft = (): AssetData => ({
     ...base, name, type, parentId: parent, status, manufacturer, model, serialNumber: serial,
-    purchaseDate: purchaseDate || null, installDate: installDate || null, purchaseCents: priceCents === undefined ? null : priceCents,
+    purchaseDate: purchaseDate || null, installDate: installDate || null, purchaseCents: chosenPrice.cents, purchaseTxnRefs: chosenPrice.refs, ledgerPropertyId: ledgerProp,
     warrantyEndDate: warrantyEnd || null, warrantyNote, notes, address, plate, contacts: cs, specs, refs,
   });
   const warnings = assetWarnings({ purchaseDate: purchaseDate || null, installDate: installDate || null });
@@ -70,7 +77,8 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (priceCents === undefined) return setError('The price is not an amount.');
+    if (chosenPrice.badAmount) return setError('The price is not an amount.');
+    if (chosenPrice.dropped && !priceAck) return setError(`Tick the box to confirm removing ${chosenPrice.dropped}, or switch back to keep it.`);
     if (losing.length && !dropOk) return setError(`Tick the box to remove the saved ${losing.join(' and ')}, or change the type back.`);
     const problem = validateAsset(draft(), asset?.id, lookupOf(all));
     if (problem) return setError(problem);
@@ -128,8 +136,19 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
             <label className="f">Installed or in use since<input type="date" value={installDate} onChange={(e) => setInstallDate(e.target.value)} /></label>
           </div>
           {warnings.map((w) => <p key={w} className="muted small" role="status">{w}</p>)}
-          <label className="f">Price paid (optional)<input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" placeholder="Not tracked" /></label>
-          {price.trim() && priceCents !== undefined && priceCents !== null && <p className="muted small">Price: {formatCents(priceCents)}</p>}
+          <CostSourceField idp="price" label="Price paid" choice={priceChoice} setChoice={setPriceChoice} text={price} setText={setPrice} refs={priceRefs} setRefs={setPriceRefs} parse={priceFromText} ack={priceAck} setAck={setPriceAck}
+            help="Not tracked if left blank. Just a note for this item: it does not change your net worth or accounts." />
+          {priceChoice === 'manual' && chosenPrice.cents !== null && <p className="muted small">Price: {formatCents(chosenPrice.cents)}</p>}
+          {(type === 'property' || type === 'vehicle' || type === 'other') && (
+            <label className="f">Net worth entry (optional)
+              <select value={ledgerProp ?? ''} onChange={(e) => setLedgerProp(e.target.value === '' ? null : Number(e.target.value))}>
+                <option value="">None</option>
+                {ledgerProp !== null && !netWorth.some((p) => p.id === ledgerProp) && <option value={ledgerProp}>(net worth entry removed)</option>}
+                {netWorth.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <span className="muted small">Points at an entry on Finance's Net worth screen so its latest value can be shown here. Finance keeps the value; nothing is created or changed there.</span>
+            </label>
+          )}
           <div className="as-two">
             <label className="f">Warranty ends<input type="date" value={warrantyEnd} onChange={(e) => setWarrantyEnd(e.target.value)} /></label>
             <label className="f">Warranty note<input value={warrantyNote} onChange={(e) => setWarrantyNote(e.target.value)} placeholder="What it covers" maxLength={500} /></label>

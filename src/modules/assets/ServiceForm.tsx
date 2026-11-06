@@ -10,7 +10,9 @@ import { useToast } from '../../ui/Toast';
 import { nextDueDate } from '../tasks/recur';
 import type { TaskRecord } from '../tasks/model';
 import { completedOn, completionBasis } from './maintenance';
+import { chooseCost, initialChoice, type CostChoice } from './costSource';
 import type { AssetRecord, AssetRef } from './model';
+import { CostSourceField } from './TxnRefs';
 import { blankService, costFromText, SERVICE_KINDS, SERVICE_KIND_LABEL, type ServiceKind, type ServiceRecord } from './service';
 import { createService, deleteService, DuplicateServiceError, logTaskService, restoreService, updateService } from './serviceData';
 
@@ -30,6 +32,8 @@ type Props = {
   /** Starting from this linked task: `complete` = "Done, log it" (also marks it done); otherwise "Save to history" for a task already done. */
   task?: TaskRecord;
   complete?: boolean;
+  /** Starting point from a Project ("Record in Home & Assets…"). Nothing is saved until the owner presses Save; no cost is filled in. */
+  prefill?: { title: string; kind: ServiceKind; projectId: number; projectName: string };
   onClose: () => void;
 };
 
@@ -38,19 +42,22 @@ type Props = {
  * Only known facts are prefilled (the task's title and notes, its date, a single contact). Cost and "what was done" are never invented:
  * a blank cost is saved as "not recorded", not as $0.
  */
-export default function ServiceForm({ asset, service, task, complete = false, onClose }: Props) {
+export default function ServiceForm({ asset, service, task, complete = false, prefill, onClose }: Props) {
   const toast = useToast();
   const today = todayISO();
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
   const base = service?.data ?? blankService(asset.id);
   const taskContact = task && task.data.contactIds.length === 1 ? task.data.contactIds[0] : null;
-  const [title, setTitle] = useState(service ? base.title : task?.data.title ?? '');
+  const [title, setTitle] = useState(service ? base.title : task?.data.title ?? prefill?.title ?? '');
   const [date, setDate] = useState(service ? base.date : task ? (complete ? today : completedOn(task)) : today);
-  const [kind, setKind] = useState<ServiceKind>(service ? base.kind : 'maintenance');
+  const [kind, setKind] = useState<ServiceKind>(service ? base.kind : prefill?.kind ?? 'maintenance');
   const [notes, setNotes] = useState(service ? base.notes : task?.data.notes ?? '');
   const [provider, setProvider] = useState<number | null>(service ? base.providerContactId : taskContact);
   const [costText, setCostText] = useState(service && base.costCents !== null ? (base.costCents / 100).toFixed(2) : '');
   const [refs, setRefs] = useState<AssetRef[]>(base.refs);
+  const [txnRefs, setTxnRefs] = useState(base.txnRefs);
+  const [choice, setChoice] = useState<CostChoice>(initialChoice(base.costCents, base.txnRefs));
+  const [ack, setAck] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -58,7 +65,6 @@ export default function ServiceForm({ asset, service, task, complete = false, on
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const cost = costFromText(costText);
   const known = provider !== null && contacts.some((c) => c.id === provider);
   const heading = service ? 'Edit service record' : task ? (complete ? 'Done, log it' : 'Save to service history') : 'Log service';
 
@@ -76,8 +82,10 @@ export default function ServiceForm({ asset, service, task, complete = false, on
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    if (cost === undefined) return setError('The cost is not an amount. Leave it blank if you do not know it.');
-    const data = { ...base, assetId: asset.id, date, kind, title, notes, providerContactId: provider, costCents: cost, refs };
+    const chosen = chooseCost(choice, costText, txnRefs, costFromText);
+    if (chosen.badAmount) return setError('The cost is not an amount. Leave it blank if you do not know it.');
+    if (chosen.dropped && !ack) return setError(`Tick the box to confirm removing ${chosen.dropped}, or switch back to keep it.`);
+    const data = { ...base, assetId: asset.id, date, kind, title, notes, providerContactId: provider, costCents: chosen.cents, txnRefs: chosen.refs, refs, projectId: service ? base.projectId : prefill?.projectId ?? base.projectId };
     setBusy(true);
     try {
       if (service) { await updateService(service.id, data); toast('Saved'); }
@@ -125,6 +133,9 @@ export default function ServiceForm({ asset, service, task, complete = false, on
             </select>
           </label>
         </div>
+        {prefill && !service && (
+          <p className="as-note small" role="note">Started from the project "{prefill.projectName}". Nothing is saved until you press Save. The project's payments stay on the project and are not copied here; add a cost only if you want one counted on this asset.</p>
+        )}
         <div className="as-two">
           <label className="f">Done by <span className="muted">(optional)</span>
             <select value={provider ?? ''} onChange={(e) => setProvider(e.target.value === '' ? null : Number(e.target.value))}>
@@ -133,11 +144,9 @@ export default function ServiceForm({ asset, service, task, complete = false, on
               {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </label>
-          <label className="f">Cost <span className="muted">(optional)</span>
-            <input value={costText} onChange={(e) => setCostText(e.target.value)} inputMode="decimal" placeholder="Leave blank if unknown" aria-describedby="svc-cost-help" />
-            <span id="svc-cost-help" className="muted small">Just a note for this record. It does not add anything to your accounts or budget. Blank means unknown; type 0 for free.</span>
-          </label>
         </div>
+        <CostSourceField idp="svc" label="Cost" choice={choice} setChoice={setChoice} text={costText} setText={setCostText} refs={txnRefs} setRefs={setTxnRefs} parse={costFromText} ack={ack} setAck={setAck}
+          help="Just a note for this record. It does not add anything to your accounts or budget. Blank means unknown; type 0 for free." />
         <details className="as-sec">
           <summary>Add someone new as the provider</summary>
           <div className="as-new-contact">

@@ -33,8 +33,8 @@ const rawRec = (data: Record<string, unknown>): ModuleRecord => ({ id: 9, module
 
 describe('H2 service record reader', () => {
   it('keeps unknown fields and never throws on junk', () => {
-    const s = asService(rawRec({ assetId: 3, date: '2026-11-01', title: 'Pump', txnRefs: [1], future: { x: 1 } }));
-    expect(s.data).toMatchObject({ assetId: 3, title: 'Pump', txnRefs: [1], future: { x: 1 } });
+    const s = asService(rawRec({ assetId: 3, date: '2026-11-01', title: 'Pump', futureList: [1], future: { x: 1 } }));
+    expect(s.data).toMatchObject({ assetId: 3, title: 'Pump', futureList: [1], future: { x: 1 } });
     expect(() => asService({ id: 1, module: 'assets', kind: 'service', createdAt: 0, updatedAt: 0, data: null as never })).not.toThrow();
     expect(asService(rawRec({})).data).toMatchObject({ assetId: -1, date: '', title: 'Service', kind: 'other', costCents: null, providerContactId: null });
   });
@@ -127,11 +127,11 @@ describe('H2 creating, editing and deleting service records', () => {
     const d = fresh();
     const a = await mk(d, 'Pump'), b = await mk(d, 'Other');
     const id = await createService({ ...svc(a), taskId: 5, taskTitleSnapshot: 'Original title' }, d, TODAY);
-    await d.moduleRecords.update(id, { data: { ...(await d.moduleRecords.get(id))!.data, txnRefs: [42], future: 'keep me' } });
+    await d.moduleRecords.update(id, { data: { ...(await d.moduleRecords.get(id))!.data, futureList: [42], future: 'keep me' } });
     const cur = (await getService(id, d))!;
     await updateService(id, { ...cur.data, title: 'Renamed', assetId: b, taskId: 99, taskTitleSnapshot: 'Hacked', costCents: 5000 }, d, TODAY);
     const after = (await getService(id, d))!;
-    expect(after.data).toMatchObject({ title: 'Renamed', assetId: a, taskId: 5, taskTitleSnapshot: 'Original title', costCents: 5000, txnRefs: [42], future: 'keep me' });
+    expect(after.data).toMatchObject({ title: 'Renamed', assetId: a, taskId: 5, taskTitleSnapshot: 'Original title', costCents: 5000, futureList: [42], future: 'keep me' });
     expect(after.id).toBe(id);
     await expect(updateService(id, { ...after.data, date: '2027-01-01' }, d, TODAY)).rejects.toThrow(/future/);
     await expect(updateService(424242, after.data, d, TODAY)).rejects.toThrow(/no longer exists/);

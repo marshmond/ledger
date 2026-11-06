@@ -11,6 +11,7 @@ import { completeTask, getTask } from '../tasks/data';
 import { getAsset, linksToAsset } from './data';
 import { completionBasis } from './maintenance';
 import { MODULE } from './model';
+import { newRefsProblem } from './txnLookup';
 import { asService, normalizeService, SERVICE_KIND, serviceRefId, validateService, type ServiceData, type ServiceRecord } from './service';
 
 const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
@@ -38,7 +39,8 @@ async function liveContactIds(d: FinanceDB): Promise<Set<number>> {
 }
 
 /** Checks and stores a new record. Must run inside a transaction over moduleRecords, links and contacts. */
-async function insertService(input: ServiceData, d: FinanceDB, today: string): Promise<number> {
+async function insertService(input: ServiceData, d: FinanceDB, today: string, refProblem: string | null = null): Promise<number> {
+  if (refProblem) throw new Error(refProblem);
   const asset = await getAsset(input.assetId, d);
   if (!asset) throw new Error('That asset no longer exists.');
   if (asset.data.archived) throw new Error('That asset is archived. Restore it from the Archived tab before adding service history.');
@@ -55,7 +57,8 @@ async function insertService(input: ServiceData, d: FinanceDB, today: string): P
 
 /** Creates a service record (any work done, with or without a task). Returns the new id. */
 export async function createService(data: ServiceData, d: FinanceDB = db, today: string = todayISO()): Promise<number> {
-  return d.transaction('rw', d.moduleRecords, d.links, d.contacts, () => insertService(data, d, today));
+  const refProblem = await newRefsProblem(data.txnRefs, [], d);
+  return d.transaction('rw', d.moduleRecords, d.links, d.contacts, () => insertService(data, d, today, refProblem));
 }
 
 /**
@@ -63,6 +66,8 @@ export async function createService(data: ServiceData, d: FinanceDB = db, today:
  * A provider that was removed from Contacts is not an error if you leave it as it was.
  */
 export async function updateService(id: number, data: ServiceData, d: FinanceDB = db, today: string = todayISO()): Promise<void> {
+  const refProblem = await newRefsProblem(data.txnRefs, (await getService(id, d))?.data.txnRefs ?? [], d);
+  if (refProblem) throw new Error(refProblem);
   await d.transaction('rw', d.moduleRecords, d.contacts, async () => {
     const cur = await getService(id, d);
     if (!cur) throw new Error('That service record no longer exists.');
@@ -120,6 +125,7 @@ const taskLinkedToAsset = async (taskId: number, assetId: number, d: FinanceDB) 
  */
 export async function logTaskService(input: LogTaskInput, d: FinanceDB = db): Promise<{ serviceId: number; spawnedId?: number }> {
   const today = input.today ?? todayISO();
+  const refProblem = await newRefsProblem(input.data.txnRefs, [], d);
   return d.transaction('rw', d.moduleRecords, d.links, d.contacts, async () => {
     const t = await getTask(input.taskId, d);
     if (!t) throw new Error('That task no longer exists, so nothing was saved.');
@@ -133,7 +139,7 @@ export async function logTaskService(input: LogTaskInput, d: FinanceDB = db): Pr
     } else if (t.data.status !== 'done') {
       throw new Error('That task is not completed any more (it may have been reopened), so there is nothing to save. Nothing was changed.');
     }
-    const serviceId = await insertService({ ...input.data, taskId: t.id, taskTitleSnapshot: t.data.title }, d, today);
+    const serviceId = await insertService({ ...input.data, taskId: t.id, taskTitleSnapshot: t.data.title }, d, today, refProblem);
     return { serviceId, spawnedId };
   });
 }

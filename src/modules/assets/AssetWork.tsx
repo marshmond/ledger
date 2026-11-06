@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'react-router-dom';
 import { store } from '../../core/store';
+import { useToast } from '../../ui/Toast';
+import { getProject } from '../projects/data';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
 import type { TaskRecord } from '../tasks/model';
@@ -15,7 +17,14 @@ import { SERVICE_KIND_LABEL, type ServiceRecord } from './service';
 import { loadServicesFor } from './serviceData';
 
 const day = (d: string) => dayLabel(d, { year: true });
-type FormState = null | { kind: 'new' } | { kind: 'edit'; service: ServiceRecord } | { kind: 'done'; task: TaskRecord } | { kind: 'save'; task: TaskRecord } | { kind: 'maintenance' };
+
+/** A project's name as a link; a project that no longer exists reads as such. */
+function ProjectName({ id }: { id: number }) {
+  const p = useLiveQuery(async () => (await getProject(id)) ?? null, [id]);
+  if (p === undefined) return null;
+  return p ? <a href={`#/projects/${p.id}`}>{p.data.name}</a> : <span className="muted">(project no longer exists)</span>;
+}
+type FormState = null | { kind: 'new' } | { kind: 'edit'; service: ServiceRecord } | { kind: 'done'; task: TaskRecord } | { kind: 'save'; task: TaskRecord } | { kind: 'maintenance' } | { kind: 'project'; projectId: number; projectName: string };
 
 /**
  * Maintenance (open linked tasks, last serviced, next due) and Service history (saved records plus completed tasks not yet saved).
@@ -27,9 +36,23 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
   const [form, setForm] = useState<FormState>(null);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [params, setParams] = useSearchParams();
+  const toast = useToast();
   const focus = params.get('service');
+  const fromProject = params.get('fromProject');
   const focused = useRef<string | null>(null);
   const ownRefs = useRef(new Map<string, HTMLLIElement>());
+
+  // "Record in Home & Assets…" on a completed Project lands here. It only OPENS the form with a few facts filled in; nothing is saved until Save.
+  useEffect(() => {
+    if (!fromProject) return;
+    const clear = () => { const n = new URLSearchParams(params); n.delete('fromProject'); setParams(n, { replace: true }); };
+    const pid = /^\d+$/.test(fromProject) ? Number(fromProject) : NaN;
+    if (Number.isNaN(pid) || asset.data.archived) { if (asset.data.archived) toast('This asset is archived. Restore it first, then record the project work.'); clear(); return; }
+    void getProject(pid).then((p) => {
+      if (p) setForm({ kind: 'project', projectId: p.id, projectName: p.data.name }); else toast('That project no longer exists.');
+      clear();
+    });
+  }, [fromProject]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const services = data?.services;
   const focusKey = focus && /^\d+$/.test(focus) ? `s${focus}` : null;
@@ -83,7 +106,8 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
           <span className="as-chip">{SERVICE_KIND_LABEL[d.kind]}</span>
           {dupIds.has(s.id) && <span className="as-chip w-past">Possible duplicate</span>}
           {d.providerContactId !== null && <span className="muted small">{who(d.providerContactId)}</span>}
-          {d.costCents !== null && <span className="small">{formatCents(d.costCents)}</span>}
+          {d.costCents !== null && d.txnRefs.length === 0 && <span className="small">{formatCents(d.costCents)}</span>}
+          {d.txnRefs.length > 0 && <span className="small">From Finance ({d.txnRefs.length})</span>}
           {d.taskId !== null && <span className="muted small">From task: {d.taskTitleSnapshot || 'untitled'}</span>}
         </button>
         {isOpen && (
@@ -91,7 +115,8 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
             <dl className="as-facts">
               <div className="as-fact"><dt>Date</dt><dd>{d.date ? day(d.date) : 'Not set'}</dd></div>
               <div className="as-fact"><dt>Done by</dt><dd>{d.providerContactId === null ? 'Not recorded' : who(d.providerContactId)}</dd></div>
-              <div className="as-fact"><dt>Cost</dt><dd>{d.costCents === null ? 'Not recorded' : formatCents(d.costCents)}</dd></div>
+              <div className="as-fact"><dt>Cost</dt><dd>{d.txnRefs.length > 0 ? `From Finance: ${d.txnRefs.length === 1 ? '1 linked transaction' : `${d.txnRefs.length} linked transactions`} (see Spending above)` : d.costCents === null ? 'Not recorded' : `${formatCents(d.costCents)} (typed)`}</dd></div>
+              {d.projectId !== null && <div className="as-fact"><dt>Project</dt><dd><ProjectName id={d.projectId} /></dd></div>}
               {d.taskId !== null && (
                 <div className="as-fact"><dt>From task</dt><dd>{d.taskTitleSnapshot || 'untitled'}{src ? <> · <a href={`#/tasks?task=${src.id}`}>Open task</a></> : <span className="muted"> · (task no longer in your list)</span>}</dd></div>
               )}
@@ -180,6 +205,7 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
       {form?.kind === 'new' && <ServiceForm asset={asset} onClose={() => setForm(null)} />}
       {form?.kind === 'edit' && <ServiceForm asset={asset} service={form.service} onClose={() => setForm(null)} />}
       {form?.kind === 'done' && <ServiceForm asset={asset} task={form.task} complete onClose={() => setForm(null)} />}
+      {form?.kind === 'project' && <ServiceForm asset={asset} prefill={{ title: form.projectName, kind: 'improvement', projectId: form.projectId, projectName: form.projectName }} onClose={() => setForm(null)} />}
       {form?.kind === 'save' && <ServiceForm asset={asset} task={form.task} onClose={() => setForm(null)} />}
     </>
   );

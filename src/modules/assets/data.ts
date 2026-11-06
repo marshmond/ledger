@@ -10,6 +10,7 @@ import { loadTasks } from '../tasks/data';
 import type { TaskRecord } from '../tasks/model';
 import type { EventRecord } from '../calendar/model';
 import { asAsset, assetRefId, blankAsset, MODULE, tidy, PAST_STATUSES, type AssetData, type AssetRecord } from './model';
+import { newRefsProblem } from './txnLookup';
 import { validateAsset, type AssetLookup } from './validate';
 
 const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
@@ -50,6 +51,8 @@ export function normalizeAsset(d: AssetData): AssetData {
 
 /** Creates an asset. Checks against the live assets inside the same transaction. Returns the new id. */
 export async function createAsset(data: AssetData, d: FinanceDB = db): Promise<number> {
+  const refProblem = await newRefsProblem(data.purchaseTxnRefs, [], d);
+  if (refProblem) throw new Error(refProblem);
   return d.transaction('rw', d.moduleRecords, async () => {
     const clean = normalizeAsset(data);
     const problem = validateAsset(clean, undefined, lookupOf(await loadAssets(d)));
@@ -60,6 +63,8 @@ export async function createAsset(data: AssetData, d: FinanceDB = db): Promise<n
 
 /** Saves a whole asset (pass what `getAsset` gave you, changed). Fields this code does not know travel inside `data` and are kept. */
 export async function updateAsset(id: number, data: AssetData, d: FinanceDB = db): Promise<void> {
+  const refProblem = await newRefsProblem(data.purchaseTxnRefs, (await getAsset(id, d))?.data.purchaseTxnRefs ?? [], d);
+  if (refProblem) throw new Error(refProblem);
   await d.transaction('rw', d.moduleRecords, async () => {
     if (!(await getAsset(id, d))) throw new Error('That asset no longer exists.');
     const clean = normalizeAsset(data);
