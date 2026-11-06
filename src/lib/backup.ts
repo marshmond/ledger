@@ -46,9 +46,30 @@ export interface BackupFile {
   links?: unknown[];
   dueItems?: unknown[];
   moduleRecords?: unknown[];
+  /** How many records each list held when the file was made. Lets a restore notice a file that was cut short. Older files lack it. */
+  manifest?: BackupManifest;
 }
 
-export async function exportAll(d: FinanceDB): Promise<BackupFile> {
+/** Added in G1. Purely a check on the file: a restore compares these counts with what it actually reads. */
+export interface BackupManifest {
+  format: 'ledger-backup';
+  counts: Record<string, number>;
+}
+
+/** The lists a backup file may carry, taken from the database itself so a new table is never forgotten. */
+export const tableNames = (d: FinanceDB): string[] => d.tables.map((t) => t.name);
+
+/** One read-only transaction over every table, so the file is a single consistent moment even if sync or a save runs meanwhile. */
+export function exportAll(d: FinanceDB): Promise<BackupFile> {
+  return d.transaction('r', d.tables, async () => {
+    const file = await readAll(d);
+    const counts: Record<string, number> = {};
+    for (const t of tableNames(d)) counts[t] = ((file as unknown as Record<string, unknown[]>)[t] ?? []).length;
+    return { ...file, manifest: { format: 'ledger-backup' as const, counts } };
+  });
+}
+
+async function readAll(d: FinanceDB): Promise<BackupFile> {
   return {
     version: 15,
     schemaVersion: 15,

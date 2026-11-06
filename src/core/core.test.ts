@@ -76,7 +76,7 @@ describe('page addresses', () => {
       const text = readFileSync(f, 'utf8');
       for (const m of text.matchAll(/\bto[:=]\s*\{?[`'"](\/[a-z][^`'"?$]*)/g)) {
         const path = m[1].endsWith('/') ? `${m[1]}1` : m[1]; // `/account/${id}` is read as /account/1
-        if (path === '/settings') continue;
+        if (path === '/settings' || path.startsWith('/settings/')) continue; // the app-wide Settings, outside any module
         if (!ROUTES.some((r) => matches(r, path))) bad.push(`${f}: ${m[1]}`);
       }
     }

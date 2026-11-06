@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { decryptText, encryptText, exportAll, importAll, type BackupFile } from '../lib/backup';
+import { encryptText } from '../lib/backup';
 import { storageStatus, type StorageStatus } from '../pwa';
 import { readConfig } from '../lib/sync/auto';
 import { touchAll } from '../lib/sync/track';
 import { Link } from '../core/router';
-import PlainBackupCard from './PlainBackupCard';
-import { localDay, recordBackup } from '../lib/backupFile';
+import PlainBackupCard, { RestoreConfirm } from './PlainBackupCard';
+import { buildBackup, localDay, prepareEncryptedRestore, recordBackup, restoreWithSafetyCopy, type BackupSummary } from '../lib/backupFile';
+import type { BackupFile } from '../lib/backup';
 import { PageHeader } from '../ui/components';
 import {
   AUTO_BACKUP_KEEP, AUTO_BACKUP_MIN_PASSPHRASE, autoBackupNow, clearAutoBackup, readAutoBackup, readAutoStatus, saveAutoBackup,
@@ -131,7 +132,7 @@ export default function BackupPage() {
     setErr('');
     if (pass.length < 8) return setErr('Use a passphrase of at least 8 characters. You cannot recover the backup without it.');
     try {
-      const text = await encryptText(JSON.stringify(await exportAll(db)), pass);
+      const text = await encryptText(JSON.stringify(await buildBackup(db)), pass);
       const how = await saveOrShare(`ledger-${localDay()}.ledgerbackup`, text);
       await db.settings.put({ key: 'lastBackup', value: new Date().toISOString() });
       recordBackup(); // this device's reminder clock
@@ -141,19 +142,37 @@ export default function BackupPage() {
     }
   }
 
+  // Encrypted restore, same order as the plain one: decrypt and check -> confirm -> safety copy of current data -> one-transaction restore.
+  const [pending, setPending] = useState<{ file: BackupFile; summary: BackupSummary; name: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
+
   async function doImport(f: File | undefined) {
     setMsg('');
     setErr('');
+    setPending(null);
     if (!f) return;
-    if (!pass) return setErr('Enter the passphrase used for this backup first.');
-    if (!confirm(readConfig() ? 'This REPLACES all data in this browser with the backup, and because sync is on it will replace the data on your other devices too. Continue?' : 'This REPLACES all data in this browser with the backup. Continue?')) return;
+    if (!pass) { setFileKey((k) => k + 1); return setErr('Enter the passphrase used for this backup first.'); }
     try {
-      const data = JSON.parse(await decryptText(await f.text(), pass)) as BackupFile;
-      await importAll(db, data);
-      if (readConfig()) await touchAll(db); // so the restored data wins when this device syncs
-      setMsg('Backup restored.');
+      const { file, summary } = await prepareEncryptedRestore(await f.text(), pass);
+      setPending({ file, summary, name: f.name });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+      setFileKey((k) => k + 1);
+    }
+  }
+
+  async function replaceFromEncrypted() {
+    if (!pending) return;
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      const saved = await restoreWithSafetyCopy(db, pending.file, { afterCopy: () => new Promise((r) => setTimeout(r, 1200)) });
+      if (readConfig()) await touchAll(db); // so the restored data wins when this device syncs
+      sessionStorage.setItem('ledger-restored', saved);
+      location.reload();
+    } catch (e) {
+      setBusy(false);
+      setErr(`The restore did not finish, and your existing data was left as it was. (${e instanceof Error ? e.message : String(e)})`);
     }
   }
 
@@ -161,7 +180,7 @@ export default function BackupPage() {
 
   return (
     <>
-      <PageHeader title="Backup" description="Keep a safe copy: your data lives only in this browser." />
+      <PageHeader title="Data & Backups" description="Keep a safe copy: your data lives only in this browser. This page covers all of Ledger, not just Finance." />
       <PlainBackupCard />
 
       <div className="card">
@@ -181,9 +200,10 @@ export default function BackupPage() {
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <label className="f">Restore an encrypted backup (replaces everything on this device)
-            <input type="file" accept=".ledgerbackup,application/json" onChange={(e) => doImport(e.target.files?.[0])} />
+            <input key={fileKey} type="file" accept=".ledgerbackup,application/json" disabled={busy} onChange={(e) => doImport(e.target.files?.[0])} />
           </label>
         </div>
+        {pending && <RestoreConfirm encrypted pending={pending} busy={busy} onConfirm={replaceFromEncrypted} onCancel={() => { setPending(null); setFileKey((k) => k + 1); }} />}
         {msg && <div className="ok">{msg}</div>}
         {err && <div className="error">{err}</div>}
       </div>

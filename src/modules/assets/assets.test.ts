@@ -298,7 +298,8 @@ describe('H1 backup', () => {
     await target.open();
     await importAll(target, checkBackupText(text).file);
     expect((await getAsset(a, target))!.data).toMatchObject({ name: 'Furnace', manufacturer: 'Acme', serialNumber: 'S-1', contacts: [{ contactId: 7, role: 'installer' }] });
-    const old = { ...(JSON.parse(text) as Record<string, unknown>), moduleRecords: [] };
+    const { manifest: _m, ...rest } = JSON.parse(text) as Record<string, unknown>; // a file from before H1 has no contents list
+    const old = { ...rest, moduleRecords: [] };
     const empty = fresh();
     await empty.open();
     await importAll(empty, checkBackupText(JSON.stringify(old)).file);

@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { ModuleBase } from '../../core/router';
 import Shell from '../../shell/Shell';
@@ -22,7 +22,6 @@ import AccountsPage from '../../pages/AccountsPage';
 import LedgerPage from '../../pages/LedgerPage';
 import CategoriesPage from '../../pages/CategoriesPage';
 import ImportPage from '../../pages/ImportPage';
-import BackupPage from '../../pages/BackupPage';
 import BudgetPage from '../../pages/BudgetPage';
 import ScheduledPage from '../../pages/ScheduledPage';
 import IncomePage from '../../pages/IncomePage';
@@ -64,7 +63,8 @@ export const LEDGER_ROUTES: [string, ReactElement][] = [
   ['/rules', <RulesPage />],
   ['/import', <ImportPage />],
   ['/categories', <CategoriesPage />],
-  ['/backup', <BackupPage />],
+  // Backup and restore now live in the app-wide Settings (Data & Backups). The old address, still used by reminders and saved links, forwards there.
+  ['/backup', <Navigate to="/settings/backup" replace />],
   ['/more', <MorePage />],
   ['/review', <ReviewPage />],
   ['/guide', <GuidePage />],

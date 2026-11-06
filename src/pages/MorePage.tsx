@@ -1,10 +1,8 @@
 import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import AppearanceCard from './AppearanceCard';
 import AmountEntryCard from './AmountEntryCard';
 import { PageHeader } from '../ui/components';
-import { exportBackupNow } from '../lib/backupFile';
 
 /** Settings and housekeeping that do not belong to a daily workflow. */
 export default function MorePage() {
@@ -12,18 +10,20 @@ export default function MorePage() {
   const age = lastBackup ? Math.floor((Date.now() - Date.parse(lastBackup)) / 86400000) : null;
   return (
     <>
-      <PageHeader title="More" description="Appearance, shortcuts, and about." />
+      <PageHeader title="More" description="Money-specific options, shortcuts, and about. Colors, light/dark and backups are in the app-wide Settings." />
 
-      <AppearanceCard />
+      <div className="card">
+        <div className="row spread"><strong>Appearance</strong><Link to="/settings/appearance">Open in Settings →</Link></div>
+        <p className="muted">Colors and light/dark now live in the app-wide Settings, so they apply to every module. Your choice has not changed.</p>
+      </div>
 
       <AmountEntryCard />
 
       <div className="card">
-        <div className="row spread"><strong>Backup and restore</strong><Link to="/backup">Open →</Link></div>
+        <div className="row spread"><strong>Data &amp; Backups</strong><Link to="/settings/backup">Open in Settings →</Link></div>
         <p className="muted">
           Your data lives only in this browser. {age === null ? 'You have not backed it up yet.' : age === 0 ? 'Last backup: today.' : `Last backup: ${age} day${age === 1 ? '' : 's'} ago.`}
         </p>
-        <div className="row"><button onClick={() => { exportBackupNow(db).catch(() => undefined); }}>Export backup</button></div>
       </div>
 
       <div className="card">

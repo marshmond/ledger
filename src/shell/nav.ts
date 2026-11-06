@@ -80,12 +80,12 @@ export const GROUPS: NavGroup[] = [
     icon: '⋯',
     to: '/more',
     items: [
-      { to: '/more', label: 'Settings', keywords: 'more appearance theme dark about shortcuts' },
+      { to: '/more', label: 'Settings', keywords: 'more appearance theme dark about shortcuts keypad amounts' },
       { to: '/review', label: 'Year in review', keywords: 'annual summary highlights net worth savings rate taxes year' },
       { to: '/guide', label: 'If something happens', keywords: 'emergency guide spouse family contacts documents will beneficiaries where things are' },
       { to: '/taxpackage', label: 'Tax package', keywords: 'cpa accountant preparer 1099 w-2 8949 export pdf csv tax time' },
       { to: '/sync', label: 'Sync devices', keywords: 'phone computer desktop mobile github keep in step two devices same data' },
-      { to: '/backup', label: 'Backup', keywords: 'export restore encrypted data' },
+      { to: '/backup', label: 'Data & Backups', keywords: 'backup export restore encrypted data' },
     ],
   },
 ];

@@ -105,7 +105,8 @@ describe('plain backup files', () => {
     const d = fresh();
     await d.accounts.add({ id: 1, name: 'Keep me', kind: 'checking' } as never);
     const bad = { version: 14, exportedAt: 'x', accounts: [{ id: 5, name: 'A' }, { id: 5, name: 'dup' }], categoryGroups: [], categories: [], txns: [], importBatches: [] };
-    await expect(importAll(d, checkBackupText(JSON.stringify(bad)).file)).rejects.toThrow();
+    expect(() => checkBackupText(JSON.stringify(bad))).toThrow(/same record/); // the checker refuses it first
+    await expect(importAll(d, bad as never)).rejects.toThrow(); // and if it ever got through, the database itself rolls back
     expect((await d.accounts.toArray()).map((a) => a.name)).toEqual(['Keep me']);
   });
 });

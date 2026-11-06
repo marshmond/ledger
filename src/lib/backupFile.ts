@@ -1,5 +1,6 @@
 import type { FinanceDB } from '../db';
-import { exportAll, importAll, type BackupFile } from './backup';
+import { decryptText, exportAll, importAll, type BackupFile } from './backup';
+import { summarizeBackup, type SummaryGroup } from './backupSummary';
 import { downloadText } from './download';
 
 /**
@@ -155,6 +156,61 @@ export interface BackupSummary {
   exportedAt: string | null;
   fromVersion: number;
   counts: { label: string; n: number }[];
+  /** The same records grouped by area (presentation only, see backupSummary.ts). */
+  groups: SummaryGroup[];
+  /** Things worth knowing that do not stop a restore (for example a record pointing at something not in the file). */
+  notes: string[];
+}
+
+/** Every list a file may hold. Anything else that is a list is a section this version cannot restore, so the file is refused rather than partly restored. */
+const KNOWN_LISTS: readonly string[] = [...REQUIRED, ...OPTIONAL_LISTS];
+
+type Rec = Record<string, unknown>;
+
+/** Structure checks that work on any file: every list holds records, with usable ids, none repeated. Throws a plain-language error. */
+function checkRecords(o: Rec) {
+  for (const k of KNOWN_LISTS) {
+    const list = o[k];
+    if (!Array.isArray(list)) continue;
+    const seen = new Set<unknown>();
+    for (const [i, r] of list.entries()) {
+      if (!r || typeof r !== 'object' || Array.isArray(r)) throw new BackupFileError(`The backup is damaged: entry ${i + 1} of "${k}" is not a record. Nothing was changed.`);
+      const key = k === 'settings' ? (r as Rec).key : (r as Rec).id;
+      const ok = k === 'settings' ? typeof key === 'string' && key !== '' : typeof key === 'number' && Number.isFinite(key);
+      if (!ok) throw new BackupFileError(`The backup is damaged: entry ${i + 1} of "${k}" has no usable ${k === 'settings' ? 'key' : 'id'}. Nothing was changed.`);
+      if (seen.has(key)) throw new BackupFileError(`The backup is damaged: "${k}" lists the same record (${String(key)}) twice. Nothing was changed.`);
+      seen.add(key);
+    }
+  }
+}
+
+/** Files written since G1 say how many records each list held. A different count means the file was cut short or edited. */
+function checkManifest(o: Rec) {
+  const m = o.manifest;
+  if (m === undefined) return; // older file: nothing to compare with
+  const counts = m && typeof m === 'object' ? (m as Rec).counts : undefined;
+  if (!m || typeof m !== 'object' || (m as Rec).format !== 'ledger-backup' || !counts || typeof counts !== 'object') {
+    throw new BackupFileError('The contents list in this backup is unreadable, so the file may be damaged. Nothing was changed.');
+  }
+  for (const [k, n] of Object.entries(counts as Rec)) {
+    const have = Array.isArray(o[k]) ? (o[k] as unknown[]).length : 0;
+    if (typeof n !== 'number' || have !== n) {
+      throw new BackupFileError(`This backup is incomplete or was changed after it was saved: "${k}" should hold ${String(n)} records but holds ${have}. Nothing was changed.`);
+    }
+  }
+}
+
+/** Gentle checks: points the owner at records that refer to something the file does not contain. They never block a restore. */
+function integrityNotes(o: Rec): string[] {
+  const ids = (k: string) => new Set(((o[k] as Rec[] | undefined) ?? []).map((r) => r.id));
+  const notes: string[] = [];
+  const accounts = ids('accounts');
+  const orphanTxns = ((o.txns as Rec[]) ?? []).filter((t) => typeof t.accountId === 'number' && !accounts.has(t.accountId)).length;
+  if (orphanTxns > 0) notes.push(`${orphanTxns} transaction(s) belong to an account that is not in this file. They are restored as they are.`);
+  const groups = ids('categoryGroups');
+  const orphanCats = ((o.categories as Rec[]) ?? []).filter((c) => typeof c.groupId === 'number' && !groups.has(c.groupId)).length;
+  if (orphanCats > 0) notes.push(`${orphanCats} budget category(ies) belong to a group that is not in this file. They are restored as they are.`);
+  return notes;
 }
 
 /** Checks the text of a chosen file and returns the upgraded backup plus a summary, or throws a BackupFileError saying why not. Touches no data. */
@@ -174,7 +230,13 @@ export function checkBackupText(text: string): { file: BackupFile; summary: Back
     if (o[k] !== undefined && !Array.isArray(o[k])) throw new BackupFileError(`The backup is damaged: "${k}" is not a list. Nothing was changed.`);
   }
   const fromVersion = Number(o.schemaVersion ?? o.version);
-  const file = migrateBackup(o);
+  const file = migrateBackup(o); // refuses a file from a newer version before anything else is trusted
+  const unknown = Object.keys(o).filter((k) => Array.isArray(o[k]) && !KNOWN_LISTS.includes(k));
+  if (unknown.length > 0) {
+    throw new BackupFileError(`This backup holds data this copy of Ledger does not know how to restore (${unknown.join(', ')}). Restoring would silently drop it, so nothing was changed. Update Ledger, then try again.`);
+  }
+  checkManifest(o);
+  checkRecords(o);
   const n = (k: keyof BackupFile) => ((file[k] as unknown[] | undefined) ?? []).length;
   return {
     file,
@@ -189,6 +251,8 @@ export function checkBackupText(text: string): { file: BackupFile; summary: Back
         { label: 'Holdings', n: n('holdings') },
         { label: 'Loans', n: n('loans') },
       ],
+      groups: summarizeBackup(file),
+      notes: integrityNotes(o),
     },
   };
 }
@@ -218,13 +282,15 @@ async function saveOrShare(name: string, text: string): Promise<'shared' | 'down
 }
 
 /** Saves a plain backup file and records it. Returns the file name, or null if the share sheet was closed. */
-export async function exportBackupNow(d: FinanceDB): Promise<string | null> {
+export async function exportBackupNow(d: FinanceDB, onBuilt?: (file: BackupFile) => void): Promise<string | null> {
   const { name, day, n } = nextFileName('backup');
-  const text = JSON.stringify(await buildBackup(d), null, 2);
+  const built = await buildBackup(d);
+  const text = JSON.stringify(built, null, 2);
   try { await saveOrShare(name, text); } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return null;
     throw e;
   }
+  onBuilt?.(built);
   useName('backup', day, n);
   recordBackup();
   // Same note the older (encrypted) export makes, so the Home, More and Accounts reminders agree.
@@ -238,6 +304,40 @@ export async function savePreImportCopy(d: FinanceDB): Promise<string> {
   downloadText(name, 'application/json', JSON.stringify(await buildBackup(d), null, 2));
   useName('preimport', day, n);
   return name;
+}
+
+/**
+ * Step one of an encrypted restore: decrypt, then run exactly the same file checks as a plain restore. Touches no data. A wrong passphrase,
+ * a damaged envelope, or content that fails the checks all throw here, before anything is confirmed or replaced.
+ */
+export async function prepareEncryptedRestore(text: string, passphrase: string): Promise<{ file: BackupFile; summary: BackupSummary }> {
+  let envelope: unknown;
+  try { envelope = JSON.parse(text); } catch { throw new BackupFileError('This is not a readable encrypted backup: the file is damaged or is not a .ledgerbackup file. Nothing was changed.'); }
+  const e = envelope as Record<string, unknown> | null;
+  if (!e || typeof e !== 'object' || typeof e.salt !== 'string' || typeof e.iv !== 'string' || typeof e.data !== 'string') {
+    throw new BackupFileError('This is not an encrypted Ledger backup (.ledgerbackup). For a plain .json backup use "Restore Ledger data" above. Nothing was changed.');
+  }
+  let plain: string;
+  try { plain = await decryptText(text, passphrase); } catch (err) {
+    throw new BackupFileError(err instanceof Error ? `${err.message}. Nothing was changed.` : 'The backup could not be decrypted. Nothing was changed.');
+  }
+  return checkBackupText(plain);
+}
+
+/**
+ * The ONE restore sequence both the plain and the encrypted restore use, after the file is checked and the owner has confirmed:
+ * (1) save a copy of the CURRENT data through the normal download path; if that throws, stop here with nothing changed;
+ * (2) replace the database in one transaction; (3) only then apply the screen preferences.
+ * Limit: the browser reports that a download was STARTED, not that the file reached the disk, and cannot say more.
+ */
+export async function restoreWithSafetyCopy(
+  d: FinanceDB, file: BackupFile,
+  opts: { saveCopy?: (d: FinanceDB) => Promise<string>; afterCopy?: () => Promise<unknown>; storage?: Store } = {},
+): Promise<string> {
+  const saved = await (opts.saveCopy ?? savePreImportCopy)(d);
+  await opts.afterCopy?.();
+  await restoreChecked(d, file, opts.storage);
+  return saved;
 }
 
 /** Replaces all data with a checked backup. All or nothing: the database part is one transaction, so a failure leaves the old data. */
