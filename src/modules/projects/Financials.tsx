@@ -100,7 +100,7 @@ export function ProjectTxns({ pieces, lineName, contractName, focusLine, lineOfC
         <ul className="plain pj-paylist">
           {shown.map((p, i) => (
             <li key={`${p.txnId}-${i}`} className="pj-payrow">
-              <span className="pj-payrow-main"><strong>{p.payee || '(no payee)'}</strong><span className="muted small">{p.date ? dayLabel(p.date, { year: true }) : ''}{contractName(p.commitmentId) ? ` · ${contractName(p.commitmentId)}` : lineName(p.budgetLineId) ? ` · ${lineName(p.budgetLineId)}` : ''}{p.effect ? ` · ${p.effect}` : ''}</span></span>
+              <span className="pj-payrow-main"><strong>{p.payee || '(no payee)'}</strong><span className="muted small">{p.date ? dayLabel(p.date, { year: true }) : ''}{[contractName(p.commitmentId), lineName(p.budgetLineId)].filter(Boolean).map((s) => ` · ${s}`).join('')}{p.effect ? ` · ${p.effect}` : ''}</span></span>
               <span className={`pj-amount ${p.amountCents > 0 ? 'pos' : ''}`}>{p.amountCents > 0 ? `+${formatCents(p.amountCents)}` : formatCents(-p.amountCents)}</span>
             </li>
           ))}

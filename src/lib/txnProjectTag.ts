@@ -49,7 +49,7 @@ export interface BuiltRef { ref?: ProjectRef; error?: string }
 
 /**
  * Turns the form state into a reference (or nothing, or a plain-words reason it is not finished). `moneyIn` is whether the amount comes
- * back to you. `compact` is for a split row, which has no refund questions and keeps a contract only if it already had one.
+ * back to you. `compact` is for a split row, which has no "general refund or contract" question (but can still pick a contract and a budget line).
  */
 export function buildRef(tag: TagState, choices: ProjectChoice[], moneyIn: boolean, opts: { compact?: boolean } = {}): BuiltRef {
   if (!tag.projectId) return {};
@@ -71,12 +71,14 @@ export function buildRef(tag: TagState, choices: ProjectChoice[], moneyIn: boole
       ref.effect = tag.effect;
     }
   }
-  // A contract that has a budget line files the spending there, so the line is not stored twice (and follows the contract if it is moved).
+  // A contract that has a budget line files the spending there by default, so that line is not stored (and follows the contract if it is
+  // moved). A different line CAN be chosen, and is then stored: a general contractor's payment can be tile, plumbing and electrical
+  // while all of it counts against the one contract. Finance uses the stored line first, else the contract's.
   const implied = wantsContract ? impliedLine(project, tag.commitmentId) : undefined;
-  if (!implied && tag.lineId) {
+  if (tag.lineId) {
     const l = project.lines.find((x) => String(x.id) === tag.lineId);
     if (!l) return { error: 'That budget line is not part of this project. Choose another or clear it.' };
-    ref.budgetLineId = l.id;
+    if (!implied || implied.id !== l.id) ref.budgetLineId = l.id;
   }
   return { ref };
 }
@@ -89,8 +91,7 @@ export function describeRef(ref: ProjectRef | undefined, choices: ProjectChoice[
   const parts = [p.name];
   const c = ref.commitmentId === undefined ? undefined : p.contracts.find((x) => x.id === ref.commitmentId);
   if (c) parts.push(c.title);
-  const lineId = ref.budgetLineId ?? c?.lineId ?? undefined;
-  const l = lineId === undefined ? undefined : p.lines.find((x) => x.id === lineId);
-  if (l && !c) parts.push(l.name);
+  const l = ref.budgetLineId === undefined ? undefined : p.lines.find((x) => x.id === ref.budgetLineId);
+  if (l) parts.push(l.name);
   return parts.join(' › ') + (ref.effect ? ` (${ref.effect})` : '');
 }

@@ -45,6 +45,7 @@ export default function MorePage() {
         <strong>Shortcuts</strong>
         <ul className="plain">
           <li><kbd>Ctrl</kbd> + <kbd>K</kbd> or <kbd>/</kbd> opens search from anywhere.</li>
+          <li><kbd>N</kbd> opens the Add box from anywhere (when you are not typing in a box).</li>
           <li>The <strong>+</strong> button adds a transaction from any page, or jumps to logging a trade.</li>
         </ul>
       </div>

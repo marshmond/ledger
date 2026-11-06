@@ -23,7 +23,7 @@ export default function QuickAdd() {
 
   const button = (
     <div className="qa">
-      <button className="qa-btn" aria-label="Quick add" aria-haspopup="dialog" onClick={() => openAddBox()}>
+      <button className="qa-btn" aria-label="Quick add" title="Add (N)" aria-haspopup="dialog" onClick={() => openAddBox()}>
         <span className="qa-plus" aria-hidden="true">+</span>
         <span className="qa-label">Add</span>
       </button>

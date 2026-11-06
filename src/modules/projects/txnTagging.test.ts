@@ -70,10 +70,14 @@ describe('turning the Project box into a reference', () => {
     expect(buildRef(EMPTY_TAG, await loadProjectChoices(d), false)).toEqual({});
   });
 
-  it('a payment to a contract uses the contract\'s line and does not store it twice', async () => {
-    const { d, p, floor, withLine, noLine } = await setup();
+  it('a payment to a contract uses the contract\'s line by default and does not store it twice, but another line can be chosen', async () => {
+    const { d, p, cab, floor, withLine, noLine } = await setup();
     const choices = await loadProjectChoices(d);
-    expect(buildRef(tag({ projectId: String(p), commitmentId: String(withLine), lineId: String(floor) }), choices, false).ref).toEqual({ projectId: p, commitmentId: withLine });
+    expect(buildRef(tag({ projectId: String(p), commitmentId: String(withLine) }), choices, false).ref).toEqual({ projectId: p, commitmentId: withLine });
+    // choosing the contract's own line is the same as leaving it alone
+    expect(buildRef(tag({ projectId: String(p), commitmentId: String(withLine), lineId: String(cab) }), choices, false).ref).toEqual({ projectId: p, commitmentId: withLine });
+    // a different line is kept: the payment still counts on the contract
+    expect(buildRef(tag({ projectId: String(p), commitmentId: String(withLine), lineId: String(floor) }), choices, false).ref).toEqual({ projectId: p, commitmentId: withLine, budgetLineId: floor });
     // a contract with no line of its own can take the line chosen
     expect(buildRef(tag({ projectId: String(p), commitmentId: String(noLine), lineId: String(floor) }), choices, false).ref).toEqual({ projectId: p, commitmentId: noLine, budgetLineId: floor });
     expect(buildRef(tag({ projectId: String(p), lineId: String(floor) }), choices, false).ref).toEqual({ projectId: p, budgetLineId: floor });
@@ -262,5 +266,98 @@ describe('bulk association says what it did and why it left things alone', () =>
     expect(pickableContracts(kitchen, '').map((c) => c.id)).not.toContain(withLine);
     expect(pickableContracts(kitchen, String(withLine)).map((c) => c.id)).toContain(withLine);
     expect(pickableContracts(kitchen, '').map((c) => c.id)).not.toContain(quote);
+  });
+});
+
+describe('one payment split across contracts and budget lines', () => {
+  /** A general contractor's $10,000 agreement, with the subs' work as separate budget lines. */
+  async function gc(lineOfContract: 'tile' | 'none') {
+    const s = await setup();
+    const tile = await createLine(s.p, 'Tile', $(5000), s.d);
+    const plumbing = await createLine(s.p, 'Plumbing', $(3000), s.d);
+    const electrical = await createLine(s.p, 'Electrical', $(2000), s.d);
+    const contract = (await createCommitment(s.p, fields({ title: 'General contractor', amountCents: $(10000), budgetLineId: lineOfContract === 'tile' ? tile : null }), s.d)).id;
+    const choices = await loadProjectChoices(s.d);
+    return { ...s, tile, plumbing, electrical, contract, choices };
+  }
+  const piece = (p: number, contract: number, line: number | null, cents: number) => ({ categoryId: null, amountCents: cents, project: { projectId: p, commitmentId: contract, ...(line === null ? {} : { budgetLineId: line }) } });
+  const lineRow = (s: Awaited<ReturnType<typeof loadProjectSummary>>, id: number) => s!.lines.find((l) => l.lineId === id)!;
+
+  it('a $10,000 payment split 5,000 / 3,000 / 2,000 all counts against the one contract and each line gets its part', async () => {
+    const g = await gc('none');
+    await createTxn(g.d, {
+      accountId: g.a, date: '2026-11-03', amountCents: -$(10000), payee: 'GC',
+      splits: [piece(g.p, g.contract, g.tile, -$(5000)), piece(g.p, g.contract, g.plumbing, -$(3000)), piece(g.p, g.contract, g.electrical, -$(2000))],
+    });
+    const sum = (await loadProjectSummary(g.d, g.p))!;
+    const c = sum.contracts.find((x) => x.rootId === g.contract)!;
+    expect(c).toMatchObject({ paidCents: $(10000), leftCents: 0, overpaidCents: 0 });
+    expect([g.tile, g.plumbing, g.electrical].map((id) => lineRow(sum, id).paidCents)).toEqual([$(5000), $(3000), $(2000)]);
+  });
+
+  it('a part payment leaves the rest to pay on the contract', async () => {
+    const g = await gc('none');
+    await createTxn(g.d, {
+      accountId: g.a, date: '2026-11-03', amountCents: -$(4000), payee: 'GC',
+      splits: [piece(g.p, g.contract, g.tile, -$(3000)), piece(g.p, g.contract, g.plumbing, -$(1000))],
+    });
+    const c = (await loadProjectSummary(g.d, g.p))!.contracts.find((x) => x.rootId === g.contract)!;
+    expect(c).toMatchObject({ paidCents: $(4000), leftCents: $(6000) });
+  });
+
+  it('a contract that is filed under a line keeps that line for a part with no line of its own, and another line can still be chosen', async () => {
+    const g = await gc('tile');
+    await createTxn(g.d, {
+      accountId: g.a, date: '2026-11-03', amountCents: -$(10000), payee: 'GC',
+      splits: [piece(g.p, g.contract, null, -$(5000)), piece(g.p, g.contract, g.plumbing, -$(3000)), piece(g.p, g.contract, g.electrical, -$(2000))],
+    });
+    const sum = (await loadProjectSummary(g.d, g.p))!;
+    expect([g.tile, g.plumbing, g.electrical].map((id) => lineRow(sum, id).paidCents)).toEqual([$(5000), $(3000), $(2000)]);
+    expect(sum.contracts.find((x) => x.rootId === g.contract)).toMatchObject({ paidCents: $(10000), leftCents: 0 });
+    expect(sum.paidCents).toBe($(10000));
+  });
+
+  it('paying more than the contract across the parts is still flagged as overpaid', async () => {
+    const g = await gc('none');
+    await createTxn(g.d, {
+      accountId: g.a, date: '2026-11-03', amountCents: -$(10500), payee: 'GC',
+      splits: [piece(g.p, g.contract, g.tile, -$(6000)), piece(g.p, g.contract, g.plumbing, -$(4500))],
+    });
+    const sum = (await loadProjectSummary(g.d, g.p))!;
+    expect(sum.contracts.find((x) => x.rootId === g.contract)).toMatchObject({ overpaidCents: $(500), leftCents: 0 });
+    expect(sum.flags.overpaid).toEqual([g.contract]);
+  });
+
+  it('a part on a different contract counts against that one', async () => {
+    const g = await gc('none');
+    await createTxn(g.d, {
+      accountId: g.a, date: '2026-11-03', amountCents: -$(2500), payee: 'Both',
+      splits: [piece(g.p, g.contract, g.tile, -$(2000)), piece(g.p, g.noLine, null, -$(500))],
+    });
+    const sum = (await loadProjectSummary(g.d, g.p))!;
+    expect(sum.contracts.find((x) => x.rootId === g.contract)).toMatchObject({ paidCents: $(2000) });
+    expect(sum.contracts.find((x) => x.rootId === g.noLine)).toMatchObject({ paidCents: $(500), leftCents: $(1500) });
+  });
+
+  it('a split part for a contract in another project is refused, and money back on a part must say what it is', async () => {
+    const g = await gc('none');
+    const other = await createProject(blankProject({ name: 'Garden' }), g.d);
+    await expect(createTxn(g.d, {
+      accountId: g.a, date: '2026-11-03', amountCents: -$(100), payee: 'X', splits: [piece(other, g.contract, null, -$(60)), piece(other, g.contract, null, -$(40))],
+    })).rejects.toThrow(/not part of this project/);
+    const compactIn = buildRef(tag({ projectId: String(g.p), commitmentId: String(g.contract) }), g.choices, true, { compact: true });
+    expect(compactIn.error).toMatch(/reversal.*credit/);
+    expect(buildRef(tag({ projectId: String(g.p), commitmentId: String(g.contract), effect: 'reversal' }), g.choices, true, { compact: true }).ref)
+      .toEqual({ projectId: g.p, commitmentId: g.contract, effect: 'reversal' });
+  });
+
+  it('the stored parts read back into the form unchanged, and are described in words', async () => {
+    const g = await gc('tile');
+    const ref = { projectId: g.p, commitmentId: g.contract, budgetLineId: g.plumbing };
+    const back = tagFromRef(ref);
+    expect(back).toMatchObject({ commitmentId: String(g.contract), lineId: String(g.plumbing) });
+    expect(buildRef(back, g.choices, false, { compact: true }).ref).toEqual(ref);
+    expect(describeRef(ref, g.choices)).toBe('Kitchen › General contractor › Plumbing');
+    expect(describeRef({ projectId: g.p, commitmentId: g.contract }, g.choices)).toBe('Kitchen › General contractor');
   });
 });

@@ -14,7 +14,27 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): PROJECTS P2 (COMMITMENTS AND FINANCIAL INTEGRATION) BUILT, NOT COMMITTED, NOT PUSHED. P3 is NOT started.
+## STATUS 2026-11-05 (newest): P2 FOLLOW-UPS FROM THE OWNER'S REVIEW BUILT, NOT COMMITTED, NOT PUSHED. 1,206 tests pass (was 1,194). P3 is NOT started.
+
+P2 itself is committed (9928eb9), NOT pushed. Owner ran the P2 checklist: sections A, B, D, E, G passed; F (phone width) to be checked after push. Two requests came out of it, both built:
+
+1. **Split a payment by contract AND budget line.** Example: one $10k payment to a general contractor who coordinates the subs: $5k tile, $3k plumbing, $2k electrical, all counting toward the same project. Each piece of a split (and the whole-transaction box) now picks project, then optionally a contract, then optionally a budget line. Every piece on the contract counts against its "Left to pay"; each line gets its own piece. The Finance layer already read "the piece's own line, else the contract's line", so the change is in the form rules (`buildRef`) and the box (`ProjectTag`); the stored shape did not change (no schema, backup or sync change). The project's transaction list now shows "contract · line".
+2. **N key opens the Add box** from anywhere (`GlobalFrame`), ignored while typing, with Ctrl/Cmd/Alt held, while a dialog is open, or when the key is held down. The Add button's tooltip says "Add (N)"; listed in More > Shortcuts and the README.
+
+Tests added: 7 (split by contract and line; part payment; contract filed under a line; overpayment across parts; two contracts in one payment; wrong-project and money-back-on-a-part refusals; round trip through the form) and 5 (the N key rules). One older test changed meaning: a contract's own line is still not stored twice, but a DIFFERENT line is now kept.
+
+Checked in a real browser (invented data, desktop and 375px, no console errors): N opened the Add box and typed nothing into it; Ctrl+N did nothing; a split of three pieces to one contract with three different lines saved through the form (this also covers the earlier unchecked "saving a tagged split through the form"), reopened with every tag intact, and the project page showed the contract paid for the whole amount with each line's share; no sideways scroll at 375px; the line list shows "Same as the contract (X)" first when the contract is filed under a line.
+
+Judgment calls (please review):
+1. A contract still has ONE home line (or none). Payments can go to other lines, but the contract's "Agreed" and "Left to pay" stay on its own line. For a general contractor, leave the contract with NO line: its agreed and left-to-pay then sit in the "No budget line" row, and the dashboard will say that amount is "not filed under any budget line". Splitting the agreed amount itself across lines is NOT built.
+2. The same rule applies to the whole-transaction Project box (not only split pieces): a single payment can name a contract and a different line.
+3. Money coming back on a split piece with a contract must still be marked reversal or credit (same rule as before).
+4. The N key is ignored whenever any dialog is open, including a form in a dialog.
+5. Bulk tagging still cannot set a contract line or split anything (unchanged).
+
+NOT built: splitting a contract's agreed amount across lines; a contract picker that knows how much of each sub's quote remains; shortcuts for other single-key actions.
+
+## STATUS 2026-11-05: PROJECTS P2 (COMMITMENTS AND FINANCIAL INTEGRATION) BUILT AND COMMITTED (9928eb9), NOT PUSHED. P3 is NOT started.
 
 Full report: `docs/PROJECTS-P2-REPORT-2026-11-05.md`. **1,194 tests pass** (was 1,138; 56 new), type check and production build clean. No database, backup or sync change. Waiting for the owner's review before any commit or push.
 

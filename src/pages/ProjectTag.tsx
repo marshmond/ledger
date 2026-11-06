@@ -12,7 +12,7 @@ interface Props {
   choices: ProjectChoice[];
   /** Whether the amount comes back to you (money in). */
   moneyIn: boolean;
-  /** A split row: just project and line, and no questions about refunds. */
+  /** A split row: project, contract and line, but no "general refund or contract" question. */
   compact?: boolean;
   label?: string;
 }
@@ -29,7 +29,7 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
   const contracts = pickableContracts(project, value.commitmentId);
   const implied = impliedLine(project, value.commitmentId);
   const asks = !compact && moneyIn && asksAboutRefund(project, value);
-  const showContract = !!project && contracts.length > 0 && (!compact || !!value.commitmentId) && !(asks && value.refundKind !== 'contract');
+  const showContract = !!project && contracts.length > 0 && !(asks && value.refundKind !== 'contract');
   const missing = !!value.projectId && !project;
 
   return (
@@ -58,7 +58,7 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
           <label className="f">Contract
             <select
               value={value.commitmentId}
-              onChange={(e) => set({ commitmentId: e.target.value, effect: e.target.value ? value.effect : '', lineId: e.target.value && impliedLine(project, e.target.value) ? '' : value.lineId })}
+              onChange={(e) => set({ commitmentId: e.target.value, effect: e.target.value ? value.effect : '', lineId: impliedLine(project, e.target.value)?.id === Number(value.lineId) ? '' : value.lineId })}
             >
               <option value="">{asks ? 'Choose the contract…' : 'No contract'}</option>
               {contracts.map((c) => <option key={c.id} value={c.id}>{c.title}{c.status !== 'accepted' ? ` (${c.status})` : ''}</option>)}
@@ -66,22 +66,16 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
           </label>
         )}
 
-        {project && (!compact || project.lines.length > 0) && (
-          implied ? (
-            <label className="f">Budget line
-              <select value={String(implied.id)} disabled aria-describedby="ptag-implied"><option value={implied.id}>{implied.name}</option></select>
-            </label>
-          ) : project.lines.length > 0 ? (
-            <label className="f">Budget line
-              <select value={value.lineId} onChange={(e) => set({ lineId: e.target.value })}>
-                <option value="">No budget line</option>
-                {project.lines.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
-            </label>
-          ) : null
+        {project && project.lines.length > 0 && (
+          <label className="f">Budget line
+            <select value={value.lineId === String(implied?.id) ? '' : value.lineId} onChange={(e) => set({ lineId: e.target.value })} aria-describedby={implied ? `ptag-implied-${label}` : undefined}>
+              <option value="">{implied ? `Same as the contract (${implied.name})` : 'No budget line'}</option>
+              {project.lines.filter((l) => l.id !== implied?.id).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </label>
         )}
       </div>
-      {implied && <p className="muted small" id="ptag-implied">The budget line comes from the contract.</p>}
+      {implied && <p className="muted small" id={`ptag-implied-${label}`}>The contract is filed under {implied.name}. Pick another line to count this part there instead; it still counts against the contract.</p>}
 
       {project && value.commitmentId && moneyIn && (
         <fieldset className="ptag-ask">
