@@ -59,7 +59,7 @@ export async function touchAll(d: FinanceDB) {
       await t.toCollection().modify((r: { updatedAt?: number; module?: string; kind?: string; deletedAt?: number | null; data?: Record<string, unknown> }) => {
         r.updatedAt = now;
         // A restore is deliberate, so a restored project must also beat a permanent deletion made on another device (see projectDeletion.ts).
-        if (r.module === 'projects' && r.kind === 'project' && r.deletedAt == null) r.data = { ...(r.data ?? {}), [REVIVED_KEY]: now };
+        if (((r.module === 'projects' && r.kind === 'project') || (r.module === 'assets' && r.kind === 'asset')) && r.deletedAt == null) r.data = { ...(r.data ?? {}), [REVIVED_KEY]: now };
       });
     }
   });

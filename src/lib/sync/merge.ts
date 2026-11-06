@@ -10,6 +10,7 @@
  *    devices are collapsed to the newest.
  */
 
+import { enforceAssetDeletions } from './assetDeletion';
 import { enforceProjectDeletions } from './projectDeletion';
 
 export type Rec = { updatedAt?: number; [k: string]: unknown };
@@ -68,6 +69,11 @@ export function stable(v: unknown): string {
 
 function labelOf(r: Rec, id: string): string {
   for (const k of ['name', 'payee', 'title', 'charity', 'memo', 'ticker', 'key']) if (typeof r[k] === 'string' && r[k]) return String(r[k]);
+  // Module records (tasks, projects, assets...) keep their name or title inside `data`.
+  const inner = r.data;
+  if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
+    for (const k of ['name', 'title']) { const v = (inner as Record<string, unknown>)[k]; if (typeof v === 'string' && v.trim()) return v.trim(); }
+  }
   if (typeof r.date === 'string') return r.date;
   return `#${id}`;
 }
@@ -150,7 +156,11 @@ export function mergeSnapshots(a: { local: Snapshot; remote: Snapshot; base: Bas
   }
   // One narrow exception to "the newest edit wins": a project deleted permanently stays deleted (see projectDeletion.ts).
   const mr = merged.tables.moduleRecords;
-  if (mr && enforceProjectDeletions({ merged: mr, local: local.tables.moduleRecords ?? {}, remote: remote.tables.moduleRecords ?? {}, txns: merged.tables.txns, now, same: (x, y) => stable(x) === stable(y) })) {
+  // Same idea for a Home & Assets asset deleted permanently (see assetDeletion.ts). Both rules always run.
+  const same = (x: Rec, y: Rec) => stable(x) === stable(y);
+  const projectsChanged = mr ? enforceProjectDeletions({ merged: mr, local: local.tables.moduleRecords ?? {}, remote: remote.tables.moduleRecords ?? {}, txns: merged.tables.txns, now, same }) : false;
+  const assetsChanged = mr ? enforceAssetDeletions({ merged: mr, local: local.tables.moduleRecords ?? {}, remote: remote.tables.moduleRecords ?? {}, same }) : false;
+  if (mr && (projectsChanged || assetsChanged)) {
     const L = local.tables.moduleRecords ?? {};
     const R = remote.tables.moduleRecords ?? {};
     const p = Object.entries(mr).filter(([id, rec]) => !L[id] || stable(L[id]) !== stable(rec)).map(([, rec]) => rec);

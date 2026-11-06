@@ -101,3 +101,7 @@ The box never guesses a destination: no shortcut and no choice means it asks. `a
   Settings > General.
 - **A date that follows midnight.** `useToday()` (`src/ui/useToday.ts`) returns today's date and updates it when the day changes
   (checked every 30 s and when the page becomes visible). Use it instead of `todayISO()` in anything that stays on screen.
+
+## Home & Assets record ids (H1)
+
+`modules/assets/records.ts` registers `contributes.records` with text ids `asset:<n>` (later `service:<n>`, `warranty:<n>`). A Task or Calendar event links to an asset through the shared Links (type `about`) from its own "Link a record" box. Search group "Home & Assets" (serial and plate match by prefix, 4+ characters, and are never shown); Add box destination `asset` (prefix `a`, aliases `asset`, `item`; "Name in Exact Asset Name").

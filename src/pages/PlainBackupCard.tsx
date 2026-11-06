@@ -78,7 +78,7 @@ export default function PlainBackupCard() {
       <strong>Backup file (plain JSON, no passphrase)</strong>
       <p className="muted">
         Saves everything — accounts, transactions, budget, investments, settings and look-and-feel choices — as one readable file named like “Ledger Backup {fmtToday()}.json”,
-        normally in your Downloads folder. It is NOT encrypted, so keep it somewhere private. The price-lookup key, sync token and weekly-backup passphrase are never included.
+        normally in your Downloads folder. It is NOT encrypted, so keep it somewhere private. It also includes any serial numbers, vehicle identification numbers, plates and addresses you save in Home & Assets. The price-lookup key, sync token and weekly-backup passphrase are never included.
       </p>
       {restored && <div className="ok">Backup restored. Your previous data was saved first as “{restored}”.</div>}
       <div className="row">
