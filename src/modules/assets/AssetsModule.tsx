@@ -4,6 +4,7 @@ import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
 import AssetPage from './AssetPage';
 import AssetsPage from './AssetsPage';
+import OverviewPage from './OverviewPage';
 import './assets.css';
 import './h3.css';
 
@@ -18,9 +19,10 @@ export default function AssetsModule() {
           <BackupReminder />
           <main className="main as-main">
             <Routes>
-              <Route index element={<AssetsPage />} />
+              <Route index element={<OverviewPage />} />
+              <Route path="list" element={<AssetsPage />} />
               <Route path=":id" element={<AssetPage />} />
-              <Route path="*" element={<AssetsPage />} />
+              <Route path="*" element={<OverviewPage />} />
             </Routes>
           </main>
         </div>

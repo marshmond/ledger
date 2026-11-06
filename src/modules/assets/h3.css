@@ -46,3 +46,22 @@
 .as-orphan-actions .btn { min-height: 40px; }
 .as-inline { flex: 1 1 200px; min-width: 0; }
 .as-inline select { max-width: 100%; }
+
+/* H5 overview */
+.as-ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--sp-3); align-items: start; }
+.as-ov-grid > .as-card { margin-bottom: 0; }
+.as-ov .as-items li { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.as-ov .as-items li:last-child { border-bottom: 0; }
+.as-late { color: var(--neg); font-weight: 600; }
+.as-ok { margin: 0; color: var(--accent); font-weight: 600; }
+.as-warn-line { color: var(--warn, #9a6700); margin: var(--sp-2) 0; }
+.as-place { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.as-sub { margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-md, 1rem); }
+.as-att-links { margin-top: var(--sp-2); border-top: 1px solid var(--line); padding-top: var(--sp-2); }
+.as-ov a { min-height: 24px; }
+/* Phone: the main link of each overview row is a full-height tap target. */
+@media (max-width: 640px) {
+  .as-ov .as-items li > a:first-child, .as-ov .as-place > a { display: inline-block; padding: 10px 0; min-height: 44px; box-sizing: border-box; }
+  .as-ov .as-items li { padding: 0; }
+  .as-ov .as-items li > .small { padding-bottom: var(--sp-2); }
+}

@@ -2,16 +2,16 @@
 
 > **Purpose:** The canonical, concise-but-complete transfer of architectural context and working agreements between ChatGPT conversations. This document is **not** a replacement for code, `CLAUDE.md`, `docs/BACKLOG.md`, or detailed phase reports. Maintain it alongside those sources.
 >
-> **Last reviewed:** 2026-11-06 (America/New_York). **Status evidence:** GitHub `main` and Actions checked in ChatGPT on 2026-11-06; H4 implementation status grounded in the 2026-11-06 Claude H4 final follow-up report; H4 has NOT been verified committed or deployed. **Data policy:** This file is suitable for the **public repository**: never add real household records, financial balances, addresses, personal identifiers, secrets, credentials, or production exports.
+> **Last reviewed:** 2026-11-06 (America/New_York), by Claude during H5. **Status evidence:** H4 commit `89ffde9` equals `origin/main` and its Pages run #57 succeeded (public Actions API, checked 2026-11-06 at the start of H5). H5 is built locally and NOT committed or deployed. **Data policy:** This file is suitable for the **public repository**: never add real household records, financial balances, addresses, personal identifiers, secrets, credentials, or production exports.
 
 ## 1. Read this first — current snapshot
 
 - **Product:** Ledger, a local-first personal finance and household operating system, primarily a browser app. The owner is a **non-programmer** and uses ChatGPT for product/architecture oversight and Claude for local implementation.
 - **Repository:** `marshmond/ledger` (public GitHub), local folder convention `finance-app/`, canonical backlog `docs/BACKLOG.md`; all paths below are relative to repository root. The app deploys via GitHub Pages on pushes to `main`.
-- **Completed and deployed:** Projects P1–P5; Home & Assets H1–H3. Verified current GitHub `main` HEAD **`30118ddd26aacc1cda4845864d25662b0db88017`** (`feat(assets): H3 Finance references and Projects links`) and a **successful** matching Pages workflow run, checked 2026-11-06. Prior phase commits: Projects P4B `6545763`, P5 `47100bc`; Assets H1 `bf2d3d5`, H2 `f101e1b`, H3 `30118dd`.
-- **Current in-flight:** Home & Assets **H4 implemented and tested locally, NOT committed or pushed** per `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md`, final follow-up section. Architectural review approved warranty/lifecycle decisions; shared-task deletion warning added. **Handoff installed locally (uncommitted):** this file and the standing rule in root `CLAUDE.md` now exist in the working tree. **Remaining release gate:** owner/ChatGPT final approval, then explicit commit/push authorization (this handoff, the `CLAUDE.md` rule and the backlog status fixes ride in the same reviewed H4 change set). **Next implementation:** H5 overview, Today card and final acceptance, only after H4 successful deployment.
-- **Latest reported test baseline:** **1,586 passing tests across 100 files** at H4 final follow-up; `npx tsc --noEmit` clean and `npm run build` succeeded. Recheck before commit. Dexie schema **15**, with no new tables, backup/sync format changes or dependencies through H4.
-- **Backlog status reconciled (uncommitted):** the stale "not committed/not pushed" headings for H1, H2 and H3 in `docs/BACKLOG.md` were corrected to deployed, using the verified commits `bf2d3d5`, `f101e1b`, `30118dd` and their successful Pages runs. Re-verify against Git and Actions anyway.
+- **Completed and deployed:** Projects P1–P5; Home & Assets H1–H4. Verified 2026-11-06: `origin/main` HEAD **`89ffde98d31634f0413cb26197804a941a6cb48b`** (`feat(assets): H4 warranties and asset lifecycle`) with a **successful** matching Pages run (#57). Earlier commits: Projects P4B `6545763`, P5 `47100bc`; Assets H1 `bf2d3d5`, H2 `f101e1b`, H3 `30118dd`, H4 `89ffde9`. The handoff and the `CLAUDE.md` rule were part of the H4 commit.
+- **Current in-flight:** Home & Assets **H5 (overview, Today card, final acceptance) is implemented and tested locally, NOT committed or pushed**; report `docs/HOME-ASSETS-H5-REPORT-2026-11-06.md`. **Remaining release gate:** ChatGPT architectural review, owner approval, then explicit commit/push authorization. Home & Assets is not formally closed until review, owner acceptance (including the real-device checklist, all NOT TESTED) and a successful deployment.
+- **Latest reported test baseline:** **1,629 passing tests across 102 files** with H5 (1,586 at H4); `npx tsc --noEmit` clean and `npm run build` succeeded. Dexie schema **15**, with no new tables, backup/sync format changes or dependencies through H5.
+- **Backlog status:** reconciled in the H5 batch (H4 heading corrected to committed and deployed; new H5 status on top).
 - **Owner expectation:** A new ChatGPT chat should read this file, verify present-day Git/deployment/backlog state, continue from the actual latest phase, review Claude reports, and give explicit commit/push verdicts and ready-to-paste Claude prompts.
 
 ## 2. Project goals and user experience
@@ -128,9 +128,9 @@ Suggested start of a new chat: “Continue as Ledger's architect and Claude impl
 - At H3 review: 1,521 tests passing, 97 files; `tsc` and build green. Browser interacted with flows using isolated data but **no screenshot visual review**; pending visual/light-theme/a11y, stale ref replacement, handoff Save, unlink/Undo, refund UI, real phone/two devices/offline.
 - GitHub verified H3 pushed/deployed on 2026-11-06, even though H3 report and top backlog status were written before commit.
 
-### H4 — warranties and lifecycle (BUILT AND TESTED; NOT COMMITTED OR DEPLOYED)
+### H4 — warranties and lifecycle (deployed `89ffde9`)
 
-Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06). Built atop verified deployed H3 `30118dd`. **Current reported result: 1,586 passing tests across 100 files**, TypeScript and production build clean; Dexie 15; no Finance/Projects/Tasks/Contacts source modifications or backup/sync format changes. Deployment **not yet performed** at the time of the report.
+Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06). Built atop deployed H3 `30118dd`. **At H4 final review: 1,586 passing tests across 100 files**, TypeScript and production build clean; Dexie 15; no Finance/Projects/Tasks/Contacts source modifications or backup/sync format changes. Committed and pushed as `89ffde9`; Pages run #57 succeeded.
 
 - Multiple durable warranty records with shared Contacts and safe document links; H1 simple warranty fields act as **implicit fallback** only when no live explicit warranty exists. Deleting last explicit warranty prompts whether to clear legacy fields; no silent deletion.
 - Fifth read-only Calendar layer `9_000_000_000_000_105` derives warranty expiration markers. Stored and active assets show markers; archived/sold/disposed/replaced do not; expired markers are informational, not overdue. Maintenance reminders stay Tasks-owned.
@@ -139,12 +139,19 @@ Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06).
 - Past-asset navigation, replacement links, orphan service/warranty/link detection and explicit re-home/clear/remove handling; protects absent-on-this-device sync cases.
 - Real sync-engine tests cover warranty versus deletion, replacement conflicts, orphan repair and backup revival. **Actual two-device/real-phone/offline and complete keyboard/screen-reader testing remain outstanding**.
 - Known limitation: simultaneous independent replacement on two devices may leave both created replacement assets, only one referenced as successor; other can be archived. Last writer wins per record. Other outstanding browser checks include some warranty editing/document rows, Undo, Stop repeating/Delete actions and shared-delete warning display.
-- **Handoff procedure:** installed in the working tree on 2026-11-06 (`docs/CHATGPT-HANDOFF.md`, rule appended to root `CLAUDE.md`; `docs/CLAUDE-HANDOFF-SOP.md` kept as the source text). Not yet committed.
+- **Handoff procedure:** installed 2026-11-06 (`docs/CHATGPT-HANDOFF.md`, rule appended to root `CLAUDE.md`; `docs/CLAUDE-HANDOFF-SOP.md` kept as the source text) and committed with H4.
 
-### H5 — overview, Today and acceptance (AFTER H4)
+### H5 — overview, Today and acceptance (BUILT AND TESTED; NOT COMMITTED OR DEPLOYED)
 
-- Home & Assets overview with needs-attention, next maintenance, expiring warranties, recent service, spending context; Today card without duplicate Task reminders; mobile/accessibility polish; maybe optional non-sensitive printable asset sheet; comprehensive backups, offline reload, two real devices and deployment acceptance.
-- Finalize Home & Assets without endless feature expansion; keep optional improvements on backlog.
+Report: `docs/HOME-ASSETS-H5-REPORT-2026-11-06.md`. Built on deployed H4. **1,629 passing tests across 102 files**, `tsc` and build clean; Dexie 15; no Finance, Projects, Tasks, Contacts or Calendar source edits; no schema, backup or sync change.
+
+- `#/assets` now opens an **Overview** (Needs attention, Upcoming maintenance, Warranties ending soon, Recent service history, Spending on assets); the list is "All assets" at `#/assets/list`. One read-only reader (`overviewData.ts` → pure `overview.ts`) feeds both the page and the Today card; nothing is stored. It reuses Tasks' `isOverdue`, H4's `warrantyStatus` (60 days) and `effectiveWarranties`, H2's `unsavedTasks` and `duplicateTaskGroups`, H4's `detectOrphans`, and H3's `spend()` unchanged.
+- Spending: household total counts each payment once; a year narrows by each piece's own date (Finance payment by transaction date, typed cost by service/purchase date, undated typed costs only under All time); per-property rows can exceed the household total when one payment is linked in two properties (stated on screen); unknown cost is never $0; stale references are left out and counted; project money is never included.
+- Today card `assets.attention`: counts only, half width, hides when empty, no names/amounts/identifiers, does not list maintenance tasks (Tasks already do).
+- Archived and sold/disposed/replaced assets raise no attention (same rule as Calendar warranty markers); their history and spending still count.
+- Shared `shell/Modal.tsx` now keeps Tab inside the topmost dialog (found in the accessibility review); the logic is `shell/modalKeys.ts` with 11 tests (review follow-up).
+- **Not verified:** real screen reader, real phone, second device, offline reload, older build. All remain **NOT TESTED** in the report's owner checklist.
+- AI-readiness assessment (report section 14): no new interface is recommended yet; `loadOverview` and the pure readers are already a small read-only context surface.
 
 ## 7. Post-H5 product roadmap (recommended, not rigid)
 
@@ -170,7 +177,9 @@ Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06).
 
 ## 9. Known unresolved risks / acceptance work
 
-- Real two-device sync and offline operation, including deletion vs stale edits, replacement/service/warranty conflicts, and older build compatibility — automated engine simulation is not a physical device test. H4 shared Task deletion warning was added and unit-tested but not browser-tested.
+- Real two-device sync and offline operation, including deletion vs stale edits, replacement/service/warranty conflicts, and older build compatibility — automated engine simulation is not a physical device test. **Still NOT TESTED at H5** (owner checklist in the H5 report). H4 shared Task deletion warning was unit-tested but not browser-tested.
+- **Intermittent test:** `src/core/core.test.ts` "queries and tells you when something changes" (fixed 100 ms wait) failed once in ~9 full runs; pre-existing; not fixed; treat a single failure there as suspect before blaming a change.
+- H5: no real screen-reader pass; transaction picker and some form controls are 40 px tall (under the 44 px touch target); Escape in the picker closes the whole form; the "saved twice" warning is shown on the asset page but the Overview only counts it.
 - H3 visual screenshot review (both themes), complete keyboard/screen-reader testing, handoff Save, stale transaction ref reselect, refund picker rendering, links/Undo, real phone.
 - Split fingerprint limitation: indistinguishable identical amount/category split parts; changes elsewhere in split structure may require review.
 - Whole-record last-writer-wins means concurrent edits to different fields can overwrite one another; losing versions may surface as conflict notices.
@@ -210,10 +219,11 @@ Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06).
 
 ## 11. Change log for handoff itself
 
+- **2026-11-06 (H5 batch, by Claude):** verified H4 `89ffde9` pushed and Pages run #57 green; marked H4 deployed; recorded H5 as built and tested locally (1,618 tests), uncommitted; refreshed snapshot, phase status, risks, next action. Handoff updated: yes. Nothing committed at that point.
 - **2026-11-06 (installed by Claude):** handoff and `CLAUDE.md` rule installed locally; backlog H1-H3 statuses reconciled to deployed; H4 final state recorded (1,586 tests, shared-task delete warning, pending commit). Handoff updated: yes. Nothing committed.
 - **2026-11-06 (H4 final follow-up):** Revised snapshot to reflect H4 locally implemented, shared-task deletion warning fixed, 1,586 passing tests and H4 pending commit. Identified missing on-disk handoff and root SOP as remaining gate; prepared the original SOP again for Claude installation.
 - **2026-11-06:** Initial handoff composed from the Ledger conversation and verified public GitHub commits/Actions; confirmed H3 `30118dd` deployed; H4 detailed prompt drafted but no implementation evidence. Established the maintenance SOP and AI staged strategy. **This file has been created as a downloadable artifact; it is not automatically present in the user's Windows repo until copied there.**
 
 ---
 
-**Next action as of 2026-11-06:** Claude must install this document at `docs/CHATGPT-HANDOFF.md`, append the accompanying SOP to the existing root `CLAUDE.md` (without removing current rules), and reconcile stale backlog statuses with verified Git history. Confirm H4 shared-task deletion warning, rerun tests/type check/build, inspect full diff. Then obtain explicit authorization before committing/pushing H4; verify deployment. Only after H4 deployment proceed with the already drafted H5 prompt.
+**Next action as of 2026-11-06 (end of H5 batch):** ChatGPT reviews `docs/HOME-ASSETS-H5-REPORT-2026-11-06.md`. If approved, the owner authorizes the commit/push; Claude then reruns `npm test`, `npx tsc --noEmit` and `npm run build`, commits, pushes, confirms the Pages run, and refreshes this file during the next authorized change. The owner then works through the real-device checklist. **Recommended next phase after Home & Assets is closed:** Household Services (section 7), starting with an architecture document (no code).

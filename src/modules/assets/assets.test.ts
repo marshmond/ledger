@@ -270,7 +270,7 @@ describe('H1 Quick Add', () => {
     registerModule(assetsModule); // starts up without a clash
     expect(allQuickAdds().filter((q) => q.id === 'asset')).toHaveLength(1);
     expect(allSearchSources().some((s) => s.moduleId === 'assets')).toBe(true);
-    expect(() => registerModule({ ...assetsModule, id: 'assets-test-dup' })).toThrow(/clashes/);
+    expect(() => registerModule({ ...assetsModule, id: 'assets-test-dup', contributes: { ...assetsModule.contributes, todayCards: undefined } })).toThrow(/clashes/);
   });
 });
 

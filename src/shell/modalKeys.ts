@@ -1,0 +1,44 @@
+/**
+ * The keyboard and focus behaviour of `Modal`, as a plain function so it can be tested without a browser DOM.
+ *  - Escape closes (and is not passed on to anything else).
+ *  - Tab / Shift+Tab wrap inside the TOPMOST open dialog (the last `[aria-modal="true"]` on the page). A dialog with nothing focusable is left alone.
+ *  - Focus moves into the dialog unless something inside already has it, and goes back to where it was when the dialog closes.
+ * Limit: with two dialogs open, Escape is heard by both (each listens on the document), as before this change.
+ */
+export interface KeyEventLike { key: string; shiftKey: boolean; stopPropagation(): void; preventDefault(): void }
+export interface FocusableLike { disabled?: boolean; focus(): void; getClientRects(): ArrayLike<unknown> }
+export interface BoxLike extends FocusableLike { contains(x: unknown): boolean; querySelectorAll(selector: string): ArrayLike<FocusableLike> }
+export interface DocLike {
+  activeElement: unknown;
+  addEventListener(type: 'keydown', fn: (e: KeyEventLike) => void, capture: boolean): void;
+  removeEventListener(type: 'keydown', fn: (e: KeyEventLike) => void, capture: boolean): void;
+  querySelectorAll(selector: string): ArrayLike<unknown>;
+}
+
+export const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+
+export function attachModal(doc: DocLike, box: BoxLike | null, close: () => void): () => void {
+  const before = doc.activeElement as { focus?: () => void } | null;
+  const onKey = (e: KeyEventLike) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      close();
+    }
+    if (e.key === 'Tab' && box) {
+      const open = doc.querySelectorAll('[aria-modal="true"]');
+      if (open[open.length - 1] !== box) return;
+      const items = [...Array.from(box.querySelectorAll(FOCUSABLE))].filter((x) => !x.disabled && x.getClientRects().length > 0);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1], at = doc.activeElement;
+      if (e.shiftKey && (at === first || at === box || !box.contains(at))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (at === last || !box.contains(at))) { e.preventDefault(); first.focus(); }
+    }
+  };
+  doc.addEventListener('keydown', onKey, true);
+  // A field inside may already have asked for focus; only take it if nothing in the dialog has it.
+  if (box && !box.contains(doc.activeElement)) box.focus();
+  return () => {
+    doc.removeEventListener('keydown', onKey, true);
+    before?.focus?.();
+  };
+}

@@ -76,9 +76,10 @@ export default function AssetsPage() {
 
   return (
     <div className="as">
+      <p className="as-back"><Link to="/">← Overview</Link></p>
       <PageHeader
-        title="Home & Assets"
-        description="What the household owns that needs looking after: the house, what is in it, and vehicles."
+        title="All assets"
+        description="Every asset, as a tree by where things are or as a flat list. Open one for its maintenance, history, warranties and spending."
         actions={<button className="btn primary" onClick={() => setParams({ new: '1' })}>Add asset</button>}
       />
       <div className="as-tabs" role="tablist" aria-label="Show">

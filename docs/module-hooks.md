@@ -31,7 +31,7 @@ Dated things (events, tasks, bills) should normally come through the due provide
 ### How Today uses them (Part B)
 
 - **Cards in use.** Today module: `today.agenda`, `today.reminders`, `today.overdue`, `today.upcoming` (`src/modules/today/cards.tsx`). Ledger:
-  `ledger.attention` and `ledger.cash` (`src/modules/ledger/todayCards.tsx`).
+  `ledger.attention` and `ledger.cash` (`src/modules/ledger/todayCards.tsx`). Projects: `projects.attention`. Home & Assets (H5): `assets.attention` (`src/modules/assets/todayCards.tsx`), a counts-only card (no asset names, amounts or private details) that never lists the maintenance tasks themselves, because Tasks already put those on Today; it hides itself when nothing needs attention and reads the same `loadOverview` the Overview page uses.
 - **One aggregation for dated items.** `TodayDataProvider` (`src/modules/today/TodayData.tsx`) calls the Calendar's data hook once (your events plus
   every due provider, covering the overdue window, today and the look-ahead). The four Today cards read that list through `useTodayData()` and
   only slice it (`src/modules/today/logic.ts`, pure and tested). A new module's tasks or bills show up with no card of its own.
