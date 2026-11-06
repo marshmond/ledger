@@ -12,6 +12,7 @@ import type { EventRecord } from '../calendar/model';
 import { asAsset, assetRefId, blankAsset, MODULE, tidy, PAST_STATUSES, type AssetData, type AssetRecord } from './model';
 import { newRefsProblem } from './txnLookup';
 import { validateAsset, type AssetLookup } from './validate';
+import { effectiveWarranties, warrantyBadge, type WarrantyRecord } from './warranty';
 
 const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
 
@@ -163,11 +164,9 @@ export function descendantIds(assets: AssetRecord[], id: number): Set<number> {
 
 // ---- warranty badge ----
 
-export function warrantyState(a: AssetData, today: string): { label: string; tone: 'ok' | 'soon' | 'past' } | null {
-  if (!a.warrantyEndDate || a.status !== 'active') return null;
-  if (a.warrantyEndDate < today) return { label: `Warranty ended ${a.warrantyEndDate}`, tone: 'past' };
-  const days = Math.round((Date.parse(a.warrantyEndDate + 'T00:00:00Z') - Date.parse(today + 'T00:00:00Z')) / 86400000);
-  return { label: `Warranty ends ${a.warrantyEndDate}`, tone: days <= 60 ? 'soon' : 'ok' };
+/** The badge for an asset: from its warranty records when it has live ones (pass them as "explicit"), otherwise from the H1 date. */
+export function warrantyState(a: AssetData, today: string, explicit: WarrantyRecord[] = []): { label: string; tone: 'ok' | 'soon' | 'past' } | null {
+  return warrantyBadge(a, effectiveWarranties(explicit[0]?.data.assetId ?? -1, a, explicit), today);
 }
 
 export const isPast = (a: AssetData) => PAST_STATUSES.includes(a.status);

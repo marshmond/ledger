@@ -9,7 +9,7 @@ import { allDueProviders } from '../../core/dueProvider';
 import { loadCalendarSettings } from '../../core/calendarSettings';
 import { createStore, isLive, repo } from '../../core/store';
 import {
-  asEvent, asLayer, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SWATCHES, TASKS_ID,
+  ASSETS_ID, asEvent, asLayer, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SWATCHES, TASKS_ID,
   type CalendarLayer, type EventData, type EventFields, type EventRecord, type LayerData,
 } from './model';
 import { endSeriesBefore, editAll, editOccurrence, setDone, skipOccurrence, splitFollowing, type SeriesExtras } from './series';
@@ -28,7 +28,7 @@ export async function loadEvents(d: FinanceDB = db): Promise<EventRecord[]> {
 }
 
 /**
- * Makes sure the built-in calendars exist: Personal (local), Finance (fed by Ledger's provider), Tasks (fed by the Tasks provider) and Projects (project start and target dates, fed by the Projects provider).
+ * Makes sure the built-in calendars exist: Personal (local), Finance (fed by Ledger's provider), Tasks (fed by the Tasks provider) and Projects (project start and target dates, fed by the Projects provider) and Home & Assets (warranty end dates, fed by the Home & Assets provider).
  * Check-then-insert happens inside one transaction (React's dev mode runs effects twice). Built-ins use fixed ids so two devices
  * that each create them end up with one.
  */
@@ -41,6 +41,7 @@ export async function ensureCalendarSeed(d: FinanceDB = db): Promise<void> {
       [FINANCE_ID, { name: 'Finance', color: allDueProviders().find((p) => p.id === 'ledger')?.color ?? '#2f8f6b', sourceType: 'derived', providerId: 'ledger', builtin: true }],
       [TASKS_ID, { name: 'Tasks', color: '#c0562f', sourceType: 'derived', providerId: 'tasks', builtin: true }],
       [PROJECTS_ID, { name: 'Projects', color: allDueProviders().find((p) => p.id === 'projects')?.color ?? '#8a5cc7', sourceType: 'derived', providerId: 'projects', builtin: true }],
+      [ASSETS_ID, { name: 'Home & Assets', color: allDueProviders().find((p) => p.id === 'assets')?.color ?? '#b07a1f', sourceType: 'derived', providerId: 'assets', builtin: true }],
     ];
     for (const [id, data] of builtins) {
       if (!have.has(id)) await d.moduleRecords.add({ id, module: MODULE, kind: 'calendar', data: { ...data }, createdAt: now, updatedAt: now, deletedAt: null });

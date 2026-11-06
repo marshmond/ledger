@@ -15,7 +15,9 @@ import LinkedWork from './LinkedWork';
 import NetWorthEntry from './NetWorthEntry';
 import RelatedProjects from './RelatedProjects';
 import SpendingCard from './SpendingCard';
-import RetireDialog from './RetireDialog';
+import LifecycleDialog from './LifecycleDialog';
+import WarrantyCard from './WarrantyCard';
+import { loadWarrantiesFor } from './warrantyData';
 import SensitiveValue from './Sensitive';
 import { archiveAsset, childrenOf, loadAssets, restoreAsset, warrantyState } from './data';
 import { STATUS_LABEL, TYPE_LABEL } from './model';
@@ -34,7 +36,8 @@ export default function AssetPage() {
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
   const today = useToday() || todayISO();
   const [editing, setEditing] = useState(false);
-  const [retiring, setRetiring] = useState(false);
+  const [retiring, setRetiring] = useState<false | 'status' | 'replace'>(false);
+  const warranties = useLiveQuery(() => (Number.isNaN(aid) ? Promise.resolve([]) : loadWarrantiesFor(aid)), [aid]) ?? [];
   const [deleting, setDeleting] = useState(false);
   const [adding, setAdding] = useState(false);
 
@@ -53,7 +56,8 @@ export default function AssetPage() {
   for (let cur = d.parentId === null ? undefined : byId.get(d.parentId); cur && trail.length < 12 && !trail.includes(cur) && cur.id !== asset.id; cur = cur.data.parentId === null ? undefined : byId.get(cur.data.parentId)) trail.unshift(cur);
   const parentGone = d.parentId !== null && !byId.has(d.parentId);
   const kids = childrenOf(all, asset.id).sort((a, b) => a.data.name.localeCompare(b.data.name));
-  const w = warrantyState(d, today);
+  const w = warrantyState(d, today, warranties);
+  const leftUse = d.status === 'sold' || d.status === 'disposed' || d.status === 'replaced';
   const replacedBy = d.replacedById !== null ? byId.get(d.replacedById) : undefined;
   const replaces = all.filter((a) => a.data.replacedById === asset.id);
 
@@ -82,15 +86,19 @@ export default function AssetPage() {
         </div>
         <div className="as-head-actions">
           <button className="btn" onClick={() => setEditing(true)}>Edit</button>
-          <button className="btn" onClick={() => setRetiring(true)}>Status…</button>
+          <button className="btn" onClick={() => setRetiring('status')}>Status…</button>
+          {d.status !== 'replaced' && <button className="btn" onClick={() => setRetiring('replace')}>Replace…</button>}
           <button className="btn" onClick={() => void toggleArchive()}>{d.archived ? 'Restore' : 'Archive'}</button>
           <button className="btn danger" onClick={() => setDeleting(true)}>Delete…</button>
         </div>
       </div>
 
-      {(d.statusNote || replacedBy || replaces.length > 0) && (
-        <section className="card as-card">
+      {(leftUse || d.status === 'stored' || d.statusNote || replacedBy || replaces.length > 0) && (
+        <section className="card as-card" aria-label="Lifecycle">
+          {leftUse && <p><strong>No longer in use:</strong> {STATUS_LABEL[d.status]}{d.statusDate ? ` on ${date(d.statusDate)}` : ''}. Its service history, warranties, spending and related projects are kept below.</p>}
+          {d.status === 'stored' && <p><strong>In storage</strong>{d.statusDate ? ` since ${date(d.statusDate)}` : ''}.</p>}
           {d.statusNote && <p>{d.statusNote}</p>}
+          {d.status === 'replaced' && d.replacedById !== null && !replacedBy && <p className="muted">Its replacement is not on this device (it may arrive when your devices sync, or it was deleted).</p>}
           {replacedBy && <p>Replaced by <Link to={`/${replacedBy.id}`}>{replacedBy.data.name}</Link>.</p>}
           {replaces.length > 0 && <p>Replaces {replaces.map((r, i) => <span key={r.id}>{i > 0 ? ', ' : ''}<Link to={`/${r.id}`}>{r.data.name}</Link></span>)}.</p>}
         </section>
@@ -108,9 +116,8 @@ export default function AssetPage() {
           {d.installDate && <Fact label="In use since">{date(d.installDate)}</Fact>}
           {d.purchaseCents !== null && <Fact label="Price paid">{formatCents(d.purchaseCents)} <span className="muted small">typed</span></Fact>}
           {d.purchaseTxnRefs.length > 0 && <Fact label="Price paid"><span className="muted small">from Finance, see Spending below</span></Fact>}
-          {d.warrantyEndDate && <Fact label="Warranty ends">{date(d.warrantyEndDate)}{d.warrantyNote ? ` · ${d.warrantyNote}` : ''}</Fact>}
         </dl>
-        {!d.manufacturer && !d.model && !d.serialNumber && !d.purchaseDate && !d.installDate && d.purchaseCents === null && d.purchaseTxnRefs.length === 0 && !d.warrantyEndDate && !d.address && !d.plate && (
+        {!d.manufacturer && !d.model && !d.serialNumber && !d.purchaseDate && !d.installDate && d.purchaseCents === null && d.purchaseTxnRefs.length === 0 && !d.address && !d.plate && (
           <p className="muted">Only the name is filled in. Use Edit to add the make, dates, warranty and more, whenever you like.</p>
         )}
         {d.specs.length > 0 && (
@@ -164,6 +171,7 @@ export default function AssetPage() {
         )}
       </section>
 
+      <WarrantyCard asset={asset} today={today} />
       <SpendingCard asset={asset} onEdit={() => setEditing(true)} />
       <AssetWork asset={asset} today={today} />
       <RelatedProjects asset={asset} />
@@ -171,7 +179,7 @@ export default function AssetPage() {
 
       {editing && <AssetForm asset={asset} onClose={() => setEditing(false)} />}
       {adding && <AssetForm parentId={asset.id} onClose={() => setAdding(false)} onSaved={(nid) => { window.location.hash = `#/assets/${nid}`; }} />}
-      {retiring && <RetireDialog asset={asset} onClose={() => setRetiring(false)} />}
+      {retiring && <LifecycleDialog asset={asset} replace={retiring === 'replace'} onClose={() => setRetiring(false)} />}
       {deleting && <DeleteAsset assetId={asset.id} onClose={() => setDeleting(false)} />}
     </div>
   );

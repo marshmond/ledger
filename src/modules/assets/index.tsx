@@ -1,6 +1,7 @@
 import type { ModuleDef } from '../../core/registry';
 import AssetsModule, { ASSETS_BASE } from './AssetsModule';
 import { assetQuickAdd } from './quickAddDef';
+import { assetsDueProvider } from './dueProvider';
 import { assetRecords } from './records';
 import { assetsSearchSource } from './searchSource';
 import { serviceQuickAdd } from './serviceQuickAdd';
@@ -13,5 +14,5 @@ export const assetsModule: ModuleDef = {
   Component: AssetsModule,
   routePaths: ['/'],
   nav: [],
-  contributes: { records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd] },
+  contributes: { dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd] },
 };

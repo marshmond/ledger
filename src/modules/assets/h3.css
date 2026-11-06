@@ -31,3 +31,18 @@
   .as-txn { grid-template-columns: 1fr; }
   .as-txn-amt { align-items: flex-start; text-align: left; }
 }
+
+/* H4: warranties, lifecycle dialog, past assets, needs attention */
+.as-subtabs { padding-top: 0; }
+.as-subtabs button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.as-fs { margin: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.as-fs > legend { font-weight: 600; padding: 0 var(--sp-1); }
+.as-sub { display: flex; flex-direction: column; gap: var(--sp-2); padding-left: var(--sp-3); border-left: 2px solid var(--line); }
+.as-taskrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.as-taskrow select { min-height: 40px; max-width: 100%; }
+.as-review-h { margin: 0 0 var(--sp-2); font-size: var(--fs-md, 1rem); }
+.as-orphan { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--sp-1); }
+.as-orphan-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
+.as-orphan-actions .btn { min-height: 40px; }
+.as-inline { flex: 1 1 200px; min-width: 0; }
+.as-inline select { max-width: 100%; }

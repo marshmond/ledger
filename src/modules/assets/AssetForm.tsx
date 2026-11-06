@@ -153,6 +153,7 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
             <label className="f">Warranty ends<input type="date" value={warrantyEnd} onChange={(e) => setWarrantyEnd(e.target.value)} /></label>
             <label className="f">Warranty note<input value={warrantyNote} onChange={(e) => setWarrantyNote(e.target.value)} placeholder="What it covers" maxLength={500} /></label>
           </div>
+          <p className="muted small">One simple warranty only. For several (manufacturer, extended), save this asset and use Warranties on its page.</p>
           {type === 'property' && <label className="f">Address<input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={200} autoComplete="off" /></label>}
           {type === 'vehicle' && <label className="f">Plate<input value={plate} onChange={(e) => setPlate(e.target.value)} maxLength={20} autoComplete="off" spellCheck={false} /></label>}
         </details>

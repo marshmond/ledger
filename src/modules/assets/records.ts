@@ -6,6 +6,8 @@ import { loadAssets, publicLabel } from './data';
 import { assetRefId, parseAssetRef, STATUS_LABEL, type AssetRecord } from './model';
 import { parseServiceRef, serviceRefId, SERVICE_KIND_LABEL, type ServiceRecord } from './service';
 import { getService, loadServices } from './serviceData';
+import { parseWarrantyRef, warrantyRefId, type WarrantyRecord } from './warranty';
+import { getWarranty, loadWarranties } from './warrantyData';
 
 /**
  * Lets Tasks, Calendar events and others link to an asset or a service record and show it by name. Ids are text: `asset:<n>`, `service:<n>`.
@@ -25,6 +27,12 @@ export const serviceLabel = (assets: AssetRecord[], s: ServiceRecord): string =>
 export const servicePath = (assets: AssetRecord[], s: ServiceRecord) =>
   assets.some((a) => a.id === s.data.assetId) ? `/assets/${s.data.assetId}?service=${s.id}` : '/assets';
 
+/** "Manufacturer warranty (Home > Kitchen > Dishwasher)". Provider, notes and claim details are not part of it. */
+export const warrantyLabel = (assets: AssetRecord[], w: WarrantyRecord): string =>
+  `${w.data.title} (${assets.some((a) => a.id === w.data.assetId) ? publicLabel(assets, w.data.assetId) : 'asset removed'})`;
+/** Where a warranty opens: its asset's page with the warranty expanded, or the list when the asset is gone. */
+export const warrantyPath = (assets: AssetRecord[], w: WarrantyRecord) => (assets.some((a) => a.id === w.data.assetId) ? `/assets/${w.data.assetId}?warranty=${w.id}` : '/assets');
+
 export const assetRecords: RecordSource = {
   async search(text) {
     const q = text.trim().toLowerCase();
@@ -36,6 +44,8 @@ export const assetRecords: RecordSource = {
     if (q) {
       const svc = (await loadServices(db)).filter((s) => serviceLabel(all, s).toLowerCase().includes(q) || SERVICE_KIND_LABEL[s.data.kind].toLowerCase().includes(q));
       out.push(...svc.slice(0, Math.max(0, 30 - out.length)).map<RecordChoice>((s) => ({ id: serviceRefId(s.id), label: serviceLabel(all, s), kind: 'Service' })));
+      const war = (await loadWarranties(db)).filter((w) => warrantyLabel(all, w).toLowerCase().includes(q));
+      out.push(...war.slice(0, Math.max(0, 30 - out.length)).map<RecordChoice>((w) => ({ id: warrantyRefId(w.id), label: warrantyLabel(all, w), kind: 'Warranty' })));
     }
     return out;
   },
@@ -44,6 +54,11 @@ export const assetRecords: RecordSource = {
     if (sn !== null) {
       const [all, s] = await Promise.all([loadAssets(db), getService(sn, db)]);
       return s ?{ label: serviceLabel(all, s), kind: 'Service', path: servicePath(all, s) } : null;
+    }
+    const wn = parseWarrantyRef(id);
+    if (wn !== null) {
+      const [all, w] = await Promise.all([loadAssets(db), getWarranty(wn, db)]);
+      return w ? { label: warrantyLabel(all, w), kind: 'Warranty', path: warrantyPath(all, w) } : null;
     }
     const n = parseAssetRef(id);
     if (n === null) return null;

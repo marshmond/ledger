@@ -1,0 +1,219 @@
+# Ledger — ChatGPT Project Handoff and Continuity Record
+
+> **Purpose:** The canonical, concise-but-complete transfer of architectural context and working agreements between ChatGPT conversations. This document is **not** a replacement for code, `CLAUDE.md`, `docs/BACKLOG.md`, or detailed phase reports. Maintain it alongside those sources.
+>
+> **Last reviewed:** 2026-11-06 (America/New_York). **Status evidence:** GitHub `main` and Actions checked in ChatGPT on 2026-11-06; H4 implementation status grounded in the 2026-11-06 Claude H4 final follow-up report; H4 has NOT been verified committed or deployed. **Data policy:** This file is suitable for the **public repository**: never add real household records, financial balances, addresses, personal identifiers, secrets, credentials, or production exports.
+
+## 1. Read this first — current snapshot
+
+- **Product:** Ledger, a local-first personal finance and household operating system, primarily a browser app. The owner is a **non-programmer** and uses ChatGPT for product/architecture oversight and Claude for local implementation.
+- **Repository:** `marshmond/ledger` (public GitHub), local folder convention `finance-app/`, canonical backlog `docs/BACKLOG.md`; all paths below are relative to repository root. The app deploys via GitHub Pages on pushes to `main`.
+- **Completed and deployed:** Projects P1–P5; Home & Assets H1–H3. Verified current GitHub `main` HEAD **`30118ddd26aacc1cda4845864d25662b0db88017`** (`feat(assets): H3 Finance references and Projects links`) and a **successful** matching Pages workflow run, checked 2026-11-06. Prior phase commits: Projects P4B `6545763`, P5 `47100bc`; Assets H1 `bf2d3d5`, H2 `f101e1b`, H3 `30118dd`.
+- **Current in-flight:** Home & Assets **H4 implemented and tested locally, NOT committed or pushed** per `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md`, final follow-up section. Architectural review approved warranty/lifecycle decisions; shared-task deletion warning added. **Handoff installed locally (uncommitted):** this file and the standing rule in root `CLAUDE.md` now exist in the working tree. **Remaining release gate:** owner/ChatGPT final approval, then explicit commit/push authorization (this handoff, the `CLAUDE.md` rule and the backlog status fixes ride in the same reviewed H4 change set). **Next implementation:** H5 overview, Today card and final acceptance, only after H4 successful deployment.
+- **Latest reported test baseline:** **1,586 passing tests across 100 files** at H4 final follow-up; `npx tsc --noEmit` clean and `npm run build` succeeded. Recheck before commit. Dexie schema **15**, with no new tables, backup/sync format changes or dependencies through H4.
+- **Backlog status reconciled (uncommitted):** the stale "not committed/not pushed" headings for H1, H2 and H3 in `docs/BACKLOG.md` were corrected to deployed, using the verified commits `bf2d3d5`, `f101e1b`, `30118dd` and their successful Pages runs. Re-verify against Git and Actions anyway.
+- **Owner expectation:** A new ChatGPT chat should read this file, verify present-day Git/deployment/backlog state, continue from the actual latest phase, review Claude reports, and give explicit commit/push verdicts and ready-to-paste Claude prompts.
+
+## 2. Project goals and user experience
+
+Ledger aims to be one cohesive household system, covering money, planning, activities, projects, possessions, upkeep, service relationships, bills, subscriptions, family coordination, contacts, documents, and eventually useful AI assistance. It is currently designed for one household, not a multi-tenant SaaS.
+
+Design goals:
+
+1. Simple everyday workflows, progressive disclosure, practical utility before complexity.
+2. Local-first; data belongs to the household, with explicit controls over what may be shared externally.
+3. One source of truth per domain; **link** records across modules instead of duplicating them.
+4. Existing deterministic Finance calculations remain authoritative; AI, charts and summaries **must not invent or recalculate balances**.
+5. Preserve historical records, deletion safety, backup/restore and synchronization behavior.
+6. Desktop and phone (~375px), dark mode, keyboard/accessibility, clear errors, and cautious confirmation for destructive operations.
+7. Keep development phased and reviewable; avoid broad refactors, unneeded dependencies, premature platforms/backends.
+
+## 3. Roles and standard development loop
+
+**Owner:** Sets priorities, approves material product decisions, authorizes commits/pushes, performs real-device acceptance. Explain consequences plainly and recommend defaults rather than asking technical questions without guidance.
+
+**ChatGPT:** Product partner, architect, skeptic and reviewer. Drafts detailed implementation prompts for Claude; examines plan/reports against prior decisions and architectural risk; demands tests/evidence; issues explicit **APPROVED TO COMMIT/PUSH**, **APPROVED WITH FOLLOW-UPS**, or **HOLD — FIX BEFORE COMMIT** verdicts. Does not assert it has inspected uncommitted files without receiving them. Makes pragmatic decisions about when AI adds value. May verify committed GitHub repository and Actions when connected.
+
+**Claude:** Works in the user's local repository; reads source and docs; implements only authorized scope; runs tests/typecheck/build and isolated browser checks with invented data; writes detailed dated implementation reports and updates backlog; **does not commit or push until specifically authorized**. Pushing `main` publishes the app; confirm green Actions afterwards.
+
+**Normal workflow** (continue this pattern):
+
+1. Plan/design milestone (when architectural questions are material); one concise recommended decision round if necessary.
+2. Owner approves design and ChatGPT provides precise, bounded Claude prompt.
+3. Claude builds, tests, documents, **stops before commit**.
+4. Owner uploads Claude report to ChatGPT; ChatGPT reviews financial integrity, sync/deletion, backward compatibility, test/browser evidence, risks. Request tightly scoped fixes if necessary.
+5. After explicit approval, Claude reruns `npm test`, `npx tsc --noEmit`, `npm run build`, checks working-tree scope, commits/pushes `main`, confirms successful deployment, reports SHA/status.
+6. Conduct remaining real-device/offline/backup acceptance. **Refresh this handoff and `docs/BACKLOG.md` as part of every completed phase/release and material architecture decision**, never after the fact only.
+7. Do not start the next phase until it is authorized.
+
+**Source-of-truth priority for changing facts:** live source/code and current Git + Actions > most recent completed test/build evidence > latest dated phase report > current backlog > this handoff's last snapshot > old conversation context. For **decisions**, latest expressly approved owner decision takes priority, with deviations documented. If sources disagree, say so and reconcile deliberately; do not silently overwrite history.
+
+## 4. Source map and crucial repo files
+
+Read as applicable:
+
+- `CLAUDE.md` — working rules, privacy constraints, conventions, commands, commit gates.
+- `docs/BACKLOG.md` — requested/built/deferred work and decisions; newest summary at top (may have stale status; verify).
+- `README.md` — app features and usage.
+- `docs/roadmap.md`, `docs/ledger-inventory.md`, `docs/module-hooks.md`, `docs/due-provider.md`, `docs/sync.md` — architecture/interfaces and known limitations.
+- `docs/HOME-ASSETS-H0-PLAN-2026-11-05.md` — **Revision 2** approved overall Home & Assets architecture, plus eight owner decisions later confirmed as recommended A choices.
+- `docs/HOME-ASSETS-H1-BRIEF-2026-11-05.md`, `docs/HOME-ASSETS-H1-REPORT-2026-11-06.md`.
+- `docs/HOME-ASSETS-H2-REPORT-2026-11-06.md` — read **FINAL FOLLOW-UP**, which supersedes some original judgment calls.
+- `docs/HOME-ASSETS-H3-REPORT-2026-11-06.md`.
+- Projects P1–P5 plan/report documents for specific commitments, reporting or deletion behavior.
+- `src/db.ts`, `src/core/store.ts`, `src/core/registry.ts`, `src/modules/index.ts`, `src/lib/sync/*`, `src/lib/txnProject.ts`, `src/modules/projects/*`, `src/modules/assets/*` for actual contracts.
+
+Suggested start of a new chat: “Continue as Ledger's architect and Claude implementation reviewer. Read attached `CHATGPT-HANDOFF.md` first, verify the current repo/backlog/deployment state, follow the working agreement, and help with [current task]. Do not assume the snapshot is current without checking.”
+
+## 5. Architecture invariants
+
+### Local-first and data ownership
+
+- Browser app with IndexedDB/Dexie; version 15 at H3. Cross-module module records (Tasks/Projects/Assets) use the shared `moduleRecords` system; shared `links` point to stable identifiers. No database table or schema change has been needed for Assets H1–H3.
+- Backup, restore and encrypted sync work over existing tables; new module-record kinds/fields ride established mechanisms. Sync is generally per-record last-writer-wins, with **narrow deletion precedence** rules for Projects and Assets. The app's plain export is **not encrypted** and can contain sensitive asset data; warn accordingly.
+- No passwords, API keys, household exports, bank balances, actual serials/VINs/addresses, or private document links in GitHub docs/tests/prompts; repo is PUBLIC. Use entirely invented fixtures.
+- Use existing Contacts records for people/providers, not duplicate vendor lists; existing Task recurrence and Calendar layers for due items; Finance owns transactions/valuations; Projects owns commitments/financial summaries; Assets owns physical assets/service history/warranties.
+
+### Financial integrity
+
+- Money stored in **whole cents**; Finance transaction balances, projects attribution and net worth use existing engines (`src/lib`); read them, don't recreate them in Assets.
+- Project spending attribution supports whole and split transactions, budget lines, commitments, change orders and signed values. P4A established multi-line commitments and reconciliation; P4B/P5 integrated reporting and visualizations.
+- H3 asset purchase/service expense is **one source at a time**: typed amount *or* refs to one/more existing Finance transaction pieces, never silently both. Switching source requires explicit confirmation; blank cost means unknown, not zero.
+- H3 ref shape: `txnId`, optional `splitIndex`, explanatory snapshot `{date,payee,amountCents}`, and for split refs fingerprint of split count, amount, category. Finance splits **lack stable IDs**; changed/missing/removed/moved split refs require review and contribute nothing until reselected; do not use snapshot as live spend. Identical split parts with matching amount/category cannot be distinguished; documented limitation. Whole-transaction refs use current live Finance amount and flag changes.
+- Spend totals computed on read; refunds reduce spend, transfers excluded, transaction pieces deduplicated across records and hierarchy. Whole transaction supersedes overlapping constituent split references within the same aggregate. Manually typed amounts cannot be deduplicated by coincidence.
+- Project paid-so-far is shown **separately** on assets as context; never add Project paid totals to direct asset spend (avoid double counting). Existing net-worth `properties` stay Finance-owned; Assets may link read-only to one.
+
+### Sync, deletion, history
+
+- Projects permanent deletion: block if financially referenced; cleanup links without erasing Tasks/Events; narrow merge policy resolves stale edits while safeguarding financial dependencies.
+- Assets H1: archive vs stored/sold/disposed/replaced status vs permanent deletion are different. Asset deletion uses tombstone/`permanentlyDeletedAt`; deletion wins stale edits unless live dependent child/history/reference needs preserving. `revivedAt` makes intentional backup restoration possible. A completed linked Task and live service/warranty records prevent deletion; H4 verified warranty deletion guards with real sync-engine tests. Replacement links are validated against cycles. Older app builds may lack the special merge rule; real-device testing remains important.
+- H2 maintenance plans are **ordinary linked Tasks**. A durable Asset `service` record holds date, kind, work, provider, optional cost, notes, document refs, origin task ID and title snapshot; it remains after task edits/reopens/deletes. "Done, log it" joins Tasks' own `completeTask` with service write in one Dexie transaction; repeat occurrence created once and retains asset link. Task completed elsewhere appears "not yet saved to history" until explicitly logged.
+- **H2 final follow-up:** duplicate records created for the same originating task on two offline devices are **preserved** and flagged for human review; no automatic deletion/merge; Undo can restore a record and warning. After-completion repeats use the entered actual service date as basis, while fixed repeats use the normal completion-day basis (no rewriting general Task recurrence).
+- Real physical two-device/offline/older-version behavior has **not** been fully acceptance-tested at H3; simulations using the real sync engine are reported. Never conflate simulations with field verification.
+
+### Privacy/UX
+
+- Assets may store optional address, serial/VIN and plate; mask until deliberately shown and do not expose in list titles, Search snippets, Calendar/ICS or Today. Public docs use hypothetical data only. External document references are safe HTTP(S) metadata, not uploaded file storage.
+- Rich UI must be accessible and responsive. Tests and 375px browser checks are required; label any unverified visual/keyboard/screen-reader paths rather than claiming success.
+
+## 6. Delivered functionality — historical overview
+
+### Projects P1–P5 — finished and deployed
+
+- P1/P2/P3: project registration, planning and tasks/milestones, budgets/commitments and management workflows; consult detailed reports for exact features.
+- **P4A:** agreement allocation across budget lines, change orders, payments/transaction tagging and reconciliation; pushed `1c478e0`.
+- **P4B:** safe project permanent deletion, `+project` Quick Add, bulk task project assignment, task/milestone summaries in project list, project labels in Search, project-filtered Finance trends; sync deletion precedence with safeguards for monetary dependencies; pushed `6545763`.
+- **P5:** "Where the money goes" segmented expected-cost bar, per-agreement allocations, paid vs left with signed exceptions, neutral/balancing "No budget line", filtered Reports deep link, project-filtered CSV with unchanged unfiltered output; pushed `47100bc`.
+- Projects acceptance was **assumed complete by owner** before Home & Assets started; some real-device/offline acceptance tasks remained on the backlog. Treat them as open known risks unless explicitly verified subsequently.
+
+### Home & Assets H0 — architecture
+
+- One generic asset kind (`property`, `area`, `system`, `appliance`, `vehicle`, `other`) with optional parent pointer, specs, contacts, warranty dates, refs and lifecycle. No forced hierarchy; parent link and cycle/depth checks.
+- Planned phases H1 registry; H2 maintenance/service records; H3 Finance/Projects linkage; H4 warranties/retirement/replacement/orphan repair; H5 overview/Today/final acceptance. H0 Revision 2 superseded an earlier suggestion to omit deletion-wins policy for Assets.
+- Owner confirmed eight recommended “A” defaults (reference rather than mutate Finance, durable maintenance records, restrictive deletion, separate net-worth entries, masked sensitive details, minimal Projects-side integration, editable generic maintenance suggestions, route/name Home & Assets).
+
+### H1 — asset registry (deployed `bf2d3d5`)
+
+- `#/assets`: flat/tree lists; in-use/stored/past/archived filters; asset add/edit with optional make/model/identifiers, acquisition/warranty info, shared Contacts, specs, external document refs; parent hierarchy and validation; links from Tasks/Events; Search and Quick Add prefix `a`; masking; archive/retire/restore and safe permanent deletion; narrow Assets merge rule. H0.5 prerequisites: improved sync conflict labels and plain-backup warning.
+- At H1 review: 1,407 tests passing.
+
+### H2 — maintenance and durable history (deployed `f101e1b`)
+
+- Asset maintenance from linked recurring Tasks with editable generic suggestions; atomic "Done, log it"; unscheduled service logs; service-history timeline; "Save to history" for tasks completed elsewhere; provider Contacts, typed costs, refs; service Search and Quick Add `svc`; deletion guards and sync tests. Follow-up: duplicate-warning and historically correct recurring-task basis.
+- At H2 final review: 1,464 tests passing.
+
+### H3 — Finance references and Project links (deployed `30118dd`)
+
+- Read-only Finance transaction/split selection for asset acquisition and service records; typed-or-Finance source switching with explicit confirmation; split fingerprint/review; spend summary and parent rollups with piece deduplication; Related Projects and Related Assets cards; Project -> asset prefilled service-record handoff requiring explicit save; read-only net-worth entry pointer. Minimal Projects UI file additions; Finance, Projects financial calculations and sync implementation unchanged.
+- At H3 review: 1,521 tests passing, 97 files; `tsc` and build green. Browser interacted with flows using isolated data but **no screenshot visual review**; pending visual/light-theme/a11y, stale ref replacement, handoff Save, unlink/Undo, refund UI, real phone/two devices/offline.
+- GitHub verified H3 pushed/deployed on 2026-11-06, even though H3 report and top backlog status were written before commit.
+
+### H4 — warranties and lifecycle (BUILT AND TESTED; NOT COMMITTED OR DEPLOYED)
+
+Report: `docs/HOME-ASSETS-H4-REPORT-2026-11-06.md` (final follow-up 2026-11-06). Built atop verified deployed H3 `30118dd`. **Current reported result: 1,586 passing tests across 100 files**, TypeScript and production build clean; Dexie 15; no Finance/Projects/Tasks/Contacts source modifications or backup/sync format changes. Deployment **not yet performed** at the time of the report.
+
+- Multiple durable warranty records with shared Contacts and safe document links; H1 simple warranty fields act as **implicit fallback** only when no live explicit warranty exists. Deleting last explicit warranty prompts whether to clear legacy fields; no silent deletion.
+- Fifth read-only Calendar layer `9_000_000_000_000_105` derives warranty expiration markers. Stored and active assets show markers; archived/sold/disposed/replaced do not; expired markers are informational, not overdue. Maintenance reminders stay Tasks-owned.
+- Atomic asset replacement with existing/new asset and review step; new asset gets only name/type/place, never copied sensitive identifiers or history. Existing service/financial/warranty/Projects history remains with old asset.
+- Previewed retirement/bulk retirement of property descendants; open tasks explicitly Keep linked (default), Move, Stop repeating or Delete. A shared Task's **Delete** choice now warns it will be deleted for all linked assets; this was the final follow-up fix, covered by a focused test.
+- Past-asset navigation, replacement links, orphan service/warranty/link detection and explicit re-home/clear/remove handling; protects absent-on-this-device sync cases.
+- Real sync-engine tests cover warranty versus deletion, replacement conflicts, orphan repair and backup revival. **Actual two-device/real-phone/offline and complete keyboard/screen-reader testing remain outstanding**.
+- Known limitation: simultaneous independent replacement on two devices may leave both created replacement assets, only one referenced as successor; other can be archived. Last writer wins per record. Other outstanding browser checks include some warranty editing/document rows, Undo, Stop repeating/Delete actions and shared-delete warning display.
+- **Handoff procedure:** installed in the working tree on 2026-11-06 (`docs/CHATGPT-HANDOFF.md`, rule appended to root `CLAUDE.md`; `docs/CLAUDE-HANDOFF-SOP.md` kept as the source text). Not yet committed.
+
+### H5 — overview, Today and acceptance (AFTER H4)
+
+- Home & Assets overview with needs-attention, next maintenance, expiring warranties, recent service, spending context; Today card without duplicate Task reminders; mobile/accessibility polish; maybe optional non-sensitive printable asset sheet; comprehensive backups, offline reload, two real devices and deployment acceptance.
+- Finalize Home & Assets without endless feature expansion; keep optional improvements on backlog.
+
+## 7. Post-H5 product roadmap (recommended, not rigid)
+
+1. **Household Services** architecture and module: ongoing cleaner, landscaper, pest-control, service-contract relationships; provider, schedule, rates, visits, history; reuse Contacts/Tasks/Calendar/Finance/Assets; distinguish ongoing relationship from an individual Asset service event.
+2. **Bills & Subscriptions:** enhance existing Finance scheduled payments into obligations, renewals, price changes and cancellation reminders; consider shared architecture with phase separation.
+3. **Family Management:** household member context, school/childcare calendars, family activities and responsibilities; reuse Tasks, Calendar, Contacts.
+4. **Personal CRM:** extend shared Contacts with relationship notes, interactions, important dates and follow-ups; no duplicate contact database.
+5. **Documents:** shared record metadata and links initially, evaluate file storage, encrypted sync/backup impact separately.
+6. **AI assistance and automations** as cross-cutting capability; see next section. Reassess priorities at each module gate. No requirement to complete every module before useful AI.
+
+## 8. AI strategy — standing architectural direction
+
+**Owner delegated to ChatGPT** the technical judgment of **where/how to introduce AI** and wants plain-language recommendations; **not** blanket authorization to send data externally or build an AI backend without a review.
+
+- **H4:** do not expand H4 scope for AI; finish warranties/lifecycle correctly.
+- **H5:** identify structured, permission-safe readers and potential insights; no chat integration required.
+- **Household Services and Bills/Subscriptions:** add useful deterministic insights (maintenance due, upcoming payments, renewals, cost changes) without unnecessarily paying for an LLM. Label these "insights" rather than pretending they require AI.
+- **First “Ask Ledger” conversational capability** likely after Services and Bills/Subscriptions reach stable form, earlier if justified. Let user ask household questions; resolve money/date facts with Ledger's established readers/calculation engine, using a model only to interpret/summarize.
+- **Actions later:** proposals for task creation, categorization, service logging, etc. should show exact preview and require user confirmation. Deletion, purchases, high-stakes actions require stronger safeguards.
+- **Proactive assistance** last: weekly briefings, reminders and permitted monitoring, with bounded scope, user controls, no surprise writes.
+- **Security:** local-first, minimal selected data sent only with explicit controls. **Do not embed external AI API credentials in browser/client code.** Evaluate a small authenticated proxy/backend or secure alternative before external-model use, with a specific architectural approval covering privacy, operating cost, prompt injection and per-action permissions. No automatic sharing of whole household backups with a model.
+- All AI findings are aids, not authoritative ledger postings or legal/tax/medical claims.
+
+## 9. Known unresolved risks / acceptance work
+
+- Real two-device sync and offline operation, including deletion vs stale edits, replacement/service/warranty conflicts, and older build compatibility — automated engine simulation is not a physical device test. H4 shared Task deletion warning was added and unit-tested but not browser-tested.
+- H3 visual screenshot review (both themes), complete keyboard/screen-reader testing, handoff Save, stale transaction ref reselect, refund picker rendering, links/Undo, real phone.
+- Split fingerprint limitation: indistinguishable identical amount/category split parts; changes elsewhere in split structure may require review.
+- Whole-record last-writer-wins means concurrent edits to different fields can overwrite one another; losing versions may surface as conflict notices.
+- Plain backups reveal sensitive details; no binary document storage. Do not accidentally put private data in public repo or tool output.
+- Historical Tasks completed before H2 may appear as “not yet saved” until logged; no bulk dismiss/save yet.
+- Avoid building duplicate financial engines, calendar events, task recurrence or vendor lists.
+- Keep backlog and handoff accurate after **commit/deploy**, not merely after implementation reports. Never mark draft/plan features as built.
+
+## 10. Standing Operating Procedure — maintaining THIS handoff
+
+**Target file:** `docs/CHATGPT-HANDOFF.md` in the user's local repo. **Update owner:** Claude working locally, or another tool with actual repo write access. ChatGPT can compose a replacement and review it; **ChatGPT cannot continuously or automatically modify the user's Windows directory from an ordinary chat**. Do not claim to have done so. The repository instruction in `CLAUDE.md` should direct Claude to update it routinely.
+
+### When to update (mandatory checkpoints)
+
+- After **every** approved architecture/design decision, changed user preference, phase boundary, material blocker, resolved issue, or change to long-term roadmap.
+- At the **end of every Claude implementation/report batch**, update current phase status and tests, but mark **uncommitted** until explicitly committed.
+- **After each commit/push and Actions completion**, refresh actual SHA, deployment state, newest test baseline and next step; don't leave “not pushed” status once deployed.
+- Before handing off to a new ChatGPT chat, ensure the document reflects actual `main`, in-flight uncommitted work, current pending decision and exact next action.
+
+### Maintenance procedure (for Claude/local agent)
+
+1. Read `CLAUDE.md`, current handoff, latest backlog, recent phase report and `git status`/`git log`; when possible check deployment status. Verify facts, including whether files are local-only.
+2. Update **Section 1** (snapshot/next action/test baseline/SHA), **Section 6** (phase delivery status), **Section 7** (roadmap), **Section 8** (AI direction), **Section 9** (open risks), and record material newly approved decisions in the appropriate section. Add a short dated update line in Section 11. Keep invariant sections stable unless consciously changed.
+3. Preserve accurate architectural detail while pruning duplicate wording; link to full reports rather than copying long logs. Distinguish `planned`, `implemented but uncommitted`, `committed`, `deployed`, `accepted` and `not verified`.
+4. Never embed actual data or secrets; audit the diff for accidental PII. Maintain plain Markdown, relative paths and public-repo compatibility.
+5. Update `docs/BACKLOG.md` consistently; resolve contradictory top statuses. Neither file overrides tested code/Git. Ensure the handoff accurately reflects decisions made in ChatGPT **when they are explicitly supplied to Claude**.
+6. **Include the handoff in the same reviewed change set as the relevant phase**; do not create a separate commit/push without authorization. If a deployment SHA isn't known until after push, update it in the next authorized documentation change or keep a labeled “verification pending” entry; avoid an unauthorized follow-up push solely to stamp a SHA.
+7. In the final implementation report, include: `Handoff updated: yes/no`, what sections changed, outstanding items, and any difference between local docs, committed GitHub and deployment.
+8. If no repo-write tool is available, prepare a complete Markdown replacement or patch and ask the owner to have Claude apply it. Do not claim the local file has changed.
+
+### For ChatGPT in each future conversation
+
+- Read the latest uploaded/accessible `docs/CHATGPT-HANDOFF.md` at the start of Ledger work. Cross-check current Git status and backlog where accessible. Do not infer access to the user's uncommitted Windows files.
+- During ordinary architectural reviews, recommend exact handoff updates to include in Claude prompts. ChatGPT cannot guarantee updates in conversations it is not running.
+- When a phase reaches implementation/review, explicitly require handoff maintenance in the Claude prompt and check the report says it was done.
+- If user asks to “update the handoff,” produce the revised artifact or an actionable repo-local Claude prompt **now**, rather than promising invisible background edits.
+
+## 11. Change log for handoff itself
+
+- **2026-11-06 (installed by Claude):** handoff and `CLAUDE.md` rule installed locally; backlog H1-H3 statuses reconciled to deployed; H4 final state recorded (1,586 tests, shared-task delete warning, pending commit). Handoff updated: yes. Nothing committed.
+- **2026-11-06 (H4 final follow-up):** Revised snapshot to reflect H4 locally implemented, shared-task deletion warning fixed, 1,586 passing tests and H4 pending commit. Identified missing on-disk handoff and root SOP as remaining gate; prepared the original SOP again for Claude installation.
+- **2026-11-06:** Initial handoff composed from the Ledger conversation and verified public GitHub commits/Actions; confirmed H3 `30118dd` deployed; H4 detailed prompt drafted but no implementation evidence. Established the maintenance SOP and AI staged strategy. **This file has been created as a downloadable artifact; it is not automatically present in the user's Windows repo until copied there.**
+
+---
+
+**Next action as of 2026-11-06:** Claude must install this document at `docs/CHATGPT-HANDOFF.md`, append the accompanying SOP to the existing root `CLAUDE.md` (without removing current rules), and reconcile stale backlog statuses with verified Git history. Confirm H4 shared-task deletion warning, rerun tests/type check/build, inspect full diff. Then obtain explicit authorization before committing/pushing H4; verify deployment. Only after H4 deployment proceed with the already drafted H5 prompt.

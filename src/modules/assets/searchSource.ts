@@ -1,4 +1,6 @@
 import { db } from '../../db';
+import { store } from '../../core/store';
+import { todayISO } from '../../lib/money';
 import type { SearchResult, SearchSource } from '../../core/registry';
 import { norm, score } from '../../lib/search';
 import { dayLabel } from '../../core/time';
@@ -6,6 +8,8 @@ import { loadAssets, publicLabel, whereIs } from './data';
 import { STATUS_LABEL, TYPE_LABEL, type AssetRecord } from './model';
 import { SERVICE_KIND_LABEL, serviceRefId, type ServiceRecord } from './service';
 import { loadServices } from './serviceData';
+import { warrantyRefId, warrantyStatus, WARRANTY_STATUS_LABEL, type WarrantyRecord } from './warranty';
+import { loadWarranties } from './warrantyData';
 
 /** Letters and digits only, lower case: how serial numbers and plates are compared. */
 const compact = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -14,7 +18,7 @@ const compact = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
  * Pure: the Home & Assets hits for a typed query. Serial number and plate match only by exact or prefix match and only for 4+ characters;
  * their value is NEVER shown in a result. Address is not searchable. Active assets rank above stored, past and archived ones.
  */
-export function searchAssetsData(raw: string, assets: AssetRecord[], cap = 8, services: ServiceRecord[] = []): SearchResult[] {
+export function searchAssetsData(raw: string, assets: AssetRecord[], cap = 8, services: ServiceRecord[] = [], warranties: WarrantyRecord[] = [], contactName: (id: number) => string = () => '', today = ''): SearchResult[] {
   const query = norm(raw).split(/\s+/).filter(Boolean);
   if (query.length === 0) return [];
   const out: SearchResult[] = [];
@@ -55,13 +59,36 @@ export function searchAssetsData(raw: string, assets: AssetRecord[], cap = 8, se
       path: there ? `/assets/${sv.data.assetId}?service=${sv.id}` : '/assets',
     });
   }
+  // Warranties: title, coverage notes and the provider's name. The line shows the asset's public label, its status when it is not in use, and
+  // the end date; never the notes, claim details, links or any sensitive asset field. A warranty on a retired or archived asset ranks lower.
+  const byAsset = new Map(assets.map((a) => [a.id, a]));
+  const warHits = warranties
+    .map((w) => {
+      const a = byAsset.get(w.data.assetId);
+      let s = score(query, w.data.title, `${w.data.coverageNotes} ${w.data.providerContactId !== null ? contactName(w.data.providerContactId) : ''} warranty`);
+      if (s > 0 && a) s -= (a.data.archived ? 12 : 0) + (a.data.status === 'sold' || a.data.status === 'disposed' || a.data.status === 'replaced' ? 6 : 0);
+      return { w, a, s };
+    })
+    .filter((x) => x.s > 0)
+    .sort((x, y) => y.s - x.s || x.w.data.title.localeCompare(y.w.data.title) || x.w.id - y.w.id)
+    .slice(0, cap);
+  for (const { w, a, s } of warHits) {
+    const end = w.data.endDate ? `${today ? WARRANTY_STATUS_LABEL[warrantyStatus(w.data.endDate, today)] + ' · ' : ''}ends ${dayLabel(w.data.endDate, { year: true })}` : 'No expiration recorded';
+    out.push({
+      id: warrantyRefId(w.id), title: w.data.title, kind: 'Warranty', score: s - 1,
+      subtitle: [a ? publicLabel(assets, a.id) : 'Asset removed', a && a.data.status !== 'active' ? STATUS_LABEL[a.data.status] : '', a?.data.archived ? 'Archived' : '', end].filter(Boolean).join(' · '),
+      path: a ? `/assets/${a.id}?warranty=${w.id}` : '/assets',
+    });
+  }
   return out;
 }
 
 export const assetsSearchSource: SearchSource = {
   group: 'Home & Assets',
   async search(query, limit) {
-    const [assets, services] = await Promise.all([loadAssets(db), loadServices(db)]);
-    return searchAssetsData(query, assets, 8, services).slice(0, limit);
+    const [assets, services, warranties] = await Promise.all([loadAssets(db), loadServices(db), loadWarranties(db)]);
+    const names = new Map<number, string>();
+    if (warranties.some((w) => w.data.providerContactId !== null)) for (const c of await store.shared.contacts.query()) names.set(c.id as number, c.name);
+    return searchAssetsData(query, assets, 8, services, warranties, (id) => names.get(id) ?? '', todayISO()).slice(0, limit);
   },
 };

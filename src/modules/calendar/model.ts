@@ -13,6 +13,7 @@ export const PERSONAL_ID = 9_000_000_000_000_101;
 export const FINANCE_ID = 9_000_000_000_000_102;
 export const TASKS_ID = 9_000_000_000_000_103;
 export const PROJECTS_ID = 9_000_000_000_000_104;
+export const ASSETS_ID = 9_000_000_000_000_105;
 
 /** `local`: events stored here. `derived`: worked out by a module's due provider (read-only). `subscribed`: reserved for external .ics feeds later. */
 export type SourceType = 'local' | 'derived' | 'subscribed';

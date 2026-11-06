@@ -7,6 +7,9 @@ import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import AssetForm from './AssetForm';
 import { buildTree, loadAssets, whereIs, warrantyState } from './data';
+import OrphanCard from './OrphanCard';
+import { groupByAsset } from './warranty';
+import { loadWarranties } from './warrantyData';
 import { STATUS_LABEL, TYPE_LABEL, type AssetRecord } from './model';
 
 type Tab = 'active' | 'stored' | 'past' | 'archived' | 'all';
@@ -25,12 +28,22 @@ const EMPTY: Record<Tab, string> = {
   all: 'No assets yet.',
 };
 
+/** "Sold 3 Nov 2026" / "Replaced by Dishwasher (new)" for a retired row; nothing for assets in use. */
+const retiredLine = (a: AssetRecord, all: AssetRecord[]) => {
+  if (a.data.status === 'active' || a.data.status === 'stored') return '';
+  const by = a.data.replacedById !== null ? all.find((x) => x.id === a.data.replacedById) : undefined;
+  return [a.data.statusDate ? `${STATUS_LABEL[a.data.status]} ${a.data.statusDate}` : '', by ? `replaced by ${by.data.name}` : ''].filter(Boolean).join(' · ');
+};
+
 /** The list: a tree grouped by where things are, or a flat list with the place written out. */
 export default function AssetsPage() {
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
   const assets = useLiveQuery(() => loadAssets(), []);
   const today = useToday() || todayISO();
+  const warranties = useLiveQuery(() => loadWarranties(), []);
+  const warByAsset = useMemo(() => groupByAsset(warranties ?? []), [warranties]);
+  const [pastKind, setPastKind] = useState('');
   const [tab, setTab] = useState<Tab>('active');
   const [type, setType] = useState('');
   const [text, setText] = useState('');
@@ -57,7 +70,7 @@ export default function AssetsPage() {
     }
     return false;
   };
-  const shown = rows.filter((r) => show(r.asset) && (!type || r.asset.data.type === type) && (!q || r.asset.data.name.toLowerCase().includes(q) || r.asset.data.manufacturer.toLowerCase().includes(q) || r.asset.data.model.toLowerCase().includes(q)) && !hiddenByFold(r));
+  const shown = rows.filter((r) => show(r.asset) && (tab !== 'past' || !pastKind || r.asset.data.status === pastKind) && (!type || r.asset.data.type === type) && (!q || r.asset.data.name.toLowerCase().includes(q) || r.asset.data.manufacturer.toLowerCase().includes(q) || r.asset.data.model.toLowerCase().includes(q)) && !hiddenByFold(r));
   const useFlat = flat || filtering;
   const hasKids = new Set((assets ?? []).map((a) => a.data.parentId).filter((x): x is number => x !== null));
 
@@ -75,6 +88,13 @@ export default function AssetsPage() {
           </button>
         ))}
       </div>
+      {tab === 'past' && (
+        <div className="as-tabs as-subtabs" role="group" aria-label="Kind of past asset">
+          {[['', 'All past'], ['sold', 'Sold'], ['disposed', 'Disposed of'], ['replaced', 'Replaced']].map(([k, label]) => (
+            <button key={k} aria-pressed={pastKind === k} className={pastKind === k ? 'on' : ''} onClick={() => setPastKind(k)}>{label}</button>
+          ))}
+        </div>
+      )}
       <div className="as-filters">
         <label className="f">Find<input value={text} onChange={(e) => setText(e.target.value)} placeholder="Name, make or model" type="search" /></label>
         <label className="f">Type
@@ -86,6 +106,8 @@ export default function AssetsPage() {
         <label className="as-check"><input type="checkbox" checked={flat} onChange={(e) => setFlat(e.target.checked)} /> Flat list</label>
       </div>
 
+      <OrphanCard />
+
       {assets === undefined ? (
         <p className="muted">Loading…</p>
       ) : shown.length === 0 ? (
@@ -95,7 +117,7 @@ export default function AssetsPage() {
       ) : (
         <ul className="plain as-list">
           {shown.map((r) => {
-            const a = r.asset, w = warrantyState(a.data, today), place = whereIs(assets, a.id);
+            const a = r.asset, w = warrantyState(a.data, today, warByAsset.get(a.id) ?? []), place = whereIs(assets, a.id);
             return (
               <li key={a.id} style={useFlat ? undefined : { paddingLeft: `${Math.min(r.depth, 6) * 20}px` }} className="as-li">
                 {!useFlat && (hasKids.has(a.id)
@@ -105,7 +127,7 @@ export default function AssetsPage() {
                   <span className="as-row-main">
                     <strong>{a.data.name}</strong>
                     <span className="muted small">
-                      {[useFlat ? place : '', r.orphan ? '(place removed)' : '', r.cycle ? '(loop in places, fix on its page)' : ''].filter(Boolean).join(' · ') || TYPE_LABEL[a.data.type]}
+                      {[useFlat ? place : '', retiredLine(a, assets), r.orphan ? '(place removed)' : '', r.cycle ? '(loop in places, fix on its page)' : ''].filter(Boolean).join(' · ') || TYPE_LABEL[a.data.type]}
                     </span>
                   </span>
                   <span className="as-row-side">
