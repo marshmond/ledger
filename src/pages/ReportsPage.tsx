@@ -10,6 +10,8 @@ import Collapsible from './Collapsible';
 import PageTabs from './PageTabs';
 import FlowPanel from './FlowPanel';
 import { PageHeader } from '../ui/components';
+import { projectLabel, useProjectChoices } from '../core/projectLink';
+import { projectOnlyTxns } from '../lib/txnProject';
 
 const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)'];
 const pct = (f: number) => `${f >= 0 ? '+' : '−'}${Math.abs(Math.round(f * 100))}%`;
@@ -40,35 +42,59 @@ function Trends() {
   const thisMonth = todayISO().slice(0, 7);
   const [end, setEnd] = useState(thisMonth);
   const [payeeRange, setPayeeRange] = useState<'month' | 'year'>('month');
-  const txns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
+  const allTxns = useLiveQuery(() => db.txns.toArray(), []) ?? [];
+  const projects = useProjectChoices();
+  // A project filter shows only that project's own pieces of transactions (each transaction once). Income and savings do not apply to it.
+  const [projectId, setProjectId] = useState<number | null>(null);
+  const projectMissing = projectId !== null && !projects.some((p) => p.id === projectId);
+  const txns = useMemo(() => (projectId === null ? allTxns : projectOnlyTxns(allTxns, projectId)), [allTxns, projectId]);
+  const net = projectId !== null;
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
 
   const months = useMemo(() => lastMonths(end, 13), [end]);
   const view = useMemo(() => months.slice(1), [months]);
-  const matrix = useMemo(() => spendingMatrix(txns, categories, months), [txns, categories, months]);
+  const matrix = useMemo(() => spendingMatrix(txns, categories, months, { net }), [txns, categories, months, net]);
   const stats = useMemo(() => categoryStats(matrix), [matrix]);
   const cmp = compareTotals(matrix);
   const saved = savingsRates(matrix);
   const jumped = jumps(stats);
   const top5 = matrix.cats.slice(0, 5);
-  const payees = useMemo(() => topPayees(txns, categories, payeeRange === 'month' ? `${end}-01` : `${months[1]}-01`, `${end}-31`, 10), [txns, categories, payeeRange, end, months]);
+  const payees = useMemo(() => topPayees(txns, categories, payeeRange === 'month' ? `${end}-01` : `${months[1]}-01`, `${end}-31`, 10, { net }), [txns, categories, payeeRange, end, months, net]);
   const options = lastMonths(thisMonth, 24).reverse();
   const n = matrix.months.length;
 
   return (
     <>
       <div className="row spread">
-        <h2 style={{ margin: 0 }}>Spending by month</h2>
+        <h2 style={{ margin: 0 }}>{net ? 'Project spending by month' : 'Spending by month'}</h2>
         <label className="row">Through<select value={end} onChange={(e) => setEnd(e.target.value)}>{options.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}</select></label>
       </div>
-      <p className="muted">Where your money went, from the transactions in your accounts. Transfers between accounts are left out; refunds reduce spending.</p>
+      {projects.length > 0 && (
+        <div className="row" style={{ gap: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label className="row">Project
+            <select value={projectId === null ? '' : String(projectId)} onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)} aria-label="Show one project only">
+              <option value="">All spending</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{projectLabel(projects, p.id)}</option>)}
+              {projectMissing && <option value={projectId!}>(project removed)</option>}
+            </select>
+          </label>
+          {projectId !== null && (
+            <span className="badge" role="status">Only: {projectLabel(projects, projectId)} <button className="link" onClick={() => setProjectId(null)} aria-label="Remove the project filter">remove</button></span>
+          )}
+        </div>
+      )}
+      {net ? (
+        <p className="muted">Only the parts of transactions tagged to this project, each counted once (a split transaction contributes just the parts on this project). Refunds, reversals and credits lower the total. Income and savings do not apply to one project, so they are not shown. The Flow diagram tab is not filtered.{projectMissing ? ' This project no longer exists; remove the filter.' : ''}</p>
+      ) : (
+        <p className="muted">Where your money went, from the transactions in your accounts. Transfers between accounts are left out; refunds reduce spending.</p>
+      )}
 
       <div className="tiles">
         <div className="tile"><div className="muted">Spent in {monthLabel(end)}</div><div className="v">{formatCents(cmp.thisMonth)}</div></div>
         <Delta now={cmp.thisMonth} then={cmp.lastMonth} label="Last month" />
         <Delta now={cmp.thisMonth} then={cmp.sameMonthLastYear} label="Same month last year" />
         <Delta now={cmp.thisMonth} then={cmp.avg3} label="3-month average" />
-        <div className="tile"><div className="muted">Saved this month</div><div className={`v ${saved[n - 1] !== null && (saved[n - 1] as number) < 0 ? 'neg' : ''}`}>{saved[n - 1] === null ? '—' : `${Math.round((saved[n - 1] as number) * 100)}%`}</div><div className="muted" style={{ fontSize: '0.8rem' }}>of income</div></div>
+        {!net && <div className="tile"><div className="muted">Saved this month</div><div className={`v ${saved[n - 1] !== null && (saved[n - 1] as number) < 0 ? 'neg' : ''}`}>{saved[n - 1] === null ? '—' : `${Math.round((saved[n - 1] as number) * 100)}%`}</div><div className="muted" style={{ fontSize: '0.8rem' }}>of income</div></div>}
       </div>
 
       <Collapsible id="reports.trend" title="Spending and income by month">
@@ -79,22 +105,23 @@ function Trends() {
             xLabels={view.map((m) => `${m}-01`)}
             series={[
               { label: 'Spending', color: 'var(--s2)', values: matrix.spent.slice(1) },
-              { label: 'Income', color: 'var(--s3)', values: matrix.income.slice(1) },
+              ...(net ? [] : [{ label: 'Income', color: 'var(--s3)', values: matrix.income.slice(1) }]),
             ]}
           />
         )}
         <div className="scroll-x">
           <table>
-            <thead><tr><th>Month</th><th className="num">Income</th><th className="num">Spending</th><th className="num">Saved</th><th className="num">Savings rate</th></tr></thead>
+            <thead>{net ? <tr><th>Month</th><th className="num">Spending</th></tr> : <tr><th>Month</th><th className="num">Income</th><th className="num">Spending</th><th className="num">Saved</th><th className="num">Savings rate</th></tr>}</thead>
             <tbody>
               {[...view].reverse().map((m, k) => {
                 const i = n - 1 - k;
                 return (
+                  net ? <tr key={m}><td>{monthLabel(m)}</td><td className="num">{formatCents(matrix.spent[i])}</td></tr> : (
                   <tr key={m}>
                     <td>{monthLabel(m)}</td><td className="num">{formatCents(matrix.income[i])}</td><td className="num">{formatCents(matrix.spent[i])}</td>
                     <td className={`num ${matrix.income[i] - matrix.spent[i] < 0 ? 'neg' : ''}`}>{formatCents(matrix.income[i] - matrix.spent[i])}</td>
                     <td className="num">{saved[i] === null ? '—' : `${Math.round((saved[i] as number) * 100)}%`}</td>
-                  </tr>
+                  </tr>)
                 );
               })}
             </tbody>

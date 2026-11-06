@@ -4,7 +4,11 @@ import { Link, useNavigate } from '../../core/router';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { todayISO } from '../../lib/money';
+import { useToday } from '../../ui/useToday';
+import { loadTasks } from '../tasks/data';
 import { loadAllBudgetLines, loadProjects } from './data';
+import { progressChips, summarizeWork } from './work';
 import ProjectForm from './ProjectForm';
 import { budgetSummary, OPEN_STATUSES, STATUS_LABEL, type ProjectRecord } from './model';
 
@@ -34,6 +38,8 @@ export default function ProjectsPage() {
   const nav = useNavigate();
   const projects = useLiveQuery(() => loadProjects(), []);
   const lines = useLiveQuery(() => loadAllBudgetLines(), []) ?? [];
+  const allTasks = useLiveQuery(() => loadTasks(), []) ?? [];
+  const today = useToday() || todayISO();
   const [tab, setTab] = useState<Tab>('open');
   const [creating, setCreating] = useState(false);
 
@@ -77,6 +83,9 @@ export default function ProjectsPage() {
                   <span className="pj-row-main">
                     <strong>{p.data.name}</strong>
                     <span className="pj-row-sub muted small">{[dates(p), `${ls.length} budget ${ls.length === 1 ? 'line' : 'lines'}`, `${p.data.vendorContactIds.length} ${p.data.vendorContactIds.length === 1 ? 'vendor' : 'vendors'}`].filter(Boolean).join(' · ')}</span>
+                    <span className="pj-chips" aria-label="Progress">
+                      {progressChips(summarizeWork(allTasks, p.id, today), !p.data.archived && OPEN_STATUSES.includes(p.data.status)).map((c) => <span key={c.text} className={`pj-chip ${c.tone ?? ''}`}>{c.text}</span>)}
+                    </span>
                   </span>
                   <span className="pj-row-side">
                     <span className={`pj-status s-${p.data.status}`}>{STATUS_LABEL[p.data.status]}</span>

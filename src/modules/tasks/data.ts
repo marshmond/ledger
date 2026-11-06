@@ -5,6 +5,7 @@
 import { db, type FinanceDB } from '../../db';
 import type { ModuleRecord, RecordRef } from '../../core/entities';
 import { createStore, isLive, repo } from '../../core/store';
+import { loadProjectChoices, selectableProjects } from '../../core/projectLink';
 import { asList, asTask, MODULE, type TaskData, type TaskList, type TaskRecord } from './model';
 import { spawnNext } from './recur';
 
@@ -46,6 +47,69 @@ export async function updateTasks(ids: number[], change: (t: TaskData) => TaskDa
       const t = await getTask(id, d);
       if (t) await saveTask(id, change(t.data), d);
     }
+  });
+}
+
+// ---- putting several tasks on one project (or taking them off) ----
+
+export interface ProjectAssignPlan {
+  total: number;
+  /** Selected tasks that no longer exist (deleted on another device since the selection). Any of these refuses the whole change. */
+  missing: number;
+  /** Already on the target (or already on no project when removing): left as they are. */
+  unchanged: number;
+  /** On no project now, so this only adds one. */
+  adding: number;
+  /** On another project now: the old project is replaced. */
+  replacing: number;
+  /** The projects being replaced (ids), without repeats. */
+  replacedFrom: number[];
+  /** Milestones that would stop being milestones because they lose their project. */
+  milestonesLeaving: number;
+}
+
+const projectOf = (t: TaskRecord) => (typeof t.data.projectId === 'number' ? t.data.projectId : null);
+
+/** What `assignTasksToProject` would do, changing nothing. `projectId` null = take them off their projects. */
+export async function planTaskProject(ids: number[], projectId: number | null, d: FinanceDB = db): Promise<ProjectAssignPlan> {
+  const found = (await Promise.all(ids.map((id) => getTask(id, d)))).filter((t): t is TaskRecord => !!t);
+  const plan: ProjectAssignPlan = { total: ids.length, missing: ids.length - found.length, unchanged: 0, adding: 0, replacing: 0, replacedFrom: [], milestonesLeaving: 0 };
+  for (const t of found) {
+    const cur = projectOf(t);
+    if (cur === projectId) plan.unchanged++;
+    else if (projectId === null) { if (t.data.isMilestone) plan.milestonesLeaving++; plan.replacing++; if (cur !== null && !plan.replacedFrom.includes(cur)) plan.replacedFrom.push(cur); }
+    else if (cur === null) plan.adding++;
+    else { plan.replacing++; if (!plan.replacedFrom.includes(cur)) plan.replacedFrom.push(cur); }
+  }
+  return plan;
+}
+
+/**
+ * Puts the tasks on a project, moves them from another, or (null) takes them off. All or nothing: if the project is not open for new
+ * work, or any task no longer exists, nothing is changed and the reason is thrown. Only the project (and, when leaving a project, the
+ * milestone flag, which needs one) changes: due dates, completion, repeats, lists, tags and unknown fields are untouched. A milestone
+ * moved to another project stays a milestone. Returns the tasks as they were, for Undo (`restoreTaskData`).
+ */
+export async function assignTasksToProject(ids: number[], projectId: number | null, d: FinanceDB = db): Promise<{ changed: number; before: TaskRecord[] }> {
+  return d.transaction('rw', d.moduleRecords, async () => {
+    if (projectId !== null && !selectableProjects(await loadProjectChoices(d)).some((p) => p.id === projectId)) throw new Error('That project is not open for new tasks (it may be archived, finished or deleted). Nothing was changed.');
+    const found = (await Promise.all(ids.map((id) => getTask(id, d)))).filter((t): t is TaskRecord => !!t);
+    if (found.length !== ids.length) throw new Error(`${ids.length - found.length} of the selected tasks no longer exist, so nothing was changed.`);
+    const before: TaskRecord[] = [];
+    for (const t of found) {
+      if (projectOf(t) === projectId) continue;
+      const { projectId: _p, isMilestone: _m, ...rest } = t.data as TaskData & { isMilestone?: boolean };
+      await saveTask(t.id, { ...rest, ...(projectId !== null ? { projectId } : {}), ...(projectId !== null && _m === true ? { isMilestone: true } : {}) } as TaskData, d);
+      before.push(t);
+    }
+    return { changed: before.length, before };
+  });
+}
+
+/** Puts tasks back exactly as they were (Undo for a bulk change). Tasks deleted since are skipped. */
+export async function restoreTaskData(before: TaskRecord[], d: FinanceDB = db): Promise<void> {
+  await d.transaction('rw', d.moduleRecords, async () => {
+    for (const t of before) if (await getTask(t.id, d)) await saveTask(t.id, t.data, d);
   });
 }
 

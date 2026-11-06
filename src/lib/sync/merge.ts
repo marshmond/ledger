@@ -10,6 +10,8 @@
  *    devices are collapsed to the newest.
  */
 
+import { enforceProjectDeletions } from './projectDeletion';
+
 export type Rec = { updatedAt?: number; [k: string]: unknown };
 export type TableData = Record<string, Rec>;
 export interface Snapshot {
@@ -145,6 +147,15 @@ export function mergeSnapshots(a: { local: Snapshot; remote: Snapshot; base: Bas
         Object.entries(out).some(([id, rec]) => !R[id] || stable(R[id]) !== stable(rec)) ||
         stable(tomb) !== stable(remote.tombstones[t] ?? {});
     }
+  }
+  // One narrow exception to "the newest edit wins": a project deleted permanently stays deleted (see projectDeletion.ts).
+  const mr = merged.tables.moduleRecords;
+  if (mr && enforceProjectDeletions({ merged: mr, local: local.tables.moduleRecords ?? {}, remote: remote.tables.moduleRecords ?? {}, txns: merged.tables.txns, now, same: (x, y) => stable(x) === stable(y) })) {
+    const L = local.tables.moduleRecords ?? {};
+    const R = remote.tables.moduleRecords ?? {};
+    const p = Object.entries(mr).filter(([id, rec]) => !L[id] || stable(L[id]) !== stable(rec)).map(([, rec]) => rec);
+    if (p.length) put.moduleRecords = p; else delete put.moduleRecords;
+    if (!remoteChanged) remoteChanged = Object.entries(mr).some(([id, rec]) => !R[id] || stable(R[id]) !== stable(rec));
   }
   return { merged, put, del, remoteChanged, conflicts };
 }

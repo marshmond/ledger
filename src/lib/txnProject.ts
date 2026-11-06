@@ -37,6 +37,24 @@ export function projectAllocations(t: Txn): ProjectPiece[] {
   return t.splits.flatMap((s) => base(s.project ?? t.project, s.amountCents));
 }
 
+/**
+ * The transactions as one project sees them, for reports: each transaction at most ONCE, holding only the pieces that belong to the
+ * project (a split's own tag wins over the transaction's, exactly as in `projectAllocations`). A transaction with no piece on the project
+ * is left out; transfers and setup entries never belong to a project. A split transaction keeps just its matching parts and its amount
+ * becomes their total, so summing a report over this list equals the project's "paid", and nothing is counted twice.
+ */
+export function projectOnlyTxns(txns: Txn[], projectId: number): Txn[] {
+  const out: Txn[] = [];
+  for (const t of txns) {
+    if (t.transferTxnId || isSetupTxn(t)) continue;
+    if (!t.splits?.length) { if (t.project?.projectId === projectId) out.push(t); continue; }
+    const mine = t.splits.filter((s) => (s.project ?? t.project)?.projectId === projectId);
+    if (mine.length === 0) continue;
+    out.push({ ...t, splits: mine, amountCents: mine.reduce((n, s) => n + s.amountCents, 0) });
+  }
+  return out;
+}
+
 // ---- project records (read defensively; the Projects module owns writing them) ----
 
 export interface ProjectInfo {

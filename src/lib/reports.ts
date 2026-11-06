@@ -30,7 +30,12 @@ export interface Matrix {
   income: number[];
 }
 
-export function spendingMatrix(txns: Txn[], categories: Category[], months: string[]): Matrix {
+/**
+ * `opts.net` is for a single project's view (see `projectOnlyTxns`): every piece counts, money coming back (a refund, reversal or credit)
+ * lowers spending whatever its category, there is no income, and a month is not held at zero, so the months add up to the project's paid.
+ * Left off (the default) this is exactly the original calculation.
+ */
+export function spendingMatrix(txns: Txn[], categories: Category[], months: string[], opts: { net?: boolean } = {}): Matrix {
   const catById = new Map(categories.map((c) => [c.id!, c]));
   const idx = new Map(months.map((m, i) => [m, i]));
   const rows = new Map<string, number[]>();
@@ -42,7 +47,7 @@ export function spendingMatrix(txns: Txn[], categories: Category[], months: stri
     for (const s of allocations(t)) {
       if (isSetupAlloc(s)) continue;
       const cat = s.categoryId == null ? undefined : catById.get(s.categoryId);
-      if (cat?.kind === 'income' || (!cat && s.amountCents > 0)) {
+      if (!opts.net && cat?.kind === 'income' || (!opts.net && !cat && s.amountCents > 0)) {
         income[i] += s.amountCents;
         continue;
       }
@@ -54,7 +59,7 @@ export function spendingMatrix(txns: Txn[], categories: Category[], months: stri
     }
   }
   const cats = [...rows.entries()].map(([name, byMonth]) => ({ name, byMonth, total: byMonth.reduce((a, b) => a + b, 0) })).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
-  return { months, cats, spent: spent.map((v) => Math.max(0, v)), income };
+  return { months, cats, spent: opts.net ? spent : spent.map((v) => Math.max(0, v)), income };
 }
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
@@ -104,19 +109,19 @@ export interface PayeeTotal {
 }
 
 /** The payees you spent the most with between two dates (inclusive). Similar spellings are combined. */
-export function topPayees(txns: Txn[], categories: Category[], from: string, to: string, n = 10): PayeeTotal[] {
+export function topPayees(txns: Txn[], categories: Category[], from: string, to: string, n = 10, opts: { net?: boolean } = {}): PayeeTotal[] {
   const income = new Set(categories.filter((c) => c.kind === 'income').map((c) => c.id!));
   const groups = new Map<string, PayeeTotal>();
   for (const t of txns) {
-    if (t.transferTxnId || t.date < from || t.date > to || t.amountCents >= 0 || isSetupTxn(t)) continue;
-    if (t.categoryId != null && income.has(t.categoryId)) continue;
+    if (t.transferTxnId || t.date < from || t.date > to || (!opts.net && t.amountCents >= 0) || isSetupTxn(t)) continue;
+    if (!opts.net && t.categoryId != null && income.has(t.categoryId)) continue;
     const key = normPayee(t.payee) || '(no payee)';
     const g = groups.get(key) ?? { payee: t.payee.trim() || '(no payee)', cents: 0, count: 0 };
     g.cents -= t.amountCents;
     g.count++;
     groups.set(key, g);
   }
-  return [...groups.values()].sort((a, b) => b.cents - a.cents || a.payee.localeCompare(b.payee)).slice(0, n);
+  return [...groups.values()].filter((g) => !opts.net || g.cents > 0).sort((a, b) => b.cents - a.cents || a.payee.localeCompare(b.payee)).slice(0, n);
 }
 
 export interface Comparison {

@@ -50,6 +50,22 @@ export function summarizeWork(all: TaskRecord[], projectId: number, today: strin
   return { tasks: tally(tasks, today), milestones: tally(milestones, today), nextMilestone: next };
 }
 
+export interface ProgressChip { text: string; tone?: 'neg' | 'muted' }
+/**
+ * The short progress line on the Projects list, from the same `summarizeWork` the project page uses, so the two always agree.
+ * Ordinary tasks and milestones are counted apart. A project with nothing yet says so instead of showing 0%. Overdue is only
+ * mentioned for a project that is still live work (not archived, cancelled or completed), where it can still be acted on.
+ */
+export function progressChips(w: WorkSummary, live: boolean): ProgressChip[] {
+  const out: ProgressChip[] = [];
+  if (w.tasks.total) out.push({ text: `Tasks ${w.tasks.done}/${w.tasks.total}` });
+  if (w.milestones.total) out.push({ text: `Milestones ${w.milestones.done}/${w.milestones.total}` });
+  if (!w.tasks.total && !w.milestones.total) out.push({ text: 'No tasks yet', tone: 'muted' });
+  const late = w.tasks.overdue + w.milestones.overdue;
+  if (live && late > 0) out.push({ text: `${late} overdue`, tone: 'neg' });
+  return out;
+}
+
 /** Which group of the project's task list a task is in. */
 export type TaskGroup = 'overdue' | 'open' | 'done';
 export function groupOf(t: TaskRecord, today: string): TaskGroup {

@@ -6,10 +6,10 @@ import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import { useToast } from '../../ui/Toast';
-import { projectLabel, useProjectChoices } from '../../core/projectLink';
+import { projectLabel, selectableProjects, useProjectChoices } from '../../core/projectLink';
 import { dayLabel } from '../../core/time';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
-import { completeTask, loadDeletedTasks, loadLists, loadTasks, removeTasks, reopenTask, restoreTasks, saveTask, updateTasks } from './data';
+import { assignTasksToProject, completeTask, loadDeletedTasks, loadLists, loadTasks, planTaskProject, removeTasks, reopenTask, restoreTaskData, restoreTasks, saveTask, updateTasks } from './data';
 import ListsDialog from './ListsDialog';
 import { QuickAddBar } from './QuickTask';
 import TaskEditor from './TaskEditor';
@@ -114,6 +114,30 @@ export default function TasksPage() {
     toast(`${label}: ${before.length} task${before.length === 1 ? '' : 's'}`, async () => { for (const t of before) await saveTask(t.id, t.data); });
     setSelected(new Set());
   };
+  /** Put the selected tasks on a project, move them, or (value 'none') take them off. Says what will be replaced first; undoable. */
+  const bulkProject = async (value: string) => {
+    const target = value === 'none' ? null : Number(value);
+    const ids = [...selected];
+    try {
+      const plan = await planTaskProject(ids, target);
+      const where = target === null ? 'no project' : projectLabel(projects, target);
+      if (plan.missing) { toast(`${plan.missing} of the selected tasks no longer exist. Nothing was changed.`); return; }
+      if (plan.unchanged === plan.total) { toast(target === null ? 'None of those tasks are on a project.' : `All of those tasks are already on ${where}.`); return; }
+      if (plan.replacing > 0) {
+        const from = plan.replacedFrom.map((id) => projectLabel(projects, id)).join(', ');
+        const ms = plan.milestonesLeaving ? ` ${plan.milestonesLeaving} milestone${plan.milestonesLeaving === 1 ? '' : 's'} will become ordinary task${plan.milestonesLeaving === 1 ? '' : 's'}.` : '';
+        const msg = target === null
+          ? `Take ${plan.replacing} task${plan.replacing === 1 ? '' : 's'} off ${from || 'their project'}?${ms}`
+          : `${plan.replacing} of the ${plan.total} selected task${plan.total === 1 ? ' is' : 's are'} on ${from}. Move ${plan.replacing === 1 ? 'it' : 'them'} to ${where}?${plan.adding ? ` ${plan.adding} more will be added to it.` : ''}`;
+        if (!confirm(msg)) return;
+      }
+      const { changed, before } = await assignTasksToProject(ids, target);
+      toast(`${target === null ? 'Taken off their projects' : `On ${where}`}: ${changed} task${changed === 1 ? '' : 's'}${plan.unchanged ? ` (${plan.unchanged} already there)` : ''}`, async () => { await restoreTaskData(before); });
+      setSelected(new Set());
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not change the project. Nothing was changed.');
+    }
+  };
   const bulkComplete = async () => {
     const ids = picked().filter(isOpen).map((t) => t.id);
     for (const id of ids) await completeTask(id, today);
@@ -186,6 +210,13 @@ export default function TasksPage() {
           <select disabled={!selected.size} value="" aria-label="Move to list" onChange={(e) => e.target.value && void bulkEdit('List changed', (d) => ({ ...d, listId: e.target.value === 'none' ? null : Number(e.target.value) }))}>
             <option value="">List…</option><option value="none">No list</option>{lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
+          {projects.length > 0 && (
+            <select disabled={!selected.size} value="" aria-label="Put on a project" onChange={(e) => e.target.value && void bulkProject(e.target.value)}>
+              <option value="">Project…</option>
+              {selectableProjects(projects).map((p) => <option key={p.id} value={p.id}>{projectLabel(projects, p.id)}</option>)}
+              <option value="none">No project (take off)</option>
+            </select>
+          )}
           <select disabled={!selected.size} value="" aria-label="Add a tag" onChange={(e) => e.target.value && void bulkEdit('Tag added', (d) => ({ ...d, tagIds: [...new Set([...d.tagIds, Number(e.target.value)])] }))}>
             <option value="">Add tag…</option>{tagList.map((t) => <option key={t.id} value={t.id}>#{t.name}</option>)}
           </select>

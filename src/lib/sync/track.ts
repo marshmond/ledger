@@ -4,6 +4,7 @@
  * comparing with the list of ids from the last sync, so deletions need no hook.
  */
 import type { FinanceDB } from '../../db';
+import { REVIVED_KEY } from './projectDeletion';
 
 let last = 0;
 /** A new record id: milliseconds * 1000 plus a random part, always increasing on this device, and far above old 1, 2, 3 ids. */
@@ -54,6 +55,12 @@ export function installTracking(d: FinanceDB) {
 export async function touchAll(d: FinanceDB) {
   const now = Date.now();
   await d.transaction('rw', d.tables, async () => {
-    for (const t of d.tables) await t.toCollection().modify((r: { updatedAt?: number }) => { r.updatedAt = now; });
+    for (const t of d.tables) {
+      await t.toCollection().modify((r: { updatedAt?: number; module?: string; kind?: string; deletedAt?: number | null; data?: Record<string, unknown> }) => {
+        r.updatedAt = now;
+        // A restore is deliberate, so a restored project must also beat a permanent deletion made on another device (see projectDeletion.ts).
+        if (r.module === 'projects' && r.kind === 'project' && r.deletedAt == null) r.data = { ...(r.data ?? {}), [REVIVED_KEY]: now };
+      });
+    }
   });
 }

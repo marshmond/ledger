@@ -2,6 +2,7 @@ import { db } from '../../db';
 import type { SearchResult, SearchSource } from '../../core/registry';
 import { createStore } from '../../core/store';
 import { norm, score } from '../../lib/search';
+import { loadProjectChoices, projectLabel, type ProjectChoice } from '../../core/projectLink';
 import { loadTasks } from './data';
 import type { TaskRecord } from './model';
 
@@ -17,6 +18,7 @@ export function searchTasksData(
   tags: { id: number; name: string }[],
   contacts: { id: number; name: string }[],
   caps = { tasks: 8, tags: 3, contacts: 3 },
+  projects: ProjectChoice[] = [],
 ): SearchResult[] {
   const query = norm(raw).split(/\s+/).filter(Boolean);
   if (query.length === 0) return [];
@@ -37,7 +39,9 @@ export function searchTasksData(
   for (const { t, s } of hits) {
     const bits = [t.data.status === 'done' ? 'Done' : t.data.dueDate ? `Due ${t.data.dueDate}` : 'No due date'];
     if (t.data.checklist.length) bits.push(`${t.data.checklist.filter((c) => c.done).length}/${t.data.checklist.length} checked`);
-    out.push({ id: `task:${t.id}`, title: t.data.title, subtitle: bits.join(' · '), kind: 'Task', score: s, path: `/tasks?task=${t.id}` });
+    // Where it belongs: the project's name (with "archived" / "(project removed)" when that is the truth). One lookup list for all hits.
+    if (typeof t.data.projectId === 'number') bits.push(`Project: ${projectLabel(projects, t.data.projectId)}`);
+    out.push({ id: `task:${t.id}`, title: t.data.title, subtitle: bits.join(' · '), kind: t.data.isMilestone ? 'Milestone' : 'Task', score: s, path: `/tasks?task=${t.id}` });
   }
 
   const openCount = (pick: (t: TaskRecord) => boolean) => tasks.filter((t) => t.data.status !== 'done' && pick(t)).length;
@@ -56,7 +60,7 @@ export function searchTasksData(
 export const tasksSearchSource: SearchSource = {
   group: 'Tasks',
   async search(query, limit) {
-    const [tasks, tags, contacts] = await Promise.all([loadTasks(db), store.shared.tags.query(), store.shared.contacts.query()]);
-    return searchTasksData(query, tasks, tags.map((t) => ({ id: t.id as number, name: t.name })), contacts.map((c) => ({ id: c.id as number, name: c.name }))).slice(0, limit);
+    const [tasks, tags, contacts, projects] = await Promise.all([loadTasks(db), store.shared.tags.query(), store.shared.contacts.query(), loadProjectChoices(db)]);
+    return searchTasksData(query, tasks, tags.map((t) => ({ id: t.id as number, name: t.name })), contacts.map((c) => ({ id: c.id as number, name: c.name })), undefined, projects).slice(0, limit);
   },
 };

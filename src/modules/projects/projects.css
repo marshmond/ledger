@@ -117,6 +117,15 @@
 }
 .pj-table th { background: transparent; }
 
+/* ---- P4B: progress on the Projects list, deleting ---- */
+.pj-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); margin-top: 2px; }
+.pj-chip { font-size: var(--fs-xs); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--text); white-space: nowrap; }
+.pj-chip.muted { color: var(--muted); }
+.pj-chip.neg { color: var(--neg); border-color: var(--neg); }
+.pj-reasons { margin: 0 0 var(--sp-2); padding-left: var(--sp-3); }
+.pj-reasons li { margin-bottom: var(--sp-1); }
+.pj-delete .btn.danger { color: var(--neg); }
+
 /* ---- P4A: one agreement split across budget lines ---- */
 .pj-split { border: 1px solid var(--line); border-radius: var(--r-md, 8px); padding: var(--sp-2) var(--sp-3); margin: 0; min-width: 0; }
 .pj-split legend { font-size: var(--fs-xs); color: var(--muted); padding: 0 var(--sp-1); }

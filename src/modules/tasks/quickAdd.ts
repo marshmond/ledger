@@ -3,13 +3,14 @@
  *   date words:  today, tomorrow, mon..sun (the next one), next mon, next week, in 3 days, in 2 weeks, nov 12, 11/12, 2026-11-12
  *   time:        at 3pm, 3:30pm, 15:00
  *   priority:    !high !medium !low !reminder (or !h !m !l !r)
- *   tag:         #renovation        list: @home
+ *   tag:         #renovation        list: @home        project: +kitchen (the whole name, letters only: +test-kitchen for "Test Kitchen"; never a partial match)
  *   repeat:      every day / every 2 weeks / every two weeks / every other week / biweekly / every monday / every month / every year (also daily, weekly, monthly, yearly)
  * The screen always shows what was understood before saving, and a plain title is always possible. Pure; nothing is stored.
  */
 import { addDays, addMonths, dayOfWeek } from '../../lib/dates';
 import type { Priority } from '../../core/entities';
 import type { TaskRepeat } from './model';
+import { selectableProjects, type ProjectChoice } from '../../core/projectLink';
 
 export interface ParsedQuick {
   title: string;
@@ -19,7 +20,14 @@ export interface ParsedQuick {
   tags: string[];
   list?: string;
   repeat?: TaskRepeat;
+  /** The project the task will go on: only set when `+word` matched exactly one open project. */
+  project?: { id: number; name: string };
+  /** Said in the preview when a `+word` could not be used (no such project, two with that name, or not open). The word stays in the title. */
+  projectNote?: string;
 }
+
+/** `+Test Kitchen` is typed `+test-kitchen`: compare only letters and digits, whole name, nothing partial. */
+const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 const DAYS: Record<string, number> = {
   sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6,
@@ -61,7 +69,8 @@ function parseTime(word: string): string | null {
 /** "every two weeks", "every other week". */
 const NUMBER_WORDS: Record<string, number> = { other: 2, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
 
-export function parseQuickAdd(input: string, today: string): ParsedQuick {
+/** `projects`: the live projects, when the caller knows them. Without it `+word` is ordinary text, exactly as before. */
+export function parseQuickAdd(input: string, today: string, projects?: ProjectChoice[]): ParsedQuick {
   const words = input.trim().split(/\s+/).filter(Boolean);
   const used = words.map(() => false);
   const out: ParsedQuick = { title: '', tags: [] };
@@ -74,6 +83,13 @@ export function parseQuickAdd(input: string, today: string): ParsedQuick {
     if (word.startsWith('!') && PRIORITIES[clean(word.slice(1))] && !out.priority) { out.priority = PRIORITIES[clean(word.slice(1))]; take(i); }
     else if (/^#[\w-]+$/.test(word)) { out.tags.push(word.slice(1)); take(i); }
     else if (/^@[\w-]+$/.test(word) && !out.list) { out.list = word.slice(1); take(i); }
+    else if (projects && /^\+[\w-]+$/.test(word) && !out.project && !out.projectNote) {
+      const hits = projects.filter((x) => key(x.name) === key(word.slice(1)));
+      if (hits.length === 1 && selectableProjects(hits).length === 1) { out.project = { id: hits[0].id, name: hits[0].name }; take(i); }
+      else if (hits.length === 0) out.projectNote = `No project is named ${word}, so it stays in the title`;
+      else if (hits.length > 1) out.projectNote = `More than one project is named ${word}, so it stays in the title`;
+      else out.projectNote = `${hits[0].name} is ${hits[0].archived ? 'archived' : hits[0].status}, so the task was not put on it`;
+    }
   });
 
   // Pass 2: repeat ("every ...", "daily"), then date, then time
@@ -145,6 +161,8 @@ export function describeParsed(p: ParsedQuick, existingLists: string[], existing
   if (p.priority) out.push(`Priority ${p.priority}`);
   for (const t of p.tags) out.push(`Tag #${t}${existingTags.some((x) => x.toLowerCase() === t.toLowerCase()) ? '' : ' (new)'}`);
   if (p.list) out.push(`List @${p.list}${existingLists.some((x) => x.toLowerCase() === p.list!.toLowerCase()) ? '' : ' (new)'}`);
+  if (p.project) out.push(`Project ${p.project.name}`);
+  if (p.projectNote) out.push(p.projectNote);
   if (p.repeat) out.push(`Repeats ${p.repeat.rule.interval > 1 ? `every ${p.repeat.rule.interval} ` : ''}${{ daily: 'daily', weekly: 'weekly', monthly: 'monthly', yearly: 'yearly' }[p.repeat.rule.freq]}`);
   return out;
 }

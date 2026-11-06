@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { onTaskRequest, type TaskRequest } from '../../core/taskBridge';
+import { loadProjectChoices, selectableProjects, useProjectChoices } from '../../core/projectLink';
 import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
 import Modal from '../../shell/Modal';
@@ -22,7 +23,8 @@ export function QuickAddBar({ seed, onAdded, autoFocus = false }: { seed?: TaskR
   const tags = useLiveQuery(() => store.shared.tags.query(), []) ?? [];
   const today = todayISO();
 
-  const parsed = useMemo(() => (plain ? { title: text.trim(), tags: [] as string[] } : parseQuickAdd(text, today)), [text, plain, today]);
+  const projects = useProjectChoices();
+  const parsed = useMemo(() => (plain ? { title: text.trim(), tags: [] as string[] } : parseQuickAdd(text, today, projects)), [text, plain, today, projects]);
   const dueDate = (parsed as { dueDate?: string }).dueDate ?? seed?.dueDate;
   const understood = plain ? [] : describeParsed(parsed, lists.map((l) => l.name), tags.map((t) => t.name));
   if (seed?.dueDate && !(parsed as { dueDate?: string }).dueDate && !plain) understood.unshift(`Due ${seed.dueDate}`);
@@ -39,10 +41,17 @@ export function QuickAddBar({ seed, onAdded, autoFocus = false }: { seed?: TaskR
         const found = tags.find((t) => t.name.toLowerCase() === name.toLowerCase());
         tagIds.push(found?.id ?? (await store.shared.tags.put({ name })));
       }
-      const id = await createTask(blankTask({
-        title, notes: seed?.notes ?? '', priority: p.priority ?? 'medium', dueDate: dueDate ?? null, dueTime: dueDate ? p.dueTime ?? null : null,
-        repeat: p.repeat ?? null, tagIds, listId, ...(seed?.from ? { createdFrom: seed.from } : {}),
-      }));
+      if (p.project && !selectableProjects(await loadProjectChoices()).some((x) => x.id === p.project!.id)) {
+        toast(`${p.project.name} is no longer open for new tasks. Nothing was added.`);
+        return;
+      }
+      const id = await createTask({
+        ...blankTask({
+          title, notes: seed?.notes ?? '', priority: p.priority ?? 'medium', dueDate: dueDate ?? null, dueTime: dueDate ? p.dueTime ?? null : null,
+          repeat: p.repeat ?? null, tagIds, listId, ...(seed?.from ? { createdFrom: seed.from } : {}),
+        }),
+        ...(p.project ? { projectId: p.project.id } : {}),
+      });
       toast(`Task added: ${title}`, async () => { await removeTasks([id]); });
       setText('');
       onAdded?.(id);
@@ -78,7 +87,7 @@ export function TaskCreator() {
       {req && <Modal title="New task" onClose={() => setReq(null)}>
         {req.from && <p className="muted small">About: <strong>{req.from.label}</strong>. The task will link back to it.</p>}
         <QuickAddBar key={JSON.stringify(req)} seed={req} autoFocus onAdded={() => setReq(null)} />
-        <p className="muted small">Shorthand: a date word (fri, tomorrow, nov 12), <code>!high</code>, <code>#tag</code>, <code>@list</code>, <code>every week</code>.</p>
+        <p className="muted small">Shorthand: a date word (fri, tomorrow, nov 12), <code>!high</code>, <code>#tag</code>, <code>@list</code>, <code>+project</code>, <code>every week</code>.</p>
       </Modal>}
     </ToastProvider>
   );

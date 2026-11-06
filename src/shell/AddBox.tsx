@@ -118,7 +118,7 @@ function AddBoxInner() {
                 if (r.def) { setChoice(r.def.id); setText(r.rest); } else { if (dest) setChoice(dest.id); setText(v); }
               }}
               aria-label={dest ? `New ${dest.label.toLowerCase()}` : 'What do you want to add?'}
-              placeholder={dest?.id === 'event' ? 'e.g. lunch with sam fri 12-1pm' : dest?.id === 'task' ? 'e.g. pay contractor fri !high #renovation' : 'Type here, or pick a button above'}
+              placeholder={dest?.id === 'event' ? 'e.g. lunch with sam fri 12-1pm' : dest?.id === 'task' ? 'e.g. pay contractor fri !high #renovation +kitchen' : 'Type here, or pick a button above'}
               autoComplete="off"
               autoFocus
             />

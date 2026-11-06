@@ -15,6 +15,7 @@ import { activeSplit, creditChangeOrderDraft, type CommitmentRecord } from './co
 import { archiveProject, getProject, loadBudgetLines, loadCommitments, restoreProject, setProjectStatus } from './data';
 import Financials, { ProjectTxns } from './Financials';
 import { countBrokenTags, groupContracts, projectWarnings, type Warning } from './financialView';
+import DeleteProject from './DeleteProject';
 import ProjectForm from './ProjectForm';
 import ProjectWork from './ProjectWork';
 import { budgetSummary, STATUSES, STATUS_LABEL, type ProjectStatus } from './model';
@@ -32,6 +33,7 @@ export default function ProjectPage() {
   const summary = useLiveQuery(async () => (Number.isNaN(pid) ? null : await loadProjectSummary(db, pid)), [pid]);
   const pieces = useLiveQuery(async () => (Number.isNaN(pid) ? [] : await loadProjectPieces(db, pid)), [pid]) ?? [];
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [focusLine, setFocusLine] = useState<number | null | undefined>(undefined);
   const [form, setForm] = useState<{ commitment?: CommitmentRecord; draft?: CommitmentDraft } | null>(null);
 
@@ -81,6 +83,7 @@ export default function ProjectPage() {
           {d.archived
             ? <button className="btn" onClick={() => void restoreProject(project.id).then(() => toast('Project restored'))}>Restore</button>
             : <button className="btn" onClick={() => void archiveProject(project.id).then(() => toast('Project archived', async () => { await restoreProject(project.id); }))}>Archive</button>}
+          <button className="btn danger" onClick={() => setDeleting(true)}>Delete permanently…</button>
         </div>
       </header>
 
@@ -134,6 +137,7 @@ export default function ProjectPage() {
       <Vendors projectId={project.id} vendorIds={d.vendorContactIds} />
 
       {form && <CommitmentForm projectId={project.id} vendorIds={d.vendorContactIds} lines={lines} all={commitments} commitment={form.commitment} draft={form.draft} onClose={() => setForm(null)} />}
+      {deleting && <DeleteProject projectId={project.id} onClose={() => setDeleting(false)} />}
       {editing && <ProjectForm project={project} onClose={() => setEditing(false)} />}
     </div>
   );
