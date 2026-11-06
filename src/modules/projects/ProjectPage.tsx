@@ -11,7 +11,7 @@ import { useToast } from '../../ui/Toast';
 import BudgetLines from './BudgetLines';
 import CommitmentForm, { type CommitmentDraft } from './CommitmentForm';
 import Commitments from './Commitments';
-import { creditChangeOrderDraft, type CommitmentRecord } from './commitmentModel';
+import { activeSplit, creditChangeOrderDraft, type CommitmentRecord } from './commitmentModel';
 import { archiveProject, getProject, loadBudgetLines, loadCommitments, restoreProject, setProjectStatus } from './data';
 import Financials, { ProjectTxns } from './Financials';
 import { countBrokenTags, groupContracts, projectWarnings, type Warning } from './financialView';
@@ -94,6 +94,7 @@ export default function ProjectPage() {
           onFix={(w: Warning) => {
             const root = commitments.find((c) => c.id === w.commitmentId);
             if (root && w.creditGapCents) setForm({ draft: creditDraft(root, w.creditGapCents) });
+            else if (root && (w.kind === 'splitBroken' || w.kind === 'changeNotSplit' || w.kind === 'splitLineGone')) setForm({ commitment: root });
           }}
         />
       ) : (
@@ -127,7 +128,7 @@ export default function ProjectPage() {
         focusLine={focusLine}
         lineName={(cid) => lines.find((l) => l.id === cid)?.data.name ?? ''}
         contractName={(cid) => commitments.find((c) => c.id === cid)?.data.title ?? ''}
-        lineOfCommitment={(cid) => { const c = commitments.find((x) => x.id === cid); return c ? c.data.budgetLineId ?? rootOf(c).data.budgetLineId : null; }}
+        lineOfCommitment={(cid) => { const c = commitments.find((x) => x.id === cid); return c && !activeSplit(rootOf(c)) ? c.data.budgetLineId ?? rootOf(c).data.budgetLineId : null; }}
       />
       <BudgetLines projectId={project.id} budgetCents={d.budgetCents} lines={lines} />
       <Vendors projectId={project.id} vendorIds={d.vendorContactIds} />

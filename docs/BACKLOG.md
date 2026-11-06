@@ -14,6 +14,32 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
+## P4 INPUT (owner, 2026-11-05, after P3 was pushed): TOTAL COST VISUALIZATIONS. NOT built; waiting for the owner's P4 prompt.
+
+The owner wants total-cost visualizations on projects, as part of the Projects analysis, and gave a mock-up: a card titled "Illustrative agreement allocation" showing one large total ($50,000, labelled "Total contract"), under it a single horizontal bar split into coloured segments, and below that a legend with one row per part: a colour dot, the name (Plumbing, Electrical, Finishes), its percentage of the total (40%, 30%, 30%) and its amount ($20,000, $15,000, $15,000). The three parts add up to the total. The card sits beside the multi-line commitment design (a contract allocated across budget lines).
+
+Notes for when this is picked up (nothing decided):
+- The same card shape would fit several totals: one contract split across its budget lines (needs the multi-line allocation in `docs/PROJECTS-MULTILINE-COMMITMENT-DESIGN.md`); the whole project's expected cost split by budget line (possible today from the existing per-line figures); and paid versus left to pay.
+- The figures must come from Finance's existing project summary so the parts always add up to the total shown; no second calculation.
+- Questions to ask the owner in one multiple-choice round before building: which total(s) to show first, where on the project page, whether to show paid versus left on each segment, and what to do with unfiled money ("No budget line") in the bar.
+- Needs the usual checks: desktop and 375 px, dark theme, colours that are readable without relying on colour alone (the legend carries the names and numbers).
+
+## STATUS 2026-11-05: PROJECTS P4A (MULTI-LINE COMMITMENTS) BUILT, NOT COMMITTED, NOT PUSHED. Waiting for the owner's review. P4B NOT started.
+
+Full report: `docs/PROJECTS-P4A-REPORT-2026-11-05.md`. **1,300 tests pass** (was 1,254; 46 new in `src/modules/projects/p4a.test.ts`), type check and build clean, no schema, backup or sync change. **Final browser verification done (report section 11): P3 deployment succeeded; three wording/navigation defects fixed, no calculation defect; waiting for the owner's final approval.** The owner answered the four design questions with the recommended options (below). Built: an optional `allocations` list on a commitment, per-line agreed/paid/left (signed) in Finance with a reconciling "No budget line" row, split editor with "Left to allocate", suggested change-order split, breakdown on the contract card, "Which line is this for?" on payments, four new Needs-attention warnings, removal and below-zero guards. **Judgment calls to review:** (1) a change order without a split on a split agreement goes to "No budget line" with a warning; (2) a payment with no line on a split agreement is unassigned, not on the home line; (3) the one-click "assign existing payments in proportion" is NOT built (it would rewrite transactions into splits), each unassigned payment is fixed by opening it; plus six smaller ones in the report. **NOT built:** P4B; the total-cost visualization card; the pre-select-most-left helper. **Not checked in a browser:** the payment line box, the Budget-by-line table with payments, editing an existing split. Deployment of P3 not confirmed from here: check the Actions tab.
+
+### P4A design review (earlier today; the owner's answers recorded)
+
+P3 is committed (`50afaa4`) and level with `origin/main`; the green deployment run was not checked (no GitHub tool here), so please look at the Actions tab. Read `docs/PROJECTS-MULTILINE-COMMITMENT-DESIGN.md` against the code. The design is consistent with the code and covers: several lines per agreement summing exactly to the amount (3.2), change orders with their own lists incl. negative (3.3), single-line contracts read as one implicit entry (3.6), overpayment shown as a signed per-line "left" (3.5), a removed line falling into "No budget line" (3.2). Open items:
+1. Payments on a split contract: must each name a line? (design Q1)
+2. Change orders on a split contract: suggested split or empty? (design Q2)
+3. Existing payments when an old contract is split: leave, or auto-assign? (design Q3)
+4. NOT covered by the design: may allocations be edited after payments exist?
+5. Gap found: 3.3 says a change order with no list goes to "No budget line", but 3.6 says no list means "home line". Recommended: under a split agreement, no list means "No budget line" with a warning.
+6. Gap found: today a payment with no line falls back to the contract's home line. On a split contract that must not happen (it would misplace the money); it should show as "Not assigned". This changes the display only when the owner chooses to split a contract.
+7. Design Q4 (helpers): recommended both "split evenly" and "in proportion to planned amounts".
+8. The total-cost visualization card (P4 INPUT above) is not part of the P4A prompt; to be confirmed whether it is in or out.
+
 ## STATUS 2026-11-05: PROJECTS P3 (TASKS, MILESTONES, CALENDAR AND TODAY) BUILT, NOT COMMITTED, NOT PUSHED. Waiting for the owner's review. P4 is NOT started.
 
 Full report: `docs/PROJECTS-P3-REPORT-2026-11-05.md`. Design review (read-only, nothing built): `docs/PROJECTS-MULTILINE-COMMITMENT-DESIGN.md`. **1,254 tests pass** (was 1,206; 48 new in `src/modules/projects/p3.test.ts`), type check and production build clean. **No database, backup or sync change** (schema still 15).

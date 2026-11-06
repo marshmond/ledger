@@ -5,7 +5,7 @@ import { formatCents } from '../../lib/money';
 import type { ProjectPiece } from '../../lib/txnProject';
 import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
-import { COMMITMENT_LABEL, creditChangeOrderDraft, type CommitmentRecord, type CommitmentStatus } from './commitmentModel';
+import { activeSplit, COMMITMENT_LABEL, creditChangeOrderDraft, type CommitmentRecord, type CommitmentStatus } from './commitmentModel';
 import type { CommitmentDraft } from './CommitmentForm';
 import { removeCommitment, setCommitmentStatus } from './data';
 import type { ContractGroups, ContractRow } from './financialView';
@@ -31,7 +31,8 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
   const vendorName = (id: number | null) => (id === null ? '' : contacts.find((c) => c.id === id)?.name ?? '');
   const lineName = (id: number | null) => (id === null ? '' : lines.find((l) => l.id === id)?.data.name ?? '');
 
-  const shown = (rows: ContractRow[]) => (focusLine === undefined ? rows : rows.filter((r) => r.root.data.budgetLineId === focusLine));
+  // A split agreement shows under every line it touches; an unsplit one under its home line.
+  const shown = (rows: ContractRow[]) => (focusLine === undefined ? rows : rows.filter((r) => (r.money?.split ? r.money.split.lines.some((l) => l.lineId === focusLine) : r.root.data.budgetLineId === focusLine)));
   const accepted = shown(groups.accepted), pending = shown(groups.pending), closed = shown(groups.closed);
   const total = groups.accepted.length + groups.pending.length + groups.closed.length;
 
@@ -41,7 +42,36 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
     if (confirm(`Remove "${c.data.title}"? If anything is paid on it, cancel it instead.`)) act(() => removeCommitment(c.id), 'Removed');
   };
 
-  const meta = (c: CommitmentRecord) => [vendorName(c.data.vendorContactId), lineName(c.data.budgetLineId)].filter(Boolean).join(' · ');
+  const meta = (c: CommitmentRecord, row?: ContractRow) => [vendorName(c.data.vendorContactId), row?.money?.split ? `Split across ${row.money.split.lines.filter((l) => l.lineId !== null).length || 'no'} line${row.money.split.lines.filter((l) => l.lineId !== null).length === 1 ? '' : 's'}` : lineName(c.data.budgetLineId)].filter(Boolean).join(' · ');
+  const splitName = (id: number | null) => (id === null ? 'No budget line' : lineName(id) || 'A removed line');
+
+  /** How a split agreement divides over the budget lines. One agreement, one payment total; this only shows where the money sits. */
+  function splitTable(row: ContractRow) {
+    const sp = row.money?.split;
+    if (!sp) return null;
+    const tot = sp.lines.reduce((t, l) => ({ a: t.a + l.agreedCents, p: t.p + l.paidCents, l: t.l + l.leftCents }), { a: 0, p: 0, l: 0 });
+    return (
+      <details className="pj-split-view" open={sp.unassignedPieces > 0}>
+        <summary>Split across budget lines ({sp.lines.length})</summary>
+        <table className="pj-table pj-split-table">
+          <thead><tr><th>Line</th><th className="num">Agreed</th><th className="num">Paid</th><th className="num">Left</th></tr></thead>
+          <tbody>
+            {sp.lines.map((l) => (
+              <tr key={l.lineId ?? 'none'}>
+                <th scope="row" data-label="Line">{l.lineId === null && l.agreedCents === 0 ? 'Paid, line not chosen' : splitName(l.lineId)}</th>
+                <td className="num" data-label="Agreed">{formatCents(l.agreedCents)}</td>
+                <td className="num" data-label="Paid">{formatCents(l.paidCents)}</td>
+                <td className={`num ${l.leftCents < 0 ? 'neg' : ''}`} data-label="Left">{l.lineId === null && l.agreedCents === 0 ? 'balances the lines' : l.leftCents < 0 ? `${formatCents(-l.leftCents)} paid beyond its share` : formatCents(l.leftCents)}</td>
+              </tr>
+            ))}
+            <tr className="pj-total"><th scope="row" data-label="Line">Together</th><td className="num" data-label="Agreed">{formatCents(tot.a)}</td><td className="num" data-label="Paid">{formatCents(tot.p)}</td><td className="num" data-label="Left">{formatCents(tot.l)}</td></tr>
+          </tbody>
+        </table>
+        {sp.unassignedPieces > 0 && <p className="pj-flag" role="status">{formatCents(sp.unassignedPaidCents)} paid in {sp.unassignedPieces} payment{sp.unassignedPieces === 1 ? '' : 's'} is not assigned to a line. Open the transaction and choose the line. Until then the lines above show {formatCents(sp.unassignedPaidCents)} too much left to pay; the "Together" row is the agreement's true total.</p>}
+        <p className="muted small">Each payment counts once toward the agreement, however many lines it is split over.</p>
+      </details>
+    );
+  }
   const paymentsFor = (row: ContractRow) => {
     const ids = new Set([row.root.id, ...row.changes.map((c) => c.id)]);
     return pieces.filter((p) => p.commitmentId !== undefined && ids.has(p.commitmentId));
@@ -52,12 +82,13 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
     if (!list.length) return null;
     return (
       <details className="pj-pay">
-        <summary>{list.length} transaction{list.length === 1 ? '' : 's'} on this</summary>
+        <summary>{(() => { const n = new Set(list.map((p) => p.txnId)).size; return `${n} transaction${n === 1 ? '' : 's'} on this${list.length > n ? ` (${list.length} parts, each counted once)` : ''}`; })()}</summary>
         <ul className="plain">
           {list.map((p, i) => (
             <li key={`${p.txnId}-${i}`} className="small">
               {p.date ? dayLabel(p.date, { year: true }) : ''} · {p.payee || '(no payee)'} ·{' '}
               <span className={p.amountCents > 0 ? 'pos' : ''}>{p.amountCents > 0 ? `${formatCents(p.amountCents)} back${p.effect ? ` (${p.effect})` : ''}` : `paid ${formatCents(-p.amountCents)}`}</span>
+              {row.money?.split && <span className="muted"> · {p.budgetLineId !== undefined ? `for ${splitName(p.budgetLineId)}` : 'not assigned to a line'}</span>}
             </li>
           ))}
         </ul>
@@ -73,7 +104,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
           <li key={c.id} className="pj-change">
             <span className="pj-change-main">
               <strong>{c.data.title}</strong>
-              <span className="muted small">{COMMITMENT_LABEL[c.data.status]}{row.root.data.status !== 'accepted' ? ' · not counted while the agreement is not accepted' : ''}</span>
+              <span className="muted small">{COMMITMENT_LABEL[c.data.status]}{row.root.data.status !== 'accepted' ? ' · not counted while the agreement is not accepted' : ''}{activeSplit(c) ? ` · ${activeSplit(c)!.map((e) => `${splitName(e.budgetLineId)} ${signed(e.amountCents)}`).join(', ')}` : ''}</span>
             </span>
             <span className={`pj-amount ${c.data.amountCents < 0 ? 'neg' : ''}`}>{signed(c.data.amountCents)}</span>
             <span className="pj-line-actions">
@@ -95,7 +126,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
     return (
       <li key={c.id} className="pj-contract">
         <div className="pj-contract-head">
-          <span className="pj-contract-title"><strong>{c.data.title}</strong>{meta(c) && <span className="muted small">{meta(c)}</span>}</span>
+          <span className="pj-contract-title"><strong>{c.data.title}</strong>{meta(c, row) && <span className="muted small">{meta(c, row)}</span>}</span>
           <span className="pj-status s-active">Accepted{c.data.acceptedDate ? ` ${dayLabel(c.data.acceptedDate, { year: true })}` : ''}</span>
         </div>
         {m && (
@@ -116,6 +147,8 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
             </button>
           </p>
         )}
+        {splitTable(row)}
+        {m?.split && row.changes.some((x) => x.data.status === 'accepted' && !activeSplit(x)) && <p className="pj-flag" role="status">A change order on this agreement is not split across lines, so its amount shows under "No budget line". Edit it to split it.</p>}
         {changes(row)}
         {payments(row)}
         {c.data.notes && <p className="pj-notes small">{c.data.notes}</p>}
@@ -135,7 +168,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
     return (
       <li key={c.id} className="pj-contract">
         <div className="pj-contract-head">
-          <span className="pj-contract-title"><strong>{c.data.title}</strong>{meta(c) && <span className="muted small">{meta(c)}</span>}</span>
+          <span className="pj-contract-title"><strong>{c.data.title}</strong>{meta(c, row) && <span className="muted small">{meta(c, row)}</span>}</span>
           <span className={`pj-status ${status === 'cancelled' ? 's-cancelled' : ''}`}>{COMMITMENT_LABEL[status]}</span>
         </div>
         <p className="pj-amount">{formatCents(c.data.amountCents)} {status === 'quoted' && <span className="muted small">· not counted until you accept it</span>}</p>

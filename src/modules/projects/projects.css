@@ -117,6 +117,23 @@
 }
 .pj-table th { background: transparent; }
 
+/* ---- P4A: one agreement split across budget lines ---- */
+.pj-split { border: 1px solid var(--line); border-radius: var(--r-md, 8px); padding: var(--sp-2) var(--sp-3); margin: 0; min-width: 0; }
+.pj-split legend { font-size: var(--fs-xs); color: var(--muted); padding: 0 var(--sp-1); }
+.pj-parts { margin: 0 0 var(--sp-2); padding: 0; }
+.pj-part { display: grid; grid-template-columns: minmax(0, 1fr) 7.5em auto; gap: var(--sp-2); align-items: center; padding: var(--sp-1) 0; }
+.pj-part select, .pj-part input { min-width: 0; width: 100%; }
+.pj-part input { text-align: right; font-variant-numeric: tabular-nums; }
+.pj-part-tools { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.pj-left.ok { color: var(--pos, #1a7f37); }
+.pj-left.neg { color: var(--neg); }
+.pj-split-view summary { cursor: pointer; margin: var(--sp-2) 0; color: var(--muted); }
+.pj-split-table .pj-total th, .pj-split-table .pj-total td { font-weight: 700; border-top: 2px solid var(--line-strong); }
+@media (max-width: 640px) {
+  .pj-part { grid-template-columns: minmax(0, 1fr) 6.5em; }
+  .pj-part .link { grid-column: 1 / -1; justify-self: end; }
+}
+
 /* ---- P3: tasks, milestones and events on a project ---- */
 .pj-note { margin: 0 0 var(--sp-3); }
 .pj-progress { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }

@@ -8,7 +8,8 @@
  * the transactions.
  */
 import type { ModuleRecord } from '../../core/entities';
-import { parseAmountToCents } from '../../lib/money';
+import { formatCents, parseAmountToCents } from '../../lib/money';
+import { allocationsAddUp, readAllocations, type AllocationEntry } from '../../lib/txnProject';
 import { extras, finite, isDate, str } from './model';
 
 export type CommitmentStatus = 'quoted' | 'accepted' | 'declined' | 'cancelled';
@@ -30,6 +31,12 @@ export interface CommitmentData {
   /** Local date 'YYYY-MM-DD' it was accepted. */
   acceptedDate: string | null;
   notes: string;
+  /**
+   * Optional split of `amountCents` across budget lines (whole cents, adding up to the amount exactly). Absent = the whole amount sits on
+   * `budgetLineId`, as before. Only meaningful on an agreement; a change order of a split agreement carries its own list. Finance reads
+   * it by this name (src/lib/txnProject.ts); a list that does not add up is ignored there and flagged.
+   */
+  allocations?: AllocationEntry[];
 }
 export interface CommitmentRecord {
   id: number;
@@ -38,7 +45,7 @@ export interface CommitmentRecord {
   data: CommitmentData;
 }
 
-const KEYS = new Set(['projectId', 'budgetLineId', 'vendorContactId', 'title', 'status', 'amountCents', 'parentId', 'acceptedDate', 'notes']);
+const KEYS = new Set(['projectId', 'budgetLineId', 'vendorContactId', 'title', 'status', 'amountCents', 'parentId', 'acceptedDate', 'notes', 'allocations']);
 
 /** Reads a stored record defensively. Fields this code does not know are carried through untouched. */
 export function asCommitment(r: ModuleRecord): CommitmentRecord {
@@ -58,8 +65,95 @@ export function asCommitment(r: ModuleRecord): CommitmentRecord {
       parentId: finite(d.parentId) ? d.parentId : null,
       acceptedDate: isDate(d.acceptedDate) ? d.acceptedDate : null,
       notes: str(d.notes),
+      ...(readAllocations(d.allocations) ? { allocations: readAllocations(d.allocations) } : {}),
     },
   };
+}
+
+// ---- splitting a commitment across budget lines ----
+
+/** The stored split if it adds up to the commitment's amount, else undefined (then the commitment is read as unsplit). */
+export const activeSplit = (c: CommitmentRecord): AllocationEntry[] | undefined => (allocationsAddUp(c.data.allocations, c.data.amountCents) ? c.data.allocations : undefined);
+
+/** What each line carries from one agreement: its own list plus the lists of its accepted change orders (an unsplit change order sits on no line). */
+export function committedByLine(root: CommitmentRecord, all: CommitmentRecord[], replace?: { id: number; data: CommitmentData }): Map<number | null, number> {
+  const out = new Map<number | null, number>();
+  const bump = (k: number | null, v: number) => out.set(k, (out.get(k) ?? 0) + v);
+  const view = (c: CommitmentRecord): CommitmentRecord => (replace && replace.id === c.id ? { ...c, data: replace.data } : c);
+  const members = [view(root), ...changeOrdersOf(root, all).map(view)].filter((c) => c.data.status === 'accepted');
+  for (const c of members) {
+    const list = activeSplit(c);
+    if (list) for (const e of list) bump(e.budgetLineId, e.amountCents);
+    else bump(null, c.data.amountCents);
+  }
+  return out;
+}
+
+/** Whole cents, any odd cent to the first part, so two devices always agree. */
+export function splitEvenly(totalCents: number, parts: number): number[] {
+  if (parts <= 0) return [];
+  const base = Math.trunc(totalCents / parts);
+  const out = Array<number>(parts).fill(base);
+  out[0] += totalCents - base * parts;
+  return out;
+}
+/** Splits `totalCents` in proportion to `weights` (non-negative), whole cents, the leftover cents going to the earliest parts. Falls back to even when all weights are zero. */
+export function splitProportionally(totalCents: number, weights: number[]): number[] {
+  const sum = weights.reduce((s, w) => s + w, 0);
+  if (weights.length === 0) return [];
+  if (sum <= 0) return splitEvenly(totalCents, weights.length);
+  const sign = totalCents < 0 ? -1 : 1;
+  const abs = Math.abs(totalCents);
+  const out = weights.map((w) => Math.floor((abs * w) / sum));
+  let rest = abs - out.reduce((s, v) => s + v, 0);
+  for (let i = 0; rest > 0; i = (i + 1) % out.length) { if (weights[i] > 0) { out[i]++; rest--; } }
+  return out.map((v) => sign * v);
+}
+
+/** The suggested split of a change order: the agreement's own proportions. The owner has to look at it and confirm. */
+export function suggestChangeSplit(root: CommitmentRecord, changeCents: number): AllocationEntry[] | undefined {
+  const list = activeSplit(root);
+  if (!list || changeCents === 0) return undefined;
+  const parts = splitProportionally(changeCents, list.map((e) => Math.max(0, e.amountCents)));
+  return list.map((e, i) => ({ budgetLineId: e.budgetLineId, amountCents: parts[i] })).filter((e) => e.amountCents !== 0);
+}
+
+/**
+ * The plain-words problem with a split, or null. `amountCents` is the commitment's own signed amount. Rules: at least one part; no part
+ * of zero; no line twice; every line belongs to this project; the parts add up to the amount to the cent; an agreement's parts are all
+ * positive; and across the agreement and its accepted change orders no line ends up below zero.
+ */
+export function validateAllocations(
+  list: AllocationEntry[], amountCents: number,
+  ctx: { lineIds: number[]; lineName?: (id: number) => string; all: CommitmentRecord[]; self?: CommitmentRecord; parentId: number | null; status: CommitmentStatus },
+): string | null {
+  const name = (id: number | null) => (id === null ? 'No budget line' : ctx.lineName?.(id) ?? 'a budget line');
+  if (list.length === 0) return 'Add at least one part to the split, or remove the split.';
+  const seen = new Set<number | null>();
+  for (const e of list) {
+    if (!Number.isSafeInteger(e.amountCents)) return 'Every part of the split needs an amount.';
+    if (e.amountCents === 0) return `The part for ${name(e.budgetLineId)} is zero. Remove it or give it an amount.`;
+    if (e.budgetLineId !== null && !ctx.lineIds.includes(e.budgetLineId)) return 'A line in the split is not part of this project.';
+    if (seen.has(e.budgetLineId)) return `${name(e.budgetLineId)} appears twice in the split. Put its parts together.`;
+    seen.add(e.budgetLineId);
+    if (ctx.parentId === null && e.amountCents < 0) return `A part of an agreement cannot be negative (${name(e.budgetLineId)}). Use a change order to take cost off.`;
+  }
+  const sum = list.reduce((s, e) => s + e.amountCents, 0);
+  if (sum !== amountCents) {
+    const diff = amountCents - sum;
+    return `The parts add up to ${formatCents(sum)}, which is ${formatCents(Math.abs(diff))} ${diff > 0 ? 'less' : 'more'} than the ${formatCents(amountCents)} amount. Left to allocate: ${formatCents(diff)}.`;
+  }
+  // Across the agreement and its accepted change orders, no line may end up below zero.
+  const stub: CommitmentRecord = ctx.self ?? { id: -1, createdAt: 0, updatedAt: 0, data: { projectId: -1, budgetLineId: null, vendorContactId: null, title: '', status: ctx.status, amountCents, parentId: ctx.parentId, acceptedDate: null, notes: '' } };
+  const me: CommitmentRecord = { ...stub, data: { ...stub.data, status: ctx.status, amountCents, parentId: ctx.parentId, allocations: list } };
+  const others = ctx.all.filter((c) => c.id !== me.id);
+  const root = ctx.parentId === null ? me : others.find((c) => c.id === ctx.parentId);
+  if (root && root.data.status === 'accepted') {
+    for (const [k, v] of committedByLine(root, [...others, me])) {
+      if (v < 0) return `${name(k)} would end up with less than zero committed on this agreement (${formatCents(v)}). Adjust the split.`;
+    }
+  }
+  return null;
 }
 
 export const isChangeOrder = (c: CommitmentRecord) => c.data.parentId !== null;

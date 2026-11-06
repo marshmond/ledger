@@ -11,9 +11,10 @@ import {
   asBudgetLine, asProject, MODULE, sortLines, type BudgetLineRecord, type ProjectData, type ProjectRecord, type ProjectStatus,
 } from './model';
 import {
-  asCommitment, checkStatusChange, changeOrdersOf, validateCommitment, type CommitmentData, type CommitmentRecord, type CommitmentStatus,
+  asCommitment, checkStatusChange, changeOrdersOf, validateAllocations, validateCommitment, type CommitmentData, type CommitmentRecord, type CommitmentStatus,
 } from './commitmentModel';
 import { todayISO } from '../../lib/money';
+import type { AllocationEntry } from '../../lib/txnProject';
 
 const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
 
@@ -125,7 +126,7 @@ export async function removeLine(id: number, d: FinanceDB = db): Promise<void> {
   await d.transaction('rw', d.moduleRecords, d.txns, async () => {
     const l = await getLine(id, d);
     if (!l) return;
-    const commitments = (await loadCommitments(l.data.projectId, d)).filter((c) => c.data.budgetLineId === id).length;
+    const commitments = (await loadCommitments(l.data.projectId, d)).filter((c) => c.data.budgetLineId === id || (c.data.allocations ?? []).some((e) => e.budgetLineId === id)).length;
     if (commitments) throw new Error(`${commitments} commitment${commitments === 1 ? ' is' : 's are'} filed under this line, so it cannot be removed. Move them to another line first.`);
     const used = await d.txns.filter((t) => t.project?.budgetLineId === id || (t.splits ?? []).some((s) => s.project?.budgetLineId === id)).count();
     if (used) throw new Error(`${used} transaction${used === 1 ? ' is' : 's are'} tagged to this line, so it cannot be removed. Untag them first.`);
@@ -176,6 +177,8 @@ export interface CommitmentFields {
   vendorContactId: number | null;
   acceptedDate: string | null;
   notes: string;
+  /** The split across budget lines. undefined = leave what is stored; null = remove the split; a list = replace it (must add up to the amount). */
+  allocations?: AllocationEntry[] | null;
 }
 
 const amountText = (cents: number) => (cents / 100).toFixed(2);
@@ -189,6 +192,13 @@ async function checkFields(projectId: number, f: CommitmentFields, editingId: nu
     { lineIds: lines.map((l) => l.id), all, editingId },
   );
   if (problem) throw new Error(problem);
+  if (f.allocations) {
+    const problem2 = validateAllocations(f.allocations, Math.round(f.amountCents), {
+      lineIds: lines.map((l) => l.id), lineName: (id) => lines.find((l) => l.id === id)?.data.name ?? 'a budget line', all,
+      self: editingId === undefined ? undefined : all.find((c) => c.id === editingId), parentId: f.parentId, status: f.status,
+    });
+    if (problem2) throw new Error(problem2);
+  }
   if (f.vendorContactId !== null) {
     const c = await d.contacts.get(f.vendorContactId);
     if (!c || !isLive(c)) throw new Error('That vendor is not in your contacts any more.');
@@ -212,6 +222,7 @@ export async function createCommitment(projectId: number, f: CommitmentFields, d
       projectId, budgetLineId: f.budgetLineId, vendorContactId: f.vendorContactId, title: f.title.trim(), status: f.status,
       amountCents: Math.round(f.amountCents), parentId: f.parentId, notes: f.notes,
       acceptedDate: f.status === 'accepted' ? f.acceptedDate || todayISO() : null,
+      ...(f.allocations ? { allocations: f.allocations.map((e) => ({ budgetLineId: e.budgetLineId, amountCents: e.amountCents })) } : {}),
     };
     const id = await rows(d).put({ module: MODULE, kind: 'commitment', data: { ...data } });
     return { id, vendorAdded: await ensureProjectVendor(projectId, f.vendorContactId, d) };
@@ -229,6 +240,8 @@ export async function saveCommitment(id: number, f: CommitmentFields, d: Finance
       amountCents: Math.round(f.amountCents), parentId: f.parentId, notes: f.notes,
       acceptedDate: f.status === 'accepted' ? f.acceptedDate || c.data.acceptedDate || todayISO() : c.data.acceptedDate,
     };
+    if (f.allocations === null) delete data.allocations;
+    else if (f.allocations) data.allocations = f.allocations.map((e) => ({ budgetLineId: e.budgetLineId, amountCents: e.amountCents }));
     await rows(d).put({ id, module: MODULE, kind: 'commitment', data: { ...data } });
     return { vendorAdded: await ensureProjectVendor(c.data.projectId, f.vendorContactId, d) };
   });
@@ -244,6 +257,12 @@ export async function setCommitmentStatus(id: number, status: CommitmentStatus, 
     if (!c) throw new Error('That commitment no longer exists.');
     const problem = checkStatusChange(c, status, await loadCommitments(c.data.projectId, d));
     if (problem) throw new Error(problem);
+    if (status === 'accepted' && c.data.allocations) {
+      const all = await loadCommitments(c.data.projectId, d);
+      const lines = await loadBudgetLines(c.data.projectId, d);
+      const p2 = validateAllocations(c.data.allocations, c.data.amountCents, { lineIds: lines.map((l) => l.id), lineName: (lid) => lines.find((l) => l.id === lid)?.data.name ?? 'a budget line', all, self: c, parentId: c.data.parentId, status });
+      if (p2) throw new Error(p2);
+    }
     await rows(d).put({ id, module: MODULE, kind: 'commitment', data: { ...c.data, status, acceptedDate: status === 'accepted' ? c.data.acceptedDate ?? todayISO() : c.data.acceptedDate } });
   });
 }

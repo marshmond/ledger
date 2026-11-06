@@ -15,6 +15,8 @@ export interface TagState {
   effect: '' | 'reversal' | 'credit';
   /** For money coming back on a project that has contracts: a general refund for the project, or about a contract. */
   refundKind: '' | 'project' | 'contract';
+  /** On a split agreement: the owner chose "Not sure yet" instead of a budget line. Nothing extra is stored; the payment shows as unassigned. */
+  lineUnsure?: boolean;
 }
 
 export const EMPTY_TAG: TagState = { projectId: '', lineId: '', commitmentId: '', effect: '', refundKind: '' };
@@ -38,8 +40,12 @@ export const pickableContracts = (p: ProjectChoice | undefined, keep: string) =>
 /** The budget line a contract files its spending under, if it has one. */
 export function impliedLine(p: ProjectChoice | undefined, commitmentId: string): { id: number; name: string } | undefined {
   const c = p?.contracts.find((x) => String(x.id) === commitmentId);
-  return c && c.lineId !== null ? p?.lines.find((l) => l.id === c.lineId) : undefined;
+  return c && !c.split && c.lineId !== null ? p?.lines.find((l) => l.id === c.lineId) : undefined;
 }
+
+/** True when the chosen contract is split across budget lines (so a payment on it has to name a line, or say it is not sure yet). */
+export const splitContract = (p: ProjectChoice | undefined, commitmentId: string): boolean =>
+  !!commitmentId && !!p?.contracts.find((x) => String(x.id) === commitmentId)?.split;
 
 /** True when money coming back on this project could belong to a contract, so the form has to ask. */
 export const asksAboutRefund = (p: ProjectChoice | undefined, tag: TagState) =>
@@ -74,6 +80,9 @@ export function buildRef(tag: TagState, choices: ProjectChoice[], moneyIn: boole
   // A contract that has a budget line files the spending there by default, so that line is not stored (and follows the contract if it is
   // moved). A different line CAN be chosen, and is then stored: a general contractor's payment can be tile, plumbing and electrical
   // while all of it counts against the one contract. Finance uses the stored line first, else the contract's.
+  if (wantsContract && splitContract(project, tag.commitmentId) && !tag.lineId && !tag.lineUnsure) {
+    return { error: 'This agreement is split across budget lines. Which line is this payment for? Choose "Not sure yet" if you do not know.' };
+  }
   const implied = wantsContract ? impliedLine(project, tag.commitmentId) : undefined;
   if (tag.lineId) {
     const l = project.lines.find((x) => String(x.id) === tag.lineId);

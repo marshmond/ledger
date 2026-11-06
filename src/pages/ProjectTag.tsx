@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { loadProjectChoices, type ProjectChoice } from '../lib/txnProject';
-import { asksAboutRefund, impliedLine, pickableContracts, type TagState } from '../lib/txnProjectTag';
+import { asksAboutRefund, impliedLine, pickableContracts, splitContract, type TagState } from '../lib/txnProjectTag';
 
 /** The projects (with lines and contracts) a form can offer. Refreshes by itself when a project changes. */
 export const useProjectChoices = (): ProjectChoice[] => useLiveQuery(() => loadProjectChoices(db), []) ?? [];
@@ -28,6 +28,7 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
   const offered = choices.filter((p) => !p.archived || String(p.id) === value.projectId);
   const contracts = pickableContracts(project, value.commitmentId);
   const implied = impliedLine(project, value.commitmentId);
+  const isSplit = splitContract(project, value.commitmentId) && !(moneyIn && !compact && asksAboutRefund(project, value) && value.refundKind !== 'contract');
   const asks = !compact && moneyIn && asksAboutRefund(project, value);
   const showContract = !!project && contracts.length > 0 && !(asks && value.refundKind !== 'contract');
   const missing = !!value.projectId && !project;
@@ -58,7 +59,7 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
           <label className="f">Contract
             <select
               value={value.commitmentId}
-              onChange={(e) => set({ commitmentId: e.target.value, effect: e.target.value ? value.effect : '', lineId: impliedLine(project, e.target.value)?.id === Number(value.lineId) ? '' : value.lineId })}
+              onChange={(e) => set({ commitmentId: e.target.value, effect: e.target.value ? value.effect : '', lineId: impliedLine(project, e.target.value)?.id === Number(value.lineId) ? '' : value.lineId, lineUnsure: false })}
             >
               <option value="">{asks ? 'Choose the contract…' : 'No contract'}</option>
               {contracts.map((c) => <option key={c.id} value={c.id}>{c.title}{c.status !== 'accepted' ? ` (${c.status})` : ''}</option>)}
@@ -66,7 +67,21 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
           </label>
         )}
 
-        {project && project.lines.length > 0 && (
+        {project && isSplit && (
+          <label className="f">Which line is this for?
+            <select
+              value={value.lineUnsure ? 'unsure' : value.lineId}
+              onChange={(e) => (e.target.value === 'unsure' ? set({ lineId: '', lineUnsure: true }) : set({ lineId: e.target.value, lineUnsure: false }))}
+              aria-describedby={`ptag-split-${label}`}
+            >
+              <option value="">Choose a line…</option>
+              {project.lines.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              <option value="unsure">Not sure yet</option>
+            </select>
+          </label>
+        )}
+
+        {project && !isSplit && project.lines.length > 0 && (
           <label className="f">Budget line
             <select value={value.lineId === String(implied?.id) ? '' : value.lineId} onChange={(e) => set({ lineId: e.target.value })} aria-describedby={implied ? `ptag-implied-${label}` : undefined}>
               <option value="">{implied ? `Same as the contract (${implied.name})` : 'No budget line'}</option>
@@ -75,6 +90,7 @@ export default function ProjectTag({ value, onChange, choices, moneyIn, compact,
           </label>
         )}
       </div>
+      {isSplit && <p className="muted small" id={`ptag-split-${label}`}>This agreement is split across budget lines. It counts as one payment on the agreement; the line says which part of the plan it is for. "Not sure yet" keeps it in "No budget line" until you choose.</p>}
       {implied && <p className="muted small" id={`ptag-implied-${label}`}>The contract is filed under {implied.name}. Pick another line to count this part there instead; it still counts against the contract.</p>}
 
       {project && value.commitmentId && moneyIn && (

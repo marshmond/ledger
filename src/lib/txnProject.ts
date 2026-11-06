@@ -60,7 +60,28 @@ export interface CommitmentInfo {
   amountCents: number;
   /** A change order points at the commitment it changes. */
   parentId: number | null;
+  /** How this commitment's amount is spread over budget lines, when the owner split it. Absent = filed under its home line (P2 behaviour). */
+  allocations?: AllocationEntry[];
 }
+/** One part of a split commitment. `budgetLineId: null` is the explicit "not decided yet" remainder. Whole cents; a change order's entries may be negative. */
+export interface AllocationEntry { budgetLineId: number | null; amountCents: number }
+
+/** Reads a stored split defensively. Anything that is not a non-empty list of whole-cent amounts with a line id or null is ignored as a whole. */
+export function readAllocations(raw: unknown): AllocationEntry[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const out: AllocationEntry[] = [];
+  for (const e of raw) {
+    if (!e || typeof e !== 'object') return undefined;
+    const { budgetLineId, amountCents } = e as Record<string, unknown>;
+    if (typeof amountCents !== 'number' || !Number.isSafeInteger(amountCents)) return undefined;
+    if (budgetLineId !== null && budgetLineId !== undefined && !(typeof budgetLineId === 'number' && Number.isFinite(budgetLineId))) return undefined;
+    out.push({ budgetLineId: (budgetLineId ?? null) as number | null, amountCents });
+  }
+  return out;
+}
+/** True when the parts add up to the whole to the cent. A split that does not is never used. */
+export const allocationsAddUp = (list: AllocationEntry[] | undefined, amountCents: number): list is AllocationEntry[] =>
+  !!list && list.reduce((s, e) => s + e.amountCents, 0) === amountCents;
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const STATUSES: CommitmentStatus[] = ['quoted', 'accepted', 'declined', 'cancelled'];
@@ -78,6 +99,7 @@ export const asCommitment = (r: Row): CommitmentInfo => ({
   status: STATUSES.includes(r.data.status as CommitmentStatus) ? (r.data.status as CommitmentStatus) : 'quoted',
   amountCents: num(r.data.amountCents) ?? 0,
   parentId: num(r.data.parentId),
+  ...(readAllocations(r.data.allocations) ? { allocations: readAllocations(r.data.allocations) } : {}),
 });
 
 // ---- the numbers ----
@@ -114,6 +136,25 @@ export interface ContractSummary {
   creditsCents: number;
   /** Credits received minus the accepted negative change orders. Above zero = the agreed amount has not been lowered enough. */
   creditGapCents: number;
+  /** Present only when the agreement is split across budget lines (and the split adds up). */
+  split?: ContractSplit;
+}
+export interface ContractSplitLine {
+  /** null = no budget line. */
+  lineId: number | null;
+  /** The part of the agreed amount (original + accepted changes) on this line. Zero unless the contract is accepted. */
+  agreedCents: number;
+  /** Paid on this line, net of reversals and credits (not clamped: a line can be paid beyond its share). */
+  paidCents: number;
+  /** Agreed minus paid on this line. Signed: negative = paid beyond its share. Zero unless accepted. */
+  leftCents: number;
+}
+export interface ContractSplit {
+  lines: ContractSplitLine[];
+  /** Net paid on this contract by payments that name no line. */
+  unassignedPaidCents: number;
+  /** How many payment pieces name no line. */
+  unassignedPieces: number;
 }
 export interface ProjectSummary {
   budgetCents: number;
@@ -148,6 +189,14 @@ export interface ProjectSummary {
     unmarkedRefunds: number;
     /** Pieces dated outside the project's dates (count), when dates are given. */
     outsideDates: number;
+    /** Accepted commitments whose stored split does not add up to their amount (the split is ignored). */
+    badSplits: number[];
+    /** Accepted change orders on a split agreement that carry no usable split (their amount sits in "No budget line"). */
+    unsplitChanges: number[];
+    /** Split agreements (original contract ids) with money filed on a budget line that no longer exists. */
+    danglingSplitLines: number[];
+    /** Payment pieces on a split agreement that name no budget line. */
+    unassignedPieces: number;
   };
 }
 
@@ -208,32 +257,93 @@ export function summariseProject(a: {
   const paidByCommitment: Record<number, number> = {};
   for (const c of commitments) paidByCommitment[c.id] = Math.max(0, groups.get(rootOf(c).id)?.paidOut ?? 0);
   const paidOnInactive: number[] = [];
+  // A split agreement: its own list adds up to its amount. Only then are the lists of the agreement and its change orders used.
+  const splitRoots = new Set<number>();
+  const badSplits: number[] = [];
+  for (const c of commitments) {
+    if (rootOf(c).id !== c.id || !c.allocations) continue;
+    if (allocationsAddUp(c.allocations, c.amountCents)) splitRoots.add(c.id);
+    else if (c.status === 'accepted') badSplits.push(c.id);
+  }
+  const splitAgreed = new Map<number, Map<number | null, number>>(); // root id -> line -> agreed
+  const unsplitChanges: number[] = [];
+  const bump = (m: Map<number | null, number>, k: number | null, v: number) => m.set(k, (m.get(k) ?? 0) + v);
   for (const c of commitments) {
     if (c.status === 'quoted') quotedCents += c.amountCents;
-    if (c.status === 'accepted' && rootOf(c).status === 'accepted') { agreedCents += c.amountCents; agg(lineOf(c)).agreed += c.amountCents; }
+    if (c.status === 'accepted' && rootOf(c).status === 'accepted') {
+      agreedCents += c.amountCents;
+      const root = rootOf(c);
+      if (splitRoots.has(root.id)) {
+        const m = splitAgreed.get(root.id) ?? new Map<number | null, number>();
+        splitAgreed.set(root.id, m);
+        if (allocationsAddUp(c.allocations, c.amountCents)) for (const e of c.allocations) { bump(m, e.budgetLineId, e.amountCents); agg(e.budgetLineId).agreed += e.amountCents; }
+        else {
+          bump(m, null, c.amountCents); agg(null).agreed += c.amountCents;
+          if (c.id !== root.id) { unsplitChanges.push(c.id); if (c.allocations) badSplits.push(c.id); }
+        }
+      } else agg(lineOf(c)).agreed += c.amountCents;
+    }
   }
+  // Net paid per line on each split agreement (a payment that names no line goes under null). One payment of several pieces is several pieces here, one payment on the contract.
+  const splitPaid = new Map<number, Map<number | null, number>>();
+  let unassignedPieces = 0;
+  const unassignedByRoot = new Map<number, { cents: number; pieces: number }>();
+  for (const p of pieces) {
+    const c = p.commitmentId !== undefined ? byId.get(p.commitmentId) : undefined;
+    if (!c) continue;
+    const root = rootOf(c);
+    if (!splitRoots.has(root.id)) continue;
+    const m = splitPaid.get(root.id) ?? new Map<number | null, number>();
+    splitPaid.set(root.id, m);
+    bump(m, p.budgetLineId ?? null, -p.amountCents);
+    if (p.budgetLineId === undefined) {
+      unassignedPieces++;
+      const u = unassignedByRoot.get(root.id) ?? { cents: 0, pieces: 0 };
+      u.cents += -p.amountCents; u.pieces++;
+      unassignedByRoot.set(root.id, u);
+    }
+  }
+  const knownLineIds = new Set(lines.map((l) => l.id));
+  const danglingSplitLines: number[] = [];
   const contracts: ContractSummary[] = [];
   for (const g of groups.values()) {
     if (g.paidOut < 0) reversalsExceedPayments.push(g.root.id);
     const accepted = g.root.status === 'accepted';
     const paidNet = Math.max(0, g.paidOut);
     const left = accepted ? Math.max(0, g.agreed - paidNet) : 0;
+    let split: ContractSplit | undefined;
+    if (splitRoots.has(g.root.id)) {
+      const ag = accepted ? splitAgreed.get(g.root.id) ?? new Map<number | null, number>() : new Map<number | null, number>();
+      const pd = splitPaid.get(g.root.id) ?? new Map<number | null, number>();
+      const keys = [...new Set([...ag.keys(), ...pd.keys()])];
+      split = {
+        lines: keys.map((k) => ({ lineId: k, agreedCents: ag.get(k) ?? 0, paidCents: pd.get(k) ?? 0, leftCents: accepted ? (ag.get(k) ?? 0) - (pd.get(k) ?? 0) : 0 })),
+        unassignedPaidCents: unassignedByRoot.get(g.root.id)?.cents ?? 0,
+        unassignedPieces: unassignedByRoot.get(g.root.id)?.pieces ?? 0,
+      };
+      if (accepted) {
+        for (const l of split.lines) agg(l.lineId).left += l.leftCents;
+        if (split.lines.some((l) => l.lineId !== null && !knownLineIds.has(l.lineId) && (l.agreedCents !== 0 || l.paidCents !== 0))) danglingSplitLines.push(g.root.id);
+      }
+    }
     contracts.push({
       rootId: g.root.id, status: g.root.status, originalCents: g.root.amountCents,
       changesCents: accepted ? g.changes : 0, agreedCents: accepted ? g.agreed : 0,
       paidCents: paidNet, leftCents: left, overpaidCents: accepted ? Math.max(0, paidNet - g.agreed) : 0,
       creditsCents: g.credits, creditGapCents: accepted ? Math.max(0, g.credits - g.reduced) : 0,
+      ...(split ? { split } : {}),
     });
     if (accepted) {
       leftToPayCents += left;
-      agg(g.root.budgetLineId).left += left;
+      if (!split) agg(g.root.budgetLineId).left += left;
       if (paidNet > g.agreed) overpaid.push(g.root.id);
       if (g.credits > g.reduced) creditsNotReflected.push(g.root.id);
     } else if (g.paidOut > 0) paidOnInactive.push(g.root.id);
   }
   for (const p of pieces) {
     const c = p.commitmentId !== undefined ? byId.get(p.commitmentId) : undefined;
-    agg(p.budgetLineId ?? (c ? lineOf(c) : null)).paid += -p.amountCents;
+    // On a split agreement the home line no longer stands in for a payment that names no line: it stays unassigned.
+    agg(p.budgetLineId ?? (c && !splitRoots.has(rootOf(c).id) ? lineOf(c) : null)).paid += -p.amountCents;
   }
 
   const plannedTotalCents = lines.reduce((s, l) => s + l.plannedCents, 0);
@@ -244,13 +354,15 @@ export function summariseProject(a: {
     const v = lineAgg.get(lineId) ?? { agreed: 0, paid: 0, left: 0 };
     return { lineId, name, plannedCents, agreedCents: v.agreed, paidCents: v.paid, leftToPayCents: v.left, expectedCents: v.paid + v.left, varianceCents: plannedCents - (v.paid + v.left) };
   };
-  const known = new Set(lines.map((l) => l.id));
+  const known = knownLineIds;
   const lineRows = lines.map((l) => mk(l.id, l.name, l.plannedCents));
-  // Anything that points at a line that no longer exists, or at none, goes in one row.
+  // Anything that points at a line that no longer exists, or at none, goes in one row. That row is defined as the project totals minus the
+  // named lines, in every column, so the rows always add up to the totals. It is non-zero only for money with no line, money on a line
+  // that no longer exists, and a contract paid beyond its agreed amount (where the project total stops "left" at zero).
   const loose = [...lineAgg.keys()].filter((k) => k === null || !known.has(k));
-  if (loose.length) {
-    const sum = loose.reduce((s, k) => { const v = lineAgg.get(k)!; return { agreed: s.agreed + v.agreed, paid: s.paid + v.paid, left: s.left + v.left }; }, { agreed: 0, paid: 0, left: 0 });
-    lineRows.push({ lineId: null, name: 'No budget line', plannedCents: 0, agreedCents: sum.agreed, paidCents: sum.paid, leftToPayCents: sum.left, expectedCents: sum.paid + sum.left, varianceCents: 0 - (sum.paid + sum.left) });
+  const rest = lineRows.reduce((s, r) => ({ agreed: s.agreed - r.agreedCents, paid: s.paid - r.paidCents, left: s.left - r.leftToPayCents }), { agreed: agreedCents, paid: paidCents, left: leftToPayCents });
+  if (loose.length || rest.agreed !== 0 || rest.paid !== 0 || rest.left !== 0) {
+    lineRows.push({ lineId: null, name: 'No budget line', plannedCents: 0, agreedCents: rest.agreed, paidCents: rest.paid, leftToPayCents: rest.left, expectedCents: rest.paid + rest.left, varianceCents: 0 - (rest.paid + rest.left) });
   }
 
   const { startDate, targetDate } = project;
@@ -263,7 +375,7 @@ export function summariseProject(a: {
     lines: lineRows,
     contracts,
     paidByCommitment,
-    flags: { overBudget: expectedTotalCents > budgetCents, linesOverBudget: plannedTotalCents > budgetCents, overpaid, paidOnInactive, creditsNotReflected, reversalsExceedPayments, unmarkedRefunds, outsideDates },
+    flags: { overBudget: expectedTotalCents > budgetCents, linesOverBudget: plannedTotalCents > budgetCents, overpaid, paidOnInactive, creditsNotReflected, reversalsExceedPayments, unmarkedRefunds, outsideDates, badSplits, unsplitChanges, danglingSplitLines, unassignedPieces },
   };
 }
 
@@ -369,7 +481,7 @@ export interface ProjectChoice {
   status: string;
   lines: { id: number; name: string }[];
   /** The original contracts only (change orders roll into them). */
-  contracts: { id: number; title: string; status: CommitmentStatus; lineId: number | null; vendorContactId: number | null }[];
+  contracts: { id: number; title: string; status: CommitmentStatus; lineId: number | null; vendorContactId: number | null; split?: true }[];
 }
 
 /** Every live project with its budget lines and contracts, so a form can offer only what belongs together. Name order; budget lines in their own order. */
@@ -386,7 +498,8 @@ export async function loadProjectChoices(d: FinanceDB): Promise<ProjectChoice[]>
       lines: rows.filter((r) => r.kind === 'budgetLine' && mine(r)).sort(sorted).map((r) => ({ id: r.id as number, name: asBudgetLine(r).name })),
       contracts: rows.filter((r) => r.kind === 'commitment' && mine(r) && num(r.data.parentId) === null).sort(sorted).map((r) => {
         const c = asCommitment(r);
-        return { id: c.id, title: c.title, status: c.status, lineId: c.budgetLineId, vendorContactId: num(r.data.vendorContactId) };
+        // A split agreement has no single line to default to: a payment on it has to name its own line.
+        return { id: c.id, title: c.title, status: c.status, lineId: c.budgetLineId, vendorContactId: num(r.data.vendorContactId), ...(allocationsAddUp(c.allocations, c.amountCents) ? { split: true as const } : {}) };
       }),
     };
   }).sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);

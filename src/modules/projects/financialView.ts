@@ -36,7 +36,8 @@ export function groupContracts(commitments: CommitmentRecord[], summary: Project
 
 export type WarningKind =
   | 'overBudget' | 'linesOverBudget' | 'lineOver' | 'unfiled' | 'overpaid' | 'paidOnInactive' | 'creditNotReflected'
-  | 'reversalTooBig' | 'unmarkedRefunds' | 'outsideDates' | 'brokenTags';
+  | 'reversalTooBig' | 'unmarkedRefunds' | 'outsideDates' | 'brokenTags'
+  | 'splitBroken' | 'changeNotSplit' | 'splitUnassigned' | 'splitLineGone';
 export interface Warning {
   kind: WarningKind;
   text: string;
@@ -52,6 +53,23 @@ export function countBrokenTags(pieces: Pick<ProjectPiece, 'budgetLineId' | 'com
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * Why the "No budget line" row is not empty, in plain words, one sentence per cause, so a payment that is genuinely not assigned is not
+ * confused with an agreement that was simply never given a line, an unsplit change order, a removed line, or an overpaid agreement.
+ */
+export function noLineNotes(s: ProjectSummary): string[] {
+  const out: string[] = [];
+  if (!s.lines.some((l) => l.lineId === null)) return out;
+  const unassigned = s.contracts.reduce((n, c) => n + (c.split?.unassignedPaidCents ?? 0), 0);
+  if (s.flags.unassignedPieces) out.push(`${formatCents(unassigned)} was paid in ${plural(s.flags.unassignedPieces, 'payment', 'payments')} on a split agreement without choosing a line. Open the transaction and choose the line. Until then the lines' "Left to pay" is higher by that amount and this row balances it.`);
+  if (s.flags.unsplitChanges.length) out.push(`${plural(s.flags.unsplitChanges.length, 'change order is', 'change orders are')} on a split agreement without a split, so ${s.flags.unsplitChanges.length === 1 ? 'its' : 'their'} amount sits here. Open and split ${s.flags.unsplitChanges.length === 1 ? 'it' : 'them'}.`);
+  if (s.flags.danglingSplitLines.length) out.push('Part of a split agreement points at a budget line that no longer exists. Open the agreement and choose another line.');
+  if (s.flags.badSplits.length) out.push('A split no longer adds up, so that agreement is filed as a whole under its own line (or here if it has none). Open it and fix the split.');
+  if (s.flags.overpaid.length) out.push('An agreement has been paid more than its agreed total, so its extra shows here while the project total stops "Left to pay" at zero.');
+  if (!out.length) out.push('Agreements or payments that are not filed under any budget line.');
+  return out;
+}
 
 /** Everything the page should flag, most serious first, in plain words. */
 export function projectWarnings(s: ProjectSummary, commitments: CommitmentRecord[], extra: { brokenTags?: number } = {}): Warning[] {
@@ -78,6 +96,19 @@ export function projectWarnings(s: ProjectSummary, commitments: CommitmentRecord
     const r = commitments.find((x) => x.id === id);
     const why = r ? (r.data.status === 'quoted' ? 'is still only a quote' : `is ${COMMITMENT_LABEL[r.data.status].toLowerCase()}`) : 'is not accepted';
     out.push({ kind: 'paidOnInactive', commitmentId: id, text: `${formatCents(c?.paidCents ?? 0)} has been paid on "${titleOf(id)}", which ${why}. That money still counts as spent, but nothing more is expected on it.` });
+  }
+  for (const id of s.flags.badSplits) {
+    out.push({ kind: 'splitBroken', commitmentId: id, text: `The split of "${titleOf(id)}" across budget lines no longer adds up to its amount, so it is being ignored. Open it and fix the split.` });
+  }
+  for (const id of s.flags.unsplitChanges) {
+    out.push({ kind: 'changeNotSplit', commitmentId: id, text: `The change order "${titleOf(id)}" is on a split agreement but is not split across lines, so its amount shows under "No budget line". Open it and split it.` });
+  }
+  for (const id of s.flags.danglingSplitLines) {
+    out.push({ kind: 'splitLineGone', commitmentId: id, text: `"${titleOf(id)}" has money on a budget line that no longer exists. It shows under "No budget line". Open it and choose another line.` });
+  }
+  if (s.flags.unassignedPieces) {
+    const amt = s.contracts.reduce((n, c) => n + (c.split?.unassignedPaidCents ?? 0), 0);
+    out.push({ kind: 'splitUnassigned', text: `${formatCents(amt)} in ${plural(s.flags.unassignedPieces, 'payment on a split agreement is', 'payments on split agreements are')} not assigned to a budget line. ${s.flags.unassignedPieces === 1 ? 'It shows' : 'They show'} under "No budget line" until you open the transaction and choose the line.` });
   }
   if (s.flags.unmarkedRefunds) {
     out.push({ kind: 'unmarkedRefunds', text: `${plural(s.flags.unmarkedRefunds, 'transaction brings', 'transactions bring')} money back on a contract without saying whether it is a reversal or a credit. Open ${s.flags.unmarkedRefunds === 1 ? 'it' : 'them'} and choose.` });

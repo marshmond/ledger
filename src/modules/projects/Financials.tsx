@@ -1,7 +1,7 @@
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
 import type { ProjectPiece, ProjectSummary } from '../../lib/txnProject';
-import type { Warning } from './financialView';
+import { noLineNotes, type Warning } from './financialView';
 
 const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -42,6 +42,8 @@ export default function Financials({ summary: s, derived, warnings, focusLine, o
               <li key={`${w.kind}-${w.commitmentId ?? w.lineId ?? i}`} className="pj-warn">
                 <span>{w.text}</span>
                 {w.creditGapCents ? <button className="btn" onClick={() => onFix(w)}>Add the change order</button> : null}
+                {(w.kind === 'splitBroken' || w.kind === 'changeNotSplit' || w.kind === 'splitLineGone') && <button className="btn" onClick={() => onFix(w)}>{w.kind === 'changeNotSplit' ? 'Open the change order' : 'Open the agreement'}</button>}
+                {w.kind === 'splitUnassigned' && <button className="btn" onClick={() => jump('pj-commitments')}>Show the payments</button>}
                 {w.kind === 'lineOver' && w.lineId !== undefined && <button className="link" onClick={() => { onFocus(w.lineId); jump('pj-breakdown'); }}>Show this line</button>}
               </li>
             ))}
@@ -73,6 +75,12 @@ export default function Financials({ summary: s, derived, warnings, focusLine, o
               ))}
             </tbody>
           </table>
+        )}
+        {noLineNotes(s).length > 0 && (
+          <div className="muted small pj-noline" id="pj-noline">
+            <strong>What is in "No budget line":</strong>
+            <ul className="plain">{noLineNotes(s).map((t, i) => <li key={i}>{t}</li>)}</ul>
+          </div>
         )}
       </section>
     </>
