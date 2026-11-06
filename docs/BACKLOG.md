@@ -14,9 +14,16 @@ What it would take (from general knowledge of Apple's rules; nothing here was te
 - Cheaper routes: (a) calendar alerts via the existing .ics alarms (iPhone Calendar and Watch alert natively; one-time import, so changes do not carry over unless a live calendar subscription is built, which Phase 2 excluded); (b) a notification app such as Pushover or ntfy.
 - Recommendation: try the calendar-alert route first; build real push later only if wanted, as its own phase of roughly Part B's size.
 
-## STATUS 2026-11-05 (newest): P2 FOLLOW-UPS FROM THE OWNER'S REVIEW BUILT, NOT COMMITTED, NOT PUSHED. 1,206 tests pass (was 1,194). P3 is NOT started.
+## P3 BACKLOG (owner, 2026-11-05, on approving P2 for push). NONE of this is built; P3 is NOT started. Not part of the P2 deployment.
 
-P2 itself is committed (9928eb9), NOT pushed. Owner ran the P2 checklist: sections A, B, D, E, G passed; F (phone width) to be checked after push. Two requests came out of it, both built:
+1. **HIGH PRIORITY DESIGN ITEM: multi-line commitment allocation.** Evaluate how one accepted contractor agreement can allocate its committed amount across several project budget lines, while payments remain independently allocated and all project totals reconcile without double-counting. Background: today a contract has one home line (or none), and its Agreed and Left to pay sit on that line; payments can already be allocated to other lines piece by piece (P2 follow-up), so for a general contractor the agreed amount sits in "No budget line". Questions the design must settle: how the committed amount is split (and what happens when a change order is added or the agreement is cancelled), how "Left to pay" per line is worked out when payments and commitments are allocated differently, and how the project totals and the per-line rows keep adding up to the same figures. Decide before building; ask the owner in one multiple-choice round.
+2. **Direct transaction navigation from Projects:** a link from each project transaction row to the transaction itself in Finance.
+3. **Project filter in Finance:** filter Transactions (and Reports) by project.
+4. **Outstanding verification:** offline use and real two-device synchronization of Projects data have still not been checked. The owner's phone-width check (375 px) was also still to be done after the push.
+
+## STATUS 2026-11-05: P2 FOLLOW-UPS FROM THE OWNER'S REVIEW BUILT, COMMITTED (ba2021e) AND PUSHED 2026-11-05 with P2 (9928eb9). 1,206 tests pass (was 1,194). P3 is NOT started.
+
+P2 itself is committed (9928eb9) and was pushed together with ba2021e after the owner's approval. Owner ran the P2 checklist: sections A, B, D, E, G passed; F (phone width) to be checked after push. Two requests came out of it, both built:
 
 1. **Split a payment by contract AND budget line.** Example: one $10k payment to a general contractor who coordinates the subs: $5k tile, $3k plumbing, $2k electrical, all counting toward the same project. Each piece of a split (and the whole-transaction box) now picks project, then optionally a contract, then optionally a budget line. Every piece on the contract counts against its "Left to pay"; each line gets its own piece. The Finance layer already read "the piece's own line, else the contract's line", so the change is in the form rules (`buildRef`) and the box (`ProjectTag`); the stored shape did not change (no schema, backup or sync change). The project's transaction list now shows "contract · line".
 2. **N key opens the Add box** from anywhere (`GlobalFrame`), ignored while typing, with Ctrl/Cmd/Alt held, while a dialog is open, or when the key is held down. The Add button's tooltip says "Add (N)"; listed in More > Shortcuts and the README.
@@ -34,7 +41,7 @@ Judgment calls (please review):
 
 NOT built: splitting a contract's agreed amount across lines; a contract picker that knows how much of each sub's quote remains; shortcuts for other single-key actions.
 
-## STATUS 2026-11-05: PROJECTS P2 (COMMITMENTS AND FINANCIAL INTEGRATION) BUILT AND COMMITTED (9928eb9), NOT PUSHED. P3 is NOT started.
+## STATUS 2026-11-05: PROJECTS P2 (COMMITMENTS AND FINANCIAL INTEGRATION) BUILT, COMMITTED (9928eb9) AND PUSHED. P3 is NOT started.
 
 Full report: `docs/PROJECTS-P2-REPORT-2026-11-05.md`. **1,194 tests pass** (was 1,138; 56 new), type check and production build clean. No database, backup or sync change. Waiting for the owner's review before any commit or push.
 
