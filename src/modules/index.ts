@@ -3,6 +3,7 @@ import { calendarModule } from './calendar';
 import { ledgerModule } from './ledger';
 import { assetsModule } from './assets';
 import { projectsModule } from './projects';
+import { servicesModule } from './services';
 import { tasksModule } from './tasks';
 import { todayModule } from './today';
 
@@ -17,4 +18,5 @@ export function registerModules() {
   registerModule(tasksModule);
   registerModule(projectsModule);
   registerModule(assetsModule);
+  registerModule(servicesModule);
 }

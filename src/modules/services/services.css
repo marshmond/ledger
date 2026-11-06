@@ -1,0 +1,56 @@
+/* Household Services. Uses the app's colour variables so light and dark both work. */
+.sv-main { padding-bottom: var(--sp-6, 48px); max-width: min(1100px, 100%); }
+.sv-back { margin: 0 0 var(--sp-2); }
+.sv-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.sv-head h1 { margin: 0 0 var(--sp-1); overflow-wrap: anywhere; }
+.sv-head-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sv-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; }
+.sv-chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; border: 1px solid var(--line-strong); color: var(--muted); background: var(--card); white-space: nowrap; }
+.sv-chip.s-active { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.sv-chip.s-paused, .sv-chip.s-ended { color: var(--warn, #9a6700); border-color: currentColor; }
+.sv-card { margin-bottom: var(--sp-3); }
+.sv-card h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-md, 1.05rem); }
+.sv-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.sv-card-head h2 { margin: 0; }
+.sv-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.sv-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sv-fact dt { font-size: var(--fs-xs); color: var(--muted); }
+.sv-fact dd { margin: 0; overflow-wrap: anywhere; }
+.sv-items { margin: 0 0 var(--sp-2); padding: 0; }
+.sv-items li { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.sv-list { margin: 0; padding: 0; }
+.sv-list li { border-bottom: 1px solid var(--line); }
+.sv-rowlink { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2); color: inherit; text-decoration: none; min-height: 56px; }
+.sv-rowlink:hover { background: var(--accent-soft); }
+.sv-row-main { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.sv-row-main strong { overflow-wrap: anywhere; }
+.sv-row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; text-align: right; }
+.sv-late { color: var(--neg); }
+.sv-ok { color: var(--pos, var(--accent)); margin: 0; }
+.sv-warn { color: var(--warn, #9a6700); margin: 0; }
+.sv-note { background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
+.sv-health { border: 1px solid var(--line-strong); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+.sv-health.attn { border-color: var(--warn, #9a6700); }
+.sv-health .row { gap: var(--sp-2); }
+.sv-lines { margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.sv-h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-base); }
+.sv-notes { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; }
+.sv-form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.sv-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.sv-sub { display: flex; flex-direction: column; gap: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0; min-width: 0; }
+.sv-sub legend { padding: 0 var(--sp-1); font-weight: 600; }
+.sv-sec { border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); }
+.sv-sec > summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-weight: 600; }
+.sv-sec[open] { display: flex; flex-direction: column; gap: var(--sp-3); }
+.sv-ref { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: var(--sp-2); align-items: center; }
+.sv-actions { justify-content: flex-end; gap: var(--sp-2); }
+.sv-oneoff { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); }
+.sv .as-check { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 40px; }
+.sv textarea { width: 100%; }
+.sv .btn.danger { color: var(--neg); border-color: var(--neg); }
+@media (max-width: 560px) {
+  .sv-two, .sv-ref { grid-template-columns: 1fr; }
+  .sv-row-side { align-items: flex-start; text-align: left; }
+  .sv-rowlink { flex-direction: column; align-items: flex-start; }
+  .sv-head-actions .btn, .sv-actions .btn { min-height: 44px; }
+}

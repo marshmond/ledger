@@ -1,6 +1,6 @@
 # Household Services S0: architecture and integration design
 
-Date: 2026-11-06. Status: **REVISION 2 (after architectural review). Architecture approved in principle by ChatGPT; owner decisions Q1 to Q9 accepted as planning defaults subject to the refinements below. DESIGN ONLY. This revision is awaiting final review. Nothing built, committed or pushed.** S1 is *proposed*, not authorized.
+Date: 2026-11-06. Status: **REVISION 2, APPROVED (final architectural approval from ChatGPT; owner decisions Q1 to Q9 accepted using recommended option A). Two documentation corrections were applied on 2026-11-06 when S1 was authorized (see the end of section 0). S1 (Providers and standing arrangements) is IN IMPLEMENTATION, not completed: it is built and tested but not yet reviewed, committed or deployed. S2 to S5 are not started.**
 All examples in this document are invented. The repository is public: no real providers, addresses, codes or amounts appear here.
 
 ## 0. Revision 2 (2026-11-06): what changed and where
@@ -12,7 +12,7 @@ Review verdict applied: overall architecture approved in principle; Q1 to Q9 acc
 | 1 | Recurrence and scheduling authority | New **6.6 to 6.10** (6.6 authority and reschedule semantics, 6.7 drift detection and resolution, 6.8 no-duplicate-Task rules for pause/resume/replace and concurrent devices, 6.9 timed appointments, 6.10 regression requirements). 5.2 gains a cadence **anchor date** and a Task **occurrence marker**; 6.2 item 3 and 6.3 revised; S2's "optional Calendar appointment" is replaced by "timed visit = due time on the Task" (6.9); roadmap S1/S2 and acceptance criteria updated. No second recurrence engine: only `generateDates` and `normalizeRule` are used. |
 | 2 | Cancellations and payments | **5.4 visit model rewritten**: skipped, cancelled and completed are different; `chargedCents` now carries a `chargeKind` (service, cancellation fee, other) so a cancelled visit can have a legitimate fee; payments may attach to any status but never change it. 6.3, 7.1 to 7.2, 7.4 (new rows), 12.2, 14.1 and S2/S3 revised. The earlier sentence "neither skipped nor cancelled visits ever carry a payment" is withdrawn. |
 | 3 | Privacy | **`accountNumber` removed** from the S1 arrangement model (5.2), from the privacy table (13) and from the S1 tests. Provider account/customer identifiers are deferred until a specific use case and a privacy/storage review. The ban on codes, passwords and bank/payment instructions in ordinary notes is kept. |
-| 4 | Household-wide financial integrity | **7.6 rewritten** as a full specification of `householdHomeSpend` (claims, algorithm, nine named cases, reconciliation identity, what it never claims). 7.4 and 8.2 aligned. |
+| 4 | Household-wide financial integrity | **7.6 rewritten** as a full specification of `householdHomeSpend` (claims, algorithm, nine named cases, claim-based reconciliation, what it never claims). 7.4 and 8.2 aligned. |
 | 5 | S1 scope | S1 links an arrangement to an existing asset **from the Household Services UI only**. Any reverse Home & Assets UI (asset-page card, replacement action, delete-plan sentence, prefilled record handoff) is **S4**. Revised in 8.3, 11, 16 (S1, S4) and 19 (acceptance criteria) and the file lists. |
 
 Judgment calls made while revising (please review):
@@ -22,6 +22,8 @@ Judgment calls made while revising (please review):
 4. A timed appointment is, by default, the **Task with a due time**; a separate Calendar event is not built in S1 or S2 (6.9).
 5. For a visit linked to an asset service record by `recorded-as`, the household total treats the pair as **one payment event** and prefers Finance pieces over typed amounts (7.6). This favours never double counting over never undercounting; it is flagged on screen.
 6. The household total never claims which module "owns" a shared piece (7.6).
+
+**Corrections applied when S1 was authorized (2026-11-06; documentation only, no design change):** (a) Section 7.6: the household-wide reconciliation "identity" was not universally valid when one module references a whole transaction and another its split; it is replaced by a requirement to derive the reconciliation from actual included, covered and excluded claims, with a required S5 cross-module overlap test. (b) Remaining wording that suggested S1 or S2 creates a separate Calendar event when a visit has a time was removed; the approved approach is one Task with a due time (6.9).
 
 ## 1. Executive summary (plain language)
 
@@ -34,7 +36,7 @@ Household Services will answer "who comes to the house, how often, what did it c
 | The **provider** (a person or company) | Shared **Contacts** (no copy) | "Maple Lawn Care" |
 | The **arrangement** (the standing relationship) | New Household Services record | "Lawn mowing, weekly, April to October" |
 | The **visit** (what actually happened on a day) | New Household Services record, created only when a visit is finished, skipped or cancelled | "Mowed on 12 May" |
-| The **reminder / next date** | An ordinary **Task** (appointments with a clock time may be a Calendar event) | "Maple Lawn Care visit, due Fri 15 May" |
+| The **reminder / next date** | An ordinary **Task** (a visit with a clock time is the same Task with a due time) | "Maple Lawn Care visit, due Fri 15 May" |
 | The **money paid** | **Finance transactions**, referenced read-only (the way Home & Assets H3 already does it) | the card payment on 14 May |
 
 Everything is stored in the existing shared record store. **No new database table, no schema change, no migration, no new dependency** (Dexie stays at 15). Scheduling reuses the Tasks repeat engine unchanged. Money reuses H3's reference rules. A one-off job (a plumber came once) needs only a provider and a description: no arrangement and no Task.
@@ -100,7 +102,7 @@ Questions the module must answer (brief section 1), and where the answer comes f
 | Standing arrangement | Provider name, what they do ("Lawn mowing") | How often and weekday, first date, property/asset, typical price, season, contract link, renewal date, notes |
 | One-off job | Provider name, what was done, date | Amount or payment link, asset, document link |
 | Record a finished visit | One tap on "Done, log it" (date defaults to today) | Amount, payment link, note |
-| Schedule a visit | A date | Time (only then does it become a Calendar appointment, see 6.3) |
+| Schedule a visit | A date | Time (stored as the Task's due time; no separate Calendar event, see 6.9) |
 | Replace provider | New provider name | Ending date, reason |
 
 Quick Add (proposed prefix `hs`): `hs Cleaner every other Friday` previews a new arrangement; `hs visit Maple Lawn Care mowed yesterday $85` previews a one-off visit. Exact grammar is an S1/S2 build detail; the preview-then-confirm and Undo pattern is the one Projects and Assets already use.
@@ -227,7 +229,7 @@ visit {
 - Totals keep these apart (S3): "Paid for visits" (completed), "Paid in fees for cancelled or skipped visits", "Other". Average and typical cost per visit use completed visits only, so a fee-only visit cannot lower or raise the typical price.
 - Validation: `completed` needs a date not in the future and may not have `cancelledBy`; `cancelled` and `skipped` may have a future or past date; `chargeKind: service` on a cancelled visit is refused ("a cancelled visit cannot be charged as service; choose cancellation fee or other").
 
-**Planned visits are not stored as visit records.** "Planned" is a Task (or Calendar event). A visit record exists only after something happened (completed), was deliberately passed over (skipped) or did not happen (cancelled). This is the single most important simplification: no pre-generated future records to go stale, duplicate across devices, or need reconciling with the Task.
+**Planned visits are not stored as visit records.** "Planned" is a Task (with a date and, if wanted, a due time). A visit record exists only after something happened (completed), was deliberately passed over (skipped) or did not happen (cancelled). This is the single most important simplification: no pre-generated future records to go stale, duplicate across devices, or need reconciling with the Task.
 
 ### 5.5 Payment reference
 Not a record. It is `txnRefs` on a visit (and, in S3, optionally on an arrangement for fees not tied to visits, such as a monthly retainer). Same `TxnRef` shape and rules as H3.
@@ -250,7 +252,7 @@ A visit needs its own date, status, amount, payment, notes and provider-at-the-t
 | Quarterly | Yes | `monthly`, interval 3 |
 | Annual inspection | Yes | `yearly` |
 | On demand | Yes | no repeat; a Task only when a visit is planned |
-| One-off appointment | Yes | a Task, or a Calendar event if it has a clock time |
+| One-off appointment | Yes | a Task, with a due time if it has a clock time (no separate Calendar event, 6.9) |
 | Rescheduled visit | Yes | edit the Task date, or Calendar's reschedule action |
 | Skipped occurrence | Partly | Tasks have no "skip": finishing the Task creates the next; the visit record says *skipped* |
 | Cancelled occurrence | Partly | same as skip, with status *cancelled* |
@@ -261,7 +263,7 @@ A visit needs its own date, status, amount, payment, notes and provider-at-the-t
 2. The arrangement **owns at most one open linked Task**, "the next visit". The Task is created from the cadence (title "Cleaning: Rosa's Cleaning", due date the next occurrence, repeat copied from the cadence, linked to the arrangement via shared link `about`, `contactIds` = the provider). Link, not a field, is the truth (a Task can be linked in the Task editor by the owner); the `openTaskId` field is only a convenience and is re-derived when it disagrees.
 3. **Timed appointments (Revision 2):** a visit with a clock time ("HVAC technician, Tuesday 9:00") is the **same Task with a due time** (Tasks already support `dueTime`, and it shows timed on the Calendar's Tasks layer, Today and the ICS export). A separate Calendar event is **not built in S1 or S2**; why, and what would be required if the owner later wants one, is in 6.9.
 4. **Completed visits** are the durable `visit` record, written by an atomic "Done, log it" (the H2 pattern): `completeTask` + `visit` write in one transaction; a repeating Task spawns the next one once and keeps the links. A Task finished elsewhere appears as "finished, not yet logged" with a Save button (the H2 `unsavedTasks` pattern, re-implemented for the `services` module; not shared code).
-5. **Three concepts kept apart:** a Task *reminding the household to arrange service* ("Book furnace tune-up", no appointment yet) is a Task with the arrangement link; a *scheduled appointment* is a Task with a date (or Calendar event with a time); a *completed visit* is a `visit`. Marking a "Book..." Task done does **not** log a visit; only the explicit "Done, log it" / "Skipped" / "Cancelled" actions do. The Task gets a one-word purpose (`Remind me to book` vs `Visit`) stored on the arrangement link or Task title prefix, to be decided in S2 (small build detail).
+5. **Three concepts kept apart:** a Task *reminding the household to arrange service* ("Book furnace tune-up", no appointment yet) is a Task with the arrangement link; a *scheduled appointment* is a Task with a date (and a due time if it has one); a *completed visit* is a `visit`. Marking a "Book..." Task done does **not** log a visit; only the explicit "Done, log it" / "Skipped" / "Cancelled" actions do. The Task gets a one-word purpose (`Remind me to book` vs `Visit`) stored on the arrangement link or Task title prefix, to be decided in S2 (small build detail).
 
 ### 6.3 Reschedule, skip, cancel (decision 9)
 - **Reschedule:** edit the Task's date or use Calendar's reschedule. No visit record. **A reschedule changes that one visit only, never the standing cadence** (rules in 6.6). **Why this needs design (read from code, not executed):** left alone, `nextDueDate` uses the Task's current due date as its anchor, so moving a weekly Task to another weekday would shift every later one, and an every-other-week series could change which weeks are used if the move crosses a Sunday-to-Saturday week boundary. Revision 2 removes that dependence: the next date is computed from the arrangement's own anchor date (6.6), and weekly cadences always carry an explicit weekday.
@@ -416,11 +418,11 @@ Allowed only as "paid outside Finance", one source at a time (refs win if both a
 | Refunds | A refund is a positive Finance piece and lowers the total by its live amount, counted once like any piece, even if the original payment is linked in one module and the refund in another. A refund linked on a cancelled-visit fee reduces the fees line, not "services delivered". |
 | Missing or changed references | Missing, now-transfer or changed-split claims are excluded and listed (never replaced by the snapshot). If the same piece is also reached by a **valid** claim elsewhere (e.g. the other module holds a correct split reference), the piece counts once through that valid claim and the stale one is listed for review in its own record. A changed whole-transaction claim uses the live amount and is listed as "changed". |
 | One payment covering several visits or several properties | One piece, counted once; "shared by N records" is shown; it is **not apportioned**. Per-visit and per-property rows can therefore add up to more than the household figure, and the page says so. |
-| Module totals versus household total | They are expected to differ. The page shows: *Home & Assets total*, *Household Services total*, then **"Linked in both (counted once at household level)"** = the sum of live amounts of pieces reached by both modules, and **"Typed amounts not added (linked pairs)"**; and the identity `H&A total + Services total − linked-in-both − typed-not-added = household total` (property rows and visit rows are not part of the identity). A test asserts the identity for generated data. |
+| Module totals versus household total | They are expected to differ. The page shows: *Home & Assets total*, *Household Services total*, then **"Linked in both (counted once at household level)"** = the sum of live amounts of pieces reached by both modules, and **"Typed amounts not added (linked pairs)"**; and a **reconciliation block derived from the actual included, covered and excluded claims** (see below). **There is no simple closed-form identity** between the two module totals and the household total: when one module references a whole transaction and the other references only a split of it, the household figure counts the whole while the split is `coveredParts`, so "module total plus module total minus overlap" would double-count or under-count the overlap. The reconciliation must therefore be computed by listing, for every claim, whether it was *included* (counted once), *covered* (a part of a whole counted elsewhere) or *excluded* (review, or a typed amount not added), and checking that included amounts sum to the household total. **Required S5 test:** one module holds the whole transaction, the other a split of it (both orders, both ways round); the household total counts the whole once, the split is listed as covered, every claim appears in exactly one of included, covered or excluded, and the included amounts sum exactly to the household total. |
 
 **Never implies an allocation that does not exist:** no "your landscaping share of this payment", no automatic split of a shared payment, no per-module breakdown of the household total, and nothing says a payment *proves* a service happened. The household total is labelled "Linked payments, each counted once", not "cost of services".
 
-**Required tests (S5; the pure pieces earlier):** each case above; permutation-order independence (shuffle claim order, same result); identity holds on random data; nothing written to Finance or any table (snapshot); Projects money absent; period boundaries; mutation checks (drop "whole supersedes parts", drop the pair exception, drop dedupe by key -> the named tests fail).
+**Required tests (S5; the pure pieces earlier):** each case above; permutation-order independence (shuffle claim order, same result); every claim lands in exactly one of included, covered or excluded on random data, and the included amounts sum to the household total (including the whole-versus-split overlap across modules); nothing written to Finance or any table (snapshot); Projects money absent; period boundaries; mutation checks (drop "whole supersedes parts", drop the pair exception, drop dedupe by key -> the named tests fail).
 
 ### 7.7 Out of S0 scope (stated)
 No change to balances, Reports, Finance calculations or Projects logic. A link from an arrangement to a Finance scheduled payment (`RecurringRule`) is **deferred to Bills & Subscriptions** (section 10).
@@ -501,7 +503,7 @@ Integration list:
 - **Global Search:** arrangement title, provider name, visit title/notes (notes searchable, never displayed in the snippet), deep links. No phone, email, account numbers, URLs or amounts in results.
 - **Quick Add:** prefix **`hs`** (alias `household`); keep `svc` for Home & Assets. Words `service`/`repair` stay with `svc`. Registration already fails at start-up on a clash.
 - **Today (S2/S5):** one card `services.attention`, half width, `hideWhenEmpty`, **counts only** ("1 visit not logged", "2 renewals soon"); it never repeats a Task title and never shows money (so "Hide amounts" has nothing to hide).
-- **Calendar:** next visits via the Tasks layer; appointments via Calendar events; renewals via the layer in S4.
+- **Calendar:** next visits and timed appointments via the Tasks layer (a due time on the Task); renewals via the layer in S4.
 - **Contacts:** provider page and `updateContactDetails`.
 - **Home & Assets:** "Record in Home & Assets" and the property/asset links; attention for retired assets.
 - **Phone:** all pages checked at 375 px and dark mode in each phase (as H5 did).
@@ -677,7 +679,7 @@ Each phase ends with a report, a backlog entry (tests, numbered judgment calls, 
 | # | Question | A (recommended) | B |
 |---|---|---|---|
 | Q1 | Record structure | **A.** Provider stays a Contact; each standing service is an *arrangement*; each finished visit is a *visit*; a one-off job needs only a visit | B. One combined record per service (simpler, loses history when things change) |
-| Q2 | Scheduling | **A.** Next visit is an ordinary Task (shows in Tasks, Today and Calendar); a Calendar appointment only when you add a time | B. Calendar events for every visit |
+| Q2 | Scheduling | **A.** Next visit is an ordinary Task (shows in Tasks, Today and Calendar); adding a time sets the Task's due time, not a second Calendar entry | B. Calendar events for every visit |
 | Q3 | Recording a finished visit | **A.** One tap "Done, log it"; Tasks finished elsewhere show "not yet logged" until you save them | B. Log automatically when any linked Task is completed |
 | Q4 | Money | **A.** Reference Finance payments read-only; "typical cost" and "expected" are labelled estimates and never counted as spent; typed amounts only for cash outside Finance | B. Typed amounts only, no Finance links |
 | Q5 | Changing provider | **A.** "Replace provider" ends the old arrangement and starts a new one; old visits stay with the old company | B. Edit the provider on the existing arrangement |
@@ -716,5 +718,5 @@ Everything else in section 15 follows from these or from the safest default and 
 - Branch `main`, equal to `origin/main` (`4422999`) at the start. At the end: exactly the three docs files above show as changed (one new, two modified); no `src/` change, no new dependency, no schema change, no migration, no browser work done, nothing staged, nothing committed, nothing pushed, nothing deployed.
 - Tests actually run: `npm test` once (read-only baseline): 102 files, 1,629 passed. `tsc` and `build` were **not** run (nothing to check).
 - Handoff updated: **yes** (see handoff change log, 2026-11-06 S0 entry).
-- S0 is **not** marked final-approved. Architecture is approved in principle and Q1 to Q9 are accepted as planning defaults (per the review); Revision 2 awaits final review. S1 is proposed, not authorized.
+- (Superseded 2026-11-06) S0 Revision 2 has since received final architectural approval and Q1 to Q9 are accepted as option A; S1 was then authorized and is in implementation. The statement originally here, "awaits final review, S1 not authorized", no longer applies.
 - Revision 2 added no code, test run or browser work; the only new factual claims are design statements, and the one code-behaviour caveat (Task editor preserving unknown fields) is flagged as an S1 test.
