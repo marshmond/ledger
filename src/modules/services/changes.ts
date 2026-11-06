@@ -9,17 +9,17 @@ import type { RecordRef } from '../../core/entities';
 import { recordSource } from '../../core/registry';
 import { createStore } from '../../core/store';
 import { dayLabel } from '../../core/time';
-import { removeTasks, restoreTasks, saveTask } from '../tasks/data';
+import { removeTasks, saveTask } from '../tasks/data';
 import type { TaskData, TaskRecord } from '../tasks/model';
 import {
-  ensureNextVisitTaskIn, getArrangement, loadArrangements, planNextVisit, resolveProvider, rows, syncAssetLinks, tables, tasksOfArrangement, writeArrangement,
+  ensureNextVisitTaskIn, getArrangement, loadArrangements, planNextVisit, resolveProvider, syncAssetLinks, tables, tasksOfArrangement, writeArrangement,
   linkedAssetIds, type ProviderInput,
 } from './data';
 import {
-  arrangementRef, arrangementRefId, blankArrangement, normalizeArrangement, validateArrangement, cadenceText, END_REASON_LABEL, KIND, MODULE, STATUS_LABEL,
+  arrangementRefId, blankArrangement, normalizeArrangement, validateArrangement, cadenceText, END_REASON_LABEL, MODULE, STATUS_LABEL,
   withExplicitWeekday, type ArrangementData, type ArrangementRecord, type Cadence, type EndReason,
 } from './model';
-import { visitRef } from './visitModel';
+import { Recorder, type Undo } from './undo';
 import { markersOf, nearestCadenceDate, openOf, scheduleHealth, taskRepeatOf, withMarkers, type Health } from './schedule';
 import { normalizeRule } from '../../core/recurrence';
 
@@ -35,57 +35,8 @@ function checkExpect(e: Expect, a: ArrangementRecord, tasks: TaskRecord[]) {
   if (e.arrangementUpdatedAt !== now.arrangementUpdatedAt || ids !== Object.keys(now.tasks).sort().join() || Object.entries(e.tasks).some(([id, u]) => now.tasks[Number(id)] !== u)) throw new Error(STALE);
 }
 
-/** What to restore to take a change back. */
-export interface Undo {
-  arrangements: { id: number; data: ArrangementData }[];
-  tasks: { id: number; data: TaskData; wasDeleted: boolean }[];
-  /** Records this change created (tasks, arrangements): removed again by Undo. */
-  created: number[];
-  /**
-   * When present (visit logging), each record this change touched with its `updatedAt` as the change left it. Undo refuses, and writes nothing,
-   * if any of them is different now (edited here or on another device, or acted upon since).
-   */
-  after?: Record<number, number>;
-}
-export const UNDO_REFUSED = 'This can no longer be undone, because something it changed has been changed since (maybe on another device). Nothing was changed. Edit the records yourself if you still want to.';
-export class Recorder {
-  undo: Undo = { arrangements: [], tasks: [], created: [] };
-  arr(a: ArrangementRecord) { if (!this.undo.arrangements.some((x) => x.id === a.id)) this.undo.arrangements.push({ id: a.id, data: structuredClone(a.data) }); }
-  task(t: TaskRecord) { if (!this.undo.tasks.some((x) => x.id === t.id)) this.undo.tasks.push({ id: t.id, data: structuredClone(t.data), wasDeleted: false }); }
-  made(id: number | null | undefined) { if (id != null) this.undo.created.push(id); }
-  /** Call last, inside the same transaction: remembers how every touched record looks now, so a later Undo can tell if it changed. */
-  async seal(d: FinanceDB): Promise<void> {
-    const after: Record<number, number> = {};
-    for (const id of [...this.undo.created, ...this.undo.tasks.map((t) => t.id)]) { const r = await d.moduleRecords.get(id); if (r) after[id] = r.updatedAt; }
-    this.undo.after = after;
-  }
-}
-/** Takes a change back. Records deleted since are skipped; nothing here can fail half way. */
-export function applyUndo(u: Undo, d: FinanceDB = db): Promise<void> {
-  return d.transaction('rw', d.moduleRecords, d.links, async () => {
-    for (const [id, at] of Object.entries(u.after ?? {})) {
-      const r = await d.moduleRecords.get(Number(id));
-      if (!r || r.updatedAt !== at) throw new Error(UNDO_REFUSED);
-    }
-    const links = createStore(d).shared.links;
-    for (const id of u.created) {
-      const r = await d.moduleRecords.get(id);
-      if (!r) continue;
-      await rows(d).remove(id);
-      if (r.module === MODULE) {
-        for (const l of await links.linkedTo(arrangementRef(id))) await links.remove(l.id as number);
-        for (const l of await links.linkedTo(visitRef(id))) await links.remove(l.id as number);
-      }
-    }
-    for (const t of u.tasks) {
-      const r = await d.moduleRecords.get(t.id);
-      if (!r) continue;
-      if (r.deletedAt != null && !t.wasDeleted) await restoreTasks([t.id], d);
-      await saveTask(t.id, t.data, d);
-    }
-    for (const a of u.arrangements) if (await d.moduleRecords.get(a.id)) await rows(d).put({ id: a.id, module: MODULE, kind: KIND, data: { ...a.data } });
-  });
-}
+// Undo (the recorder, the sealed state and the guarded `applyUndo`) lives in `undo.ts`; re-exported so existing imports keep working.
+export { applyUndo, Recorder, runUndo, UNDO_FAILED, UNDO_REFUSED, UNDO_UNVERIFIED, UndoRefused, isUndoRefused, type Undo } from './undo';
 
 // ---- Task handling choices ----
 
@@ -182,6 +133,7 @@ export function applyLifecycle(req: LifecycleRequest, d: FinanceDB = db): Promis
     const bad = statusProblem(a, req.action);
     if (bad) throw new Error(`${bad} Nothing was changed.`);
     const rec = new Recorder();
+    for (const t of openOf(tasks)) rec.watch(t);
     const choice: TaskChoice = req.taskChoice ?? (req.action === 'replace' ? 'stop' : 'remove');
     const today = req.today;
     let removed = 0, stopped = 0, successorId: number | null = null, taskId: number | null = null, contactCreated = false;
@@ -239,6 +191,7 @@ export function applyLifecycle(req: LifecycleRequest, d: FinanceDB = db): Promis
       taskId = r.taskId;
       if (r.kind === 'created') rec.made(r.taskId);
     }
+    await rec.seal(d);
     return { arrangementId: a.id, successorId, taskId, removed, stopped, undo: rec.undo, contactCreated };
   });
 }
@@ -331,6 +284,7 @@ export function applyScheduleChange(req: ScheduleChangeRequest, d: FinanceDB = d
     if (open.length > 1) throw new Error('There is more than one upcoming-visit task. Sort that out first. Nothing was changed.');
     const cadence = req.cadence ? { ...req.cadence, rule: withExplicitWeekday(normalizeRule(req.cadence.rule) ?? req.cadence.rule, req.cadence.anchorDate) } : null;
     const rec = new Recorder();
+    for (const t of open) rec.watch(t);
     rec.arr(a);
     const nextData: ArrangementData = { ...a.data, cadence, visitTime: req.visitTime, acknowledged: [] };
     await writeArrangement(a.id, nextData, d);
@@ -354,6 +308,7 @@ export function applyScheduleChange(req: ScheduleChangeRequest, d: FinanceDB = d
         if (r.kind === 'created') rec.made(r.taskId);
       }
     }
+    await rec.seal(d);
     return { undo: rec.undo, taskId };
   });
 }
@@ -445,12 +400,14 @@ export function applyRepair(req: RepairRequest, d: FinanceDB = db): Promise<{ un
     const e = repairEffect(req.kind, a, tasks, req.taskId, req.today);
     if (e.problem) throw new Error(`${e.problem} Nothing was changed.`);
     const rec = new Recorder();
+    for (const t of openOf(tasks)) rec.watch(t);
     if (e.arrangement || e.create) rec.arr(a);
     if (e.arrangement) await writeArrangement(a.id, e.arrangement, d);
     for (const ch of e.taskChanges) { rec.task(ch.task); await saveTask(ch.task.id, ch.data, d); }
     for (const id of e.removeIds) { const t = tasks.find((x) => x.id === id); if (t) rec.task(t); }
     if (e.removeIds.length) await removeTasks(e.removeIds, d);
     if (e.create) { const r = await ensureNextVisitTaskIn(a.id, { today: req.today }, d); if (r.kind === 'created') rec.made(r.taskId); }
+    await rec.seal(d);
     return { undo: rec.undo, lines: e.lines };
   });
 }

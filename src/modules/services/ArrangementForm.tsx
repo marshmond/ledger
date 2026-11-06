@@ -8,7 +8,7 @@ import type { Recurrence } from '../../core/recurrence';
 import { dayOfWeek } from '../../lib/dates';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { loadAssets, publicLabel } from '../assets/data';
-import { applyUndo } from './changes';
+import { runUndo } from './undo';
 import { createArrangement, updateArrangement, type ProviderInput } from './data';
 import {
   BASIS_LABEL, blankArrangement, EXPECTED_BASES, notesWarning, withExplicitWeekday, type ArrangementRecord, type DocRef, type ExpectedBasis,
@@ -79,7 +79,7 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
         if (!first && rule) throw new Error('Pick the first date.');
         const cadence = rule ? { mode, rule: withExplicitWeekday(rule, first), anchorDate: first } : null;
         const r = await createArrangement({ data: blankArrangement({ title, startDate: startDate || null, cadence, visitTime: cadence && time ? time : null, expected, refs, notes }), provider: provider?.contactId != null || provider?.name ? provider : null, assetIds, scheduleFirstVisit: makeTask, today });
-        toast(r.taskId ? 'Added, with its first visit in Tasks' : 'Added', async () => { await applyUndo({ arrangements: [], tasks: [], created: [r.id, ...(r.taskId !== null ? [r.taskId] : [])] }); });
+        toast(r.taskId ? 'Added, with its first visit in Tasks' : 'Added', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(r.id);
       }
       onClose();

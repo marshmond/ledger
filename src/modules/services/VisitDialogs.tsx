@@ -5,7 +5,7 @@ import { useToast } from '../../ui/Toast';
 import { store } from '../../core/store';
 import { parseAmountToCents, todayISO } from '../../lib/money';
 import { loadAssets, publicLabel } from '../assets/data';
-import { applyUndo } from './changes';
+import { runUndo, type Undo } from './undo';
 import { CANCELLED_BY, CHARGE_KIND_LABEL, CHARGE_KINDS, type CancelledBy, type ChargeKind, type VisitRecord, type VisitStatus } from './visitModel';
 import { logStandaloneVisit, logVisitFromTask, planLogVisit, updateVisit, visitAssetIds, type LogExpect, type LogPlan, type VisitInput } from './visits';
 import { notesWarning, type DocRef } from './model';
@@ -17,9 +17,7 @@ const DONE: Record<VisitStatus, string> = { completed: 'Visit logged', skipped: 
 const KIND_DEFAULT: Record<VisitStatus, ChargeKind> = { completed: 'service', cancelled: 'cancellationFee', skipped: 'other' };
 
 /** An Undo button's action: runs the guarded Undo and, if it is refused because the records changed, says so instead of failing silently. */
-const undoer = (toast: (t: string) => void, undo: Parameters<typeof applyUndo>[0]) => async () => {
-  try { await applyUndo(undo); } catch (e) { toast(e instanceof Error ? e.message : 'Could not undo that.'); }
-};
+const undoer = (toast: (t: string) => void, undo: Undo) => async () => { await runUndo(undo, toast); };
 const newOperationId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 const Lines = ({ lines }: { lines: string[] }) => (

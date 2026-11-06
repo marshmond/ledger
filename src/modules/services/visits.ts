@@ -305,7 +305,7 @@ export function logStandaloneVisit(req: StandaloneRequest, d: FinanceDB = db): P
     const visitId = await rows(d).put({ module: MODULE, kind: VISIT_KIND, data: { ...data, ...(req.operationId ? { operationId: req.operationId } : {}) } });
     rec.made(visitId);
     await syncVisitAssetLinks(visitId, assetIds ?? [], req.arrangementId == null, d);
-    await rec.seal(d);
+    await rec.seal(d, contactCreated ? providerId : null);
     return { visitId, contactCreated, contactId: providerId, undo: rec.undo, repeated: false, similarVisitId: similar?.id ?? null };
   });
 }

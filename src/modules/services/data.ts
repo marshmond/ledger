@@ -16,6 +16,7 @@ import {
   arrangementRef, asArrangement, ASSET_LINK, KIND, MODULE, nextCadenceDate, normalizeArrangement, parseArrangementRef, TASK_LINK, tidy,
   validateArrangement, type ArrangementData, type ArrangementRecord,
 } from './model';
+import { Recorder, type Undo } from './undo';
 import { isBooking, markersOf, nearestCadenceDate, openOf, taskRepeatOf, withMarkers } from './schedule';
 
 export const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
@@ -178,7 +179,7 @@ export interface NewArrangement {
   scheduleFirstVisit?: boolean;
   today: string;
 }
-export interface Created { id: number; taskId: number | null; contactCreated: boolean; contactId: number | null }
+export interface Created { id: number; taskId: number | null; contactCreated: boolean; contactId: number | null; /** takes the whole addition back (refused if any of it was changed since) */ undo: Undo }
 
 /** Adds an arrangement (and, when asked and it has a schedule, its one visit Task) in one transaction: all or nothing. */
 export function createArrangement(input: NewArrangement, d: FinanceDB = db): Promise<Created> {
@@ -193,7 +194,10 @@ export function createArrangement(input: NewArrangement, d: FinanceDB = db): Pro
     await syncAssetLinks(id, input.assetIds ?? [], d);
     let taskId: number | null = null;
     if (input.scheduleFirstVisit !== false && data.cadence && data.status === 'active') taskId = (await ensureNextVisitTaskIn(id, { today: input.today }, d)).taskId;
-    return { id, taskId, contactCreated: contact?.created ?? false, contactId: contact?.id ?? null };
+    const rec = new Recorder();
+    rec.made(id); rec.made(taskId);
+    await rec.seal(d, contact?.created ? contact.id : null);
+    return { id, taskId, contactCreated: contact?.created ?? false, contactId: contact?.id ?? null, undo: rec.undo };
   });
 }
 

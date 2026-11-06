@@ -7,7 +7,7 @@ import { addDays, dayOfWeek } from '../../lib/dates';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { dayLabel } from '../../core/time';
 import { parseQuickAdd } from '../tasks/quickAdd';
-import { applyUndo, type Undo } from './changes';
+import { runUndo } from './undo';
 import { createArrangement } from './data';
 import { logStandaloneVisit } from './visits';
 import { blankArrangement, cadenceText, isDate, normalizeArrangement, tidy, validateArrangement, type ArrangementData } from './model';
@@ -67,14 +67,10 @@ export function parseOneOffQuick(text: string, today: string, contacts: string[]
 
 let known: string[] = [];
 
-/** A contact made just for a Quick Add is removed again on Undo only if nothing else (an arrangement or a visit) uses it. */
-async function dropContactIfUnused(created: boolean, contactId: number | null) {
-  if (!created || contactId === null) return;
-  const used = (await db.moduleRecords.where('module').equals('services').toArray()).some((x) => x.deletedAt == null && (x.data as { providerContactId?: number }).providerContactId === contactId);
-  if (!used) await createStore(db).shared.contacts.remove(contactId);
-}
+/** Shows a refusal where a toast is not available (Quick Add's Undo runs outside the toast system). */
+const say = (text: string) => { if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(text); };
 
-/** The Add box's Household Services destination. Shows what was understood; nothing is saved until Add is pressed. */
+/** The Add box's Household Services destination. Shows what was understood; nothing is saved until Add is pressed. A contact made just for a Quick Add is removed again on Undo only if untouched and nothing refers to it. */
 export const serviceQuickAdd: QuickAddDef = {
   id: 'household-service',
   label: 'Household service',
@@ -117,23 +113,11 @@ export const serviceQuickAdd: QuickAddDef = {
         input: { title: o.title, status: 'completed', cancelledBy: null, date: o.date, chargedCents: o.chargedCents, chargeKind: o.chargedCents === null ? null : 'service' },
       });
       if (v.repeated) return undefined;
-      return async () => {
-        try {
-          await applyUndo(v.undo);
-        } catch (e) {
-          // refused because the visit was changed since: say so, and keep the contact
-          if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(e instanceof Error ? e.message : 'Could not undo that.');
-          return;
-        }
-        await dropContactIfUnused(v.contactCreated, v.contactId);
-      };
+      // refused (with a plain message) if the visit was changed since; the new contact is removed only if untouched and unused
+      return async () => { await runUndo(v.undo, say, db, { dropCreatedContact: true }); };
     }
     const p = pl;
     const r = await createArrangement({ data: p.data, provider: p.providerName ? { name: p.providerName } : null, today: todayISO() });
-    const undo: Undo = { arrangements: [], tasks: [], created: [r.id, ...(r.taskId !== null ? [r.taskId] : [])] };
-    return async () => {
-      await applyUndo(undo);
-      await dropContactIfUnused(r.contactCreated, r.contactId);
-    };
+    return async () => { await runUndo(r.undo, say, db, { dropCreatedContact: true }); };
   },
 };

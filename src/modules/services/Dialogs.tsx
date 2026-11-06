@@ -9,9 +9,10 @@ import type { Recurrence } from '../../core/recurrence';
 import { dayOfWeek } from '../../lib/dates';
 import { todayISO } from '../../lib/money';
 import {
-  applyLifecycle, applyRepair, applyScheduleChange, applyUndo, describeLifecycle, planLifecycle, planRepair, planScheduleChange, REPAIR_LABEL, TASK_CHOICE_LABEL,
+  applyLifecycle, applyRepair, applyScheduleChange, describeLifecycle, planLifecycle, planRepair, planScheduleChange, REPAIR_LABEL, TASK_CHOICE_LABEL,
   type LifecycleAction, type LifecyclePlan, type RepairKind, type RepairPlan, type SchedulePlan, type TaskChoice,
 } from './changes';
+import { runUndo } from './undo';
 import { cadenceText, END_REASON_LABEL, END_REASONS, validateArrangement, normalizeArrangement, withExplicitWeekday, type ArrangementRecord, type Cadence, type EndReason } from './model';
 import { arrangementRoute } from './paths';
 
@@ -61,7 +62,7 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
         action, arrangementId, expect: plan.expect, today, taskChoice: choice, alignReused: align, endReason: reason, endDate: action === 'end' || action === 'replace' ? endDate : undefined,
         replace: action === 'replace' ? { provider: pick === NEW ? { name: newName } : { contactId: Number(pick) }, firstDate: first || null, copyNotes } : undefined,
       });
-      toast(DONE[action], async () => { await applyUndo(res.undo); });
+      toast(DONE[action], () => runUndo(res.undo, toast).then(() => undefined));
       onClose();
       if (res.successorId) nav(arrangementRoute(res.successorId));
     } catch (e) {
@@ -159,7 +160,7 @@ export function ScheduleDialog({ arrangement, onClose }: { arrangement: Arrangem
     setBusy(true); setError('');
     try {
       const res = await applyScheduleChange({ arrangementId: arrangement.id, expect: plan.expect, today, cadence, visitTime: time || null, currentVisit: visit });
-      toast('Schedule changed', async () => { await applyUndo(res.undo); });
+      toast('Schedule changed', () => runUndo(res.undo, toast).then(() => undefined));
       onClose();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not save. Nothing was changed.'); setBusy(false); }
   }
@@ -212,7 +213,7 @@ export function RepairDialog({ kind, arrangementId, taskId, onClose }: { kind: R
     setBusy(true); setError('');
     try {
       const res = await applyRepair({ kind, arrangementId, taskId, expect: plan.expect, today });
-      toast('Done', async () => { await applyUndo(res.undo); });
+      toast('Done', () => runUndo(res.undo, toast).then(() => undefined));
       onClose();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not do that. Nothing was changed.'); setBusy(false); }
   }

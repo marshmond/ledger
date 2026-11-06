@@ -9,7 +9,7 @@ import { blankTask } from '../tasks/model';
 import { createAsset } from '../assets/data';
 import { blankAsset } from '../assets/model';
 import { createArrangement, tasksOfArrangement } from './data';
-import { applyLifecycle, applyUndo, planLifecycle, UNDO_REFUSED } from './changes';
+import { applyLifecycle, applyUndo, planLifecycle, UNDO_REFUSED, UNDO_UNVERIFIED } from './changes';
 import { arrangementRef, blankArrangement, type Cadence } from './model';
 import { asVisit, duplicateGroups, statusWords, validateVisit, visitStats } from './visitModel';
 import { loadVisits, logStandaloneVisit, logVisitFromTask, nextAfterVisit, planLogVisit, updateVisit, visitAssetIds, type VisitEdit, type VisitInput } from './visits';
@@ -334,13 +334,15 @@ describe('Finding 4: Undo refuses when what it would reverse has changed', () =>
     await applyUndo(a.undo, d); // only records THIS action touched are checked
     expect((await loadVisits(d)).map((x) => x.id)).toEqual([other.visitId]);
   });
-  it('an Undo made before this guard existed (no remembered state) behaves as before', async () => {
+  it('an Undo with no remembered state (made before the S2.1 guard) is refused, never trusted', async () => {
     const d = fresh();
     const r = await add(d);
     const res = await log(d, r.id, r.taskId!);
-    const legacy = { ...res.undo, after: undefined };
-    await applyUndo(legacy, d);
-    expect(await loadVisits(d)).toHaveLength(0);
+    const legacy = { ...res.undo, sealed: undefined };
+    const snap = await snapshot(d);
+    await expect(applyUndo(legacy, d)).rejects.toThrow(UNDO_UNVERIFIED);
+    expect(await snapshot(d)).toBe(snap);
+    expect(await loadVisits(d)).toHaveLength(1);
   });
 });
 
