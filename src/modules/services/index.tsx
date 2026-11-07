@@ -1,5 +1,6 @@
 import type { ModuleDef } from '../../core/registry';
 import ServicesModule, { SERVICES_BASE } from './ServicesModule';
+import { servicesDueProvider } from './dueProvider';
 import { serviceQuickAdd } from './quickAddDef';
 import { serviceRecords } from './records';
 import { servicesSearchSource } from './searchSource';
@@ -13,5 +14,5 @@ export const servicesModule: ModuleDef = {
   Component: ServicesModule,
   routePaths: ['/', '/a/:id', '/providers/:contactId', '/v/:id'],
   nav: [],
-  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS },
+  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, dueProvider: servicesDueProvider },
 };

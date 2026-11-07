@@ -41,13 +41,14 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
   const [newName, setNewName] = useState('');
   const [first, setFirst] = useState('');
   const [copyNotes, setCopyNotes] = useState(false);
+  const [copyDates, setCopyDates] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => { void planLifecycle(arrangementId, action, today).then((p) => { setPlan(p); setChoice(p.defaultChoice); setAlign(p.reusedDiffers); }).catch((e) => setError(e instanceof Error ? e.message : 'Could not read the arrangement.')); }, [arrangementId, action, today]);
 
   const newProviderName = pick === NEW ? newName.trim() : contacts.find((c) => String(c.id) === pick)?.name ?? '';
-  const lines = useMemo(() => (plan ? describeLifecycle(plan, { taskChoice: choice, alignReused: align, endReason: action === 'end' ? reason : undefined, endDate: action === 'end' || action === 'replace' ? endDate : undefined, providerName: newProviderName, copyNotes }) : []), [plan, choice, align, reason, endDate, action, newProviderName, copyNotes]);
+  const lines = useMemo(() => (plan ? describeLifecycle(plan, { taskChoice: choice, alignReused: align, endReason: action === 'end' ? reason : undefined, endDate: action === 'end' || action === 'replace' ? endDate : undefined, providerName: newProviderName, copyNotes, copyContractDates: copyDates }) : []), [plan, choice, align, reason, endDate, action, newProviderName, copyNotes, copyDates]);
   const hasTasks = (plan?.tasks.length ?? 0) > 0;
   const needsTaskChoice = hasTasks && (action === 'pause' || action === 'end' || action === 'replace');
 
@@ -59,7 +60,7 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
     try {
       const res = await applyLifecycle({
         action, arrangementId, expect: plan.expect, today, taskChoice: choice, alignReused: align, endReason: reason, endDate: action === 'end' || action === 'replace' ? endDate : undefined,
-        replace: action === 'replace' ? { provider: pick === NEW ? { name: newName } : { contactId: Number(pick) }, firstDate: first || null, copyNotes } : undefined,
+        replace: action === 'replace' ? { provider: pick === NEW ? { name: newName } : { contactId: Number(pick) }, firstDate: first || null, copyNotes, copyContractDates: copyDates } : undefined,
       });
       toast(DONE[action], () => runUndo(res.undo, toast).then(() => undefined));
       onClose();
@@ -99,6 +100,9 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
                 </div>
                 <label className="as-check"><input type="checkbox" checked={copyNotes} onChange={(e) => setCopyNotes(e.target.checked)} /> Copy my notes to the new arrangement</label>
                 {copyNotes && <p className="muted small">Notes can hold details about the old provider. Check them afterwards.</p>}
+                {(plan.arrangement.data.renewalDate || plan.arrangement.data.noticeByDate) && (
+                  <label className="as-check"><input type="checkbox" checked={copyDates} onChange={(e) => setCopyDates(e.target.checked)} /> Copy the renewal and notice-by dates to the new arrangement</label>
+                )}
               </>
             )}
             {needsTaskChoice && (

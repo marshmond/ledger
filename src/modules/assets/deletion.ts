@@ -25,6 +25,9 @@ export interface AssetDeletionPlan {
   openTasks: number;
   events: number;
   links: number;
+  /** S4: live Household Services arrangements / visits linked to this asset. Their records stay; only the link to this asset is removed. */
+  serviceArrangements: number;
+  serviceVisits: number;
   reasons: string[];
   canDelete: boolean;
 }
@@ -46,7 +49,15 @@ export async function planAssetDeletion(id: number, d: FinanceDB = db): Promise<
   if (replacedFrom.length) reasons.push(`${n(replacedFrom.length, 'asset is', 'assets are')} marked as replaced by this one (${replacedFrom.map((c) => c.name).slice(0, 3).join(', ')}). Change that first.`);
   if (dependents) reasons.push(`${n(dependents, 'service or warranty record points', 'service or warranty records point')} at it. They are history, so they stop the deletion.`);
   if (work.completedTasks.length) reasons.push(`${n(work.completedTasks.length, 'completed task is', 'completed tasks are')} linked to it. Completed tasks are its maintenance history. Unlink ${work.completedTasks.length === 1 ? 'it' : 'them'} from the task first, or archive the asset instead.`);
-  return { asset, children, replacedFrom, dependents, completedTasks: work.completedTasks.length, openTasks: work.openTasks.length, events: work.events.length, links: links.length, reasons, canDelete: reasons.length === 0 };
+  // S4: count what the existing deletion will unlink, from the same live links it removes, so the warning cannot disagree with the result.
+  // Only a link to a record that is live on this device is counted (a link to a deleted arrangement or visit is not "mentioning" anything).
+  const live = async (fromId: string) => { const m = /^(?:arrangement|visit):(\d+)$/.exec(fromId); const r = m ? await d.moduleRecords.get(Number(m[1])) : undefined; return !!r && r.deletedAt == null && r.module === 'services'; };
+  const arr = new Set<string>(), vis = new Set<string>();
+  for (const l of links) {
+    if (l.type !== 'serves' || l.fromModule !== 'services' || l.toModule !== MODULE || l.toId !== `asset:${id}` || !(await live(String(l.fromId)))) continue;
+    (String(l.fromId).startsWith('arrangement:') ? arr : vis).add(String(l.fromId));
+  }
+  return { asset, children, replacedFrom, dependents, completedTasks: work.completedTasks.length, openTasks: work.openTasks.length, events: work.events.length, links: links.length, serviceArrangements: arr.size, serviceVisits: vis.size, reasons, canDelete: reasons.length === 0 };
 }
 
 export async function deleteAssetPermanently(id: number, d: FinanceDB = db): Promise<{ linksRemoved: number }> {

@@ -15,6 +15,9 @@ import { buildHistory, duplicateTaskGroups, repeatText, summarize, type HistoryE
 import type { AssetRecord } from './model';
 import { SERVICE_KIND_LABEL, type ServiceRecord } from './service';
 import { loadServicesFor } from './serviceData';
+import { buildPrefill, handoffEligibility, handoffsOfVisit, type Prefill } from '../services/handoff';
+import { getVisit } from '../services/visits';
+import { SourceVisitChip } from '../services/CrossModuleUI';
 
 const day = (d: string) => dayLabel(d, { year: true });
 
@@ -24,7 +27,7 @@ function ProjectName({ id }: { id: number }) {
   if (p === undefined) return null;
   return p ? <a href={`#/projects/${p.id}`}>{p.data.name}</a> : <span className="muted">(project no longer exists)</span>;
 }
-type FormState = null | { kind: 'new' } | { kind: 'edit'; service: ServiceRecord } | { kind: 'done'; task: TaskRecord } | { kind: 'save'; task: TaskRecord } | { kind: 'maintenance' } | { kind: 'project'; projectId: number; projectName: string };
+type FormState = null | { kind: 'new' } | { kind: 'edit'; service: ServiceRecord } | { kind: 'done'; task: TaskRecord } | { kind: 'save'; task: TaskRecord } | { kind: 'maintenance' } | { kind: 'project'; projectId: number; projectName: string } | { kind: 'visit'; prefill: Prefill };
 
 /**
  * Maintenance (open linked tasks, last serviced, next due) and Service history (saved records plus completed tasks not yet saved).
@@ -53,6 +56,26 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
       clear();
     });
   }, [fromProject]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Record maintenance in Home & Assets" on a completed Household Services visit lands here. It only OPENS the form, filled in; nothing is saved until Save.
+  const fromVisit = params.get('fromVisit');
+  useEffect(() => {
+    if (!fromVisit) return;
+    const clear = () => { const n = new URLSearchParams(params); n.delete('fromVisit'); setParams(n, { replace: true }); };
+    const vid = /^\d+$/.test(fromVisit) ? Number(fromVisit) : NaN;
+    if (Number.isNaN(vid)) { clear(); return; }
+    if (asset.data.archived) { toast('This asset is archived. Restore it first, then record the visit.'); clear(); return; }
+    void (async () => {
+      const v = await getVisit(vid);
+      if (!v) { toast('That visit no longer exists.'); return clear(); }
+      const elig = handoffEligibility(v);
+      if (!elig.ok) { toast(elig.reason ?? 'That visit cannot be recorded.'); return clear(); }
+      const have = (await handoffsOfVisit(vid)).find((h) => h.service && h.service.data.assetId === asset.id);
+      if (have) { toast('This visit is already recorded for this asset. Opening that entry.'); const n = new URLSearchParams(params); n.delete('fromVisit'); n.set('service', String(have.serviceId)); setParams(n, { replace: true }); return; }
+      setForm({ kind: 'visit', prefill: buildPrefill(v) });
+      clear();
+    })();
+  }, [fromVisit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const services = data?.services;
   const focusKey = focus && /^\d+$/.test(focus) ? `s${focus}` : null;
@@ -110,6 +133,7 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
           {d.txnRefs.length > 0 && <span className="small">From Finance ({d.txnRefs.length})</span>}
           {d.taskId !== null && <span className="muted small">From task: {d.taskTitleSnapshot || 'untitled'}</span>}
         </button>
+        <div className="as-hist-source"><SourceVisitChip serviceId={s.id} assetId={asset.id} /></div>
         {isOpen && (
           <div className="as-hist-detail">
             <dl className="as-facts">
@@ -207,6 +231,7 @@ export default function AssetWork({ asset, today }: { asset: AssetRecord; today:
       {form?.kind === 'done' && <ServiceForm asset={asset} task={form.task} complete onClose={() => setForm(null)} />}
       {form?.kind === 'project' && <ServiceForm asset={asset} prefill={{ title: form.projectName, kind: 'improvement', projectId: form.projectId, projectName: form.projectName }} onClose={() => setForm(null)} />}
       {form?.kind === 'save' && <ServiceForm asset={asset} task={form.task} onClose={() => setForm(null)} />}
+      {form?.kind === 'visit' && <ServiceForm asset={asset} handoff={form.prefill} onClose={() => setForm(null)} />}
     </>
   );
 }

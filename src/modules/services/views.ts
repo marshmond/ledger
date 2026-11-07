@@ -11,20 +11,28 @@ import { loadAssets, publicLabel } from '../assets/data';
 import { parseAssetRef, STATUS_LABEL as ASSET_STATUS, TYPE_LABEL, type AssetRecord } from '../assets/model';
 import { ASSET_LINK, MODULE, parseArrangementRef, TASK_LINK, type ArrangementRecord } from './model';
 import { loadArrangements } from './data';
+import { upcomingContractCounts } from './contract';
 import { loadVisits, unloggedVisits, type UnloggedItem } from './visits';
 import { byDateDesc, duplicateGroups, visitStats, type DuplicateGroup, type VisitRecord, type VisitStats } from './visitModel';
 import { isBooking, openOf, scheduleHealth, type Health } from './schedule';
 
-export interface AssetView { id: number; name: string; typeLabel: string; statusLabel: string; /** sold, disposed of or replaced */ past: boolean; archived: boolean; /** the asset no longer exists on this device */ missing: boolean; replacedBy: string | null }
+export interface AssetView {
+  id: number; name: string; typeLabel: string; statusLabel: string; /** sold, disposed of or replaced */ past: boolean; archived: boolean; /** the asset no longer exists on this device */ missing: boolean; replacedBy: string | null;
+  /** S4: the raw status ('replaced', 'sold', ...), or null when the asset is missing. */
+  status: string | null;
+  /** S4: the live replacement asset that "Move to replacement" would point at. Null unless this asset is `replaced` and its `replacedById` is a live, unarchived asset other than itself. */
+  replacementId: number | null;
+}
 
 export function assetViews(ids: number[], assets: AssetRecord[]): AssetView[] {
   return ids.map((id) => {
     const a = assets.find((x) => x.id === id);
-    if (!a) return { id, name: 'An asset that no longer exists', typeLabel: '', statusLabel: '', past: false, archived: false, missing: true, replacedBy: null };
+    if (!a) return { id, name: 'An asset that no longer exists', typeLabel: '', statusLabel: '', past: false, archived: false, missing: true, replacedBy: null, status: null, replacementId: null };
     const repl = a.data.replacedById !== null ? assets.find((x) => x.id === a.data.replacedById) : undefined;
+    const usable = a.data.status === 'replaced' && repl !== undefined && repl.id !== a.id && !repl.data.archived;
     return {
       id, name: publicLabel(assets, id), typeLabel: TYPE_LABEL[a.data.type], statusLabel: ASSET_STATUS[a.data.status], past: ['sold', 'disposed', 'replaced'].includes(a.data.status),
-      archived: a.data.archived, missing: false, replacedBy: repl ? publicLabel(assets, repl.id) : null,
+      archived: a.data.archived, missing: false, replacedBy: repl ? publicLabel(assets, repl.id) : null, status: a.data.status, replacementId: usable ? repl!.id : null,
     };
   });
 }
@@ -147,10 +155,17 @@ export function visitRows(s: Snapshot, visits: VisitRecord[]): VisitRow[] {
   });
 }
 /** The counts the Today card shows. Counts only. */
-export interface AttentionCounts { unlogged: number; duplicateGroups: number; scheduleChecks: number; needsReview: number }
-export function attentionCounts(s: Snapshot): AttentionCounts {
+export interface AttentionCounts {
+  unlogged: number; duplicateGroups: number; scheduleChecks: number; needsReview: number;
+  /** S4: renewal dates and notice-by deadlines from today through the next 30 days (never ended arrangements). Absent = not asked for. */
+  renewals?: number; notices?: number;
+}
+/** Today's counts. Pass `today` to include the contract deadlines (the same function the Calendar layer uses). */
+export function attentionCounts(s: Snapshot, today?: string): AttentionCounts {
   const ov = buildOverview(s);
+  const contract = today ? upcomingContractCounts(s.arrangements, today, 30) : null;
   return {
+    ...(contract ? { renewals: contract.renewals, notices: contract.notices } : {}),
     unlogged: ov.unlogged.length,
     // look-alike one-offs may be two real visits: they are shown on the pages but not counted on Today
     duplicateGroups: ov.duplicates.filter((g) => g.reason !== 'lookalike').length,

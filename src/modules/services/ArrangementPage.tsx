@@ -20,6 +20,9 @@ import { arrangementRoute, providerRoute, visitRoute } from './paths';
 import { loadSnapshot, buildRow, visitRows, type Row } from './views';
 import { markersOf } from './schedule';
 import { ArrangementMoney } from './PaymentUI';
+import { contractWarnings, datesOf } from './contract';
+import ProjectLinks from './ProjectLinkCard';
+import { ContractDialog, MoveDialog } from './S4Dialogs';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 
@@ -33,6 +36,8 @@ export default function ArrangementPage({ id }: { id: number }) {
   const [fix, setFix] = useState<{ kind: RepairKind; taskId: number | null } | null>(null);
   const [logging, setLogging] = useState<{ taskId: number; status: VisitStatus } | null>(null);
   const [past, setPast] = useState(false);
+  const [contract, setContract] = useState(false);
+  const [moving, setMoving] = useState<number | null>(null);
   const bookings = useLiveQuery(() => bookingTasksOf(id), [id]) ?? [];
 
   if (!snap) return <div className="sv"><p className="muted">Loading…</p></div>;
@@ -109,11 +114,38 @@ export default function ArrangementPage({ id }: { id: number }) {
               <li key={as.id}>
                 {as.missing ? <span className="sv-warn">{as.name}. Use Edit to remove the link.</span> : <a href={`#/assets/${as.id}`}><strong>{as.name}</strong></a>}
                 {!as.missing && <div className="small muted">{as.typeLabel} · <span className={as.past ? 'sv-late' : ''}>{as.statusLabel}</span>{as.archived ? ' · Archived' : ''}{as.past && as.replacedBy ? ` · replaced by ${as.replacedBy}` : ''}</div>}
+                {d.status !== 'ended' && !as.missing && (as.past || as.archived) && (
+                  <div className="sv-note small" role="note">
+                    <strong>{as.status === 'replaced' ? 'This arrangement still serves a replaced asset.' : as.status === 'sold' || as.status === 'disposed' ? `This arrangement still serves an asset that was ${as.statusLabel.toLowerCase()}.` : 'This arrangement serves an archived asset.'}</strong>
+                    {as.status === 'replaced' && as.replacementId !== null && <> Future service coverage can point at {as.replacedBy ?? 'the replacement'} instead. Past visits keep pointing at the old asset.</>}
+                    {as.status === 'replaced' && as.replacementId === null && <> Its replacement is missing or cannot be used (it may be deleted, archived, not synced yet, or not chosen). Ledger will not pick one for you. Fix the replacement in Home &amp; Assets, or choose another asset with Edit.</>}
+                    <div className="sv-actionrow">
+                      {as.status === 'replaced' && as.replacementId !== null && <button type="button" className="btn primary" onClick={() => setMoving(as.id)}>Move to replacement…</button>}
+                      <button type="button" className="btn" onClick={() => setEdit(true)}>Choose assets…</button>
+                      <button type="button" className="btn" onClick={() => setLife('end')}>End this arrangement…</button>
+                    </div>
+                    <span className="muted"> Or leave it as it is: this notice stays until you decide. Nothing moves or ends by itself.</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <section className="card sv-card" aria-labelledby="sv-con-h">
+        <div className="sv-card-head"><h2 id="sv-con-h">Contract dates</h2><button type="button" className="btn" onClick={() => setContract(true)}>{d.renewalDate || d.noticeByDate ? 'Edit dates' : 'Add dates'}</button></div>
+        {d.renewalDate || d.noticeByDate ? (
+          <dl className="sv-facts">
+            <div className="sv-fact"><dt>Renews</dt><dd>{d.renewalDate ? day(d.renewalDate) : <span className="muted">Not set</span>}</dd></div>
+            <div className="sv-fact"><dt>Give notice by</dt><dd>{d.noticeByDate ? day(d.noticeByDate) : <span className="muted">Not set</span>}</dd></div>
+          </dl>
+        ) : <p className="muted">No renewal or notice date. Add them if this service has an agreement you may want to change or cancel.</p>}
+        {contractWarnings(datesOf(d), d.status, today).map((w, i) => <p key={i} className="sv-warn small" role="status">{w}</p>)}
+        <p className="muted small">You enter these yourself for each agreement period. Ledger shows them on the Calendar and Today. It never renews, cancels or repeats them for you.</p>
+      </section>
+
+      <ProjectLinks end={{ kind: 'arrangement', id: a.id }} />
 
       <section className="card sv-card" aria-labelledby="sv-cost-h">
         <h2 id="sv-cost-h">Cost estimate</h2>
@@ -173,6 +205,8 @@ export default function ArrangementPage({ id }: { id: number }) {
       {logging && <LogVisitDialog arrangementId={a.id} taskId={logging.taskId} status={logging.status} onClose={() => setLogging(null)} />}
       {past && <OneOffDialog arrangementId={a.id} providerName={d.providerNameSnapshot} defaultTitle={d.title} onClose={() => setPast(false)} />}
       {fix && <RepairDialog kind={fix.kind} arrangementId={a.id} taskId={fix.taskId} onClose={() => setFix(null)} />}
+      {contract && <ContractDialog arrangement={a} today={today} onClose={() => setContract(false)} />}
+      {moving !== null && <MoveDialog arrangementId={a.id} oldAssetId={moving} onClose={() => setMoving(null)} />}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import DeleteAsset from './DeleteAsset';
 import LinkedWork from './LinkedWork';
 import NetWorthEntry from './NetWorthEntry';
 import RelatedProjects from './RelatedProjects';
+import { AssetServicesCard } from '../services/CrossModuleUI';
 import SpendingCard from './SpendingCard';
 import LifecycleDialog from './LifecycleDialog';
 import WarrantyCard from './WarrantyCard';
@@ -173,6 +174,7 @@ export default function AssetPage() {
 
       <WarrantyCard asset={asset} today={today} />
       <SpendingCard asset={asset} onEdit={() => setEditing(true)} />
+      <AssetServicesCard assetId={asset.id} />
       <AssetWork asset={asset} today={today} />
       <RelatedProjects asset={asset} />
       <LinkedWork assetId={asset.id} />

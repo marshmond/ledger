@@ -119,7 +119,11 @@ export interface LifecycleRequest {
   alignReused?: boolean;
   endReason?: EndReason;
   endDate?: string;
-  replace?: { provider: ProviderInput; /** the first visit's date; default: the next date in the schedule */ firstDate?: string | null; copyNotes?: boolean };
+  replace?: {
+    provider: ProviderInput; /** the first visit's date; default: the next date in the schedule */ firstDate?: string | null; copyNotes?: boolean;
+    /** S4: copy the old arrangement's renewal and notice-by dates to the new one. Off unless the owner ticks it: a new provider's agreement has its own dates. */
+    copyContractDates?: boolean;
+  };
 }
 export interface LifecycleResult { arrangementId: number; successorId: number | null; taskId: number | null; removed: number; stopped: number; undo: Undo; contactCreated: boolean }
 
@@ -184,6 +188,8 @@ export function applyLifecycle(req: LifecycleRequest, d: FinanceDB = db): Promis
       successorId = await writeArrangement(undefined, blankArrangement({
         title: a.data.title, providerContactId: provider.id, providerNameSnapshot: provider.name, status: 'active', startDate: today,
         cadence: a.data.cadence, visitTime: a.data.visitTime, expected: a.data.expected, notes: req.replace.copyNotes ? a.data.notes : '', predecessorId: a.id,
+        // contract dates belong to the OLD provider's agreement: the predecessor keeps them as history, the successor gets them only on request
+        ...(req.replace.copyContractDates ? { renewalDate: a.data.renewalDate, noticeByDate: a.data.noticeByDate } : {}),
       }), d);
       rec.made(successorId);
       await syncAssetLinks(successorId, await linkedAssetIds(a.id, d), d);
@@ -197,7 +203,7 @@ export function applyLifecycle(req: LifecycleRequest, d: FinanceDB = db): Promis
 }
 
 /** The plain-words preview shown before the owner confirms. Pure. */
-export function describeLifecycle(plan: LifecyclePlan, req: Pick<LifecycleRequest, 'taskChoice' | 'alignReused' | 'endDate' | 'endReason'> & { providerName?: string; copyNotes?: boolean }): string[] {
+export function describeLifecycle(plan: LifecyclePlan, req: Pick<LifecycleRequest, 'taskChoice' | 'alignReused' | 'endDate' | 'endReason'> & { providerName?: string; copyNotes?: boolean; copyContractDates?: boolean }): string[] {
   const a = plan.arrangement.data;
   const choice = req.taskChoice ?? plan.defaultChoice;
   const out: string[] = [];
@@ -227,6 +233,7 @@ export function describeLifecycle(plan: LifecyclePlan, req: Pick<LifecycleReques
   } else {
     out.push(`"${a.title}" with ${a.providerNameSnapshot || 'its current provider'} will end (replaced). It keeps its original provider and its history.`);
     out.push(`A new arrangement "${a.title}" with ${req.providerName || 'the new provider'} will start. It copies the schedule (${cadenceText(a.cadence)}), the cost estimate, the title and the linked assets.${req.copyNotes ? ' Your notes will be copied too.' : ' Notes, document links and other contacts are not copied.'}`);
+    if (a.renewalDate || a.noticeByDate) out.push(req.copyContractDates ? 'The renewal and notice-by dates will be copied to the new arrangement, because you ticked the box. Check them: a new provider\'s agreement may have different ones.' : 'The renewal and notice-by dates stay with the old arrangement as history. The new arrangement starts with none, because a new provider\'s agreement has its own.');
     taskLines();
     out.push('The new arrangement gets its own visit task.');
   }

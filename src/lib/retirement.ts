@@ -188,7 +188,8 @@ export function trailingAnnualSpending(
   const window: string[] = [];
   for (let m = prevMonth(monthOf(today)); window.length < months; m = prevMonth(m)) window.push(m);
   const earliestTxn = txns.reduce((m, t) => (isSetupTxn(t) || monthOf(t.date) >= m ? m : monthOf(t.date)), monthOf(today));
-  const earliestAcct = accounts.reduce((m, a) => (monthOf(a.openingDate) < m ? monthOf(a.openingDate) : m), monthOf(today));
+  // an account with no opening date adds no month (see budget.ts): nothing is invented
+  const earliestAcct = accounts.reduce((m, a) => (typeof a.openingDate === 'string' && monthOf(a.openingDate) < m ? monthOf(a.openingDate) : m), monthOf(today));
   const start = earliestTxn < earliestAcct ? earliestTxn : earliestAcct;
   const used = window.filter((m) => m > start); // months fully after the first activity
   if (used.length === 0) return { annualCents: 0, monthsUsed: 0 };

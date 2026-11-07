@@ -89,10 +89,18 @@ export interface ArrangementData {
    * There is no arrangement-level typed amount: S0 does not specify one, and a general manual ledger is out of scope.
    */
   txnRefs: TxnRef[];
+  /**
+   * S4: the date the service AGREEMENT renews, and the date by which the household must act or give notice to change or cancel it. Plain calendar
+   * dates with no time. They are different dates and neither is a visit date. Nothing renews or cancels by itself, and nothing repeats them
+   * yearly: the owner types the dates for each agreement period. Kept (never erased) when the arrangement is paused, ended or replaced.
+   * Stored only when set, so an arrangement without them is stored exactly as before S4.
+   */
+  renewalDate: string | null;
+  noticeByDate: string | null;
 }
 export interface ArrangementRecord { id: number; createdAt: number; updatedAt: number; data: ArrangementData }
 
-const KNOWN = new Set(['title', 'providerContactId', 'providerNameSnapshot', 'extraContactIds', 'status', 'endReason', 'startDate', 'endDate', 'cadence', 'visitTime', 'expected', 'refs', 'notes', 'predecessorId', 'openTaskId', 'acknowledged', 'txnRefs', 'semiCadence']);
+const KNOWN = new Set(['title', 'providerContactId', 'providerNameSnapshot', 'extraContactIds', 'status', 'endReason', 'startDate', 'endDate', 'cadence', 'visitTime', 'expected', 'refs', 'notes', 'predecessorId', 'openTaskId', 'acknowledged', 'txnRefs', 'semiCadence', 'renewalDate', 'noticeByDate']);
 const extras = (d: object) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !KNOWN.has(k) && v !== undefined)) as object;
 const ids = (v: unknown): number[] => (Array.isArray(v) ? [...new Set(v.filter((x): x is number => typeof x === 'number' && Number.isFinite(x)))] : []);
 
@@ -132,14 +140,16 @@ function readStoredSemi(v: unknown): Cadence | null {
 }
 /** The form written to the database for an arrangement. Every write of an arrangement goes through this. */
 export function toStored(d: ArrangementData): Record<string, unknown> {
-  const { cadence, ...rest } = d as ArrangementData & Record<string, unknown>;
+  const { cadence, renewalDate, noticeByDate, ...rest } = d as ArrangementData & Record<string, unknown>;
+  // contract dates are stored only when set (an arrangement without them looks exactly as it did before S4)
+  const dates = { ...(renewalDate ? { renewalDate } : {}), ...(noticeByDate ? { noticeByDate } : {}) };
   if (cadence?.semi) {
     const stored: StoredSemi = { anchorDate: cadence.anchorDate, end: cadence.rule.end, semi: cadence.semi };
-    return { ...rest, cadence: null, semiCadence: stored };
+    return { ...rest, ...dates, cadence: null, semiCadence: stored };
   }
   const { semiCadence: _drop, ...clean } = rest as Record<string, unknown>;
   void _drop;
-  return { ...clean, cadence };
+  return { ...clean, ...dates, cadence };
 }
 
 /** Reads a stored record defensively, so a record from another device or version can never crash a screen. Never throws. */
@@ -171,13 +181,15 @@ export function asArrangement(r: ModuleRecord): ArrangementRecord {
       openTaskId: finite(d.openTaskId) ? d.openTaskId : null,
       acknowledged: Array.isArray(d.acknowledged) ? d.acknowledged.filter((x): x is string => typeof x === 'string') : [],
       txnRefs: readTxnRefs(d.txnRefs),
+      renewalDate: isDate((d as Record<string, unknown>).renewalDate) ? ((d as Record<string, unknown>).renewalDate as string) : null,
+      noticeByDate: isDate((d as Record<string, unknown>).noticeByDate) ? ((d as Record<string, unknown>).noticeByDate as string) : null,
     },
   };
 }
 
 export const blankArrangement = (over: Partial<ArrangementData> = {}): ArrangementData => ({
   title: '', providerContactId: null, providerNameSnapshot: '', extraContactIds: [], status: 'active', endReason: null, startDate: null, endDate: null,
-  cadence: null, visitTime: null, expected: null, refs: [], notes: '', predecessorId: null, openTaskId: null, acknowledged: [], txnRefs: [], ...over,
+  cadence: null, visitTime: null, expected: null, refs: [], notes: '', predecessorId: null, openTaskId: null, acknowledged: [], txnRefs: [], renewalDate: null, noticeByDate: null, ...over,
 });
 
 export function isSafeUrl(u: string): boolean {
@@ -232,6 +244,8 @@ export function validateArrangement(d: ArrangementData): string | null {
   if (d.providerNameSnapshot.length > 120) return 'The provider name is too long.';
   if (d.startDate !== null && !isDate(d.startDate)) return 'The start date is not a real date.';
   if (d.endDate !== null && !isDate(d.endDate)) return 'The end date is not a real date.';
+  if (d.renewalDate !== null && d.renewalDate !== undefined && !isDate(d.renewalDate)) return 'The renewal date is not a real date.';
+  if (d.noticeByDate !== null && d.noticeByDate !== undefined && !isDate(d.noticeByDate)) return 'The notice-by date is not a real date.';
   if (d.startDate && d.endDate && d.endDate < d.startDate) return 'The end date is before the start date.';
   if (d.status === 'ended' && d.endReason !== null && !END_REASONS.includes(d.endReason)) return 'Pick why it ended.';
   if (d.visitTime !== null && !isTime(d.visitTime)) return 'The visit time must look like 09:30.';

@@ -74,3 +74,15 @@
 .sv-preview ol { margin: var(--sp-1) 0 0; padding-left: var(--sp-4); list-style: decimal; }
 .sv-cadence .f, .sv-cadence .sv-two > * { min-width: 0; }
 .sv-cadence .f > input, .sv-cadence .f > select { width: 100%; }
+
+/* S4: project links, contract dates, cross-module notices */
+.sv-linkrow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.sv-pickrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--sp-2); align-items: center; margin-top: var(--sp-2); }
+.sv-pickrow input, .sv-pickrow select { min-width: 0; min-height: 40px; }
+.sv-note .sv-actionrow { margin: var(--sp-2) 0; }
+a.btn.disabled { opacity: .5; pointer-events: none; }
+@media (max-width: 640px) {
+  .sv-pickrow { grid-template-columns: 1fr; }
+  .sv-pickrow .btn, .sv-linkrow .link { min-height: 44px; }
+  .sv-note .sv-actionrow .btn { min-height: 44px; }
+}

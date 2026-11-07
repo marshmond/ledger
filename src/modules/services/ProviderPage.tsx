@@ -7,8 +7,11 @@ import { updateContactDetails } from '../../core/contacts';
 import { dayLabel } from '../../core/time';
 import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
-import { projectsUsingContact } from '../projects/data';
-import { cadenceText, STATUS_LABEL } from './model';
+import { getProject, projectsUsingContact } from '../projects/data';
+import { loadArrangements } from './data';
+import { explicitProjectIds } from './projectLinks';
+import { loadVisits } from './visits';
+import { cadenceText, END_REASON_LABEL, STATUS_LABEL } from './model';
 import { arrangementRoute } from './paths';
 import { buildProvider, loadSnapshot, type Row } from './views';
 import VisitList from './VisitList';
@@ -23,6 +26,13 @@ const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 export default function ProviderPage({ contactId }: { contactId: number }) {
   const snap = useLiveQuery(() => loadSnapshot(), []);
   const projects = useLiveQuery(() => projectsUsingContact(contactId), [contactId]) ?? [];
+  // Projects the owner explicitly linked from this provider's arrangements or visits (S4). Different from the vendor list above.
+  const linkedProjects = useLiveQuery(async () => {
+    const arrs = (await loadArrangements()).filter((a) => a.data.providerContactId === contactId);
+    const visits = (await loadVisits()).filter((v) => v.data.providerContactId === contactId);
+    const ids = await explicitProjectIds([...arrs.map((a) => ({ kind: 'arrangement' as const, id: a.id })), ...visits.map((v) => ({ kind: 'visit' as const, id: v.id }))]);
+    return (await Promise.all(ids.map((id) => getProject(id)))).filter((x): x is NonNullable<typeof x> => !!x);
+  }, [contactId]) ?? [];
   const [editing, setEditing] = useState(false);
   if (!snap) return <div className="sv"><p className="muted">Loading…</p></div>;
   const p = buildProvider(snap, contactId);
@@ -30,12 +40,21 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
     return <div className="sv"><p className="sv-back"><Link to="/">← Household Services</Link></p><EmptyState title="That provider is not here">The contact may have been removed, or the address is wrong.</EmptyState></div>;
   }
   const upcoming = [...p.active].filter((r) => r.open).sort((a, b) => a.nextDate!.localeCompare(b.nextDate ?? '9999'));
+  const succOf = (r: Row) => snap.arrangements.find((x) => x.data.predecessorId === r.a.id);
   const line = (r: Row) => (
     <li key={r.a.id}>
       <Link to={arrangementRoute(r.a.id)}><strong>{r.a.data.title}</strong></Link>
-      <div className="small muted">{cadenceText(r.a.data.cadence)} · {STATUS_LABEL[r.a.data.status]}{r.a.data.endDate ? ` ${day(r.a.data.endDate)}` : ''}</div>
+      <div className="small muted">
+        {cadenceText(r.a.data.cadence)} · {STATUS_LABEL[r.a.data.status]}{r.a.data.status === 'ended' && r.a.data.endReason ? `: ${END_REASON_LABEL[r.a.data.endReason].toLowerCase()}` : ''}{r.a.data.endDate ? ` ${day(r.a.data.endDate)}` : ''}
+        {r.a.data.status === 'ended' && succOf(r) && <> · taken over by <Link to={arrangementRoute(succOf(r)!.id)}>{succOf(r)!.data.providerNameSnapshot || 'a new arrangement'}</Link></>}
+        {r.a.data.status === 'ended' && (r.a.data.renewalDate || r.a.data.noticeByDate) && ' · contract dates kept as history'}
+      </div>
     </li>
   );
+  const completed = p.visits.filter((r) => r.v.data.status === 'completed');
+  const notDone = p.visits.filter((r) => r.v.data.status !== 'completed');
+  const docs = snap.arrangements.filter((a) => a.data.providerContactId === contactId).flatMap((a) => a.data.refs.filter((r) => r.url || r.label).map((r) => ({ ...r, from: a.data.title })));
+  const vendorOnly = projects.filter((pr) => !linkedProjects.some((x) => x.id === pr.id));
   return (
     <div className="sv">
       <p className="sv-back"><Link to="/">← Household Services</Link></p>
@@ -64,7 +83,7 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
         {p.active.length === 0 ? <p className="muted">None right now.</p> : <ul className="plain sv-items">{p.active.map(line)}</ul>}
       </section>
       {p.past.length > 0 && (
-        <section className="card sv-card" aria-labelledby="sv-pp-h"><h2 id="sv-pp-h">Past arrangements</h2><ul className="plain sv-items">{p.past.map(line)}</ul></section>
+        <section className="card sv-card" aria-labelledby="sv-pp-h"><h2 id="sv-pp-h">Ended and replaced arrangements</h2><ul className="plain sv-items">{p.past.map(line)}</ul></section>
       )}
       <section className="card sv-card" aria-labelledby="sv-pu-h">
         <h2 id="sv-pu-h">Upcoming visits</h2>
@@ -78,23 +97,45 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
           <ul className="plain sv-items">{p.assets.map((a) => <li key={a.id}>{a.missing ? <span className="muted">{a.name}</span> : <><a href={`#/assets/${a.id}`}><strong>{a.name}</strong></a><div className="small muted">{a.typeLabel} · {a.statusLabel}</div></>}</li>)}</ul>
         </section>
       )}
+      {linkedProjects.length > 0 && (
+        <section className="card sv-card" aria-labelledby="sv-plp-h">
+          <h2 id="sv-plp-h">Projects you linked to their services</h2>
+          <p className="muted small">Linked by you from an arrangement or a visit.</p>
+          <ul className="plain sv-items">{linkedProjects.map((pr) => <li key={pr.id}><a href={`#/projects/${pr.id}`}><strong>{pr.data.name}</strong></a></li>)}</ul>
+        </section>
+      )}
       {projects.length > 0 && (
         <section className="card sv-card" aria-labelledby="sv-ppr-h">
-          <h2 id="sv-ppr-h">Projects they work on</h2>
+          <h2 id="sv-ppr-h">Projects where they are a vendor</h2>
+          <p className="muted small">These projects list this contact as a vendor. That is separate from a link you make yourself{vendorOnly.length < projects.length ? ' (some of these are also linked)' : ''}.</p>
           <ul className="plain sv-items">{projects.map((pr) => <li key={pr.id}><a href={`#/projects/${pr.id}`}><strong>{pr.data.name}</strong></a></li>)}</ul>
+        </section>
+      )}
+      {docs.length > 0 && (
+        <section className="card sv-card" aria-labelledby="sv-pd-h">
+          <h2 id="sv-pd-h">Documents</h2>
+          <ul className="plain sv-items">{docs.map((r, i) => <li key={i}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer">{r.label}</a> : r.label}<span className="muted small"> · {r.from}</span></li>)}</ul>
         </section>
       )}
       <ProviderMoney providerKey={`c:${contactId}`} />
       <section className="card sv-card" aria-labelledby="sv-pv-h">
-        <h2 id="sv-pv-h">Visit history</h2>
+        <h2 id="sv-pv-h">Completed visits</h2>
         {p.visits.length > 0 && (
           <p className="sv-stats small" aria-label="Visit totals">
             <span>Completed: <strong>{p.stats.completed}</strong></span><span>Skipped: <strong>{p.stats.skipped}</strong></span><span>Cancelled: <strong>{p.stats.cancelled}</strong></span>
             <span>Last serviced: <strong>{p.stats.lastServiced ? day(p.stats.lastServiced) : 'never logged'}</strong></span>
           </p>
         )}
-        <VisitList rows={p.visits} showProvider={false} empty="No visits logged with this provider yet." />
+        <p className="muted small">Each visit shows the provider it was done by at the time, even if an arrangement was later handed to someone else.</p>
+        <VisitList rows={completed} showProvider={false} empty="No completed visits with this provider yet." />
       </section>
+      {notDone.length > 0 && (
+        <section className="card sv-card" aria-labelledby="sv-pn-h">
+          <h2 id="sv-pn-h">Skipped, cancelled and unreviewed visits</h2>
+          <p className="muted small">These did not deliver service, so they are kept apart from the completed visits above.</p>
+          <VisitList rows={notDone} showProvider={false} empty="" />
+        </section>
+      )}
       {editing && p.contact && <EditContact id={contactId} name={p.contact.name} phone={p.contact.phone ?? ''} email={p.contact.email ?? ''} relationship={p.contact.relationship ?? ''} onClose={() => setEditing(false)} />}
     </div>
   );

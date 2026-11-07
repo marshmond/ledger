@@ -5,7 +5,7 @@ import { dayLabel } from '../../core/time';
 import { db } from '../../db';
 import { store } from '../../core/store';
 import Modal from '../../shell/Modal';
-import { todayISO } from '../../lib/money';
+import { formatCents, todayISO } from '../../lib/money';
 import { useToast } from '../../ui/Toast';
 import { nextDueDate } from '../tasks/recur';
 import type { TaskRecord } from '../tasks/model';
@@ -13,6 +13,8 @@ import { completedOn, completionBasis } from './maintenance';
 import { chooseCost, initialChoice, type CostChoice } from './costSource';
 import type { AssetRecord, AssetRef } from './model';
 import { CostSourceField } from './TxnRefs';
+import { HandoffExistsError, saveHandoff, type Prefill } from '../services/handoff';
+import { loadHideAmounts } from '../today/layout';
 import { blankService, costFromText, SERVICE_KINDS, SERVICE_KIND_LABEL, type ServiceKind, type ServiceRecord } from './service';
 import { createService, deleteService, DuplicateServiceError, logTaskService, restoreService, updateService } from './serviceData';
 
@@ -34,6 +36,11 @@ type Props = {
   complete?: boolean;
   /** Starting point from a Project ("Record in Home & Assets…"). Nothing is saved until the owner presses Save; no cost is filled in. */
   prefill?: { title: string; kind: ServiceKind; projectId: number; projectName: string };
+  /**
+   * Starting point from a completed Household Services visit ("Record maintenance in Home & Assets"). Saving goes through `saveHandoff`, which writes
+   * this record and the `recorded-as` link together, once. A typed amount from the visit is NOT filled in unless the owner ticks the separate box.
+   */
+  handoff?: Prefill;
   onClose: () => void;
 };
 
@@ -42,21 +49,24 @@ type Props = {
  * Only known facts are prefilled (the task's title and notes, its date, a single contact). Cost and "what was done" are never invented:
  * a blank cost is saved as "not recorded", not as $0.
  */
-export default function ServiceForm({ asset, service, task, complete = false, prefill, onClose }: Props) {
+export default function ServiceForm({ asset, service, task, complete = false, prefill, handoff, onClose }: Props) {
   const toast = useToast();
   const today = todayISO();
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
-  const base = service?.data ?? blankService(asset.id);
+  const base = service?.data ?? blankService(asset.id, handoff ? { txnRefs: handoff.txnRefs, refs: handoff.refs } : {});
   const taskContact = task && task.data.contactIds.length === 1 ? task.data.contactIds[0] : null;
-  const [title, setTitle] = useState(service ? base.title : task?.data.title ?? prefill?.title ?? '');
-  const [date, setDate] = useState(service ? base.date : task ? (complete ? today : completedOn(task)) : today);
-  const [kind, setKind] = useState<ServiceKind>(service ? base.kind : prefill?.kind ?? 'maintenance');
-  const [notes, setNotes] = useState(service ? base.notes : task?.data.notes ?? '');
-  const [provider, setProvider] = useState<number | null>(service ? base.providerContactId : taskContact);
+  const [title, setTitle] = useState(service ? base.title : handoff ? handoff.title : task?.data.title ?? prefill?.title ?? '');
+  const [date, setDate] = useState(service ? base.date : handoff ? handoff.date : task ? (complete ? today : completedOn(task)) : today);
+  const [kind, setKind] = useState<ServiceKind>(service ? base.kind : handoff?.kind ?? prefill?.kind ?? 'maintenance');
+  const [notes, setNotes] = useState(service ? base.notes : handoff ? handoff.notes : task?.data.notes ?? '');
+  const [provider, setProvider] = useState<number | null>(service ? base.providerContactId : handoff ? handoff.providerContactId : taskContact);
   const [costText, setCostText] = useState(service && base.costCents !== null ? (base.costCents / 100).toFixed(2) : '');
   const [refs, setRefs] = useState<AssetRef[]>(base.refs);
   const [txnRefs, setTxnRefs] = useState(base.txnRefs);
   const [choice, setChoice] = useState<CostChoice>(initialChoice(base.costCents, base.txnRefs));
+  const [copyManual, setCopyManual] = useState(false);
+  const [saved, setSaved] = useState<{ serviceId: number } | null>(null);
+  const hideAmounts = loadHideAmounts();
   const [ack, setAck] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -66,7 +76,13 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
   const [busy, setBusy] = useState(false);
 
   const known = provider !== null && contacts.some((c) => c.id === provider);
-  const heading = service ? 'Edit service record' : task ? (complete ? 'Done, log it' : 'Save to service history') : 'Log service';
+  const heading = service ? 'Edit service record' : handoff ? 'Record visit as maintenance' : task ? (complete ? 'Done, log it' : 'Save to service history') : 'Log service';
+  const manualMoney = handoff?.manualCents != null ? (hideAmounts ? '$••••' : formatCents(handoff.manualCents)) : '';
+  function toggleManual(on: boolean) {
+    setCopyManual(on);
+    if (!handoff || handoff.manualCents == null) return;
+    if (on) { setChoice('manual'); setCostText((handoff.manualCents / 100).toFixed(2)); } else if (choice === 'manual') setCostText('');
+  }
 
   async function addContact() {
     const problem = validateContact({ name: newName, phone: newPhone, email: newEmail });
@@ -85,9 +101,16 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
     const chosen = chooseCost(choice, costText, txnRefs, costFromText);
     if (chosen.badAmount) return setError('The cost is not an amount. Leave it blank if you do not know it.');
     if (chosen.dropped && !ack) return setError(`Tick the box to confirm removing ${chosen.dropped}, or switch back to keep it.`);
-    const data = { ...base, assetId: asset.id, date, kind, title, notes, providerContactId: provider, costCents: chosen.cents, txnRefs: chosen.refs, refs, projectId: service ? base.projectId : prefill?.projectId ?? base.projectId };
+    const data = { ...base, assetId: asset.id, date, kind, title, notes, providerContactId: handoff && !known ? null : provider, costCents: chosen.cents, txnRefs: chosen.refs, refs, projectId: service ? base.projectId : prefill?.projectId ?? base.projectId };
     setBusy(true);
     try {
+      if (handoff && !service) {
+        const r = await saveHandoff({ visitId: handoff.visitId, assetId: asset.id, data, today, confirmManualCopy: copyManual });
+        toast('Saved to service history, linked to the visit');
+        setSaved({ serviceId: r.serviceId });
+        setBusy(false);
+        return;
+      }
       if (service) { await updateService(service.id, data); toast('Saved'); }
       else if (task) {
         const r = await logTaskService({ taskId: task.id, data, complete });
@@ -96,6 +119,7 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
       onClose();
     } catch (err) {
       if (err instanceof DuplicateServiceError) { toast('That task was already saved to history'); onClose(); return; }
+      if (err instanceof HandoffExistsError) { setSaved({ serviceId: err.serviceId }); setError('This visit was already recorded for this asset (maybe a moment ago, or on another device). Nothing new was saved.'); setBusy(false); return; }
       setError(err instanceof Error ? err.message : 'Could not save.');
       setBusy(false);
     }
@@ -111,6 +135,21 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not delete.'); setBusy(false); }
   }
 
+  if (saved) {
+    return (
+      <Modal title="Saved" onClose={onClose}>
+        <div className="as-form">
+          <p role="status">The work is now in this asset's service history, and linked to the Household Services visit it came from.</p>
+          <ul className="plain as-items">
+            <li><a href={`#/assets/${asset.id}?service=${saved.serviceId}`} onClick={onClose}>See the entry on this asset</a></li>
+            {handoff && <li><a href={`#/services/v/${handoff.visitId}`}>Open the Household Services visit</a></li>}
+          </ul>
+          {error && <div className="error" role="alert">{error}</div>}
+          <div className="row as-actions"><button type="button" className="btn primary" onClick={onClose}>Done</button></div>
+        </div>
+      </Modal>
+    );
+  }
   return (
     <Modal title={heading} onClose={onClose} wide>
       <form className="as-form" onSubmit={submit}>
@@ -133,6 +172,14 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
             </select>
           </label>
         </div>
+        {handoff && !service && (
+          <div className="as-note small" role="note">
+            <p style={{ margin: 0 }}>Started from the Household Services visit <a href={`#/services/v/${handoff.visitId}`}>"{handoff.title}"</a>. Nothing is saved until you press Save. Change anything first, including the kind of work.</p>
+            {handoff.notesNote && <p style={{ margin: '4px 0 0' }}>{handoff.notesNote}</p>}
+            {handoff.txnRefs.length > 0 && <p style={{ margin: '4px 0 0' }}>The Finance payment link{handoff.txnRefs.length === 1 ? '' : 's'} from the visit {handoff.txnRefs.length === 1 ? 'was' : 'were'} carried over. They point at the same payment: no new expense is created.</p>}
+            {handoff.paymentConflict && <p style={{ margin: '4px 0 0' }}>The visit also has a typed amount alongside its Finance links. Only the Finance links were carried over. Review the visit if that looks wrong.</p>}
+          </div>
+        )}
         {prefill && !service && (
           <p className="as-note small" role="note">Started from the project "{prefill.projectName}". Nothing is saved until you press Save. The project's payments stay on the project and are not copied here; add a cost only if you want one counted on this asset.</p>
         )}
@@ -147,6 +194,12 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
         </div>
         <CostSourceField idp="svc" label="Cost" choice={choice} setChoice={setChoice} text={costText} setText={setCostText} refs={txnRefs} setRefs={setTxnRefs} parse={costFromText} ack={ack} setAck={setAck}
           help="Just a note for this record. It does not add anything to your accounts or budget. Blank means unknown; type 0 for free." />
+        {handoff && !service && handoff.manualCents != null && (
+          <div className="as-note small" role="group" aria-label="Typed amount from the visit">
+            <label className="as-check"><input type="checkbox" checked={copyManual} onChange={(e) => toggleManual(e.target.checked)} /> Also copy the amount typed on the visit ({manualMoney})</label>
+            <p style={{ margin: '4px 0 0' }}>Not copied unless you tick this. The visit and this record would then each hold an amount for the same real payment. They are linked, so Ledger can recognize the pair, but each module's own total will count its own amount. Do not tick it if the payment is, or will be, linked to Finance.</p>
+          </div>
+        )}
         <details className="as-sec">
           <summary>Add someone new as the provider</summary>
           <div className="as-new-contact">

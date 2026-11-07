@@ -65,7 +65,7 @@ export function fingerprint(row: unknown): string {
 }
 
 const linkSig = (l: Link) => `${l.id}|${l.fromModule}|${l.fromId}|${l.toModule}|${l.toId}|${l.type}`;
-async function linkSigs(ref: RecordRef, d: FinanceDB): Promise<string[]> {
+export async function linkSigs(ref: RecordRef, d: FinanceDB): Promise<string[]> {
   return (await createStore(d).shared.links.linkedTo(ref)).map(linkSig).sort();
 }
 /** The reference other records use to link to this row. */
@@ -98,10 +98,21 @@ export interface Undo {
   watched?: number[];
   /** The state the change left. WITHOUT it, Undo is refused: it cannot be shown to be safe. */
   sealed?: Sealed;
+  /**
+   * S4: shared links this change added (Undo removes exactly these) and links it removed (Undo adds exactly these back). Only ever used together
+   * with `sealed`, which includes the links attached to the touched records, so a link someone else added or removed since makes Undo refuse.
+   */
+  linkOps?: { added: number[]; removed: LinkSnap[] };
 }
+/** The identity of a link, kept so Undo can bring back one it removed. */
+export interface LinkSnap { fromModule: string; fromId: string | number; toModule: string; toId: string | number; type: string }
 
 export class Recorder {
   undo: Undo = { arrangements: [], tasks: [], created: [] };
+  /** Remember a link this change is about to remove (call BEFORE removing it). */
+  linkRemoved(l: Link) { const o = (this.undo.linkOps ??= { added: [], removed: [] }); o.removed.push({ fromModule: l.fromModule, fromId: l.fromId, toModule: l.toModule, toId: l.toId, type: l.type }); }
+  /** Remember a link this change added. */
+  linkAdded(id: number) { const o = (this.undo.linkOps ??= { added: [], removed: [] }); if (!o.added.includes(id)) o.added.push(id); }
   arr(a: ArrangementRecord) { if (!this.undo.arrangements.some((x) => x.id === a.id)) this.undo.arrangements.push({ id: a.id, data: structuredClone(a.data) }); }
   task(t: TaskRecord) { if (!this.undo.tasks.some((x) => x.id === t.id)) this.undo.tasks.push({ id: t.id, data: structuredClone(t.data), wasDeleted: false }); }
   /** Guard-only: Undo will not touch this record, but refuses if it differs from how this change left it. */
@@ -176,8 +187,17 @@ export function applyUndo(u: Undo, d: FinanceDB = db, opts: UndoOptions = {}): P
       const c = await d.contacts.get(s.contact.id);
       if (c && fingerprint(c) !== s.contact.print) throw new UndoRefused();
     }
+    // A link this change removed can only come back if what it pointed at still exists (checked BEFORE anything is written).
+    for (const l of u.linkOps?.removed ?? []) {
+      if (l.toModule !== 'assets') continue;
+      const m = /^asset:(\d+)$/.exec(String(l.toId));
+      const r = m ? await d.moduleRecords.get(Number(m[1])) : undefined;
+      if (!r || !isLive(r)) throw new UndoRefused();
+    }
     // Everything checks out: reverse exactly what the change did.
     const store = createStore(d);
+    for (const id of u.linkOps?.added ?? []) { const l = await d.links.get(id); if (l && isLive(l)) await store.shared.links.remove(id); }
+    for (const l of u.linkOps?.removed ?? []) await store.shared.links.add({ module: l.fromModule, id: l.fromId }, { module: l.toModule, id: l.toId }, l.type);
     for (const id of u.created) {
       const r = await d.moduleRecords.get(id);
       if (!r) continue;

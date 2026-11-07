@@ -99,3 +99,7 @@
 
 .as-warn { border: 1px solid var(--warn, #9a6700); background: var(--accent-soft); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3); }
 .as-warn p { margin: var(--sp-1) 0; }
+
+/* S4: where a service entry came from */
+.as-hist-source { display: flex; flex-wrap: wrap; gap: var(--sp-1, 4px); padding: 0 var(--sp-2, 8px); }
+.as-hist-source:empty { display: none; }

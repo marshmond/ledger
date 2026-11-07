@@ -81,7 +81,8 @@ export function computeBudget({ accounts, categories, txns, assignments, month }
 
   const monthsSeen = [
     month,
-    ...accounts.map((a) => monthOf(a.openingDate)),
+    // an account with no opening date (never made by the app; can arrive in a restored or hand-made backup) adds no month: nothing is invented
+    ...accounts.filter((a) => typeof a.openingDate === 'string').map((a) => monthOf(a.openingDate)),
     ...txns.map((t) => monthOf(t.date)),
     ...assignments.map((a) => a.month),
   ].filter((m) => m <= month);

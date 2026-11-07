@@ -19,6 +19,7 @@ import DeleteProject from './DeleteProject';
 import ProjectForm from './ProjectForm';
 import ProjectWork from './ProjectWork';
 import RelatedAssets from './RelatedAssets';
+import RelatedServices from './RelatedServices';
 import { budgetSummary, STATUSES, STATUS_LABEL, type ProjectStatus } from './model';
 import Vendors from './Vendors';
 
@@ -118,6 +119,7 @@ export default function ProjectPage() {
       )}
       <ProjectWork project={project} />
       <RelatedAssets project={project} />
+      <RelatedServices project={project} />
 
       <Commitments
         groups={groups}

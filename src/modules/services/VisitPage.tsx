@@ -12,6 +12,8 @@ import { loadSnapshot, visitRows } from './views';
 import { visitAssetIds } from './visits';
 import { VisitEditDialog } from './VisitDialogs';
 import { usePayData, VisitPaymentCard } from './PaymentUI';
+import { VisitHandoffCard } from './CrossModuleUI';
+import ProjectLinks from './ProjectLinkCard';
 
 const day = (d: string) => (d ? dayLabel(d, { weekday: 'short', year: true }) : 'Date unknown');
 const REASON = {
@@ -79,6 +81,8 @@ export default function VisitPage({ id }: { id: number }) {
         {d.notes && <p className="sv-notes">{d.notes}</p>}
       </section>
       {pay && v.data.status !== 'unsupported' && <VisitPaymentCard visit={v} data={pay} />}
+      <VisitHandoffCard visit={v} />
+      <ProjectLinks end={{ kind: 'visit', id: v.id }} />
       {edit && <VisitEditDialog visit={v} onClose={() => setEdit(false)} />}
     </div>
   );

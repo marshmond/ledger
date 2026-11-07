@@ -39,7 +39,7 @@ async function liveContactIds(d: FinanceDB): Promise<Set<number>> {
 }
 
 /** Checks and stores a new record. Must run inside a transaction over moduleRecords, links and contacts. */
-async function insertService(input: ServiceData, d: FinanceDB, today: string, refProblem: string | null = null): Promise<number> {
+export async function insertService(input: ServiceData, d: FinanceDB, today: string, refProblem: string | null = null): Promise<number> {
   if (refProblem) throw new Error(refProblem);
   const asset = await getAsset(input.assetId, d);
   if (!asset) throw new Error('That asset no longer exists.');

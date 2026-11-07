@@ -53,6 +53,12 @@ export default function DeleteAsset({ assetId, onClose }: { assetId: number; onC
                 plan.events ? `${n(plan.events, 'Calendar event', 'Calendar events')} (they stay, unlinked)` : '',
               ].filter(Boolean).join('; ') + '.'}
             </p>
+            {(plan.serviceArrangements > 0 || plan.serviceVisits > 0) && (
+              <p role="note" className="as-note small">
+                {plan.serviceArrangements > 0 && <>{n(plan.serviceArrangements, 'Household Services arrangement mentions', 'Household Services arrangements mention')} this asset. Their service history will remain, but the link to this asset will be removed.{' '}</>}
+                {plan.serviceVisits > 0 && <>{plan.serviceArrangements > 0 ? 'Also, ' : ''}{n(plan.serviceVisits, 'saved visit is', 'saved visits are')} linked to it; the {plan.serviceVisits === 1 ? 'visit stays' : 'visits stay'} and only the link goes.</>}
+              </p>
+            )}
             <p className="muted small">Archive is the gentle choice: it hides the asset and keeps everything.</p>
             <label className="f">Type the name to confirm
               <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={name} autoComplete="off" />

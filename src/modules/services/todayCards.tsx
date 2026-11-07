@@ -16,12 +16,15 @@ export function attentionLines(c: AttentionCounts): AttentionRow[] {
   if (c.duplicateGroups > 0) rows.push({ id: 'dup', text: `${plural(c.duplicateGroups, 'possible duplicate visit record needs', 'possible duplicate visit records need')} a look`, href: '#/services' });
   if (c.scheduleChecks > 0) rows.push({ id: 'sched', text: `${plural(c.scheduleChecks, 'arrangement needs', 'arrangements need')} a schedule check`, href: '#/services' });
   if (c.needsReview > 0) rows.push({ id: 'review', text: `${plural(c.needsReview, 'visit has', 'visits have')} a status this version does not understand`, href: '#/services' });
+  // S4: contract deadlines. Two different things, counted separately even when they fall on the same day.
+  if ((c.notices ?? 0) > 0) rows.push({ id: 'notice', text: `${plural(c.notices!, 'agreement notice deadline', 'agreement notice deadlines')} in the next 30 days`, href: '#/services' });
+  if ((c.renewals ?? 0) > 0) rows.push({ id: 'renewal', text: `${plural(c.renewals!, 'renewal date', 'renewal dates')} in the next 30 days`, href: '#/services' });
   return rows;
 }
 
 /** "Household Services" on Today: counts only, read-only, hidden when there is nothing to look at. Money is never shown. */
-function ServicesCard({ reportEmpty }: TodayCardProps) {
-  const counts = useLiveQuery(async () => attentionCounts(await loadSnapshot()), []);
+function ServicesCard({ today, reportEmpty }: TodayCardProps) {
+  const counts = useLiveQuery(async () => attentionCounts(await loadSnapshot(), today), [today]);
   const rows = useMemo(() => (counts ? attentionLines(counts) : []), [counts]);
   useEffect(() => { reportEmpty(!!counts && rows.length === 0); }, [counts, rows.length, reportEmpty]);
   return (
