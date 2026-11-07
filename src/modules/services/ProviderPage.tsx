@@ -12,6 +12,7 @@ import { cadenceText, STATUS_LABEL } from './model';
 import { arrangementRoute } from './paths';
 import { buildProvider, loadSnapshot, type Row } from './views';
 import VisitList from './VisitList';
+import { ProviderMoney } from './PaymentUI';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 
@@ -83,6 +84,7 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
           <ul className="plain sv-items">{projects.map((pr) => <li key={pr.id}><a href={`#/projects/${pr.id}`}><strong>{pr.data.name}</strong></a></li>)}</ul>
         </section>
       )}
+      <ProviderMoney providerKey={`c:${contactId}`} />
       <section className="card sv-card" aria-labelledby="sv-pv-h">
         <h2 id="sv-pv-h">Visit history</h2>
         {p.visits.length > 0 && (

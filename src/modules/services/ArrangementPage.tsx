@@ -19,6 +19,7 @@ import { BASIS_LABEL, cadenceText, END_REASON_LABEL, STATUS_LABEL } from './mode
 import { arrangementRoute, providerRoute, visitRoute } from './paths';
 import { loadSnapshot, buildRow, visitRows, type Row } from './views';
 import { markersOf } from './schedule';
+import { ArrangementMoney } from './PaymentUI';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 
@@ -97,6 +98,8 @@ export default function ArrangementPage({ id }: { id: number }) {
         {d.status === 'active' && !row.open && !d.cadence && <OneOff id={a.id} />}
         {d.status === 'paused' && <p className="muted small">Paused. The schedule is kept; Resume brings it back with no catching up on missed visits.</p>}
       </section>
+
+      <ArrangementMoney arrangement={a} />
 
       <section className="card sv-card" aria-labelledby="sv-asset-h">
         <h2 id="sv-asset-h">Property or assets it serves</h2>

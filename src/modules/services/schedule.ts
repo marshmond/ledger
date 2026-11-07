@@ -7,10 +7,10 @@
  */
 import { addDays as addDaysSafe, dayOfWeek } from '../../lib/dates';
 import { daysBetween } from '../../lib/money';
-import { generateDates, type Recurrence } from '../../core/recurrence';
+import type { Recurrence } from '../../core/recurrence';
 import { dayLabel } from '../../core/time';
 import type { TaskData, TaskRecord, TaskRepeat } from '../tasks/model';
-import { cadenceText, isCadenceDate, isDate, type ArrangementRecord, type Cadence } from './model';
+import { cadenceBetween, cadenceText, isCadenceDate, isDate, type ArrangementRecord, type Cadence } from './model';
 
 export const OCCURRENCE_KEY = 'servicesOccurrence';
 export const ARRANGEMENT_KEY = 'servicesArrangement';
@@ -46,7 +46,12 @@ export function withPurpose(data: TaskData, purpose: TaskPurpose): TaskData {
 }
 
 /** The repeat to write on the Task for a cadence (a copy). */
-export const taskRepeatOf = (c: Cadence): TaskRepeat => ({ mode: c.mode, rule: { ...c.rule, ...(c.rule.byWeekday ? { byWeekday: [...c.rule.byWeekday] } : {}) } });
+export const taskRepeatOf = (c: Cadence): TaskRepeat | null => (c.semi ? null : { mode: c.mode, rule: { ...c.rule, ...(c.rule.byWeekday ? { byWeekday: [...c.rule.byWeekday] } : {}) } });
+/**
+ * A twice-monthly schedule cannot be expressed as a Tasks repeat, so its visit Task deliberately has NO repeat (a "monthly" repeat would be
+ * untrue). The arrangement makes the next Task when a visit is logged; a Task finished elsewhere shows under "Finished, not yet logged".
+ */
+export const hasOwnDates = (c: Cadence | null): boolean => !!c?.semi;
 
 /** Everything about a repeat that matters for "do these agree?", as one string. A weekly repeat with no weekday means the date's own weekday. */
 export function repeatSignature(r: TaskRepeat | null, dateForDefaults: string | null): string {
@@ -144,9 +149,9 @@ const label = (t: TaskRecord) => `${t.data.title}${t.data.dueDate ? `, due ${day
 /** The cadence date nearest to `date` (earlier one wins a tie), or null. Used to stamp a one-time move. */
 export function nearestCadenceDate(c: Cadence, date: string): string | null {
   if (c.mode === 'after') return date;
-  const back = generateDates(c.anchorDate, c.rule, c.anchorDate > addDaysSafe(date, -400) ? c.anchorDate : addDaysSafe(date, -400), date);
+  const back = cadenceBetween(c, c.anchorDate > addDaysSafe(date, -400) ? c.anchorDate : addDaysSafe(date, -400), date);
   const before = back.length ? back[back.length - 1] : null;
-  const ahead = generateDates(c.anchorDate, c.rule, date, addDaysSafe(date, 400))[0] ?? null;
+  const ahead = cadenceBetween(c, date, addDaysSafe(date, 400))[0] ?? null;
   if (before && ahead) return daysApart(before, date) <= daysApart(date, ahead) ? before : ahead;
   return before ?? ahead;
 }

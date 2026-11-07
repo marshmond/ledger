@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import Modal from '../../shell/Modal';
-import RepeatFields from '../../ui/RepeatFields';
+import CadenceFields from './CadenceFields';
+import { cadenceOfDraft, draftOf, draftProblem } from './cadenceDraft';
 import { useToast } from '../../ui/Toast';
 import { store } from '../../core/store';
-import type { Recurrence } from '../../core/recurrence';
-import { dayOfWeek } from '../../lib/dates';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { loadAssets, publicLabel } from '../assets/data';
 import { runUndo } from './undo';
 import { createArrangement, updateArrangement, type ProviderInput } from './data';
 import {
-  BASIS_LABEL, blankArrangement, EXPECTED_BASES, notesWarning, withExplicitWeekday, type ArrangementRecord, type DocRef, type ExpectedBasis,
+  BASIS_LABEL, blankArrangement, EXPECTED_BASES, notesWarning, type ArrangementRecord, type DocRef, type ExpectedBasis,
 } from './model';
 
 const NEW = '__new';
@@ -34,9 +33,7 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [startDate, setStartDate] = useState(d.startDate ?? '');
-  const [rule, setRule] = useState<Recurrence | null>(null);
-  const [mode, setMode] = useState<'fixed' | 'after'>('fixed');
-  const [first, setFirst] = useState(today);
+  const [draft, setDraft] = useState(() => draftOf(null, today));
   const [time, setTime] = useState('');
   const [makeTask, setMakeTask] = useState(true);
   const [assetIds, setAssetIds] = useState<number[]>(startAssets);
@@ -52,11 +49,6 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
   const typed = newName.trim().toLowerCase();
   const sameAsExisting = !!typed && contacts.some((c) => c.name.trim().toLowerCase() === typed);
   const warn = notesWarning(notes);
-
-  const onFirst = (v: string) => {
-    setFirst(v);
-    if (v && rule?.freq === 'weekly' && (rule.byWeekday?.length ?? 0) <= 1) setRule({ ...rule, byWeekday: [dayOfWeek(v)] });
-  };
 
   async function save() {
     if (busy) return;
@@ -76,8 +68,9 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
         toast('Saved');
         onSaved?.(arrangement.id);
       } else {
-        if (!first && rule) throw new Error('Pick the first date.');
-        const cadence = rule ? { mode, rule: withExplicitWeekday(rule, first), anchorDate: first } : null;
+        const bad = draftProblem(draft);
+        if (bad) throw new Error(bad);
+        const cadence = cadenceOfDraft(draft);
         const r = await createArrangement({ data: blankArrangement({ title, startDate: startDate || null, cadence, visitTime: cadence && time ? time : null, expected, refs, notes }), provider: provider?.contactId != null || provider?.name ? provider : null, assetIds, scheduleFirstVisit: makeTask, today });
         toast(r.taskId ? 'Added, with its first visit in Tasks' : 'Added', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(r.id);
@@ -126,20 +119,18 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
         <details className="sv-sec" open={!editing && false}>
           <summary>More details</summary>
           {!editing && (
-            <fieldset className="sv-sub">
-              <legend>How often?</legend>
-              <RepeatFields rule={rule} onChange={setRule} start={first || today} mode={mode} onMode={setMode} />
-              {rule && (
+            <div>
+              <CadenceFields draft={draft} onChange={setDraft} today={today} />
+              {draft.kind !== 'none' && (
                 <>
                   <div className="sv-two">
-                    <label className="f">First visit date<input type="date" value={first} onChange={(e) => onFirst(e.target.value)} /></label>
                     <label className="f">Time (optional)<input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></label>
                   </div>
                   <label className="as-check"><input type="checkbox" checked={makeTask} onChange={(e) => setMakeTask(e.target.checked)} /> Create the next visit as a task now</label>
                   <p className="muted small">The visit is an ordinary task. It shows in Tasks, on the Calendar and on Today.</p>
                 </>
               )}
-            </fieldset>
+            </div>
           )}
           {editing && <p className="muted small">The schedule is changed with <em>Change schedule</em> on the arrangement page.</p>}
 

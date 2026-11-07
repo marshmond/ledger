@@ -26,9 +26,9 @@ import {
   assetExists, bookingTasksOf, ensureNextVisitTaskIn, getArrangement, linkedAssetIds, resolveProvider, rows, tables, tasksOfArrangement, type ProviderInput,
 } from './data';
 import { arrangementRef, ASSET_LINK, MODULE, nextCadenceDate, tidy, type ArrangementData, type ArrangementRecord, type DocRef } from './model';
-import { isBooking, markersOf, withMarkers, withPurpose } from './schedule';
+import { hasOwnDates, isBooking, markersOf, withMarkers, withPurpose } from './schedule';
 import {
-  asVisit, blankVisit, byDateDesc, normalizeVisit, statusWords, UNSUPPORTED, validateVisit, visitRef, VISIT_KIND, type CancelledBy, type ChargeKind, type VisitData, type VisitRecord, type VisitStatus,
+  asVisit, blankVisit, byDateDesc, normalizeVisit, paymentSourceOf, statusWords, UNSUPPORTED, validateVisit, visitRef, VISIT_KIND, type CancelledBy, type ChargeKind, type VisitData, type VisitRecord, type VisitStatus,
 } from './visitModel';
 
 const dl = (s: string | null) => (s ? dayLabel(s, { weekday: 'short', year: true }) : 'no date');
@@ -97,6 +97,14 @@ export function nextAfterVisit(a: ArrangementData, v: { status?: VisitStatus; oc
   return nextCadenceDate(c, from);
 }
 
+/** A visit with no payment is stored exactly as it was before S3 (no payment keys), so older versions and old backups see no change. */
+function storable(data: VisitData): VisitData {
+  if (paymentSourceOf(data) !== 'none') return data;
+  const { payment: _p, txnRefs: _t, paidManualCents: _m, ...rest } = data;
+  void _p; void _t; void _m;
+  return rest as VisitData;
+}
+
 // ---- input and planning ----
 
 export interface VisitInput {
@@ -120,6 +128,11 @@ export interface LogPlan {
   nextDate: string | null;
   /** The Task that stands for the next visit after this, if Tasks already made one that needs fixing. */
   staleCopyId: number | null;
+  /**
+   * A twice-monthly arrangement has no repeating Task, so a visit that was finished elsewhere leaves no next Task behind. When that is the
+   * case (and nothing else is open) logging it makes the next one.
+   */
+  createsNext: boolean;
   lines: string[];
   expect: LogExpect;
   /** The Task's own due date (where Skip and Cancel start the date). */
@@ -149,7 +162,7 @@ function staleCopies(task: TaskRecord, siblings: TaskRecord[]): TaskRecord[] {
  * `visits` are the live visits (to find one already logged for this Task).
  */
 export function planLog(a: ArrangementRecord, task: TaskRecord | undefined, siblings: TaskRecord[], visits: VisitRecord[], input: VisitInput, today: string): Omit<LogPlan, 'expect'> {
-  const none = (problem: string): Omit<LogPlan, 'expect'> => ({ problem, mode: 'complete', nextDate: null, staleCopyId: null, lines: [], suggestedDate: today, taskDue: task?.data.dueDate ?? null });
+  const none = (problem: string): Omit<LogPlan, 'expect'> => ({ problem, mode: 'complete', nextDate: null, staleCopyId: null, createsNext: false, lines: [], suggestedDate: today, taskDue: task?.data.dueDate ?? null });
   if (!task) return none('That task is not here any more, or it is not one of this arrangement\'s visit tasks.');
   if (isBooking(task)) return none('That is a reminder to book a visit, not a visit. Finishing it does not log anything.');
   const mode = task.data.status === 'done' ? 'late' : 'complete';
@@ -161,6 +174,7 @@ export function planLog(a: ArrangementRecord, task: TaskRecord | undefined, sibl
   const m = markersOf(task);
   const nextDate = nextAfterVisit(a.data, { status: input.status, occurrence: m.occurrence, taskDue: task.data.dueDate, visitDate: input.date, today });
   const stale = mode === 'late' ? staleCopies(task, siblings)[0] ?? null : null;
+  const createsNext = mode === 'late' && !stale && nextDate !== null && a.data.status === 'active' && hasOwnDates(a.data.cadence) && !siblings.some((t) => t.id !== task.id && t.data.status !== 'done');
   const lines: string[] = [];
   const word = input.status === 'completed' ? 'completed' : input.status === 'skipped' ? 'skipped' : 'cancelled';
   lines.push(mode === 'complete' ? `"${task.data.title}" will be marked done in Tasks.` : `"${task.data.title}" is already finished in Tasks. It will not be finished again.`);
@@ -169,10 +183,11 @@ export function planLog(a: ArrangementRecord, task: TaskRecord | undefined, sibl
   else if (!a.data.cadence) lines.push('This arrangement has no regular schedule, so no next visit is scheduled.');
   else if (nextDate === null) lines.push('The schedule has ended, so no further visit is scheduled.');
   else if (mode === 'complete') lines.push(`The next visit will be ${dl(nextDate)}${a.data.visitTime ? ` at ${a.data.visitTime}` : ''}${a.data.cadence.mode === 'after' ? (input.status === 'completed' ? `, counted from the day of this visit` : `, counted from the date this visit was due (${dl(input.date)}), not from today, because nothing was serviced`) : `, from the arrangement's usual pattern`}.`);
+  else if (createsNext) lines.push(`No upcoming visit task exists, so one will be made for ${dl(nextDate)}${a.data.visitTime ? ` at ${a.data.visitTime}` : ''}, from the arrangement's usual pattern.`);
   else if (stale) lines.push(`Tasks made a copy for the next visit (${dl(stale.data.dueDate)}). It will move to ${dl(nextDate)}, the arrangement's next usual date.`);
   else lines.push('Nothing else is changed.');
   if (input.chargedCents !== null) lines.push('The amount charged is for your information. It is not recorded as a payment.');
-  return { problem: null, mode, nextDate, staleCopyId: stale?.id ?? null, lines, suggestedDate, taskDue: task.data.dueDate };
+  return { problem: null, mode, nextDate, staleCopyId: stale?.id ?? null, createsNext, lines, suggestedDate, taskDue: task.data.dueDate };
 }
 
 export async function planLogVisit(arrangementId: number, taskId: number, input: VisitInput, today: string, d: FinanceDB = db): Promise<LogPlan> {
@@ -233,13 +248,16 @@ export function logVisitFromTask(req: LogRequest, d: FinanceDB = db): Promise<Lo
           if (r.kind === 'created') { rec.made(r.taskId); nextTaskId = r.taskId; }
         }
       }
+    } else if (plan.createsNext) {
+      const r = await ensureNextVisitTaskIn(a.id, { today: req.today, date: plan.nextDate }, d);
+      if (r.kind === 'created') { rec.made(r.taskId); nextTaskId = r.taskId; }
     } else if (plan.staleCopyId !== null) {
       const sp = siblings.find((t) => t.id === plan.staleCopyId)!;
       if (plan.nextDate) { await realign(sp, a, plan.nextDate, rec, d); nextTaskId = sp.id; }
       else { rec.task(sp); await removeTasks([sp.id], d); }
     }
 
-    const visitId = await rows(d).put({ module: MODULE, kind: VISIT_KIND, data: { ...data } });
+    const visitId = await rows(d).put({ module: MODULE, kind: VISIT_KIND, data: { ...storable(data) } });
     rec.made(visitId);
     await syncVisitAssetLinks(visitId, req.assetIds ?? (await linkedAssetIds(a.id, d)), false, d);
     await rec.seal(d);
@@ -302,7 +320,7 @@ export function logStandaloneVisit(req: StandaloneRequest, d: FinanceDB = db): P
     const similar = existing.find((v) => v.data.taskId === null && v.data.arrangementId === arrangementId && v.data.providerContactId === providerId
       && v.data.date === data.date && v.data.status === data.status && v.data.title.toLowerCase() === data.title.toLowerCase());
     const rec = new Recorder();
-    const visitId = await rows(d).put({ module: MODULE, kind: VISIT_KIND, data: { ...data, ...(req.operationId ? { operationId: req.operationId } : {}) } });
+    const visitId = await rows(d).put({ module: MODULE, kind: VISIT_KIND, data: { ...storable(data), ...(req.operationId ? { operationId: req.operationId } : {}) } });
     rec.made(visitId);
     await syncVisitAssetLinks(visitId, assetIds ?? [], req.arrangementId == null, d);
     await rec.seal(d, contactCreated ? providerId : null);
@@ -338,12 +356,15 @@ export function updateVisit(id: number, edit: VisitEdit, today: string, expectUp
     const problem = validateVisit(next, today);
     if (problem) throw new Error(problem);
     const stored = (await d.moduleRecords.get(id))!.data as Record<string, unknown>;
+    // the descriptive edit never touches how the visit was paid: that has its own function and confirmation (payments.ts)
+    const { payment: _p, txnRefs: _t, paidManualCents: _m, ...descriptive } = next;
+    void _p; void _t; void _m;
     if (keepRaw) {
       // write ONLY the descriptive fields over the stored record, so the unknown status and everything else stay exactly as found
       const { title, date, endDate, notes, chargedCents, chargeKind, refs } = next;
       await rows(d).put({ id, module: MODULE, kind: VISIT_KIND, data: { ...stored, title, date, endDate, notes, chargedCents, chargeKind, refs } });
     } else {
-      await rows(d).put({ id, module: MODULE, kind: VISIT_KIND, data: { ...stored, ...next } });
+      await rows(d).put({ id, module: MODULE, kind: VISIT_KIND, data: { ...stored, ...descriptive } });
     }
     await syncVisitAssetLinks(id, edit.assetIds, false, d);
   });

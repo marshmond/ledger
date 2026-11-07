@@ -11,6 +11,7 @@ import { chargeWords, duplicateGroups, statusWords } from './visitModel';
 import { loadSnapshot, visitRows } from './views';
 import { visitAssetIds } from './visits';
 import { VisitEditDialog } from './VisitDialogs';
+import { usePayData, VisitPaymentCard } from './PaymentUI';
 
 const day = (d: string) => (d ? dayLabel(d, { weekday: 'short', year: true }) : 'Date unknown');
 const REASON = {
@@ -24,6 +25,7 @@ export default function VisitPage({ id }: { id: number }) {
   const assetIds = useLiveQuery(() => visitAssetIds(id), [id]) ?? [];
   const assets = useLiveQuery(() => loadAssets(), []) ?? [];
   const [edit, setEdit] = useState(false);
+  const pay = usePayData();
   if (!snap) return <div className="sv"><p className="muted">Loading…</p></div>;
   const v = snap.visits.find((x) => x.id === id);
   if (!v) return <div className="sv"><p className="sv-back"><Link to="/">← Household Services</Link></p><EmptyState title="That visit is not here">It may not have reached this device yet, or the address is wrong.</EmptyState></div>;
@@ -76,6 +78,7 @@ export default function VisitPage({ id }: { id: number }) {
         {d.refs.length > 0 && <ul className="plain sv-items">{d.refs.map((r, i) => <li key={i}>{r.url ? <a href={r.url} target="_blank" rel="noopener noreferrer">{r.label}</a> : r.label}</li>)}</ul>}
         {d.notes && <p className="sv-notes">{d.notes}</p>}
       </section>
+      {pay && v.data.status !== 'unsupported' && <VisitPaymentCard visit={v} data={pay} />}
       {edit && <VisitEditDialog visit={v} onClose={() => setEdit(false)} />}
     </div>
   );

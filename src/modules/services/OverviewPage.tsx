@@ -9,6 +9,7 @@ import ArrangementForm from './ArrangementForm';
 import { cadenceText } from './model';
 import { arrangementRoute, providerRoute, visitRoute } from './paths';
 import VisitList from './VisitList';
+import { OverviewMoney } from './PaymentUI';
 import { LogVisitDialog, OneOffDialog } from './VisitDialogs';
 import { statusWords } from './visitModel';
 import { buildOverview, loadSnapshot, providerList, type Row } from './views';
@@ -136,6 +137,8 @@ export default function OverviewPage() {
               <ul className="plain sv-list">{[...ov.paused, ...ov.ended].map((r) => <RowLine key={r.a.id} r={r} today={today} />)}</ul>
             </section>
           )}
+
+          <OverviewMoney />
 
           <section className="card sv-card" aria-labelledby="sv-rec-h">
             <h2 id="sv-rec-h">Recent visits</h2>

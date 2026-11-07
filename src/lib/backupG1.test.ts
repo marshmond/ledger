@@ -17,7 +17,10 @@ import { createService, loadServices } from '../modules/assets/serviceData';
 import { blankService } from '../modules/assets/service';
 import { createArrangement, loadArrangements, tasksOfArrangement } from '../modules/services/data';
 import { blankArrangement, type Cadence } from '../modules/services/model';
-import { loadVisits, logVisitFromTask, planLogVisit } from '../modules/services/visits';
+import { loadVisits, logStandaloneVisit, logVisitFromTask, planLogVisit } from '../modules/services/visits';
+import { setArrangementPayments, setVisitPayment } from '../modules/services/payments';
+import { payRecords, servicesSpend } from '../modules/services/servicesSpend';
+import { loadTxnMap, lookupOfMap } from './txnLookup';
 import { markersOf } from '../modules/services/schedule';
 import { createEvent, loadEvents, newEventData } from '../modules/calendar/data';
 import { blankFields } from '../modules/calendar/model';
@@ -464,5 +467,63 @@ describe('G1 coverage guard for future modules', () => {
 
   it('BackupFileError is what the screen shows for a bad file', () => {
     expect(() => checkBackupText('x')).toThrow(BackupFileError);
+  });
+});
+
+describe('G1 + S3: twice-monthly cadences and Household Services payments survive the real backup and restore', () => {
+  it('semimonthly rules, occurrence identities, visit payments (Finance and typed), arrangement-level payments and unknown fields all come back; no payment total is doubled', async () => {
+    const src = fresh();
+    const ids = await household(src);
+    // a twice-monthly arrangement with its one open Task (no repeat) and a logged visit
+    const semi: Cadence = {
+      mode: 'fixed', anchorDate: '2026-11-15', rule: { freq: 'monthly', interval: 1, monthly: 'date', end: { type: 'never' } },
+      semi: { a: { kind: 'day', day: 15, adjust: 'none' }, b: { kind: 'lastBusinessDay' } },
+    };
+    const made = await createArrangement({ data: blankArrangement({ title: 'Pool service', cadence: semi }), provider: { name: 'Pat Pools' }, today: TODAY }, src);
+    const t = (await tasksOfArrangement(made.id, src))[0];
+    const manualVisit = (await logStandaloneVisit({ arrangementId: made.id, input: { status: 'completed', cancelledBy: null, date: '2026-10-15', title: 'Cash visit', chargedCents: 4000, chargeKind: 'service' }, today: TODAY }, src)).visitId;
+    const feeVisit = (await logStandaloneVisit({ arrangementId: made.id, input: { status: 'cancelled', cancelledBy: 'household', date: '2026-10-30', title: 'Late cancel', chargedCents: 2500, chargeKind: 'cancellationFee' }, today: TODAY }, src)).visitId;
+    const finVisit = (await logStandaloneVisit({ arrangementId: made.id, input: { status: 'completed', cancelledBy: null, date: '2026-10-31', title: 'Paid by card', chargedCents: null, chargeKind: null }, today: TODAY }, src)).visitId;
+    await setVisitPayment(manualVisit, { source: 'manual', refs: [], manualCents: 4000 }, null, src);
+    await setVisitPayment(feeVisit, { source: 'finance', refs: [makeTxnRef((await src.txns.get(ids.txnPlain))!)], manualCents: null }, null, src);
+    await setVisitPayment(finVisit, { source: 'finance', refs: [makeTxnRef((await src.txns.get(ids.txnSplit))!, 1), makeTxnRef((await src.txns.get(ids.txnPlain))!)], manualCents: null }, null, src); // shares a piece with the fee visit
+    const retainer = (await src.txns.add({ accountId: ids.acct, date: '2026-10-01', amountCents: -20000, payee: 'Pat Pools' } as never)) as number;
+    await setArrangementPayments(made.id, [makeTxnRef((await src.txns.get(retainer))!)], null, src);
+    await src.moduleRecords.update(finVisit, { 'data.futureField': { keep: [1, 2] } } as never);
+    await src.moduleRecords.update(made.id, { 'data.futureArrangementField': 'kept' } as never);
+
+    const totalsOf = async (d: FinanceDB) => {
+      const arrangements = await loadArrangements(d), visits = await loadVisits(d);
+      const rs = payRecords(arrangements, visits);
+      const lookup = lookupOfMap(await loadTxnMap(rs.flatMap((r) => r.refs), d));
+      return { rs, lookup, s: servicesSpend(rs, lookup), visits, arrangements };
+    };
+    const before = await totalsOf(src);
+    // 45,000 whole plain transaction (counted once, though two visits link it) + 10,000 split part + 20,000 retainer + 4,000 typed
+    expect(before.s.totalCents).toBe(45000 + 10000 + 20000 + 4000);
+
+    const dst = fresh();
+    await dst.open();
+    await roundTrip(src, dst);
+    const a = await all(src), b = await all(dst);
+    expect(b).toEqual({ ...a, settings: a.settings.filter((s) => (s as { key: string }).key !== 'priceApiKey') });
+    const after = await totalsOf(dst);
+    expect(after.s.totalCents).toBe(before.s.totalCents);
+    expect(after.s.manualCents).toBe(4000);
+    expect(after.s.summary.sharedPieces).toHaveLength(1);
+    expect(after.s.summary.review).toHaveLength(0); // no reference broken
+    const arr = after.arrangements.find((x) => x.id === made.id)!;
+    expect(arr.data.cadence?.semi).toEqual(semi.semi);
+    expect((arr.data as unknown as Record<string, unknown>).futureArrangementField).toBe('kept');
+    expect(arr.data.txnRefs).toHaveLength(1);
+    const task = (await tasksOfArrangement(made.id, dst))[0];
+    expect(task.data.repeat).toBeNull();
+    expect(markersOf(task)).toEqual(markersOf(t));
+    expect((await dst.moduleRecords.get(finVisit))!.data).toMatchObject({ futureField: { keep: [1, 2] }, payment: 'finance', status: 'completed' });
+    expect((await dst.moduleRecords.get(feeVisit))!.data).toMatchObject({ status: 'cancelled', payment: 'finance' });
+    // restoring again, and then touching every record the way a sync would, still gives the same totals
+    const { file } = await roundTrip(src, dst);
+    await restoreChecked(dst, file, mem());
+    expect((await totalsOf(dst)).s.totalCents).toBe(before.s.totalCents);
   });
 });

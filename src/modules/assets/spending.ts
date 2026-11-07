@@ -25,7 +25,7 @@ export const GROUP_LABEL: Record<CostGroup, string> = { acquisition: 'Buying it'
 export const serviceGroup = (k: ServiceKind): CostGroup => (k === 'maintenance' || k === 'repair' || k === 'inspection' ? 'maintenance' : 'other');
 
 /** One thing that can carry a cost. `id` is `asset:<n>` for a purchase or `service:<n>`. */
-export interface CostRecord { id: string; assetId: number; group: CostGroup; title: string; manualCents: number | null; refs: TxnRef[] }
+export interface CostRecord<G extends string = CostGroup> { id: string; /** The owner of the record (an asset here; Household Services passes its arrangement id). Only used to tell whether a piece is reached by more than one owner. */ assetId: number; group: G; title: string; manualCents: number | null; refs: TxnRef[] }
 export type CostSource = 'finance' | 'manual' | 'unknown';
 export const sourceOf = (r: Pick<CostRecord, 'manualCents' | 'refs'>): CostSource => (r.refs.length ? 'finance' : r.manualCents !== null ? 'manual' : 'unknown');
 
@@ -43,29 +43,29 @@ export function costRecords(assets: AssetRecord[], services: ServiceRecord[]): C
   return out;
 }
 
-export interface CountedPiece {
+export interface CountedPiece<G extends string = CostGroup> {
   key: string;
   resolved: ResolvedRef;
-  group: CostGroup;
+  group: G;
   spendCents: number;
   /** Every record in this aggregate that reaches the piece (the first is the one it is credited to). */
   recordIds: string[];
   assetIds: number[];
 }
 export interface ReviewItem { recordId: string; assetId: number; title: string; resolved: ResolvedRef }
-export interface SpendSummary {
+export interface SpendSummary<G extends string = CostGroup> {
   /** Verified spending (typed + from Finance), by kind of work. */
-  byGroup: Record<CostGroup, number>;
+  byGroup: Record<G, number>;
   /** The same, split by where the amount came from. */
-  manualByGroup: Record<CostGroup, number>;
-  financeByGroup: Record<CostGroup, number>;
+  manualByGroup: Record<G, number>;
+  financeByGroup: Record<G, number>;
   manualCents: number;
   financeCents: number;
   totalCents: number;
   /** Distinct transaction pieces that are counted. */
-  pieces: CountedPiece[];
+  pieces: CountedPiece<G>[];
   /** Pieces reached by more than one record or asset. Counted once. */
-  sharedPieces: CountedPiece[];
+  sharedPieces: CountedPiece<G>[];
   /** References left OUT of the totals because they need review. */
   review: ReviewItem[];
   /** Counted references whose transaction changed since linking (live amount used). */
@@ -80,16 +80,21 @@ export interface SpendSummary {
   manualRecords: number;
 }
 
-const emptyGroups = (): Record<CostGroup, number> => ({ acquisition: 0, maintenance: 0, other: 0 });
+const H3_GROUPS: readonly CostGroup[] = ['acquisition', 'maintenance', 'other'];
+const emptyGroups = <G extends string>(groups: readonly G[]): Record<G, number> => Object.fromEntries(groups.map((g) => [g, 0])) as Record<G, number>;
 
-export function spend(records: CostRecord[], lookup: TxnLookup): SpendSummary {
-  const resolved = new Map<CostRecord, ResolvedRef[]>(records.map((r) => [r, r.refs.map((x) => resolveRef(x, lookup))]));
+/**
+ * `groups` names the group labels the records use (default: Home & Assets' three). A piece shared by several records is credited to the group of the
+ * FIRST record in the order given, so callers pass records in a fixed order.
+ */
+export function spend<G extends string = CostGroup>(records: CostRecord<G>[], lookup: TxnLookup, groups: readonly G[] = H3_GROUPS as unknown as readonly G[]): SpendSummary<G> {
+  const resolved = new Map<CostRecord<G>, ResolvedRef[]>(records.map((r) => [r, r.refs.map((x) => resolveRef(x, lookup))]));
   // Rule 3: a whole transaction that counts covers its parts, whatever order the records come in.
   const wholeCounted = new Set<number>();
   for (const list of resolved.values()) for (const x of list) if (!x.needsReview && x.ref.splitIndex === undefined) wholeCounted.add(x.ref.txnId);
 
-  const s: SpendSummary = { byGroup: emptyGroups(), manualByGroup: emptyGroups(), financeByGroup: emptyGroups(), manualCents: 0, financeCents: 0, totalCents: 0, pieces: [], sharedPieces: [], review: [], changed: [], coveredParts: [], unknown: [], both: [], manualRecords: 0 };
-  const byKey = new Map<string, CountedPiece>();
+  const s: SpendSummary<G> = { byGroup: emptyGroups(groups), manualByGroup: emptyGroups(groups), financeByGroup: emptyGroups(groups), manualCents: 0, financeCents: 0, totalCents: 0, pieces: [], sharedPieces: [], review: [], changed: [], coveredParts: [], unknown: [], both: [], manualRecords: 0 };
+  const byKey = new Map<string, CountedPiece<G>>();
   const reviewSeen = new Set<string>();
   for (const r of records) {
     const src = sourceOf(r);
@@ -102,7 +107,7 @@ export function spend(records: CostRecord[], lookup: TxnLookup): SpendSummary {
       if (x.ref.splitIndex !== undefined && wholeCounted.has(x.ref.txnId)) { s.coveredParts.push(item); continue; }
       const had = byKey.get(x.key);
       if (had) { if (!had.recordIds.includes(r.id)) had.recordIds.push(r.id); if (!had.assetIds.includes(r.assetId)) had.assetIds.push(r.assetId); continue; }
-      const piece: CountedPiece = { key: x.key, resolved: x, group: r.group, spendCents: x.spendCents, recordIds: [r.id], assetIds: [r.assetId] };
+      const piece: CountedPiece<G> = { key: x.key, resolved: x, group: r.group, spendCents: x.spendCents, recordIds: [r.id], assetIds: [r.assetId] };
       byKey.set(x.key, piece);
       s.pieces.push(piece);
       s.byGroup[r.group] += x.spendCents;
@@ -154,7 +159,7 @@ export function assetSpend(assets: AssetRecord[], services: ServiceRecord[], ass
 }
 
 /** Who else (any asset, any record) references each piece, by key. Used to show reuse that the current aggregate does not include. */
-export function pieceUsers(records: CostRecord[]): Map<string, { recordId: string; assetId: number }[]> {
+export function pieceUsers<G extends string = CostGroup>(records: CostRecord<G>[]): Map<string, { recordId: string; assetId: number }[]> {
   const m = new Map<string, { recordId: string; assetId: number }[]>();
   for (const r of records) for (const x of r.refs) { const k = pieceKey(x); m.set(k, [...(m.get(k) ?? []), { recordId: r.id, assetId: r.assetId }]); }
   return m;

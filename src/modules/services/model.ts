@@ -10,6 +10,8 @@
 import type { ModuleRecord } from '../../core/entities';
 import { describeRule, generateDates, normalizeRule, type Recurrence } from '../../core/recurrence';
 import { addDays, dayOfWeek } from '../../lib/dates';
+import { readTxnRefs, validateTxnRefs, type TxnRef } from '../../lib/txnRef';
+import { describeSemi, readSemi, semiDates, semiNext, semiProblem, type Semimonthly } from './semimonthly';
 
 export const MODULE = 'services';
 export const KIND = 'arrangement';
@@ -45,7 +47,14 @@ export type EndReason = (typeof END_REASONS)[number];
 export const END_REASON_LABEL: Record<EndReason, string> = { cancelled: 'Cancelled', replaced: 'Replaced by another provider', finished: 'Finished', other: 'Other' };
 
 /** The INTENDED schedule. `anchorDate` is the first intended occurrence; a one-time move of a visit never changes it. */
-export interface Cadence { mode: 'fixed' | 'after'; rule: Recurrence; anchorDate: string }
+export interface Cadence {
+  mode: 'fixed' | 'after'; rule: Recurrence; anchorDate: string;
+  /**
+   * Present only for a TWICE-MONTHLY schedule (S3-A): two day-rules that the Tasks repeat model cannot express. Then `rule` is only a
+   * placeholder (monthly, every 1) that carries the end date, and the visit Task has NO repeat. Absent on every earlier arrangement.
+   */
+  semi?: Semimonthly;
+}
 export const EXPECTED_BASES = ['perVisit', 'perMonth', 'perSeason', 'perYear', 'quote'] as const;
 export type ExpectedBasis = (typeof EXPECTED_BASES)[number];
 export const BASIS_LABEL: Record<ExpectedBasis, string> = { perVisit: 'per visit', perMonth: 'per month', perSeason: 'per season', perYear: 'per year', quote: 'quoted for the job' };
@@ -74,10 +83,16 @@ export interface ArrangementData {
   openTaskId: number | null;
   /** Schedule notices the owner chose to leave as they are (see scheduleHealth). */
   acknowledged: string[];
+  /**
+   * Finance payment pieces that belong to the arrangement as a whole, not to one visit (a monthly retainer). Same reference rules as a visit's.
+   * Never divided among visits. A piece linked here is refused on this arrangement's visits (and the other way round) so it cannot be counted twice.
+   * There is no arrangement-level typed amount: S0 does not specify one, and a general manual ledger is out of scope.
+   */
+  txnRefs: TxnRef[];
 }
 export interface ArrangementRecord { id: number; createdAt: number; updatedAt: number; data: ArrangementData }
 
-const KNOWN = new Set(['title', 'providerContactId', 'providerNameSnapshot', 'extraContactIds', 'status', 'endReason', 'startDate', 'endDate', 'cadence', 'visitTime', 'expected', 'refs', 'notes', 'predecessorId', 'openTaskId', 'acknowledged']);
+const KNOWN = new Set(['title', 'providerContactId', 'providerNameSnapshot', 'extraContactIds', 'status', 'endReason', 'startDate', 'endDate', 'cadence', 'visitTime', 'expected', 'refs', 'notes', 'predecessorId', 'openTaskId', 'acknowledged', 'txnRefs', 'semiCadence']);
 const extras = (d: object) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !KNOWN.has(k) && v !== undefined)) as object;
 const ids = (v: unknown): number[] => (Array.isArray(v) ? [...new Set(v.filter((x): x is number => typeof x === 'number' && Number.isFinite(x)))] : []);
 
@@ -92,7 +107,39 @@ function readCadence(v: unknown): Cadence | null {
   const c = v as Partial<Cadence> | null | undefined;
   if (!c || !isDate(c.anchorDate)) return null;
   const rule = normalizeRule(c.rule);
+  if (c.semi !== undefined && c.semi !== null) {
+    // A twice-monthly schedule is always on fixed dates. If its two rules cannot be read the schedule is treated as missing (never as monthly).
+    const semi = readSemi(c.semi);
+    return semi ? { mode: 'fixed', rule: { freq: 'monthly', interval: 1, monthly: 'date', end: rule?.end ?? { type: 'never' } }, anchorDate: c.anchorDate, semi } : null;
+  }
   return rule ? { mode: c.mode === 'after' ? 'after' : 'fixed', rule: withExplicitWeekday(rule, c.anchorDate), anchorDate: c.anchorDate } : null;
+}
+
+/**
+ * HOW A TWICE-MONTHLY SCHEDULE IS STORED (fail closed for older builds). The pre-S3 reader knows `cadence` and would read a twice-monthly rule as an
+ * ordinary monthly one, schedule wrong dates, and (because it rewrites `cadence` from what it understood) drop the rule on its next save. So the rule is
+ * NOT stored in `cadence`. It is stored in its own top-level field `semiCadence`, which an older build does not know and therefore carries through every
+ * read and write untouched, while `cadence` is null: an older build sees "no regular schedule" and creates no visit and no date.
+ * This build reads `semiCadence` only while `cadence` is null, so a schedule an older build set on purpose still wins.
+ */
+export interface StoredSemi { anchorDate: string; end: Recurrence['end']; semi: Semimonthly }
+function readStoredSemi(v: unknown): Cadence | null {
+  const o = v as Partial<StoredSemi> | null | undefined;
+  if (!o || typeof o !== 'object' || !isDate(o.anchorDate)) return null;
+  const semi = readSemi(o.semi);
+  const rule = normalizeRule({ freq: 'monthly', interval: 1, monthly: 'date', end: o.end });
+  return semi && rule ? { mode: 'fixed', rule, anchorDate: o.anchorDate, semi } : null;
+}
+/** The form written to the database for an arrangement. Every write of an arrangement goes through this. */
+export function toStored(d: ArrangementData): Record<string, unknown> {
+  const { cadence, ...rest } = d as ArrangementData & Record<string, unknown>;
+  if (cadence?.semi) {
+    const stored: StoredSemi = { anchorDate: cadence.anchorDate, end: cadence.rule.end, semi: cadence.semi };
+    return { ...rest, cadence: null, semiCadence: stored };
+  }
+  const { semiCadence: _drop, ...clean } = rest as Record<string, unknown>;
+  void _drop;
+  return { ...clean, cadence };
 }
 
 /** Reads a stored record defensively, so a record from another device or version can never crash a screen. Never throws. */
@@ -114,7 +161,8 @@ export function asArrangement(r: ModuleRecord): ArrangementRecord {
       endReason: status === 'ended' && END_REASONS.includes(d.endReason as EndReason) ? (d.endReason as EndReason) : null,
       startDate: isDate(d.startDate) ? d.startDate : null,
       endDate: isDate(d.endDate) ? d.endDate : null,
-      cadence: readCadence(d.cadence),
+      // `cadence` wins when it is set (an older build that changed the schedule on purpose); a twice-monthly schedule is stored beside it, see `toStored`
+      cadence: readCadence(d.cadence) ?? readStoredSemi((d as Record<string, unknown>).semiCadence),
       visitTime: isTime(d.visitTime) ? d.visitTime : null,
       expected: ex && EXPECTED_BASES.includes(ex.basis as ExpectedBasis) && finite(ex.cents) && ex.cents >= 0 ? { basis: ex.basis as ExpectedBasis, cents: Math.round(ex.cents) } : null,
       refs: Array.isArray(d.refs) ? d.refs.filter((x) => x && typeof x.label === 'string').map((x) => ({ label: x.label, ...(typeof x.url === 'string' && x.url ? { url: x.url } : {}), ...(typeof x.note === 'string' && x.note ? { note: x.note } : {}) })) : [],
@@ -122,13 +170,14 @@ export function asArrangement(r: ModuleRecord): ArrangementRecord {
       predecessorId: finite(d.predecessorId) ? d.predecessorId : null,
       openTaskId: finite(d.openTaskId) ? d.openTaskId : null,
       acknowledged: Array.isArray(d.acknowledged) ? d.acknowledged.filter((x): x is string => typeof x === 'string') : [],
+      txnRefs: readTxnRefs(d.txnRefs),
     },
   };
 }
 
 export const blankArrangement = (over: Partial<ArrangementData> = {}): ArrangementData => ({
   title: '', providerContactId: null, providerNameSnapshot: '', extraContactIds: [], status: 'active', endReason: null, startDate: null, endDate: null,
-  cadence: null, visitTime: null, expected: null, refs: [], notes: '', predecessorId: null, openTaskId: null, acknowledged: [], ...over,
+  cadence: null, visitTime: null, expected: null, refs: [], notes: '', predecessorId: null, openTaskId: null, acknowledged: [], txnRefs: [], ...over,
 });
 
 export function isSafeUrl(u: string): boolean {
@@ -138,12 +187,23 @@ export function isSafeUrl(u: string): boolean {
 /** Is `date` one of the cadence's own dates? (A fixed cadence only; a repeat-after-visit cadence has no fixed dates.) */
 export function isCadenceDate(c: Cadence, date: string): boolean {
   if (c.mode === 'after') return true;
-  return generateDates(c.anchorDate, c.rule, date, date)[0] === date;
+  return cadenceBetween(c, date, date)[0] === date;
+}
+
+/**
+ * The cadence's own dates from `from` to `to`, both included (a fixed cadence only; a repeat-after cadence has none). Every-N-weeks and the
+ * other repeats come from the existing `generateDates`; a twice-monthly cadence comes from the small pure adapter in `semimonthly.ts`.
+ */
+export function cadenceBetween(c: Cadence, from: string, to: string): string[] {
+  if (c.mode === 'after') return [];
+  if (c.semi) return semiDates(c.semi, c.anchorDate, from, to, c.rule.end.type === 'until' ? c.rule.end.date : null);
+  return generateDates(c.anchorDate, c.rule, from, to);
 }
 
 /** The first cadence date on or after `from`, or null when the cadence has run out. */
 export function nextCadenceDate(c: Cadence, from: string): string | null {
   if (c.mode === 'after') return from <= c.anchorDate ? c.anchorDate : from;
+  if (c.semi) return semiNext(c.semi, c.anchorDate, from, c.rule.end.type === 'until' ? c.rule.end.date : null);
   return generateDates(c.anchorDate, c.rule, from, addDays(from, 1500))[0] ?? null;
 }
 
@@ -181,6 +241,13 @@ export function validateArrangement(d: ArrangementData): string | null {
     if (!isDate(c.anchorDate)) return 'Pick a first date for the schedule.';
     const rule = normalizeRule(c.rule);
     if (!rule) return 'The schedule is not valid.';
+    if (c.semi !== undefined && c.semi !== null) {
+      const semi = readSemi(c.semi);
+      if (!semi) return 'The twice-monthly schedule is not valid. Pick two days of the month.';
+      if (c.mode !== 'fixed') return 'A twice-monthly schedule is on fixed dates, not "after each visit".';
+      const bad = semiProblem(semi);
+      if (bad) return bad;
+    }
     if (rule.end.type === 'count') return 'Use an end date instead of a number of times. A count would shrink every time a visit is finished.';
     if (c.mode === 'fixed' && !isCadenceDate({ ...c, rule }, c.anchorDate)) return 'The first date does not fall on the chosen day(s). Pick a first date that matches the schedule.';
   }
@@ -195,6 +262,8 @@ export function validateArrangement(d: ArrangementData): string | null {
     if (r.url && !isSafeUrl(r.url)) return 'Links must start with http:// or https://.';
   }
   if (d.notes.length > 4000) return 'The notes are too long.';
+  const refsProblem = validateTxnRefs(d.txnRefs);
+  if (refsProblem) return refsProblem;
   if (d.providerContactId === null && d.extraContactIds.length > 0) return 'Pick the main provider before adding other contacts.';
   return null;
 }
@@ -207,6 +276,7 @@ export function cadenceText(c: Cadence | null): string {
     const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[c.rule.freq];
     return `${n} ${unit}${n === 1 ? '' : 's'} after each visit`;
   }
+  if (c.semi) return `${describeSemi(c.semi).replace(/\.$/, '')}${c.rule.end.type === 'until' ? `, until ${c.rule.end.date}` : ''}`;
   return describeRule(c.rule, c.anchorDate);
 }
 

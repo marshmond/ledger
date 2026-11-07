@@ -10,6 +10,7 @@
  * NO account number, password, access code or bank detail is stored. Phone and email stay on the shared Contact.
  */
 import type { ModuleRecord } from '../../core/entities';
+import { MAX_TXN_REFS, readTxnRefs, validateTxnRefs, type TxnRef } from '../../lib/txnRef';
 import { isDate, isSafeUrl, MODULE, str, tidy, type DocRef } from './model';
 
 export const VISIT_KIND = 'visit';
@@ -19,6 +20,11 @@ export const parseVisitRef = (id: string | number): number | null => {
   return m ? Number(m[1]) : null;
 };
 export const visitRef = (id: number) => ({ module: MODULE, id: visitRefId(id) });
+
+export type PaymentSource = 'none' | 'finance' | 'manual';
+/** Which source counts. References win if a record arrives with both (an older device, a hand edit), and it is flagged. */
+export const paymentSourceOf = (d: Pick<VisitData, 'txnRefs' | 'paidManualCents'>): PaymentSource => (d.txnRefs.length ? 'finance' : d.paidManualCents !== null ? 'manual' : 'none');
+export const hasPaymentConflict = (d: Pick<VisitData, 'txnRefs' | 'paidManualCents'>) => d.txnRefs.length > 0 && d.paidManualCents !== null;
 
 export const VISIT_STATUSES = ['completed', 'skipped', 'cancelled'] as const;
 export type VisitStatus = (typeof VISIT_STATUSES)[number];
@@ -54,10 +60,16 @@ export interface VisitData {
   occurrence: string | null;
   taskTitleSnapshot: string;
   refs: DocRef[];
+  /** How the visit was PAID (S3). One source at a time. `none` is shown as "No payment recorded", never "Unpaid". A payment never changes `status`. */
+  payment: PaymentSource;
+  /** Finance transaction pieces (when `payment` is `finance`). The live Finance amount is authoritative; nothing here stores it. */
+  txnRefs: TxnRef[];
+  /** Whole cents paid outside Finance (cash and the like), when `payment` is `manual`. A typed assertion, not a verified transaction. */
+  paidManualCents: number | null;
 }
 export interface VisitRecord { id: number; createdAt: number; updatedAt: number; data: VisitData }
 
-const KNOWN = new Set(['arrangementId', 'providerContactId', 'providerNameSnapshot', 'title', 'status', 'cancelledBy', 'date', 'endDate', 'notes', 'chargedCents', 'chargeKind', 'taskId', 'occurrence', 'taskTitleSnapshot', 'refs']);
+const KNOWN = new Set(['arrangementId', 'providerContactId', 'providerNameSnapshot', 'title', 'status', 'cancelledBy', 'date', 'endDate', 'notes', 'chargedCents', 'chargeKind', 'taskId', 'occurrence', 'taskTitleSnapshot', 'refs', 'payment', 'txnRefs', 'paidManualCents']);
 const extras = (d: object) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !KNOWN.has(k) && v !== undefined)) as object;
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
@@ -70,6 +82,8 @@ export function asVisit(r: ModuleRecord): VisitRecord {
   const d = (r.data ?? {}) as Partial<VisitData> & Record<string, unknown>;
   const known = VISIT_STATUSES.includes(d.status as VisitStatus);
   const status: VisitData['status'] = known ? (d.status as VisitStatus) : UNSUPPORTED;
+  const refs = readTxnRefs(d.txnRefs);
+  const manual = ((m) => (m !== null && m >= 0 && Number.isInteger(m) ? m : null))(num(d.paidManualCents));
   const charged = num(d.chargedCents);
   const kind = CHARGE_KINDS.includes(d.chargeKind as ChargeKind) ? (d.chargeKind as ChargeKind) : null;
   return {
@@ -91,6 +105,9 @@ export function asVisit(r: ModuleRecord): VisitRecord {
       taskId: num(d.taskId),
       occurrence: isDate(d.occurrence) ? d.occurrence : null,
       taskTitleSnapshot: str(d.taskTitleSnapshot),
+      payment: refs.length ? 'finance' : manual !== null ? 'manual' : 'none',
+      txnRefs: refs,
+      paidManualCents: manual,
       refs: Array.isArray(d.refs) ? d.refs.filter((x) => x && typeof x.label === 'string').map((x) => ({ label: x.label, ...(typeof x.url === 'string' && x.url ? { url: x.url } : {}), ...(typeof x.note === 'string' && x.note ? { note: x.note } : {}) })) : [],
     },
   };
@@ -98,7 +115,7 @@ export function asVisit(r: ModuleRecord): VisitRecord {
 
 export const blankVisit = (over: Partial<VisitData> = {}): VisitData => ({
   arrangementId: null, providerContactId: null, providerNameSnapshot: '', title: '', status: 'completed', cancelledBy: null, date: '', endDate: null, notes: '',
-  chargedCents: null, chargeKind: null, taskId: null, occurrence: null, taskTitleSnapshot: '', refs: [], ...over,
+  chargedCents: null, chargeKind: null, taskId: null, occurrence: null, taskTitleSnapshot: '', refs: [], payment: 'none', txnRefs: [], paidManualCents: null, ...over,
 });
 
 /** Cleans a record before saving: trimmed text, whole cents. Does not decide whether it is valid. */
@@ -107,6 +124,7 @@ export function normalizeVisit(d: VisitData): VisitData {
     ...d,
     title: tidy(d.title), providerNameSnapshot: tidy(d.providerNameSnapshot), taskTitleSnapshot: tidy(d.taskTitleSnapshot), notes: d.notes.trim(),
     chargedCents: typeof d.chargedCents === 'number' && Number.isFinite(d.chargedCents) ? Math.round(d.chargedCents) : d.chargedCents,
+    payment: paymentSourceOf(d),
     refs: d.refs.map((r) => ({ label: tidy(r.label), ...(r.url?.trim() ? { url: r.url.trim() } : {}), ...(r.note?.trim() ? { note: r.note.trim() } : {}) })),
   };
 }
@@ -140,7 +158,21 @@ export function validateVisit(d: VisitData, today: string): string | null {
     if (r.url && !isSafeUrl(r.url)) return 'Links must start with http:// or https://.';
   }
   if (d.notes.length > 4000) return 'The notes are too long.';
+  const pay = validatePayment(d);
+  if (pay) return pay;
   return null;
+}
+
+/** The payment part of a visit: one source, whole non-negative cents, valid references. */
+export function validatePayment(d: Pick<VisitData, 'payment' | 'txnRefs' | 'paidManualCents'>): string | null {
+  if (d.paidManualCents !== null) {
+    if (typeof d.paidManualCents !== 'number' || !Number.isInteger(d.paidManualCents)) return 'The amount paid must be a whole number of cents.';
+    if (d.paidManualCents < 0) return 'The amount paid cannot be negative.';
+    if (d.paidManualCents > 1e11) return 'The amount paid is too large.';
+  }
+  if (d.txnRefs.length > MAX_TXN_REFS) return `At most ${MAX_TXN_REFS} linked transactions.`;
+  if (d.txnRefs.length && d.paidManualCents !== null) return 'A visit is paid through Finance or outside Finance, not both. Choose one.';
+  return validateTxnRefs(d.txnRefs);
 }
 
 // ---- plain-words labels (pure) ----

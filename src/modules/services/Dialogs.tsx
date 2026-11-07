@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import Modal from '../../shell/Modal';
-import RepeatFields from '../../ui/RepeatFields';
+import CadenceFields from './CadenceFields';
+import { cadenceOfDraft, draftOf, draftProblem } from './cadenceDraft';
 import { useToast } from '../../ui/Toast';
 import { useNavigate } from '../../core/router';
 import { store } from '../../core/store';
-import type { Recurrence } from '../../core/recurrence';
-import { dayOfWeek } from '../../lib/dates';
 import { todayISO } from '../../lib/money';
 import {
   applyLifecycle, applyRepair, applyScheduleChange, describeLifecycle, planLifecycle, planRepair, planScheduleChange, REPAIR_LABEL, TASK_CHOICE_LABEL,
   type LifecycleAction, type LifecyclePlan, type RepairKind, type RepairPlan, type SchedulePlan, type TaskChoice,
 } from './changes';
 import { runUndo } from './undo';
-import { cadenceText, END_REASON_LABEL, END_REASONS, validateArrangement, normalizeArrangement, withExplicitWeekday, type ArrangementRecord, type Cadence, type EndReason } from './model';
+import { cadenceText, END_REASON_LABEL, END_REASONS, validateArrangement, normalizeArrangement, type ArrangementRecord, type Cadence, type EndReason } from './model';
 import { arrangementRoute } from './paths';
 
 const NEW = '__new';
@@ -132,17 +131,15 @@ export function ScheduleDialog({ arrangement, onClose }: { arrangement: Arrangem
   const toast = useToast();
   const today = todayISO();
   const c = arrangement.data.cadence;
-  const [rule, setRule] = useState<Recurrence | null>(c?.rule ?? null);
-  const [mode, setMode] = useState<'fixed' | 'after'>(c?.mode ?? 'fixed');
-  const [first, setFirst] = useState(c?.anchorDate ?? today);
+  const [draft, setDraft] = useState(() => draftOf(c, today));
   const [time, setTime] = useState(arrangement.data.visitTime ?? '');
   const [visit, setVisit] = useState<'move' | 'keep'>('move');
   const [plan, setPlan] = useState<SchedulePlan | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const cadence: Cadence | null = rule ? { mode, rule: withExplicitWeekday(rule, first), anchorDate: first } : null;
-  const problem = rule ? validateArrangement(normalizeArrangement({ ...arrangement.data, cadence, visitTime: time || null })) : null;
+  const cadence: Cadence | null = cadenceOfDraft(draft);
+  const problem = cadence ? draftProblem(draft) ?? validateArrangement(normalizeArrangement({ ...arrangement.data, cadence, visitTime: time || null })) : null;
   const key = JSON.stringify([cadence, time]);
   useEffect(() => {
     let live = true;
@@ -152,7 +149,6 @@ export function ScheduleDialog({ arrangement, onClose }: { arrangement: Arrangem
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, arrangement.id, today]);
 
-  const onFirst = (v: string) => { setFirst(v); if (v && rule?.freq === 'weekly' && (rule.byWeekday?.length ?? 0) <= 1) setRule({ ...rule, byWeekday: [dayOfWeek(v)] }); };
   const hasOpen = (plan?.tasks.length ?? 0) > 0;
 
   async function save() {
@@ -169,21 +165,19 @@ export function ScheduleDialog({ arrangement, onClose }: { arrangement: Arrangem
     <Modal title="Change schedule" onClose={onClose} wide>
       <div className="sv-form">
         <p className="muted small">Now: {cadenceText(c)}{arrangement.data.visitTime ? ` at ${arrangement.data.visitTime}` : ''}.</p>
-        <RepeatFields rule={rule} onChange={setRule} start={first || today} mode={mode} onMode={setMode} />
-        {rule && (
+        <CadenceFields draft={draft} onChange={setDraft} today={today} />
+        {cadence && (
           <div className="sv-two">
-            <label className="f">First date of the new pattern<input type="date" value={first} onChange={(e) => onFirst(e.target.value)} /></label>
             <label className="f">Time (optional)<input type="time" value={time} onChange={(e) => setTime(e.target.value)} /></label>
           </div>
         )}
-        {rule && hasOpen && arrangement.data.status === 'active' && (
+        {cadence && hasOpen && arrangement.data.status === 'active' && (
           <fieldset className="sv-sub">
             <legend>The visit that is already scheduled</legend>
             <label className="as-check"><input type="radio" name="svvisit" checked={visit === 'move'} onChange={() => setVisit('move')} /> Move it to the new pattern</label>
             <label className="as-check"><input type="radio" name="svvisit" checked={visit === 'keep'} onChange={() => setVisit('keep')} /> Keep its date, use the new pattern after it</label>
           </fieldset>
         )}
-        {problem && <p className="sv-warn" role="alert">{problem}</p>}
         {plan && !problem && (
           <>
             <h3 className="sv-h3">What will happen</h3>

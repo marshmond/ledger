@@ -13,7 +13,7 @@ import { createTask, getTask, saveTask } from '../tasks/data';
 import { asTask, blankTask, type TaskRecord } from '../tasks/model';
 import { parseAssetRef } from '../assets/model';
 import {
-  arrangementRef, asArrangement, ASSET_LINK, KIND, MODULE, nextCadenceDate, normalizeArrangement, parseArrangementRef, TASK_LINK, tidy,
+  arrangementRef, asArrangement, ASSET_LINK, KIND, MODULE, nextCadenceDate, normalizeArrangement, parseArrangementRef, toStored, TASK_LINK, tidy,
   validateArrangement, type ArrangementData, type ArrangementRecord,
 } from './model';
 import { Recorder, type Undo } from './undo';
@@ -37,7 +37,7 @@ export async function writeArrangement(id: number | undefined, data: Arrangement
   const clean = normalizeArrangement(data);
   const problem = validateArrangement(clean);
   if (problem) throw new Error(problem);
-  return rows(d).put({ ...(id !== undefined ? { id } : {}), module: MODULE, kind: KIND, data: { ...clean } });
+  return rows(d).put({ ...(id !== undefined ? { id } : {}), module: MODULE, kind: KIND, data: toStored(clean) });
 }
 
 // ---- links ----
@@ -160,7 +160,7 @@ export async function ensureNextVisitTaskIn(arrId: number, opts: EnsureOptions, 
     { arrangement: arrId, ...(occurrence ? { occurrence } : {}) },
   );
   const taskId = await createTask(data, [arrangementRef(arrId)], d);
-  await rows(d).put({ id: arrId, module: MODULE, kind: KIND, data: { ...a.data, openTaskId: taskId } });
+  await rows(d).put({ id: arrId, module: MODULE, kind: KIND, data: toStored({ ...a.data, openTaskId: taskId }) });
   return { kind: 'created', taskId, duplicates: [], date: due };
 }
 /** `ensureNextVisitTaskIn` in its own transaction. */

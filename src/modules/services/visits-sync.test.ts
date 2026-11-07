@@ -201,7 +201,7 @@ describe('visits across two devices (real sync engine)', () => {
     const visits = await loadVisits(C);
     expect(visits.map((v) => v.id).sort()).toEqual([done.visitId, skipped.visitId].sort());
     const v = visits.find((x) => x.id === done.visitId)!;
-    expect(v.data).toMatchObject({ status: 'completed', providerNameSnapshot: "Rosa's Cleaning", taskId: r.taskId, occurrence: TODAY, chargedCents: 12000, chargeKind: 'service', notes: 'Bring supplies', futureField: { keep: 1 }, payment: 'finance' });
+    expect(v.data).toMatchObject({ status: 'completed', providerNameSnapshot: "Rosa's Cleaning", taskId: r.taskId, occurrence: TODAY, chargedCents: 12000, chargeKind: 'service', notes: 'Bring supplies', futureField: { keep: 1 } }); // S3: `payment` is now a real field (derived from the references), so only the truly unknown field is asserted as carried
     expect(visits.find((x) => x.id === skipped.visitId)!.data.status).toBe('skipped');
     expect(await visitAssetIds(done.visitId, C)).toEqual([house]);
     expect(scheduleHealth((await getArrangement(r.id, C))!, await tasksOfArrangement(r.id, C)).state).toBe('ok');

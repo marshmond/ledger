@@ -80,7 +80,7 @@ describe('visit model and validation', () => {
   it('the reader never throws; an unknown status reads as unsupported (never as service, skipped or cancelled); unknown fields survive', () => {
     const rec = { id: 3, module: 'services', kind: 'visit', createdAt: 1, updatedAt: 1, data: { title: 5, status: 'rescheduled', date: 'x', chargedCents: 'a', chargeKind: 7, refs: [null, { label: 'ok' }], payment: 'finance', txnRefs: [{ a: 1 }], futureThing: { z: 1 } } };
     const a = asVisit(rec as never);
-    expect(a.data).toMatchObject({ title: '(no title)', status: 'unsupported', statusRaw: 'rescheduled', date: '', chargedCents: null, chargeKind: null, refs: [{ label: 'ok' }], payment: 'finance', txnRefs: [{ a: 1 }], futureThing: { z: 1 } });
+    expect(a.data).toMatchObject({ title: '(no title)', status: 'unsupported', statusRaw: 'rescheduled', date: '', chargedCents: null, chargeKind: null, refs: [{ label: 'ok' }], payment: 'none', txnRefs: [], futureThing: { z: 1 } }); // S3: `payment` is a real field now; a reference with no transaction id is dropped, and no payment is read from junk
     expect(() => asVisit({ ...rec, data: null } as never)).not.toThrow();
     expect(asVisit({ ...rec, data: { status: 'cancelled', cancelledBy: 'nobody' } } as never).data.cancelledBy).toBeNull();
     // a negative stored charge is not trusted

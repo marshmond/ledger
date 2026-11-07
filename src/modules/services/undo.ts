@@ -19,7 +19,7 @@ import { createStore, isLive, repo } from '../../core/store';
 import { stable } from '../../lib/sync/merge';
 import { restoreTasks, saveTask } from '../tasks/data';
 import type { TaskData } from '../tasks/model';
-import { arrangementRef, KIND, MODULE, type ArrangementData, type ArrangementRecord } from './model';
+import { arrangementRef, KIND, MODULE, toStored, type ArrangementData, type ArrangementRecord } from './model';
 import { visitRef, VISIT_KIND } from './visitModel';
 import type { TaskRecord } from '../tasks/model';
 
@@ -194,7 +194,7 @@ export function applyUndo(u: Undo, d: FinanceDB = db, opts: UndoOptions = {}): P
       if (r.deletedAt != null && !t.wasDeleted) await restoreTasks([t.id], d);
       await saveTask(t.id, t.data, d);
     }
-    for (const a of u.arrangements) if (await d.moduleRecords.get(a.id)) await rows(d).put({ id: a.id, module: MODULE, kind: KIND, data: { ...a.data } });
+    for (const a of u.arrangements) if (await d.moduleRecords.get(a.id)) await rows(d).put({ id: a.id, module: MODULE, kind: KIND, data: toStored(a.data) as never });
     if (opts.dropCreatedContact && s.contact) {
       const c = await d.contacts.get(s.contact.id);
       if (c && isLive(c) && !(await contactIsReferenced(s.contact.id, d))) await store.shared.contacts.remove(s.contact.id);

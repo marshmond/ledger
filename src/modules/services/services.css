@@ -65,3 +65,12 @@
   .sv-rowlink { flex-direction: column; align-items: flex-start; }
   .sv-head-actions .btn, .sv-actions .btn { min-height: 44px; }
 }
+
+/* S3-A schedule picker: nested fieldsets must be allowed to shrink on a phone */
+.sv-cadence, .sv-slot { min-width: 0; }
+.sv-slot { border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.sv-slot legend { padding: 0 var(--sp-1); font-weight: 600; }
+.sv-cadence select, .sv-cadence input { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.sv-preview ol { margin: var(--sp-1) 0 0; padding-left: var(--sp-4); list-style: decimal; }
+.sv-cadence .f, .sv-cadence .sv-two > * { min-width: 0; }
+.sv-cadence .f > input, .sv-cadence .f > select { width: 100%; }
