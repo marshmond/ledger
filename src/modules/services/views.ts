@@ -3,7 +3,7 @@
  * Nothing here writes. Phone, email and notes are not part of any row except where a screen is the provider page itself.
  */
 import { db, type FinanceDB } from '../../db';
-import type { Contact } from '../../core/entities';
+import type { Contact, Link } from '../../core/entities';
 import { createStore, isLive } from '../../core/store';
 import { loadTasks } from '../tasks/data';
 import type { TaskRecord } from '../tasks/model';
@@ -45,7 +45,8 @@ export interface Snapshot {
   contacts: Contact[];
   visits: VisitRecord[];
 }
-export async function loadSnapshot(d: FinanceDB = db): Promise<Snapshot> {
+/** The snapshot plus the live shared links it was built from (one read of each table; the Overview reuses the links instead of reading them again). */
+export async function loadSnapshotAndLinks(d: FinanceDB = db): Promise<{ snapshot: Snapshot; links: Link[] }> {
   const [arrangements, tasks, links, assets, contacts, visits] = await Promise.all([loadArrangements(d), loadTasks(d), d.links.toArray(), loadAssets(d), createStore(d).shared.contacts.query(), loadVisits(d)]);
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const tasksBy = new Map<number, TaskRecord[]>();
@@ -60,7 +61,10 @@ export async function loadSnapshot(d: FinanceDB = db): Promise<Snapshot> {
       if (arr !== null && as !== null) { const list = assetIdsBy.get(arr) ?? []; if (!list.includes(as)) list.push(as); assetIdsBy.set(arr, list); }
     }
   }
-  return { arrangements, tasksBy, assetIdsBy, assets, contacts, visits };
+  return { snapshot: { arrangements, tasksBy, assetIdsBy, assets, contacts, visits }, links: links.filter(isLive) };
+}
+export async function loadSnapshot(d: FinanceDB = db): Promise<Snapshot> {
+  return (await loadSnapshotAndLinks(d)).snapshot;
 }
 
 export interface Row {

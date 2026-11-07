@@ -245,17 +245,3 @@ export function ProviderMoney({ providerKey }: { providerKey: string }) {
     </section>
   );
 }
-
-export function OverviewMoney() {
-  const data = usePayData();
-  if (!data) return null;
-  const s = servicesSpend(data.all, data.lookup);
-  return (
-    <section className="card sv-card" aria-labelledby="sv-omoney-h">
-      <h2 id="sv-omoney-h">Money for household services</h2>
-      <SpendLines s={s} scope="Household Services figures only. Home &amp; Assets shows its own figures, and the same Finance payment can appear in both, so do not add the two together. Project spending is separate." />
-      <ExpectedBlock arrangements={data.arrangements} data={data} />
-    </section>
-  );
-}
-
