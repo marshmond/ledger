@@ -20,12 +20,13 @@ const MODULE_KINDS: Record<string, { group: string; kinds: Record<string, string
   projects: { group: 'projects', kinds: { project: 'Projects', commitment: 'Commitments', budgetLine: 'Budget lines' } },
   assets: { group: 'assets', kinds: { asset: 'Items', service: 'Service entries', warranty: 'Warranties' } },
   services: { group: 'services', kinds: { arrangement: 'Arrangements', visit: 'Visits' } },
+  bills: { group: 'bills', kinds: { obligation: 'Bills and subscriptions', cycle: 'Billing-period records' } },
 };
 const GROUP_LABEL: Record<string, string> = {
-  finance: 'Finance', 'tasks-calendar': 'Tasks & Calendar', projects: 'Projects', assets: 'Home & Assets', services: 'Household Services',
+  finance: 'Finance', 'tasks-calendar': 'Tasks & Calendar', projects: 'Projects', assets: 'Home & Assets', services: 'Household Services', bills: 'Bills & Subscriptions',
   shared: 'Contacts & shared relationships', other: 'Other application data',
 };
-const GROUP_ORDER = ['finance', 'tasks-calendar', 'projects', 'assets', 'services', 'shared', 'other'];
+const GROUP_ORDER = ['finance', 'tasks-calendar', 'projects', 'assets', 'services', 'bills', 'shared', 'other'];
 
 type Row = { deletedAt?: number | null; module?: string; kind?: string };
 const rowsOf = (b: BackupFile, k: string): Row[] => (((b as unknown as Record<string, unknown>)[k] as Row[] | undefined) ?? []);
