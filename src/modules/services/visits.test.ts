@@ -11,7 +11,7 @@ import { applyLifecycle, applyRepair, applyUndo, planLifecycle, planRepair, STAL
 import { arrangementRef, blankArrangement, type Cadence } from './model';
 import { markersOf, purposeOf, scheduleHealth } from './schedule';
 import {
-  addBookingReminder, loadVisits, logStandaloneVisit, logVisitFromTask, nextAfterVisit, planLogVisit, unloggedVisits, updateVisit, visitAssetIds, type VisitInput,
+  addBookingReminder, isoOfMs, loadVisits, logStandaloneVisit, logVisitFromTask, nextAfterVisit, planLogVisit, unloggedVisits, updateVisit, visitAssetIds, type VisitInput,
 } from './visits';
 import {
   asVisit, blankVisit, chargeWords, duplicateGroups, normalizeVisit, statusWords, validateVisit, visitStats, type VisitRecord,
@@ -434,7 +434,7 @@ describe('finished, but not logged', () => {
     const tasksBy = new Map([[r.id, await tasksOfArrangement(r.id, d)]]);
     const list = unloggedVisits([a], tasksBy, []);
     expect(list).toHaveLength(1);
-    expect(list[0]).toMatchObject({ arrangementId: r.id, finishedOn: TODAY, staleCopy: true });
+    expect(list[0]).toMatchObject({ arrangementId: r.id, finishedOn: isoOfMs(Date.now()), staleCopy: true });
     expect(list[0].task.id).toBe(r.taskId);
   });
   it('the respawned Task is flagged stale-marker; late-logging re-aligns it and keeps the REAL date, not today', async () => {
