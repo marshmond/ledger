@@ -83,7 +83,13 @@ export const monthSlot = (month: string) => `m${month}`;
 export const twiceSlot = (month: string, which: 'a' | 'b') => `s${month}${which}`;
 export const weekSlot = (date: string) => `w${mondayOf(date)}`;
 
-export type ParsedSlot = { kind: 'm'; month: string } | { kind: 's'; month: string; which: 'a' | 'b' } | { kind: 'w'; monday: string } | { kind: 'x'; id: string };
+/** The first day of a period slot (`m`/`s`: the 1st of the month, `w`: the Monday). Null for an extra bill or an unreadable slot. */
+export function slotStart(slot: string): string | null {
+  const p = parseSlot(slot);
+  return !p ? null : p.kind === 'm' || p.kind === 's' ? `${p.month}-01` : p.kind === 'w' ? p.monday : null;
+}
+
+export type ParsedSlot ={ kind: 'm'; month: string } | { kind: 's'; month: string; which: 'a' | 'b' } | { kind: 'w'; monday: string } | { kind: 'x'; id: string };
 /** Reads a slot id. Null when it is none of the four shapes (a damaged or future id): such a record is shown as "Needs review", never dropped. */
 export function parseSlot(v: unknown): ParsedSlot | null {
   if (typeof v !== 'string') return null;
@@ -198,7 +204,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
  * would both claim the same billing period, instead of silently picking one. The default advice is the first of the next month (or the next
  * Monday for weekly schedules).
  */
-export function planScheduleChange(current: { schedule: Schedule | null; scheduleHistory: ScheduleRevision[]; trackingSince: string }, next: Schedule | null, effective: string): ScheduleChange {
+export function planScheduleChange(current: { schedule: Schedule | null; scheduleHistory: ScheduleRevision[]; trackingSince: string }, next: Schedule | null, effective: string, factSlots: string[] = []): ScheduleChange {
   const keep = { schedule: current.schedule, history: current.scheduleHistory };
   if (same(current.schedule, next)) return { mode: 'same', ...keep, problem: null };
   if (next) { const p = scheduleProblem(next); if (p) return { mode: 'replace', ...keep, problem: p }; }
@@ -211,25 +217,29 @@ export function planScheduleChange(current: { schedule: Schedule | null; schedul
   const segStart = lastUntil ? addDays(lastUntil, 1) : '0000-01-01';
   const lo = segStart > current.trackingSince ? segStart : current.trackingSince;
   const applied = old ? expectedDates(base, lo, addDays(effective, -1)) : [];
-  if (applied.length === 0) return { mode: 'replace', schedule: next, history: current.scheduleHistory, problem: null };
+  // B2: a period that already holds a recorded fact (an invoice, a due date, a payment, a skip, a credit) counts as APPLIED even if the schedule
+  // never produced a date for it (for example an invoice entered early). Replacing the schedule in place would re-attach those facts to a
+  // different bill, which is exactly what the twice-monthly `a`/`b` positions make possible, so the change must be dated and is checked below.
+  const recorded = old ? factSlots.filter((s) => { const st = slotStart(s); return st !== null && st < effective; }) : [];
+  if (applied.length === 0 && recorded.length === 0) return { mode: 'replace', schedule: next, history: current.scheduleHistory, problem: null };
   const until = addDays(effective, -1);
   const history = [...current.scheduleHistory, { until, schedule: old! }];
   if (next) {
     const mine = expectedDates({ ...base, schedule: next }, effective, addDays(effective, 800));
-    const claimed = new Map(applied.map((e) => [e.slot, e.nominal]));
+    const RECORDED = 'recorded';
+    const claimed = new Map<string, string>([...recorded.map((s) => [s, RECORDED] as [string, string]), ...applied.map((e) => [e.slot, e.nominal] as [string, string])]);
     const clash = mine.find((e) => claimed.has(e.slot));
     if (clash) {
       // Advice: the nearest clean boundary (a Monday when a weekly schedule is involved, else the 1st of a month) at which the two schedules share no period.
       const weekly = old!.kind === 'weeks' || next.kind === 'weeks';
       const clashAt = (c: string) => {
-        const oldClaims = new Set(expectedDates(base, lo, addDays(c, -1)).map((x) => x.slot));
+        const oldClaims = new Set([...expectedDates(base, lo, addDays(c, -1)).map((x) => x.slot), ...factSlots.filter((s) => { const st = slotStart(s); return st !== null && st < c; })]);
         return expectedDates({ ...base, schedule: next }, c, addDays(c, 800)).some((x) => oldClaims.has(x.slot));
       };
       const advice = (weekly ? [nextMonday(effective), firstOfNextMonth(effective)] : [firstOfNextMonth(effective)]).find((c) => !clashAt(c));
       return {
         mode: 'revise', schedule: next, history,
-        problem: `The old schedule already has a bill for ${slotWords2(clash.slot)} (${claimed.get(clash.slot)}) and the new one would put another in the same period (${clash.nominal}). ${advice ? `Start the new schedule on ${advice} or later.` : 'Pick a later start date.'}`,
-      };
+        problem: `${claimed.get(clash.slot) === RECORDED ? `${slotWords2(clash.slot)} already has recorded information (a bill, due date, payment, skip or credit) and the new schedule would put its bill in that same period (${clash.nominal})` : `The old schedule already has a bill for ${slotWords2(clash.slot)} (${claimed.get(clash.slot)}) and the new one would put another in the same period (${clash.nominal})`}. ${advice ? `Start the new schedule on ${advice} or later.` : 'Pick a later start date.'}`,      };
     }
   }
   return { mode: 'revise', schedule: next, history, problem: null };

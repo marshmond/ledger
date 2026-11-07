@@ -4,13 +4,15 @@ import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
 import ListPage from './ListPage';
 import ObligationPage from './ObligationPage';
+import ReviewPage from './ReviewPage';
+import UpcomingPage from './UpcomingPage';
 import OverviewPage from './OverviewPage';
 import { BILLS_BASE } from './paths';
 import './bills.css';
 
 const Obligation = () => { const n = Number(useParams().id); return Number.isFinite(n) ? <ObligationPage id={n} /> : <OverviewPage />; };
 
-/** Bills & Subscriptions: the overview at /bills, all bills at /bills/list, one page per bill at /bills/o/<id>. */
+/** Bills & Subscriptions: the overview at /bills, all bills at /bills/list, upcoming at /bills/upcoming, needs review at /bills/review, one page per bill at /bills/o/<id>. */
 export default function BillsModule() {
   return (
     <ModuleBase value={BILLS_BASE}>
@@ -21,6 +23,8 @@ export default function BillsModule() {
             <Routes>
               <Route index element={<OverviewPage />} />
               <Route path="list" element={<ListPage />} />
+              <Route path="upcoming" element={<UpcomingPage />} />
+              <Route path="review" element={<ReviewPage />} />
               <Route path="o/:id" element={<Obligation />} />
               <Route path="*" element={<OverviewPage />} />
             </Routes>

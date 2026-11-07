@@ -60,6 +60,15 @@ Reuses `dueInstances()` for scheduled items and `loadCalendar()` for vests, tax 
 
 Open tasks with a due date (or a "do on" date) appear on the Tasks layer. Tasks are stored records, so this provider sets `actions` (complete, reopen, reschedule) and the Calendar writes straight to the task: a normal edit, not a copy. Tasks without a date stay off the Calendar.
 
+## Bills & Subscriptions' provider (src/modules/bills/dueProvider.ts, B2)
+
+A read-only layer "Bills & Subscriptions" (id `9_000_000_000_000_107`, provider id `bills`). Worked out on every draw from the bills, their recorded facts and their reminder Tasks; nothing is stored and no future period record or event is created. Horizon: today through the same day 12 months later (both ends included, clamped), so it moves with the clock by itself. Two kinds of item, never mixed:
+
+- **Expected bills** `bills:due-<bill>-<slot>:<date>`: an open billing period (not paid, skipped or zero) on its timing date, which is the recorded actual due date when there is exactly one and otherwise the schedule's date. The period identity (the slot) never changes when the date moves, and `icsUid` is `bills-<bill>-<slot>@ledger.local`, so a phone calendar does not duplicate when the due date changes. A bill paid by hand, past its date and not confirmed stays inside the overdue window; an automatic payment past its date is not shown as overdue.
+- **Contract dates** `bills:<notice|trial|renewal>-<bill>:<date>`: cancel-by and trial end are action deadlines (alarm one day before); a renewal is informational. A passed date is `handled`. A notice and a renewal on the same day are two items.
+
+**Duplicates are decided by purpose and occurrence, not by title.** An open pay Task whose reminder date equals the marker's date for the SAME period stands for the marker (it is left out). A pay Task on a different day does not, because the reminder date and the due date are two facts. The same rule applies to a notice or trial Task and its marker. Cross-layer suppression against Finance scheduled items and Household Services contract dates is NOT done in B2 (those links arrive in later phases). Titles are `Due: <bill>`, `Cancel by: <bill>` and so on: never an amount, an account number, a note or a link.
+
 ## `projectId` on a derived item (added in Projects P3)
 
 `DerivedItem` has an optional `projectId`. A provider whose items come from a project-linked record (the Tasks provider, for a task or milestone with a project; the Projects provider, for a project's start and target dates) sets it, and the Calendar then shows the project's name on the item and links to the project. Providers with nothing to do with projects leave it out. It is display and navigation only.

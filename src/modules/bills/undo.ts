@@ -1,6 +1,7 @@
 /**
  * A small LOCAL Undo guard for Bills (B1). Not a framework, and it does not touch or import Household Services' `undo.ts` (B0 10.5).
- * It covers exactly the B1 actions: add, edit, review-list change, pause, resume, end, reopen and delete.
+ * It covers the B1 actions (add, edit, review-list change, pause, resume, end, reopen, delete) and, in B2, billing-period facts, the Tasks a Bills
+ * action makes or finishes (Tasks are ordinary rows in the same table) and the shared links those new Tasks carry.
  *
  *  - Before a write, `Recorder.capture` keeps the WHOLE stored row (as it was) of every record the action will touch.
  *  - When the write finishes, `Recorder.seal` (the last step, inside the same transaction) records how each row looks NOW, as
@@ -10,7 +11,7 @@
  *  - A shared Contact made while adding is NEVER deleted by Undo (a Contact can be used by anything; leaving it is always safe).
  */
 import { db, type FinanceDB } from '../../db';
-import type { ModuleRecord } from '../../core/entities';
+import type { Link, ModuleRecord } from '../../core/entities';
 import { repo } from '../../core/store';
 import { stable } from '../../lib/sync/merge';
 
@@ -37,6 +38,8 @@ export interface Undo {
   rows: { id: number; before: ModuleRecord | null }[];
   /** How each touched row looked right after the action. WITHOUT it Undo is refused. */
   sealed?: Record<number, string>;
+  /** B2: shared links this action added (a new Task's link to its bill). Undo removes exactly these, after the rows above checked out. */
+  linksAdded?: number[];
 }
 
 export class Recorder {
@@ -49,6 +52,8 @@ export class Recorder {
   }
   /** A row this action created. */
   made(id: number) { if (!this.undo.rows.some((r) => r.id === id)) this.undo.rows.push({ id, before: null }); }
+  /** B2: links this action added. */
+  linkAdded(ids: number[]) { this.undo.linksAdded = [...(this.undo.linksAdded ?? []), ...ids]; }
   /** Call LAST, inside the same transaction as the change. */
   async seal(d: FinanceDB): Promise<Undo> {
     const sealed: Record<number, string> = {};
@@ -60,7 +65,7 @@ export class Recorder {
 
 /** Takes the action back, or refuses without writing anything (one transaction: the checks come first). */
 export function applyUndo(u: Undo, d: FinanceDB = db): Promise<void> {
-  return d.transaction('rw', [d.moduleRecords], async () => {
+  return d.transaction('rw', [d.moduleRecords, d.links], async () => {
     if (!u.sealed) throw new UndoRefused(UNDO_UNVERIFIED);
     for (const { id } of u.rows) {
       if (fingerprint(await d.moduleRecords.get(id)) !== u.sealed[id]) throw new UndoRefused();
@@ -72,6 +77,8 @@ export function applyUndo(u: Undo, d: FinanceDB = db): Promise<void> {
       if (now && now.deletedAt != null && before.deletedAt == null) await rows.restore(id);
       await rows.put({ id, module: before.module, kind: before.kind, data: structuredClone(before.data) as never });
     }
+    const links = repo<Link>(d.links);
+    for (const id of u.linksAdded ?? []) await links.remove(id);
   });
 }
 

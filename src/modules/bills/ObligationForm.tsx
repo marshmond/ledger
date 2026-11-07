@@ -44,6 +44,8 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
   const [amount, setAmount] = useState(first === null ? '' : (first / 100).toFixed(2));
   const [draft, setDraft] = useState(() => (editing ? draftOfSchedule(d.schedule, today) : blankDraft(today)));
   const [how, setHow] = useState<How>(d.payment.how);
+  const [payTask, setPayTask] = useState(editing ? d.reminders?.payTask === true : d.payment.how === 'manual');
+  const [payTaskTouched, setPayTaskTouched] = useState(editing);
   const [tracking, setTracking] = useState(d.trackingSince || today);
   const [accountId, setAccountId] = useState(d.payment.fundingAccountId !== null ? String(d.payment.fundingAccountId) : '');
   const [paidThroughLoan, setPaidThroughLoan] = useState(d.paidThroughLoan);
@@ -87,15 +89,15 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
       if (obligation) {
         const r = await editObligation(obligation.id, {
           title, type, need, provider: choice === (d.providerContactId !== null ? String(d.providerContactId) : '') ? undefined : provider, amountKind, amountCents: cents, trackingSince: tracking, schedule, scheduleFrom: scheduleChanged ? scheduleFrom || null : null,
-          payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote }, refs, notes,
+          payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote }, refs, notes, reminders: { payTask, leadDays: d.reminders?.leadDays ?? 3 },
         }, obligation.updatedAt, today);
         toast('Saved', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(obligation.id);
       } else {
         const prices = amountKind !== 'unknown' && cents !== null ? [{ from: tracking, cents, label: '' }] : [];
         const r = await createObligation({
-          data: blankObligation({ title, type, need, amountKind, prices, schedule, trackingSince: tracking, payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote.trim(), since: reviewOn ? today : null }, refs, notes }, today),
-          provider,
+          data: blankObligation({ title, type, need, amountKind, prices, schedule, trackingSince: tracking, payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote.trim(), since: reviewOn ? today : null }, refs, notes, reminders: { payTask, leadDays: 3 } }, today),
+          provider, today,
         });
         toast('Added. Nothing was paid or created in Finance.', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(r.id);
@@ -136,10 +138,12 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
           <legend>Who pays it?</legend>
           <div className="row">
             {HOWS.map((h) => (
-              <label key={h} className="as-check"><input type="radio" name="bl-how" checked={how === h} onChange={() => setHow(h)} /> {HOW_LABEL[h]}</label>
+              <label key={h} className="as-check"><input type="radio" name="bl-how" checked={how === h} onChange={() => { setHow(h); if (!payTaskTouched) setPayTask(h === 'manual'); }} /> {HOW_LABEL[h]}</label>
             ))}
           </div>
           <p className="muted small">"Paid automatically" only means the company is expected to collect it. Ledger never treats that as proof it was paid.</p>
+          <label className="as-check"><input type="checkbox" checked={payTask} onChange={(e) => { setPayTask(e.target.checked); setPayTaskTouched(true); }} /> Remind me to pay it (one Task at a time, for the next bill)</label>
+          <p className="muted small">The Task is only a reminder. Finishing it never records a payment, and no Task is made for future months in advance.</p>
         </fieldset>
 
         <label className="f">Provider

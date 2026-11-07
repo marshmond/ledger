@@ -7,6 +7,8 @@ import { db } from '../../db';
 import { store } from '../../core/store';
 import { DeleteDialog, LifecycleDialog, ReviewDialog } from './Dialogs';
 import ObligationForm from './ObligationForm';
+import ContractCard from './ContractCard';
+import PeriodsCard from './PeriodsCard';
 import { amountOf, day, NeedChip, StatusChip, TypeChip, useMoney } from './BillsParts';
 import { getObligation, type LifecycleAction } from './data';
 import { expectedAmountOn, HOW_LABEL, isLoanExcluded, needsReview, scheduleSource, STATUS_LABEL } from './model';
@@ -106,8 +108,11 @@ export default function ObligationPage({ id }: { id: number }) {
             {next.map((e) => { const a = expectedAmountOn(d, e.nominal); return <li key={e.slot}><span>{day(e.nominal)}</span><span className="muted small">{a.cents === null ? 'amount not known' : `${a.basis === 'variable' ? 'about ' : ''}${money(a.cents)}`}</span></li>; })}
           </ul>
         )}
-        <p className="muted small">Expected dates only: worked out from the schedule, nothing is created in Tasks or the Calendar, and none is shown as paid.</p>
+        <p className="muted small">Expected dates only, worked out from the schedule. Nothing is stored for a future date (the Calendar shows them without creating events), and none of these is recorded as paid. What you record about each period is below.</p>
       </section>
+
+      <PeriodsCard ob={r} />
+      <ContractCard ob={r} />
 
       <section className="card bl-card" aria-labelledby="bl-rev-h">
         <div className="bl-card-head"><h2 id="bl-rev-h">Your review list</h2>{reviewable && <button className="btn" onClick={() => setReview(true)}>{d.review.on ? 'Edit' : 'Put on my review list'}</button>}</div>

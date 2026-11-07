@@ -54,10 +54,10 @@ describe('B1: registration and Quick Add clash checks (test: Search and Quick Ad
     expect(allSearchSources().some((s) => s.moduleId === 'bills' && s.source.group === 'Bills & Subscriptions')).toBe(true);
     expect(recordSource('bills')).toBe(billRecords);
   });
-  it('B1 contributes no due provider, Today card, Task or Calendar layer (those are B2)', () => {
-    expect(billsModule.contributes?.dueProvider).toBeUndefined();
-    expect(billsModule.contributes?.todayCards).toBeUndefined();
-    expect(Object.keys(billsModule.contributes ?? {}).sort()).toEqual(['quickAdd', 'records', 'searchSource']);
+  it('B2 contributes the due provider (Calendar layer) and the Today card, and nothing else new', () => {
+    expect(billsModule.contributes?.dueProvider?.id).toBe('bills');
+    expect(billsModule.contributes?.todayCards?.map((c) => c.id)).toEqual(['bills.attention']);
+    expect(Object.keys(billsModule.contributes ?? {}).sort()).toEqual(['dueProvider', 'quickAdd', 'records', 'searchSource', 'todayCards']);
   });
 });
 

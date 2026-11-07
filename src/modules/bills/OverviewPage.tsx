@@ -4,11 +4,15 @@ import { Link } from '../../core/router';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToday } from '../../ui/useToday';
 import ObligationForm from './ObligationForm';
-import { amountWords, day, useMoney } from './BillsParts';
-import { loadObligations } from './data';
-import { listRoute, obligationRoute } from './paths';
+import { day, useMoney } from './BillsParts';
+import { CashFigures, CASH_NOTE } from './UpcomingPage';
+import { amountLine, PeriodLabel } from './PeriodParts';
+import { amountWords } from './BillsParts';
+import { addDays } from '../../lib/dates';
+import { attention, attentionLines, cashTiming, derive, loadBillsSnapshot, upcoming, type AttentionCategory } from './readModel';
+import { listRoute, obligationRoute, reviewRoute, upcomingRoute } from './paths';
 import { describeSchedule } from './schedule';
-import { buildOverview, currentAmount } from './views';
+import { buildOverview, currentAmount, UPCOMING_DAYS } from './views';
 
 /**
  * Bills & Subscriptions landing page (B1). Everything on it is EXPECTED: amounts and dates come from the terms you entered. Nothing is a
@@ -18,9 +22,15 @@ export default function OverviewPage() {
   const today = useToday();
   const { money } = useMoney();
   const [adding, setAdding] = useState(false);
-  const obligations = useLiveQuery(() => loadObligations(), []);
-  if (!obligations) return <div className="bl"><PageHeader title="Bills & Subscriptions" /><p className="muted">Loading…</p></div>;
+  const x = useLiveQuery(async () => derive(await loadBillsSnapshot(), today), [today]);
+  if (!x) return <div className="bl"><PageHeader title="Bills & Subscriptions" /><p className="muted">Loading…</p></div>;
+  const obligations = x.snap.obligations;
   const ov = buildOverview(obligations, today);
+  const att = attention(x);
+  const lines = attentionLines(att);
+  const wins = cashTiming(x);
+  const soon = upcoming(x).ahead.filter((e) => e.period.timing.date! <= addDays(today, UPCOMING_DAYS)).slice(0, 12);
+  const LINK: Record<AttentionCategory, string> = { dueSoon: upcomingRoute(), trials: upcomingRoute(), notices: upcomingRoute(), renewals: upcomingRoute(), notConfirmed: reviewRoute(), autopayCheck: reviewRoute(), unconfirmedTasks: reviewRoute(), conflicts: reviewRoute(), records: reviewRoute(), passedDates: reviewRoute(), taskProblems: reviewRoute() };
   const c = ov.commitments;
   const n = ov.counts;
   const unknownBits = [c.unknown.periods > 0 ? `${c.unknown.periods} expected date${c.unknown.periods === 1 ? '' : 's'} (${c.unknown.obligations} bill${c.unknown.obligations === 1 ? '' : 's'}) have no amount, so they are in neither figure` : '', c.onDemand > 0 ? `${c.onDemand} on-demand bill${c.onDemand === 1 ? '' : 's'} with no schedule not counted` : '', c.loanExcluded > 0 ? `${c.loanExcluded} loan-related bill${c.loanExcluded === 1 ? '' : 's'} left out (see Loans)` : ''].filter(Boolean);
@@ -30,7 +40,7 @@ export default function OverviewPage() {
       <PageHeader
         title="Bills & Subscriptions"
         description="What you expect to pay regularly, and when. Expected amounts only: nothing here is a payment."
-        actions={<><Link to={listRoute()} className="btn">All bills</Link><button className="btn primary" onClick={() => setAdding(true)}>Add</button></>}
+        actions={<><Link to={upcomingRoute()} className="btn">Upcoming</Link><Link to={reviewRoute()} className="btn">Needs review{att.total - att.dueSoon - att.trials - att.notices - att.renewals > 0 ? ` (${att.total - att.dueSoon - att.trials - att.notices - att.renewals})` : ''}</Link><Link to={listRoute()} className="btn">All bills</Link><button className="btn primary" onClick={() => setAdding(true)}>Add</button></>}
       />
       {n.total === 0 ? (
         <EmptyState title="No bills or subscriptions yet" action={<button className="btn primary" onClick={() => setAdding(true)}>Add your first one</button>}>
@@ -47,6 +57,20 @@ export default function OverviewPage() {
             </div>
           </section>
 
+          {lines.length > 0 && (
+            <section className="card bl-card" aria-labelledby="bl-att-h">
+              <h2 id="bl-att-h">Needs attention</h2>
+              <ul className="plain bl-items" aria-label="Needs attention">{lines.map((l) => <li key={l.id} data-testid={`att-${l.id}`}><Link to={LINK[l.id]}>{l.text}</Link></li>)}</ul>
+              <p className="muted small">The same counts the Today card shows. Nothing here is a payment.</p>
+            </section>
+          )}
+
+          <section className="card bl-card" aria-labelledby="bl-cash-h">
+            <h2 id="bl-cash-h">Expected cash needed</h2>
+            <CashFigures wins={wins} money={money} />
+            <p className="muted small">{CASH_NOTE}</p>
+          </section>
+
           <section className="card bl-card" aria-labelledby="bl-com-h">
             <h2 id="bl-com-h">Expected recurring costs, next 12 months</h2>
             <div className="bl-kinds">
@@ -58,18 +82,18 @@ export default function OverviewPage() {
           </section>
 
           <section className="card bl-card" aria-labelledby="bl-up-h">
-            <h2 id="bl-up-h">Coming up (expected, next {ov.upcomingDays} days)</h2>
-            {ov.upcoming.length === 0 ? <p className="muted">No expected dates in the next {ov.upcomingDays} days.</p> : (
-              <ul className="plain bl-datelist" aria-label="Expected dates">
-                {ov.upcoming.map((u) => (
-                  <li key={`${u.ob.id}-${u.slot}`}>
-                    <span><Link to={obligationRoute(u.ob.id)}>{u.ob.data.title}</Link> <span className="muted small">· {day(u.nominal)}</span></span>
-                    <span className="muted small">{amountWords(u.amount, money)}</span>
+            <h2 id="bl-up-h">Coming up (next {ov.upcomingDays} days)</h2>
+            {soon.length === 0 ? <p className="muted">No expected dates in the next {ov.upcomingDays} days.</p> : (
+              <ul className="plain bl-uplist" aria-label="Expected dates">
+                {soon.map((e) => (
+                  <li key={`${e.ob.id}-${e.period.slot}`} className="bl-uprow">
+                    <div className="bl-row-main"><Link to={obligationRoute(e.ob.id)}><strong>{e.ob.data.title}</strong></Link><span className="muted small">{day(e.period.timing.date!)}{e.period.timing.source === 'due' ? ' (due date recorded)' : ''}</span><span className="small">{amountLine(e.period, money)}</span></div>
+                    <div className="bl-row-side"><PeriodLabel p={e.period} money={money} /></div>
                   </li>
                 ))}
               </ul>
             )}
-            <p className="muted small">A preview of dates. Nothing is created in Tasks or the Calendar, and none of these is recorded as paid.</p>
+            <p className="muted small"><Link to={upcomingRoute()}>See the next 90 days</Link>. Dates are worked out each time you look and nothing is stored in advance. None of these is recorded as paid unless you recorded it.</p>
           </section>
 
           <section className="card bl-card" aria-labelledby="bl-rev-h">

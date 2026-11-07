@@ -1,7 +1,8 @@
 /**
  * Reading and writing obligations (B1). Writes go through the shared store's `repo` (id, createdAt, updatedAt, soft delete). This module
  * writes ONLY its own `bills` records (and, when asked, a provider Contact through the existing `findOrCreateContact`). It never writes
- * Finance, Tasks, Calendar, Projects, Home & Assets or Household Services, and creates no link, Task or event.
+ * Finance, Calendar, Projects, Home & Assets or Household Services. B2: when the owner has turned reminders on for a bill, saving it keeps the
+ * bill's Tasks in step through the existing Tasks API (see `tasks.ts`); it creates no event.
  */
 import { db, type FinanceDB } from '../../db';
 import type { ModuleRecord } from '../../core/entities';
@@ -13,6 +14,7 @@ import {
   type AmountKind, type EndReason, type ObligationData, type ObligationRecord, type Payment, type DocRef, type PriceStep, type BillType, type Need,
 } from './model';
 import { expectedDates, planScheduleChange, type Schedule } from './schedule';
+import { cycleRecordsOf, ensureBillTasksIn, loadBillTasks, markersOf, planBillTasks, planningPeriods } from './tasks';
 import { Recorder, type Undo } from './undo';
 import { tidy } from './util';
 
@@ -61,10 +63,12 @@ const hasProvider = (p: ProviderInput | null | undefined): p is ProviderInput =>
 
 export interface NewObligation {
   data: ObligationData;
+  /** Today, so a bill saved with reminders on gets its first reminder Task in the same step. */
+  today?: string;
   /** An existing contact, or a name to find/create. Omit for "no provider yet". */
   provider?: ProviderInput | null;
 }
-export interface Created { id: number; contactCreated: boolean; contactId: number | null; /** takes the whole addition back (refused if it was changed since); a made Contact is kept */ undo: Undo }
+export interface Created { id: number; contactCreated: boolean; contactId: number | null; taskIds: number[]; /** takes the whole addition back (refused if it was changed since); a made Contact is kept */ undo: Undo }
 
 /** Adds an obligation in one transaction: all or nothing. */
 export function createObligation(input: NewObligation, d: FinanceDB = db): Promise<Created> {
@@ -78,7 +82,8 @@ export function createObligation(input: NewObligation, d: FinanceDB = db): Promi
     const id = await writeObligation(undefined, data, d);
     const rec = new Recorder();
     rec.made(id);
-    return { id, contactCreated: contact?.created ?? false, contactId: contact?.id ?? null, undo: await rec.seal(d) };
+    const ens = input.today ? await ensureBillTasksIn(id, input.today, d, rec) : null;
+    return { id, contactCreated: contact?.created ?? false, contactId: contact?.id ?? null, taskIds: ens?.created ?? [], undo: await rec.seal(d) };
   });
 }
 
@@ -102,6 +107,8 @@ export interface ObligationEdit {
   review: { on: boolean; note: string };
   refs: DocRef[];
   notes: string;
+  /** B2: leave out to keep the reminder settings as they are. */
+  reminders?: { payTask: boolean; leadDays: number };
 }
 
 /** The new price list: only the FIRST step is edited in B1 (full price-step editing is B4); later steps are kept. */
@@ -113,16 +120,17 @@ export function withFirstPrice(prices: PriceStep[], cents: number | null, tracki
 }
 
 /** Applies a form's values to a record. Pure; throws a plain message when the schedule change is refused. */
-export function applyObligationEdit(cur: ObligationData, e: ObligationEdit, today: string): ObligationData {
+export function applyObligationEdit(cur: ObligationData, e: ObligationEdit, today: string, factSlots: string[] = []): ObligationData {
   const patch: Partial<ObligationData> = {
     title: e.title, type: e.type, need: e.need, amountKind: e.amountKind, trackingSince: e.trackingSince,
     prices: e.amountKind === 'unknown' ? cur.prices : withFirstPrice(cur.prices, e.amountCents, e.trackingSince),
     payment: e.payment, paidThroughLoan: e.paidThroughLoan, refs: e.refs, notes: e.notes,
     review: { on: e.review.on, note: e.review.note, since: e.review.on ? (cur.review.on ? cur.review.since ?? today : today) : cur.review.since },
   };
-  const change = planScheduleChange(cur, e.schedule, e.scheduleFrom || today);
+  const change = planScheduleChange(cur, e.schedule, e.scheduleFrom || today, factSlots);
   if (change.problem) throw new Error(change.problem);
   if (change.mode !== 'same') { patch.schedule = change.schedule; patch.scheduleHistory = change.history; }
+  if (e.reminders) patch.reminders = { payTask: e.reminders.payTask, leadDays: e.reminders.leadDays };
   // an untouched unreadable schedule stays exactly as it was; a changed one replaces it
   return applyEdit(cur, patch);
 }
@@ -133,7 +141,9 @@ export function editObligation(id: number, e: ObligationEdit, expectUpdatedAt: n
     const cur = await getObligation(id, d);
     if (!cur) throw new Error('That bill no longer exists. Nothing was changed.');
     if (expectUpdatedAt !== null && cur.updatedAt !== expectUpdatedAt) throw new Error('This record was changed (maybe on another device) since you opened it. Close this, look again and redo your change. Nothing was changed.');
-    let data = applyObligationEdit(cur.data, e, today);
+    // a period that already holds a recorded fact counts as an applied period when the schedule changes (B2)
+    const factSlots = [...new Set((await cycleRecordsOf(id, d)).flatMap((c) => (c.body !== null && c.slot ? [c.slot] : [])))];
+    let data = applyObligationEdit(cur.data, e, today, factSlots);
     let contactCreated = false;
     if (e.provider !== undefined) {
       if (hasProvider(e.provider)) {
@@ -145,6 +155,7 @@ export function editObligation(id: number, e: ObligationEdit, expectUpdatedAt: n
     const rec = new Recorder();
     await rec.capture(id, d);
     await writeObligation(id, data, d);
+    await ensureBillTasksIn(id, today, d, rec);
     return { undo: await rec.seal(d), contactCreated };
   });
 }
@@ -244,7 +255,20 @@ export function buildLifecycle(ob: ObligationData, action: LifecycleAction, o: L
 export async function planLifecycle(id: number, action: LifecycleAction, o: LifecycleOptions, d: FinanceDB = db): Promise<LifecyclePlan> {
   const ob = await getObligation(id, d);
   if (!ob) throw new Error('That bill no longer exists.');
-  return { obligation: ob, expect: ob.updatedAt, ...buildLifecycle(ob.data, action, o) };
+  const built = buildLifecycle(ob.data, action, o);
+  const lines = [...built.lines];
+  if (built.next) {
+    // what the bill's reminder Tasks would do after this change (B2): said in words before anything is written
+    const after: ObligationRecord = { ...ob, data: built.next };
+    const tasks = (await loadBillTasks(d)).filter((t) => markersOf(t)?.obligation === id);
+    const plan = planBillTasks(after, planningPeriods(after, await cycleRecordsOf(id, d), o.today), tasks, o.today);
+    const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
+    if (plan.retire.length) lines.push(`${n(plan.retire.length, 'reminder Task that Bills made and you have not changed will be removed (it stands', 'reminder Tasks that Bills made and you have not changed will be removed (they stand')} for something no longer expected). It can be restored, and Undo brings it back.`);
+    if (plan.stale.length) lines.push(`${n(plan.stale.length, 'reminder Task you changed stays open and will be listed for a look. It is not removed.', 'reminder Tasks you changed stay open and will be listed for a look. They are not removed.')}`);
+    for (const w of plan.create) lines.push(`A reminder Task will be made: "${w.title}", for ${w.doOn}${w.due ? ` (the bill is due ${w.due})` : ''}.`);
+    if (plan.retire.length === 0 && plan.stale.length === 0 && built.next.status !== 'active') lines.push('No reminder Task is made for a paused or ended bill, and finished Tasks are never touched.');
+  }
+  return { obligation: ob, expect: ob.updatedAt, ...built, lines };
 }
 
 /** Does the action in ONE transaction, refusing if the record changed since the preview (`expect`). Returns an Undo. */
@@ -258,6 +282,8 @@ export function applyLifecycle(input: { id: number; action: LifecycleAction; exp
     const rec = new Recorder();
     await rec.capture(input.id, d);
     await writeObligation(input.id, plan.next, d);
+    // resuming or reopening may bring back the bill's reminder Task (pausing and ending never touch existing Tasks)
+    await ensureBillTasksIn(input.id, input.today, d, rec);
     return { undo: await rec.seal(d) };
   });
 }
@@ -278,7 +304,12 @@ export async function planDelete(id: number, d: FinanceDB = db): Promise<DeleteP
   const cycles = await cycleRowsOf(id, d);
   if (cycles.length) reasons.push(`${cycles.length} billing-period record${cycles.length === 1 ? '' : 's'} refer to it`);
   const links = await createStore(d).shared.links.linkedTo(obligationRef(id));
-  if (links.length) reasons.push(`${links.length} link${links.length === 1 ? '' : 's'} to other records refer to it`);
+  // a Task link counts only while its Task is still there: a Task the owner deleted leaves its link row behind, and that is not history
+  let taskLinks = 0, deadTaskLinks = 0;
+  for (const l of links) if (l.fromModule === 'tasks') { const t = await d.moduleRecords.get(Number(l.fromId)); if (t && isLive(t)) taskLinks++; else deadTaskLinks++; }
+  const otherLinks = links.length - taskLinks - deadTaskLinks;
+  if (taskLinks) reasons.push(`${taskLinks} reminder Task${taskLinks === 1 ? ' is' : 's are'} linked to it`);
+  if (otherLinks > 0) reasons.push(`${otherLinks} link${otherLinks === 1 ? '' : 's'} to other records refer to it`);
   return {
     allowed: reasons.length === 0, reasons, expect: ob.updatedAt,
     lines: reasons.length === 0

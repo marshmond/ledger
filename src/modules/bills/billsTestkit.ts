@@ -76,3 +76,21 @@ export async function financeSnapshot(d: FinanceDB, keepStamps = true): Promise<
   for (const t of d.tables) if (!shared.includes(t.name)) out[t.name] = (await t.toArray()).map((r) => { if (keepStamps) return r; const { updatedAt: _u, ...rest } = r as unknown as Record<string, unknown>; void _u; return rest; });
   return JSON.stringify(out);
 }
+
+// ---- B2: building billing-period facts and obligations by hand ----
+import type { ModuleRecord } from '../../core/entities';
+import { bodyFields, readCycle, type CycleRecord, type FactBody } from './cycleModel';
+import type { ObligationRecord } from './model';
+
+/** A fact record as the reader sees it, built from a body (ids and times are chosen by the test). */
+export const fact = (obligationId: number, slot: string, body: FactBody, id: number, t = id, extra: Record<string, unknown> = {}): CycleRecord =>
+  readCycle({ id, module: 'bills', kind: 'cycle', data: { obligationId, slot, ...bodyFields(body), ...extra }, createdAt: t, updatedAt: t, deletedAt: null } as ModuleRecord);
+/** A raw stored record (to test damaged and unknown data). */
+export const rawFact = (id: number, data: Record<string, unknown>, t = id): CycleRecord => readCycle({ id, module: 'bills', kind: 'cycle', data, createdAt: t, updatedAt: t, deletedAt: null } as ModuleRecord);
+export const obRec = (id: number, over: Partial<ObligationData> = {}, today = '2026-11-07'): ObligationRecord => ({ id, createdAt: 1, updatedAt: 1, data: ob(over, today) });
+export const inv = (cents: number, over: Partial<Extract<FactBody, { fact: 'invoice' }>> = {}): FactBody => ({ fact: 'invoice', invoicedCents: cents, invoiceDate: null, dueDate: null, invoiceNumber: '', nominal: null, ...over });
+export const dueOn = (dueDate: string): FactBody => ({ fact: 'due-date', dueDate });
+export const paidOut = (paidOn: string, cents: number | null): FactBody => ({ fact: 'paid-outside', paidOn, cents });
+export const paidFull = (on: string | null = null): FactBody => ({ fact: 'paid-in-full', on });
+export const skipF = (reason = ''): FactBody => ({ fact: 'skip', reason });
+export const creditF = (cents: number, note = ''): FactBody => ({ fact: 'credit', cents, note });

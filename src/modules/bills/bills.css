@@ -116,3 +116,32 @@ a.btn.disabled { opacity: .5; pointer-events: none; }
 .bl-desc { margin: 0 0 var(--sp-3); }
 .bl-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); margin: 0 0 var(--sp-2); }
 @media (max-width: 560px) { .bl .as-check { min-height: 44px; } .bl .as-check input { width: 22px; height: 22px; } }
+
+/* Bills & Subscriptions B2: billing periods, labels, conflicts, upcoming, cash */
+.bl-periods, .bl-uplist { margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.bl-period { border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.bl-period-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.bl-plabel { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; min-width: 0; }
+.bl-ev { overflow-wrap: anywhere; }
+.bl-amt, .bl-task { margin: 0; overflow-wrap: anywhere; }
+.bl-chip.bl-l-paid, .bl-chip.bl-l-partly-paid, .bl-chip.bl-l-payment-recorded, .bl-chip.bl-l-marked-paid { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.bl-chip.bl-l-skipped, .bl-chip.bl-l-no-payment-due, .bl-chip.bl-l-no-payment-expected { color: var(--muted); border-style: dashed; }
+.bl-chip.bl-l-overdue, .bl-chip.bl-l-not-confirmed, .bl-chip.bl-l-autopay-check, .bl-chip.bl-l-needs-review, .bl-chip.bl-l-date-unclear { color: var(--warn, #9a6700); border-color: currentColor; }
+.bl-chip.bl-l-due-today, .bl-chip.bl-l-due-soon { color: var(--neg); border-color: currentColor; }
+.bl-chip { white-space: normal; text-align: left; }
+.bl-conflict { border: 1px solid var(--warn, #9a6700); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); margin: var(--sp-2) 0; }
+.bl-conflict.sev-duplicate, .bl-conflict.sev-review { border-style: dashed; }
+.bl-conflict-text { margin: 0; overflow-wrap: anywhere; }
+.bl-sidebyside { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-2); }
+.bl-rec { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-2); min-width: 0; overflow-wrap: anywhere; }
+.bl-rec .btn { align-self: flex-start; text-align: left; }
+.bl-cash { display: flex; flex-direction: column; gap: 2px; margin: 0 0 var(--sp-2); }
+.bl-cash-row { display: grid; grid-template-columns: 5rem repeat(3, minmax(0, 1fr)); gap: var(--sp-2); padding: var(--sp-1) 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+.bl-cash-head { font-size: var(--fs-xs); color: var(--muted); }
+.bl-uprow { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.bl-uplist { gap: 0; }
+@media (max-width: 560px) {
+  .bl-cash-row { grid-template-columns: 4rem repeat(3, minmax(0, 1fr)); font-size: var(--fs-sm, .9rem); }
+  .bl-uprow { flex-direction: column; }
+  .bl-rec .btn, .bl-period .bl-actionrow .btn, .bl-conflict .bl-actionrow .btn { min-height: 44px; }
+}

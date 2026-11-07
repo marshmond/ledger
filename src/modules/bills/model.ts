@@ -70,6 +70,7 @@ export const isSubscriptionType = (t: BillType) => t === 'subscription' || t ===
 export interface PriceStep { from: string; cents: number | null; label: string }
 export interface Payment { how: How; /** A Finance account, read live and never written. NOT proof of payment. */ fundingAccountId: number | null }
 export interface Review { on: boolean; note: string; since: string | null }
+/** B2: `payTask` = keep ONE open "pay" Task for the next unpaid period (off unless the owner turns it on); `leadDays` = how many days before the due date the Task is for. (The "no Tasks for cancel-by and trial-end dates" choice is the separate top-level field `noDeadlineTasks`, so an older build that rewrites `reminders` cannot drop it.) */
 export interface Reminders { payTask: boolean; leadDays: number }
 export interface LifecycleEntry { on: string; kind: string; note: string }
 export interface DocRef { label: string; url?: string; note?: string }
@@ -94,6 +95,8 @@ export interface ObligationData {
   loanId: number | null;
   paidThroughLoan: boolean;
   reminders: Reminders | null;
+  /** B2: the owner turned off Tasks for cancel-by and trial-end dates. A top-level field on purpose: the deployed B1 build keeps unknown top-level fields but rewrites `reminders`. */
+  noDeadlineTasks: boolean;
   terms: Record<string, unknown> | null;
   cancellation: Record<string, unknown> | null;
   predecessorId: number | null;
@@ -111,7 +114,7 @@ export interface ObligationData {
 }
 export interface ObligationRecord { id: number; createdAt: number; updatedAt: number; data: ObligationData }
 
-const KNOWN = new Set(['title', 'type', 'need', 'providerContactId', 'providerNameSnapshot', 'amountKind', 'prices', 'schedule', 'scheduleHistory', 'trackingSince', 'pauses', 'payment', 'scheduledRuleIds', 'payeeHints', 'categoryId', 'loanId', 'paidThroughLoan', 'reminders', 'terms', 'cancellation', 'predecessorId', 'acknowledged', 'status', 'endedOn', 'endReason', 'lifecycle', 'review', 'refs', 'notes']);
+const KNOWN = new Set(['title', 'type', 'need', 'providerContactId', 'providerNameSnapshot', 'amountKind', 'prices', 'schedule', 'scheduleHistory', 'trackingSince', 'pauses', 'payment', 'scheduledRuleIds', 'payeeHints', 'categoryId', 'loanId', 'paidThroughLoan', 'reminders', 'noDeadlineTasks', 'terms', 'cancellation', 'predecessorId', 'acknowledged', 'status', 'endedOn', 'endReason', 'lifecycle', 'review', 'refs', 'notes']);
 const extras = (d: object) => Object.fromEntries(Object.entries(d).filter(([k, v]) => !KNOWN.has(k) && v !== undefined)) as object;
 const present = (v: unknown) => v !== undefined && v !== null;
 const plain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -169,6 +172,7 @@ export function asObligation(r: ModuleRecord): ObligationRecord {
   if (plain(d.reminders) && typeof d.reminders.payTask === 'boolean' && isInt(d.reminders.leadDays) && d.reminders.leadDays >= 0 && d.reminders.leadDays <= 60) reminders = { payTask: d.reminders.payTask, leadDays: d.reminders.leadDays };
   else if (present(d.reminders)) bad('reminders');
 
+  if (present(d.noDeadlineTasks) && typeof d.noDeadlineTasks !== 'boolean') bad('noDeadlineTasks');
   let terms: Record<string, unknown> | null = null;
   if (plain(d.terms)) terms = d.terms; else if (present(d.terms)) bad('terms');
   let cancellation: Record<string, unknown> | null = null;
@@ -216,7 +220,7 @@ export function asObligation(r: ModuleRecord): ObligationRecord {
       categoryId: finite(d.categoryId) ? d.categoryId : null,
       loanId: finite(d.loanId) ? d.loanId : null,
       paidThroughLoan: d.paidThroughLoan === true,
-      reminders, terms, cancellation,
+      reminders, noDeadlineTasks: d.noDeadlineTasks === true, terms, cancellation,
       predecessorId: finite(d.predecessorId) ? d.predecessorId : null,
       acknowledged: Array.isArray(d.acknowledged) ? d.acknowledged.filter((x): x is string => typeof x === 'string') : [],
       status, endedOn, endReason, lifecycle, review, refs, notes: str(d.notes),
@@ -236,7 +240,7 @@ export function applyEdit(d: ObligationData, patch: Partial<ObligationData>): Ob
 export const blankObligation = (over: Partial<ObligationData> = {}, today = ''): ObligationData => ({
   title: '', type: 'other', need: 'unsure', providerContactId: null, providerNameSnapshot: '', amountKind: 'unknown', prices: [], schedule: null, scheduleHistory: [],
   trackingSince: today, pauses: [], payment: { how: 'unknown', fundingAccountId: null }, scheduledRuleIds: [], payeeHints: [], categoryId: null, loanId: null,
-  paidThroughLoan: false, reminders: null, terms: null, cancellation: null, predecessorId: null, acknowledged: [], status: 'active', endedOn: null, endReason: null,
+  paidThroughLoan: false, reminders: null, noDeadlineTasks: false, terms: null, cancellation: null, predecessorId: null, acknowledged: [], status: 'active', endedOn: null, endReason: null,
   lifecycle: [], review: { on: false, note: '', since: null }, refs: [], notes: '', rawKept: {}, ...over,
 });
 
@@ -245,7 +249,7 @@ export const blankObligation = (over: Partial<ObligationData> = {}, today = ''):
  * feature leaves no trace; raw values kept by the reader are written back; unknown fields ride along inside `rest`.
  */
 export function toStored(d: ObligationData): Record<string, unknown> {
-  const { rawKept, providerContactId, providerNameSnapshot, prices, schedule, scheduleHistory, pauses, payment, scheduledRuleIds, payeeHints, categoryId, loanId, paidThroughLoan, reminders, terms, cancellation, predecessorId, acknowledged, endedOn, endReason, lifecycle, review, refs, notes, ...rest } = d;
+  const { rawKept, providerContactId, providerNameSnapshot, prices, schedule, scheduleHistory, pauses, payment, scheduledRuleIds, payeeHints, categoryId, loanId, paidThroughLoan, reminders, noDeadlineTasks, terms, cancellation, predecessorId, acknowledged, endedOn, endReason, lifecycle, review, refs, notes, ...rest } = d;
   const out: Record<string, unknown> = {
     ...rest,
     payment: { how: payment.how, ...(payment.fundingAccountId !== null ? { fundingAccountId: payment.fundingAccountId } : {}) },
@@ -261,6 +265,7 @@ export function toStored(d: ObligationData): Record<string, unknown> {
   if (loanId !== null) out.loanId = loanId;
   if (paidThroughLoan) out.paidThroughLoan = true;
   if (reminders) out.reminders = reminders;
+  if (noDeadlineTasks) out.noDeadlineTasks = true;
   if (terms) out.terms = terms;
   if (cancellation) out.cancellation = cancellation;
   if (predecessorId !== null) out.predecessorId = predecessorId;

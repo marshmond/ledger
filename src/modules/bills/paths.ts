@@ -2,8 +2,12 @@
 export const BILLS_BASE = '/bills';
 export const overviewRoute = () => '/';
 export const listRoute = () => '/list';
+export const upcomingRoute = () => '/upcoming';
+export const reviewRoute = () => '/review';
 export const obligationRoute = (id: number) => `/o/${id}`;
 /** Full addresses (for search, records and other modules). */
 export const obligationPath = (id: number) => `/bills/o/${id}`;
 export const billsListPath = () => '/bills/list';
+export const billsUpcomingPath = () => '/bills/upcoming';
+export const billsReviewPath = () => '/bills/review';
 export const billsPath = () => '/bills';
