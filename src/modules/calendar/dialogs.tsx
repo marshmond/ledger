@@ -12,6 +12,7 @@ import { buildIcs } from './ics';
 import { loadEvents, createCalendar, deleteCalendar, updateCalendar } from './data';
 import { PRIORITY_LABEL, PERSONAL_ID, SWATCHES, type CalendarLayer } from './model';
 import { PriorityMark } from './parts';
+import { loadHideAmounts } from '../today/layout';
 import { dayLabel } from './time';
 import { onDay, type CalItem } from './useCalendarData';
 
@@ -78,12 +79,21 @@ export function DerivedDetail({ item, onClose }: { item: CalItem; onClose: () =>
   );
 }
 
-/** Switch calendars on and off at a glance. */
-export function Legend({ layers, hidden, onToggle, onManage }: { layers: CalendarLayer[]; hidden: number[]; onToggle: (id: number) => void; onManage: () => void }) {
+/**
+ * Switch calendars on and off at a glance, one by one or all at once (B3.0B). "Select all" and "Deselect all" change only which calendars
+ * the screen draws: no event, Task or record is touched, and nothing is sent anywhere. With every calendar off the Calendar is simply empty.
+ */
+export function Legend({ layers, isVisible, count, onToggle, onSelectAll, onDeselectAll, onManage }: {
+  layers: CalendarLayer[]; isVisible: (id: number) => boolean; count: number; onToggle: (id: number) => void; onSelectAll: () => void; onDeselectAll: () => void; onManage: () => void;
+}) {
   return (
     <div className="cal-legend" role="group" aria-label="Calendars">
+      <span className="cal-legend-bulk" role="group" aria-label="Show or hide every calendar">
+        <button type="button" className="btn cal-legend-all" onClick={onSelectAll}>Select all</button>
+        <button type="button" className="btn cal-legend-all" onClick={onDeselectAll}>Deselect all</button>
+      </span>
       {layers.map((l) => {
-        const on = !hidden.includes(l.id);
+        const on = isVisible(l.id);
         return (
           <button key={l.id} type="button" className={`cal-legend-item ${on ? 'on' : 'off'}`} aria-pressed={on} onClick={() => onToggle(l.id)} title={l.sourceType === 'derived' ? 'Read-only: worked out from another part of the app' : undefined}>
             <span className="cal-swatch" style={{ background: on ? l.color : 'transparent', borderColor: l.color }} aria-hidden="true">{on ? '✓' : ''}</span>
@@ -92,6 +102,7 @@ export function Legend({ layers, hidden, onToggle, onManage }: { layers: Calenda
         );
       })}
       <button type="button" className="link" onClick={onManage}>Manage calendars</button>
+      <span className="muted small cal-legend-count" role="status">{count} of {layers.length} calendar{layers.length === 1 ? '' : 's'} shown</span>
     </div>
   );
 }
@@ -151,13 +162,14 @@ export function ManageCalendars({ layers, defaultId, onExport, onClose, onSetDef
 }
 
 /** Download a calendar file (.ics) of one calendar or of everything visible. */
-export function ExportDialog({ layers, hidden, only, onClose }: { layers: CalendarLayer[]; hidden: number[]; only?: number; onClose: () => void }) {
+export function ExportDialog({ layers, isVisible, only, onClose }: { layers: CalendarLayer[]; isVisible: (id: number) => boolean; only?: number; onClose: () => void }) {
   const toast = useToast();
   const [includeFinance, setIncludeFinance] = useState(false);
   const [busy, setBusy] = useState(false);
   const provLayers = layers.filter((l) => l.sourceType === 'derived' && l.providerId);
   const finance = provLayers.find((l) => l.providerId === 'ledger');
-  const chosen = only !== undefined ? layers.filter((l) => l.id === only) : layers.filter((l) => l.sourceType === 'local' && !hidden.includes(l.id));
+  const chosen = only !== undefined ? layers.filter((l) => l.id === only) : layers.filter((l) => l.sourceType === 'local' && isVisible(l.id));
+  const hideAmounts = loadHideAmounts();
 
   const run = async () => {
     setBusy(true);
@@ -187,6 +199,8 @@ export function ExportDialog({ layers, hidden, only, onClose }: { layers: Calend
         </label>
       )}
       {only === undefined && finance && <p className="muted small">Off by default. If your phone calendar already has Ledger's "Add to my calendar" file, the bills here use the same ids, so they are not shown twice.</p>}
+      {only === undefined && finance && includeFinance && hideAmounts && <p className="bl-warn small" role="note">Hide Amounts is on, but this file still includes the amounts of your scheduled Finance items, as Ledger's own calendar file does. Leave the Finance layer out if you do not want the amounts to leave this screen.</p>}
+      {only === undefined && chosen.length === 0 && <p className="muted small">None of your own calendars is switched on. Switch one on in the Calendar, or pick one under Manage calendars and choose Export.</p>}
       <p className="muted small">This only creates a file on this device. Nothing is sent anywhere, and repeats, all-day dates and reminders are included.</p>
       <div className="row cal-actions"><button className="btn primary" disabled={busy || chosen.length === 0} onClick={() => void run()}>Download</button><button className="btn" onClick={onClose}>Cancel</button></div>
     </Modal>

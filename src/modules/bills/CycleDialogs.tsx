@@ -174,7 +174,7 @@ export function FactDialog({ obligation, slot, kind, existing, taskId, onClose }
 }
 
 /** Remove one record the household recorded by mistake. Shows what goes first; Undo brings it back. */
-export function RemoveFactDialog({ record, words, onClose }: { record: CycleRecord; words: string; onClose: () => void }) {
+export function RemoveFactDialog({ record, words, extraLines, onClose }: { record: CycleRecord; words: string; extraLines?: string[]; onClose: () => void }) {
   const toast = useToast();
   const today = useToday();
   const [error, setError] = useState('');
@@ -188,7 +188,7 @@ export function RemoveFactDialog({ record, words, onClose }: { record: CycleReco
   return (
     <Modal title="Remove this record" onClose={onClose}>
       <div className="bl-form">
-        <Lines lines={[`Remove ${words}.`, 'Only this one record goes. Nothing in Finance is changed, and you can undo it.']} />
+        <Lines lines={extraLines ?? [`Remove ${words}.`, 'Only this one record goes. Nothing in Finance is changed, and you can undo it.']} />
         {error && <div className="error" role="alert">{error}</div>}
         <div className="row bl-actions"><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="button" className="btn danger" disabled={busy} onClick={() => void go()}>Remove</button></div>
       </div>

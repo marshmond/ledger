@@ -28,6 +28,7 @@ import { isLoanExcluded } from './model';
 import { obligationPath } from './paths';
 import { periodsOf } from './periods';
 import { loadBillsSnapshot } from './readModel';
+import { lookupOfMap } from '../../lib/txnLookup';
 import { markersOf } from './tasks';
 import { deadlinesOf, DEADLINE_MEANING, DEADLINE_SHORT, isActionDeadline, readTerms } from './terms';
 import { daysUntil } from './timing';
@@ -44,13 +45,14 @@ export async function billsDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedI
   const hi = q.to < horizonEnd(q.today) ? q.to : horizonEnd(q.today);
   if (lo > hi) return [];
   const openTasks = snap.tasks.filter((t) => t.data.status !== 'done');
+  const lookup = lookupOfMap(snap.financeTxns); // a period paid by linked Finance payments is not an open due marker (read only; nothing is stored)
   const out: DerivedItem[] = [];
 
   for (const ob of snap.obligations) {
     const title = ob.data.title;
     const go = () => goTo(obligationPath(ob.id));
     if (!isLoanExcluded(ob.data)) {
-      for (const p of periodsOf(ob, snap.cycles, q.today, { from: lo, to: hi })) {
+      for (const p of periodsOf(ob, snap.cycles, q.today, { from: lo, to: hi }, { lookup })) {
         const date = p.timing.date;
         if (date === null || SETTLED_LABELS.has(p.label) || !p.open) continue;
         const late = date < q.today;

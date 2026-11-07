@@ -31,13 +31,13 @@ import { periodChoices, resolvePeriod, type PeriodId, type ResolvedPeriod } from
 import { horizonEnd, plannedVisitDates } from './plannedVisits';
 import { payRecords, providerKeyOf } from './servicesSpend';
 import { markersOf } from './schedule';
+import { DEFAULT_UPCOMING_DAYS, type UpcomingDays } from './upcomingWindow';
 import { buildOverview, loadSnapshotAndLinks, providerList, visitRows, type AttentionItem, type Overview, type Snapshot, type VisitRow } from './views';
 import type { UnloggedItem } from './visits';
 import { parseVisitRef } from './visitModel';
 
-/** How far ahead the "Upcoming" list looks for schedule-derived visits, and how many rows it shows. */
-export const UPCOMING_DAYS = 60;
-export const UPCOMING_ROWS = 10;
+/** How far ahead the "Upcoming" list looks (7, 14, 30 or 90 days, default 30) and how many rows it shows before "Show all": see upcomingWindow.ts. */
+export { DEFAULT_UPCOMING_DAYS, UPCOMING_ROWS, UPCOMING_WINDOWS } from './upcomingWindow';
 /** Contract deadlines inside this many days are "Needs attention" (the same window Today counts); this many are listed for review. */
 export const ATTENTION_DEADLINE_DAYS = 30;
 export const REVIEW_DEADLINE_DAYS = 90;
@@ -83,9 +83,13 @@ export interface ServicesOverviewInput {
   lookup: TxnLookup;
   today: string;
   period: PeriodId;
+  /** The Upcoming list's date window (7, 14, 30 or 90). Default 30. It changes only that list. */
+  upcomingDays?: UpcomingDays;
 }
 export interface ServicesOverview {
   today: string;
+  /** The window the `upcoming` list was built for. */
+  upcomingDays: UpcomingDays;
   period: ResolvedPeriod;
   periodOptions: { id: PeriodId; label: string }[];
   base: Overview;
@@ -199,16 +203,19 @@ export function buildServicesOverview(i: ServicesOverviewInput, money?: (c: numb
 
   // ---- upcoming: the open Task is THE next visit; later dates are derived from the schedule (nothing is created) ----
   const upcoming: UpcomingRow[] = [];
+  const upcomingDays = i.upcomingDays ?? DEFAULT_UPCOMING_DAYS;
+  const windowEnd = addDays(today, upcomingDays); // inclusive: a visit exactly this many days away is in, one day later is out
   const names = (aid: number) => (base.rows.find((r) => r.a.id === aid)?.assets ?? []).filter((a) => !a.missing).map((a) => a.name).slice(0, 2);
   for (const r of base.rows) {
     if (r.a.data.status !== 'active') continue;
     const d = r.a.data;
-    if (r.open && r.open.data.dueDate) {
+    // The open Task: listed when it is inside the window, or already past (overdue, so it is never hidden by a narrow window).
+    if (r.open && r.open.data.dueDate && r.open.data.dueDate <= windowEnd) {
       const occ = markersOf(r.open).occurrence;
       upcoming.push({ key: `t${r.open.id}`, kind: 'task', arrangementId: r.a.id, title: d.title, providerName: d.providerNameSnapshot, providerContactId: d.providerContactId, date: r.open.data.dueDate, time: r.open.data.dueTime ?? d.visitTime, overdue: r.open.data.dueDate < today, movedFrom: occ && occ !== r.open.data.dueDate ? occ : null, taskId: r.open.id, assetNames: names(r.a.id) });
     }
     const state: ScheduleState = scheduleStateOf(r.tasks);
-    for (const date of plannedVisitDates(r.a, state, today, today, addDays(today, UPCOMING_DAYS))) {
+    for (const date of plannedVisitDates(r.a, state, today, today, windowEnd)) {
       upcoming.push({ key: `e${r.a.id}:${date}`, kind: 'expected', arrangementId: r.a.id, title: d.title, providerName: d.providerNameSnapshot, providerContactId: d.providerContactId, date, time: d.visitTime, overdue: false, movedFrom: null, taskId: null, assetNames: names(r.a.id) });
     }
   }
@@ -239,9 +246,10 @@ export function buildServicesOverview(i: ServicesOverviewInput, money?: (c: numb
   for (const sv of i.homeServices) if (/^\d{4}-/.test(sv.data.date)) years.add(sv.data.date.slice(0, 4));
 
   return {
-    today, period, periodOptions: periodChoices(today, [...years]), base, recent: visitRows(s, s.visits.slice(0, RECENT_POOL)),
+    today, upcomingDays, period, periodOptions: periodChoices(today, [...years]), base, recent: visitRows(s, s.visits.slice(0, RECENT_POOL)),
     counts: { active: base.active.length, paused: base.paused.length, ended: base.ended.length, total: base.rows.length },
-    attention, upcoming: upcoming.slice(0, UPCOMING_ROWS), contracts, providers: providerList(s), spend, lifetime,
+    // EVERY visit in the window: the page decides how many rows to show and offers "Show all", so nothing is silently cut here.
+    attention, upcoming, contracts, providers: providerList(s), spend, lifetime,
     byProvider: providerBreakdown(payAll, i.lookup, period.range, nameFor), insights,
     estimates: [30, 90, daysBetween(horizonEnd(today), today)].map((n) => expectedWindow(s.arrangements, schedule, today, n)),
   };
@@ -251,10 +259,10 @@ export function buildServicesOverview(i: ServicesOverviewInput, money?: (c: numb
  * Reads everything the Overview needs, once, read-only: the Services snapshot with its links, the Home & Assets service records, and the Finance
  * transactions that any payment reference points at (one bulk read). Repeated visits to the page read and write nothing else.
  */
-export async function loadServicesOverview(period: PeriodId, today: string = todayISO(), d: FinanceDB = db, money?: (c: number) => string): Promise<ServicesOverview> {
+export async function loadServicesOverview(period: PeriodId, today: string = todayISO(), d: FinanceDB = db, money?: (c: number) => string, upcomingDays: UpcomingDays = DEFAULT_UPCOMING_DAYS): Promise<ServicesOverview> {
   const [{ snapshot, links }, homeServices] = await Promise.all([loadSnapshotAndLinks(d), loadServices(d)]);
   const refs = [...payRecords(snapshot.arrangements, snapshot.visits).flatMap((r) => r.refs), ...costRecords(snapshot.assets, homeServices).flatMap((r) => r.refs)];
   const lookup = lookupOfMap(await loadTxnMap(refs, d));
-  return buildServicesOverview({ snapshot, links, homeServices, lookup, today, period }, money);
+  return buildServicesOverview({ snapshot, links, homeServices, lookup, today, period, upcomingDays }, money);
 }
 

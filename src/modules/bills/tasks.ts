@@ -31,6 +31,8 @@ import { addDays } from '../../lib/dates';
 import { completeTask, createTask, loadTasks, removeTasks, saveTask } from '../tasks/data';
 import { blankTask, type TaskData, type TaskRecord } from '../tasks/model';
 import { CYCLE_KIND, readCycle, type CycleRecord } from './cycleModel';
+import { loadTxnMap, lookupOfMap } from '../../lib/txnLookup';
+import type { TxnLookup, TxnRef } from '../../lib/txnRef';
 import { asObligation, isLoanExcluded, KIND, MODULE, obligationRef, type ObligationRecord } from './model';
 import { periodsOf, type Period } from './periods';
 import { deadlinesOf, isActionDeadline, DEADLINE_SHORT, readTerms, type DeadlineKind } from './terms';
@@ -176,8 +178,30 @@ export async function cycleRecordsOf(obligationId: number, d: FinanceDB): Promis
   return (await d.moduleRecords.where('[module+kind]').equals([MODULE, CYCLE_KIND]).toArray()).filter(isLive).map(readCycle).filter((c) => c.obligationId === obligationId);
 }
 /** The periods the Task planner looks at: from `PAY_LOOKBACK_DAYS` ago to the horizon, plus every period that holds records. */
-export const planningPeriods = (ob: ObligationRecord, cycles: CycleRecord[], today: string) =>
-  periodsOf(ob, cycles, today, { from: addDays(today, -PAY_LOOKBACK_DAYS), to: addDays(today, PAY_LOOKAHEAD_DAYS) }, { allRecorded: true });
+/**
+ * Whether a period is still open depends on what Finance says about its linked payments (B3), so the planner is always given the live Finance
+ * transactions (`lookup`). It is REQUIRED: a caller that forgot it would read every linked payment as missing and plan a reminder for a bill that is paid.
+ */
+export const planningPeriods = (ob: ObligationRecord, cycles: CycleRecord[], today: string, lookup: TxnLookup) =>
+  periodsOf(ob, cycles, today, { from: addDays(today, -PAY_LOOKBACK_DAYS), to: addDays(today, PAY_LOOKAHEAD_DAYS) }, { allRecorded: true, lookup });
+
+/**
+ * The live Finance transactions that the payment links of these bills point at (plus `extra` references about to be linked), read ONCE in bulk and
+ * read only. Run it BEFORE the write transaction opens: Finance's tables never join a Bills transaction (see lib/txnLookup.ts). `'all'` covers every bill.
+ * A Finance change between this read and the write only makes the planned reminders one step stale; the next save of the bill re-plans them.
+ */
+export async function financeLookupFor(d: FinanceDB, obligationIds: number[] | 'all', extra: TxnRef[] = []): Promise<TxnLookup> {
+  const want = obligationIds === 'all' ? null : new Set(obligationIds);
+  const cycles = (await d.moduleRecords.where('[module+kind]').equals([MODULE, CYCLE_KIND]).toArray()).filter(isLive).map(readCycle);
+  const refs = cycles.flatMap((c) => (c.body?.fact === 'payment-link' && c.supersededBy === null && c.obligationId !== null && (want === null || want.has(c.obligationId)) ? [c.body.ref] : []));
+  return lookupOfMap(await loadTxnMap([...refs, ...extra], d));
+}
+
+/** Opens a Bills write transaction the safe way: the Finance transactions are read first (outside it), then `work` runs inside with them. */
+export async function inBillsTx<T>(d: FinanceDB, tables: readonly unknown[], obligationIds: number[] | 'all', work: (lookup: TxnLookup) => Promise<T>, extra: TxnRef[] = []): Promise<T> {
+  const lookup = await financeLookupFor(d, obligationIds, extra);
+  return d.transaction('rw', tables as never, async () => await work(lookup)) as Promise<T>;
+}
 
 // ---- writing ----
 
@@ -189,13 +213,13 @@ export interface EnsureResult { created: number[]; rescheduled: number[]; reused
  * removal is an untouched Bills-made Task of a paused or ended bill that stands for something no longer expected (see the file header). Records every
  * row it touches in `rec` so a surrounding Undo can take them back.
  */
-export async function ensureBillTasksIn(obligationId: number, today: string, d: FinanceDB, rec?: Recorder): Promise<EnsureResult> {
+export async function ensureBillTasksIn(obligationId: number, today: string, d: FinanceDB, lookup: TxnLookup, rec?: Recorder): Promise<EnsureResult> {
   const row = await d.moduleRecords.get(obligationId);
   const ob = row && row.module === MODULE && row.kind === KIND && isLive(row) ? asObligation(row) : undefined;
   const none: EnsureResult = { created: [], rescheduled: [], reused: [], duplicates: [], stale: [], retired: [] };
   if (!ob) return none;
   const cycles = await cycleRecordsOf(obligationId, d);
-  const plan = planBillTasks(ob, planningPeriods(ob, cycles, today), (await loadBillTasks(d)).filter((t) => markersOf(t)?.obligation === obligationId), today);
+  const plan = planBillTasks(ob, planningPeriods(ob, cycles, today, lookup), (await loadBillTasks(d)).filter((t) => markersOf(t)?.obligation === obligationId), today);
   const out: EnsureResult = { ...none, reused: plan.reused, duplicates: plan.duplicates, stale: plan.stale };
   for (const id of plan.retire) await rec?.capture(id, d);
   if (plan.retire.length) { await removeTasks(plan.retire, d); out.retired = plan.retire; }
@@ -217,7 +241,7 @@ export async function ensureBillTasksIn(obligationId: number, today: string, d: 
   return out;
 }
 export function ensureBillTasks(obligationId: number, today: string, d: FinanceDB = db): Promise<EnsureResult> {
-  return d.transaction('rw', d.moduleRecords, d.links, d.contacts, async () => ensureBillTasksIn(obligationId, today, d));
+  return inBillsTx(d, [d.moduleRecords, d.links, d.contacts], [obligationId], async (lookup) => ensureBillTasksIn(obligationId, today, d, lookup));
 }
 
 /** Finishes an open Bills pay Task through the existing Tasks API (it is a plain Task: no repeat, so nothing else is made). Records it for Undo. */

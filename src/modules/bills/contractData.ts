@@ -9,7 +9,8 @@ import { db, type FinanceDB } from '../../db';
 import { applyEdit, asObligation, KIND, MODULE, toStored, validateObligation, withLog, type ObligationRecord, type Reminders } from './model';
 import { isLive, repo } from '../../core/store';
 import type { ModuleRecord } from '../../core/entities';
-import { ensureBillTasksIn } from './tasks';
+import { ensureBillTasksIn, inBillsTx } from './tasks';
+import type { TxnLookup } from '../../lib/txnRef';
 import { termsProblem, toStoredTerms, type Terms } from './terms';
 import { Recorder, type Undo } from './undo';
 import { cycleTables } from './cycleData';
@@ -22,7 +23,7 @@ async function load(id: number, d: FinanceDB): Promise<ObligationRecord> {
   return asObligation(r);
 }
 
-async function writeWithTasks(id: number, expect: number | null, today: string, d: FinanceDB, change: (cur: ObligationRecord) => ReturnType<typeof applyEdit>): Promise<{ undo: Undo; createdTasks: number[] }> {
+async function writeWithTasks(id: number, expect: number | null, today: string, d: FinanceDB, lookup: TxnLookup, change: (cur: ObligationRecord) => ReturnType<typeof applyEdit>): Promise<{ undo: Undo; createdTasks: number[] }> {
   const cur = await load(id, d);
   if (expect !== null && cur.updatedAt !== expect) throw new Error(STALE);
   const next = change(cur);
@@ -31,34 +32,34 @@ async function writeWithTasks(id: number, expect: number | null, today: string, 
   const rec = new Recorder();
   await rec.capture(id, d);
   await repo<ModuleRecord>(d.moduleRecords).put({ id, module: MODULE, kind: KIND, data: toStored(next) });
-  const ens = await ensureBillTasksIn(id, today, d, rec);
+  const ens = await ensureBillTasksIn(id, today, d, lookup, rec);
   return { undo: await rec.seal(d), createdTasks: ens.created };
 }
 
 /** "Update reminders": brings the bill's Tasks in step with its state right now (removes untouched Bills-made Tasks of a paused or ended bill that stand for something no longer expected; makes the one reminder an active bill is missing). Never touches a Task the owner changed or finished. Guarded Undo. */
 export function tidyReminders(id: number, today: string, d: FinanceDB = db): Promise<{ undo: Undo; retired: number; created: number }> {
-  return d.transaction('rw', ...cycleTables(d), async () => {
+  return inBillsTx(d, cycleTables(d), [id], async (lookup) => {
     await load(id, d);
     const rec = new Recorder();
-    const r = await ensureBillTasksIn(id, today, d, rec);
+    const r = await ensureBillTasksIn(id, today, d, lookup, rec);
     return { undo: await rec.seal(d), retired: r.retired.length, created: r.created.length };
   });
 }
 
 /** Saves renewal, notice-by, trial-end and "renews by itself". */
 export function saveTerms(id: number, terms: Terms, expectUpdatedAt: number | null, today: string, d: FinanceDB = db): Promise<{ undo: Undo; createdTasks: number[] }> {
-  return d.transaction('rw', ...cycleTables(d), async () => {
+  return inBillsTx(d, cycleTables(d), [id], async (lookup) => {
     const bad = termsProblem(terms);
     if (bad) throw new Error(bad);
-    return writeWithTasks(id, expectUpdatedAt, today, d, (cur) => withLog(applyEdit(cur.data, { terms: toStoredTerms(terms) }), today, 'contract dates changed'));
+    return writeWithTasks(id, expectUpdatedAt, today, d, lookup, (cur) => withLog(applyEdit(cur.data, { terms: toStoredTerms(terms) }), today, 'contract dates changed'));
   });
 }
 
 /** Saves the reminder settings (pay Task on or off, how many days before, deadline Tasks on or off). */
 export function saveReminders(id: number, reminders: { payTask: boolean; leadDays: number; deadlineTasks: boolean }, expectUpdatedAt: number | null, today: string, d: FinanceDB = db): Promise<{ undo: Undo; createdTasks: number[] }> {
-  return d.transaction('rw', ...cycleTables(d), async () => {
+  return inBillsTx(d, cycleTables(d), [id], async (lookup) => {
     if (!Number.isInteger(reminders.leadDays) || reminders.leadDays < 0 || reminders.leadDays > 60) throw new Error('Pick between 0 and 60 days before the due date.');
     const next: Reminders = { payTask: reminders.payTask, leadDays: reminders.leadDays };
-    return writeWithTasks(id, expectUpdatedAt, today, d, (cur) => applyEdit(cur.data, { reminders: next, noDeadlineTasks: !reminders.deadlineTasks }));
+    return writeWithTasks(id, expectUpdatedAt, today, d, lookup, (cur) => applyEdit(cur.data, { reminders: next, noDeadlineTasks: !reminders.deadlineTasks }));
   });
 }

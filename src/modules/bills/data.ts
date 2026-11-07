@@ -14,7 +14,7 @@ import {
   type AmountKind, type EndReason, type ObligationData, type ObligationRecord, type Payment, type DocRef, type PriceStep, type BillType, type Need,
 } from './model';
 import { expectedDates, planScheduleChange, type Schedule } from './schedule';
-import { cycleRecordsOf, ensureBillTasksIn, loadBillTasks, markersOf, planBillTasks, planningPeriods } from './tasks';
+import { cycleRecordsOf, ensureBillTasksIn, financeLookupFor, inBillsTx, loadBillTasks, markersOf, planBillTasks, planningPeriods } from './tasks';
 import { Recorder, type Undo } from './undo';
 import { tidy } from './util';
 
@@ -72,7 +72,7 @@ export interface Created { id: number; contactCreated: boolean; contactId: numbe
 
 /** Adds an obligation in one transaction: all or nothing. */
 export function createObligation(input: NewObligation, d: FinanceDB = db): Promise<Created> {
-  return d.transaction('rw', ...tables(d), async () => {
+  return inBillsTx(d, tables(d), [], async (lookup) => {
     let data = input.data;
     let contact: ResolvedProvider | null = null;
     if (hasProvider(input.provider)) {
@@ -82,7 +82,7 @@ export function createObligation(input: NewObligation, d: FinanceDB = db): Promi
     const id = await writeObligation(undefined, data, d);
     const rec = new Recorder();
     rec.made(id);
-    const ens = input.today ? await ensureBillTasksIn(id, input.today, d, rec) : null;
+    const ens = input.today ? await ensureBillTasksIn(id, input.today, d, lookup, rec) : null;
     return { id, contactCreated: contact?.created ?? false, contactId: contact?.id ?? null, taskIds: ens?.created ?? [], undo: await rec.seal(d) };
   });
 }
@@ -137,7 +137,7 @@ export function applyObligationEdit(cur: ObligationData, e: ObligationEdit, toda
 
 /** Saves an edit. Refuses (writing nothing) if the record changed since `expectUpdatedAt`. Returns an Undo. */
 export function editObligation(id: number, e: ObligationEdit, expectUpdatedAt: number | null, today: string, d: FinanceDB = db): Promise<{ undo: Undo; contactCreated: boolean }> {
-  return d.transaction('rw', ...tables(d), async () => {
+  return inBillsTx(d, tables(d), [id], async (lookup) => {
     const cur = await getObligation(id, d);
     if (!cur) throw new Error('That bill no longer exists. Nothing was changed.');
     if (expectUpdatedAt !== null && cur.updatedAt !== expectUpdatedAt) throw new Error('This record was changed (maybe on another device) since you opened it. Close this, look again and redo your change. Nothing was changed.');
@@ -155,7 +155,7 @@ export function editObligation(id: number, e: ObligationEdit, expectUpdatedAt: n
     const rec = new Recorder();
     await rec.capture(id, d);
     await writeObligation(id, data, d);
-    await ensureBillTasksIn(id, today, d, rec);
+    await ensureBillTasksIn(id, today, d, lookup, rec);
     return { undo: await rec.seal(d), contactCreated };
   });
 }
@@ -261,7 +261,7 @@ export async function planLifecycle(id: number, action: LifecycleAction, o: Life
     // what the bill's reminder Tasks would do after this change (B2): said in words before anything is written
     const after: ObligationRecord = { ...ob, data: built.next };
     const tasks = (await loadBillTasks(d)).filter((t) => markersOf(t)?.obligation === id);
-    const plan = planBillTasks(after, planningPeriods(after, await cycleRecordsOf(id, d), o.today), tasks, o.today);
+    const plan = planBillTasks(after, planningPeriods(after, await cycleRecordsOf(id, d), o.today, await financeLookupFor(d, [id])), tasks, o.today);
     const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
     if (plan.retire.length) lines.push(`${n(plan.retire.length, 'reminder Task that Bills made and you have not changed will be removed (it stands', 'reminder Tasks that Bills made and you have not changed will be removed (they stand')} for something no longer expected). It can be restored, and Undo brings it back.`);
     if (plan.stale.length) lines.push(`${n(plan.stale.length, 'reminder Task you changed stays open and will be listed for a look. It is not removed.', 'reminder Tasks you changed stay open and will be listed for a look. They are not removed.')}`);
@@ -273,7 +273,7 @@ export async function planLifecycle(id: number, action: LifecycleAction, o: Life
 
 /** Does the action in ONE transaction, refusing if the record changed since the preview (`expect`). Returns an Undo. */
 export function applyLifecycle(input: { id: number; action: LifecycleAction; expect: number | null } & LifecycleOptions, d: FinanceDB = db): Promise<{ undo: Undo }> {
-  return d.transaction('rw', ...tables(d), async () => {
+  return inBillsTx(d, tables(d), [input.id], async (lookup) => {
     const ob = await getObligation(input.id, d);
     if (!ob) throw new Error('That bill no longer exists. Nothing was changed.');
     if (input.expect !== null && ob.updatedAt !== input.expect) throw new Error('This record was changed (maybe on another device) since you opened this. Close it, look again and redo your change. Nothing was changed.');
@@ -283,7 +283,7 @@ export function applyLifecycle(input: { id: number; action: LifecycleAction; exp
     await rec.capture(input.id, d);
     await writeObligation(input.id, plan.next, d);
     // resuming or reopening may bring back the bill's reminder Task (pausing and ending never touch existing Tasks)
-    await ensureBillTasksIn(input.id, input.today, d, rec);
+    await ensureBillTasksIn(input.id, input.today, d, lookup, rec);
     return { undo: await rec.seal(d) };
   });
 }

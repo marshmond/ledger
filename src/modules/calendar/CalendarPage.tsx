@@ -14,7 +14,7 @@ import { PERSONAL_ID } from './model';
 import type { Occurrence } from './occurrences';
 import TimeGrid, { weekStartOf, workWeekDays } from './TimeGrid';
 import { dayLabel } from './time';
-import { useCalendarData, useHiddenLayers, useNow, type CalItem } from './useCalendarData';
+import { useCalendarData, useLayerVisibility, useNow, type CalItem } from './useCalendarData';
 
 const VIEWS: { id: ViewId; label: string }[] = [
   { id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }, { id: 'workweek', label: 'Work week' }, { id: 'agenda', label: 'Agenda' },
@@ -65,8 +65,9 @@ export default function CalendarPage() {
   }, [view, anchor, weekStart, rangeDays]);
 
   const data = useCalendarData(range.from, range.to, view === 'agenda', now);
-  const { hidden, toggle } = useHiddenLayers();
-  const items = useMemo(() => (data?.items ?? []).filter((i) => !hidden.includes(i.layerId)), [data, hidden]);
+  const layerIds = useMemo(() => (data?.layers ?? []).map((l) => l.id), [data]);
+  const vis = useLayerVisibility(layerIds);
+  const items = useMemo(() => (data?.items ?? []).filter((i) => vis.isVisible(i.layerId)), [data, vis.vis]); // eslint-disable-line react-hooks/exhaustive-deps
   const defaultCal = useLiveQuery(() => defaultCalendarId(), [settings?.defaultCalendarId]) ?? PERSONAL_ID;
 
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -125,7 +126,8 @@ export default function CalendarPage() {
         )}
         <button className="link" onClick={() => setExporting({})}>Export…</button>
       </div>
-      {data && <Legend layers={data.layers} hidden={hidden} onToggle={toggle} onManage={() => setManage(true)} />}
+      {data && <Legend layers={data.layers} isVisible={vis.isVisible} count={vis.count} onToggle={vis.toggle} onSelectAll={vis.selectAll} onDeselectAll={vis.deselectAll} onManage={() => setManage(true)} />}
+      {data && vis.count === 0 && <p className="muted cal-allhidden" role="status">Every calendar is switched off, so nothing is shown. Choose <strong>Select all</strong>, or switch on a calendar above (for example Personal). Nothing was deleted or changed.</p>}
 
       {!data ? <p className="muted">Loading…</p> : view === 'month' ? (
         <MonthView month={anchor.slice(0, 7)} weekStart={weekStart} today={today} items={items} onCreate={(date) => setEditor({ start: { date } })} onOpenDay={setDayOpen} onOpenItem={openItem} />
@@ -139,7 +141,7 @@ export default function CalendarPage() {
       {detail && <DerivedDetail item={detail} onClose={() => setDetail(null)} />}
       {dayOpen && <DayPanel date={dayOpen} items={items} onOpenItem={openItem} onAdd={(date) => setEditor({ start: { date } })} onAddTask={(date) => requestTask({ dueDate: date })} onClose={() => setDayOpen(null)} />}
       {manage && data && <ManageCalendars layers={data.layers} defaultId={defaultCal} onClose={() => setManage(false)} onExport={(only) => { setManage(false); setExporting({ only }); }} onSetDefault={(id) => void saveCalendarSettings({ defaultCalendarId: id })} />}
-      {exporting && data && <ExportDialog layers={data.layers} hidden={hidden} only={exporting.only} onClose={() => setExporting(null)} />}
+      {exporting && data && <ExportDialog layers={data.layers} isVisible={vis.isVisible} only={exporting.only} onClose={() => setExporting(null)} />}
     </div>
   );
 }

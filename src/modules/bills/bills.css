@@ -145,3 +145,13 @@ a.btn.disabled { opacity: .5; pointer-events: none; }
   .bl-uprow { flex-direction: column; }
   .bl-rec .btn, .bl-period .bl-actionrow .btn, .bl-conflict .bl-actionrow .btn { min-height: 44px; }
 }
+
+/* B3: Finance payments linked to a billing period, and the read-only payment history */
+.bl-pays { margin-top: var(--sp-2); }
+.bl-payrow { display: flex; flex-direction: column; gap: var(--sp-1); padding-bottom: var(--sp-2); }
+.bl-paychips { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
+.bl-st-pending, .bl-st-cleared, .bl-st-reconciled { font-size: var(--fs-xs); }
+.bl-hist { display: grid; gap: var(--sp-3); }
+.bl-histrow { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.bl-histrow:first-child { border-top: 0; padding-top: 0; }
+@media (max-width: 560px) { .bl-payrow .bl-actionrow .btn { min-height: 44px; } }

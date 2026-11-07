@@ -132,4 +132,28 @@ describe('Modal keyboard and focus behaviour', () => {
     p.press('Escape');
     expect(close).toHaveBeenCalled();
   });
+
+  it('focus goes back to the button that OPENED the dialog even when a field inside took focus first (an autofocused search box)', () => {
+    const p = page();
+    const opener = p.el();
+    const field = p.el();
+    p.doc.activeElement = opener;
+    const openerSeenBeforeDrawing = p.doc.activeElement; // what Modal reads during its first render
+    field.focus(); // the autofocused field takes focus during the commit, before the effect runs
+    const b = p.box([field]);
+    const detach = attachModal(p.doc, b, () => undefined, openerSeenBeforeDrawing);
+    expect(p.doc.activeElement).toBe(field);
+    detach();
+    expect(p.doc.activeElement).toBe(opener);
+  });
+
+  it('without a recorded opener the old behaviour is unchanged (the element focused when the dialog attached)', () => {
+    const p = page();
+    const before = p.el();
+    before.focus();
+    const b = p.box([p.el()]);
+    const detach = attachModal(p.doc, b, () => undefined);
+    detach();
+    expect(p.doc.activeElement).toBe(before);
+  });
 });

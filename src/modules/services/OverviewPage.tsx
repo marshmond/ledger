@@ -10,6 +10,7 @@ import { BASIS_LABEL, cadenceText } from './model';
 import { arrangementRoute, providerRoute } from './paths';
 import { AttentionCard, ContractsCard, InsightsCard, SpendingCard, UpcomingCard, useMoney } from './OverviewParts';
 import { loadServicesOverview } from './servicesOverview';
+import { filterUpcomingByProvider, loadUpcomingDays, saveUpcomingDays, type UpcomingDays } from './upcomingWindow';
 import VisitList from './VisitList';
 import { LogVisitDialog, OneOffDialog } from './VisitDialogs';
 import type { Row } from './views';
@@ -43,18 +44,20 @@ export default function OverviewPage() {
   const today = useToday() || todayISO();
   const { hide, money } = useMoney();
   const [period, setPeriod] = useState('last12');
+  const [upcomingDays, setUpcomingDaysState] = useState<UpcomingDays>(() => loadUpcomingDays());
+  const setUpcomingDays = (d: UpcomingDays) => { setUpcomingDaysState(d); saveUpcomingDays(d); };
   const [status, setStatus] = useState<StatusFilter>('active');
   const [provider, setProvider] = useState('all');
   const [adding, setAdding] = useState(false);
   const [oneOff, setOneOff] = useState(false);
   const [logging, setLogging] = useState<{ arrangementId: number; taskId: number } | null>(null);
-  const ov = useLiveQuery(() => loadServicesOverview(period, today, undefined, money), [period, today, hide]);
+  const ov = useLiveQuery(() => loadServicesOverview(period, today, undefined, money, upcomingDays), [period, today, hide, upcomingDays]);
   if (!ov) return <div className="sv"><PageHeader title="Household Services" /><p className="muted">Loading…</p></div>;
 
   const rows = ov.base.rows;
   const byProvider = (a: ArrangementRecord) => provider === 'all' || String(a.data.providerContactId) === provider;
   const shown = rows.filter((r) => (status === 'all' || r.a.data.status === status) && byProvider(r.a));
-  const upcoming = ov.upcoming.filter((u) => provider === 'all' || String(u.providerContactId) === provider);
+  const upcoming = filterUpcomingByProvider(ov.upcoming, provider);
   const recent = ov.recent.filter((v) => provider === 'all' || String(v.v.data.providerContactId) === provider).slice(0, 10);
   const count = (s: StatusFilter) => (s === 'all' ? rows.length : rows.filter((r) => r.a.data.status === s).length);
 
@@ -87,7 +90,7 @@ export default function OverviewPage() {
             )}
           </div>
 
-          <UpcomingCard rows={upcoming} total={ov.upcoming.length} />
+          <UpcomingCard rows={upcoming} total={ov.upcoming.length} days={upcomingDays} onDays={setUpcomingDays} />
           <ContractsCard rows={ov.contracts.filter((c) => provider === 'all' || String(rows.find((r) => r.a.id === c.arrangementId)?.a.data.providerContactId) === provider)} />
 
           <section className="card sv-card" aria-labelledby="sv-act-h">

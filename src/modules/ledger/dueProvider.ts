@@ -13,6 +13,8 @@ import { addDays } from '../../lib/dates';
 import { daysBetween, formatCents } from '../../lib/money';
 import { loadCalendar } from '../../lib/calendarLive';
 import type { CalKind } from '../../lib/calendar';
+import { maskMoney } from '../../ui/TxnRefs';
+import { loadHideAmounts } from '../today/layout';
 import { dueInstances } from '../../lib/schedule';
 
 export const LEDGER_LAYER_COLOR = '#2f8f6b';
@@ -38,7 +40,14 @@ export function financePriority(cls: FinanceClass, date: string, today: string, 
   return base;
 }
 
-export async function ledgerDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedItem[]> {
+/**
+ * `hide` is the app-wide Hide Amounts switch (default: read it now). With it on, the SCREEN text of every Finance item carries no money figure:
+ * a scheduled item shows its payee only ("Example Rent", detail "Scheduled payment to approve."), and any other amount in a title or detail
+ * (a loan payment, an RSU vest, an estimated-tax shortfall) shows as the usual masked figure. Dates, identifiers, priorities and the
+ * scheduling itself are unchanged. The calendar FILE (.ics) is a separate, deliberate export: it keeps the full text through `icsTitle` and
+ * `icsDetail`, so hiding amounts on screen never silently changes what an exported file holds (docs/due-provider.md).
+ */
+export async function ledgerDueItems(d: FinanceDB, q: DueQuery, hide: boolean = loadHideAmounts()): Promise<DerivedItem[]> {
   const settings = await loadCalendarSettings(d).catch(() => DEFAULT_CALENDAR_SETTINGS);
   const prios = settings.financePriorities;
   const out: DerivedItem[] = [];
@@ -55,12 +64,13 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery): Promise<Derived
       id: derivedId('ledger', e.id, e.date),
       sourceModule: 'ledger',
       sourceRecordId: e.id,
-      title: e.title,
+      title: hide ? maskMoney(e.title) : e.title,
       date: e.date,
       allDay: true,
       priority: financePriority(cls, e.date, q.today, prios[cls]),
       status: 'open',
-      detail: e.detail,
+      detail: hide ? maskMoney(e.detail) : e.detail,
+      ...(hide ? { icsTitle: e.title, icsDetail: e.detail } : {}),
       openSource: () => goTo(`/ledger${e.to}`),
       sourceLabel: 'Edit in Ledger',
       icsUid: `${e.id}@ledger.local`,
@@ -80,12 +90,13 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery): Promise<Derived
       id: derivedId('ledger', `scheduled-${rule.id}`, date),
       sourceModule: 'ledger',
       sourceRecordId: `scheduled:${rule.id}`,
-      title: `${rule.payee} ${formatCents(Math.abs(rule.amountCents))}`,
+      title: hide ? rule.payee : `${rule.payee} ${formatCents(Math.abs(rule.amountCents))}`,
       date,
       allDay: true,
       priority: financePriority(cls, date, q.today, prios[cls]),
       status: 'open',
       detail: rule.transferAccountId ? 'Scheduled transfer to approve.' : rule.amountCents < 0 ? 'Scheduled payment to approve.' : 'Scheduled income to approve.',
+      ...(hide ? { icsTitle: `${rule.payee} ${formatCents(Math.abs(rule.amountCents))}` } : {}),
       // Opens that item in the Scheduled page's edit form (the date and amount are changed there, never in the Calendar).
       openSource: () => goTo(`/ledger/scheduled?rule=${rule.id}`),
       sourceLabel: 'Edit in Ledger',

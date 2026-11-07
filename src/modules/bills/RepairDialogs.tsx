@@ -76,7 +76,7 @@ export function ConflictCard({ conflict, records, obligation }: { conflict: Conf
             <li key={r.id} className="bl-rec">
               <span>{r.body ? factWords(r.body, money) : 'A record this version cannot read (kept exactly as saved)'}</span>
               <span className="muted small">Recorded {day(localISO(r.createdAt))}{r.movedFrom ? ` · moved from ${slotWords2(r.movedFrom)}` : ''}{typeof r.raw.separatedFrom === 'string' ? ` · made separate from ${slotWords2(r.raw.separatedFrom)}` : ''}</span>
-              {r.body && has('use-one') && conflict.candidates.includes(r.id) && <button className="btn" onClick={() => setChoice({ kind: 'use-one', keepId: r.id })}>{conflict.kind === 'skip-payment' ? 'Use this payment (set the skip aside)' : 'Use this one'}</button>}
+              {r.body && has('use-one') && conflict.candidates.includes(r.id) && <button className="btn" onClick={() => setChoice({ kind: 'use-one', keepId: r.id })}>{conflict.kind === 'skip-payment' ? 'Use this payment (set the skip aside)' : conflict.kind === 'typed-and-finance' ? 'Use this Finance payment (set the typed amount aside)' : 'Use this one'}</button>}
               {r.body && has('different-bills') && conflict.candidates.includes(r.id) && <button className="btn" onClick={() => setChoice({ kind: 'different-bills', moveId: r.id })}>These are different bills (make this one separate)</button>}
             </li>
           ))}

@@ -14,6 +14,10 @@ import { loadEvents, loadLayers } from './data';
 import { msAt, parseHM } from './time';
 import { PERSONAL_ID, type CalendarLayer, type EventRecord } from './model';
 import { occurrencesOf, statusOf, type Occurrence } from './occurrences';
+import { loadHideAmounts } from '../today/layout';
+import {
+  ALL_ON, deselectAll, isLayerVisible, parseVisibility, selectAll, serializeVisibility, toggleLayer, VISIBILITY_KEY, visibleCount, type Visibility,
+} from './layerVisibility';
 
 export interface CalItem {
   /** Unique for React lists. */
@@ -42,20 +46,30 @@ export interface CalItem {
   project?: { id: number; label: string };
 }
 
-const HIDDEN_KEY = 'calendar-hidden-layers';
-function readHidden(): number[] {
-  try { const v = JSON.parse(localStorage.getItem(HIDDEN_KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => typeof x === 'number') : []; } catch { return []; }
+function readVisibility(): Visibility {
+  try { return parseVisibility(localStorage.getItem(VISIBILITY_KEY)); } catch { return ALL_ON; }
 }
 
-/** Which calendars are switched off. Kept on this device only (a convenience, not data). */
-export function useHiddenLayers() {
-  const [hidden, setHidden] = useState<number[]>(readHidden);
-  const toggle = (id: number) => setHidden((cur) => {
-    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
-    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+/**
+ * Which calendars are switched on (B3.0B). Kept on this device only (a convenience, not data); the rules are in `layerVisibility.ts`.
+ * `available` is the ids of the layers that exist right now. Changing a switch writes only this one preference: no event, Task, record or
+ * network request is touched.
+ */
+export function useLayerVisibility(available: number[]) {
+  const [vis, setVis] = useState<Visibility>(readVisibility);
+  const apply = (change: (cur: Visibility) => Visibility) => setVis((cur) => {
+    const next = change(cur);
+    try { localStorage.setItem(VISIBILITY_KEY, serializeVisibility(next)); } catch { /* storage unavailable: the choice lasts until the page closes */ }
     return next;
   });
-  return { hidden, toggle };
+  return {
+    vis,
+    isVisible: (layerId: number) => isLayerVisible(vis, layerId),
+    count: visibleCount(vis, available),
+    toggle: (id: number) => apply((cur) => toggleLayer(cur, id, available)),
+    selectAll: () => apply(() => selectAll()),
+    deselectAll: () => apply(() => deselectAll()),
+  };
 }
 
 /** The current time, refreshed every 30 seconds (for the "now" line and reminder indicators). */
@@ -74,6 +88,8 @@ export interface CalendarData {
 
 export function useCalendarData(from: string, to: string, includeOverdue: boolean, now: number): CalendarData | undefined {
   const today = todayISO();
+  // The Finance layer words its titles by the Hide Amounts switch, so a change of that switch must redraw (B3.0B).
+  const hide = loadHideAmounts();
   const raw = useLiveQuery(async () => {
     const settings = await loadCalendarSettings();
     const overdueDays = includeOverdue ? settings.overdueDays : 0;
@@ -84,7 +100,7 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
       loadProjectChoices(),
     ]);
     return { layers, events, derived, settings, projects };
-  }, [from, to, includeOverdue, today]);
+  }, [from, to, includeOverdue, today, hide]);
 
   return useMemo(() => {
     if (!raw) return undefined;

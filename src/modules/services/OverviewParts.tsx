@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from '../../core/router';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
@@ -9,6 +10,7 @@ import { arrangementRoute } from './paths';
 import { sourceTarget, type AttentionEntry, type ContractRow, type ServicesOverview, type UpcomingRow } from './servicesOverview';
 import type { ExpectedWindow } from './expectedCharges';
 import { addDays } from '../../lib/dates';
+import { parseUpcomingDays, UPCOMING_ROWS, UPCOMING_WINDOWS, upcomingLabel, visibleUpcoming, type UpcomingDays } from './upcomingWindow';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 /** Hide Amounts (the global preference) shows no digits anywhere on this page. */
@@ -49,14 +51,30 @@ export function AttentionCard({ items, onLog }: { items: AttentionEntry[]; onLog
 
 // ---- upcoming ----
 
-export function UpcomingCard({ rows, total }: { rows: UpcomingRow[]; total: number }) {
+/**
+ * Upcoming services, for the window the owner chose (7, 14, 30 or 90 days). The card shows the first rows and, when more match, says so and offers
+ * "Show all": every visit in the window can be inspected, so a long window never pretends the short list is everything (B3.0A).
+ */
+export function UpcomingCard({ rows, total, days, onDays }: { rows: UpcomingRow[]; total: number; days: UpcomingDays; onDays: (d: UpcomingDays) => void }) {
+  const [all, setAll] = useState(false);
+  const { shown, more } = visibleUpcoming(rows, all);
   return (
     <section className="card sv-card" aria-labelledby="sv-up-h">
-      <h2 id="sv-up-h">Upcoming services</h2>
-      {rows.length === 0 ? <p className="muted">Nothing is scheduled{total > 0 ? ' for the selected provider' : ''}. Open an arrangement to schedule a visit.</p> : (
+      <div className="sv-card-head">
+        <h2 id="sv-up-h">Upcoming services</h2>
+        <label className="sv-periodpick sv-upwin">Show the next
+          <select value={days} onChange={(e) => { setAll(false); onDays(parseUpcomingDays(e.target.value)); }} aria-describedby="sv-up-note">
+            {UPCOMING_WINDOWS.map((d) => <option key={d} value={d}>{upcomingLabel(d)}</option>)}
+          </select>
+        </label>
+      </div>
+      <p id="sv-up-note" className="muted small" role="status">
+        {rows.length === 0 ? `Nothing in the next ${days} days.` : more > 0 ? `Showing ${shown.length} of ${rows.length} visits in the next ${days} days.` : `${rows.length} visit${rows.length === 1 ? '' : 's'} in the next ${days} days.`}
+      </p>
+      {rows.length === 0 ? <p className="muted">Nothing is scheduled in the next {days} days{total > 0 ? ' for the selected provider' : ''}. Choose a longer window above, or open an arrangement to schedule a visit.</p> : (
         <>
           <ul className="plain sv-items">
-            {rows.map((r) => (
+            {shown.map((r) => (
               <li key={r.key}>
                 <div className="sv-visit-top">
                   {r.kind === 'task'
@@ -70,7 +88,10 @@ export function UpcomingCard({ rows, total }: { rows: UpcomingRow[]; total: numb
               </li>
             ))}
           </ul>
-          <p className="muted small">The next visit of each arrangement is a task. "Expected from schedule" dates come from the arrangement's schedule; they are not tasks and nothing marks them done.</p>
+          {(more > 0 || all) && rows.length > UPCOMING_ROWS && (
+            <p><button type="button" className="btn" aria-expanded={all} onClick={() => setAll(!all)}>{all ? `Show only the first ${UPCOMING_ROWS}` : `Show all ${rows.length} visits`}</button></p>
+          )}
+          <p className="muted small">The next visit of each arrangement is a task. "Expected from schedule" dates come from the arrangement's schedule; they are not tasks and nothing marks them done. This window only changes this list: the Calendar still shows the next 12 months.</p>
         </>
       )}
     </section>

@@ -21,7 +21,7 @@ import { loadCycles, rows, cycleTables } from './cycleData';
 import { asObligation, KIND, MODULE, applyEdit, scheduleSource, toStored, type ObligationRecord } from './model';
 import { parseSlot, slotWords2 } from './schedule';
 import { scheduleProduces, extraSlot } from './slots';
-import { ensureBillTasksIn, loadBillTasks, markersOf, taskAckKey } from './tasks';
+import { ensureBillTasksIn, inBillsTx, loadBillTasks, markersOf, taskAckKey } from './tasks';
 import { Recorder, type Undo } from './undo';
 import { newId } from '../../lib/sync/track';
 
@@ -54,6 +54,7 @@ export function repairEffect(c: Conflict, choice: RepairChoice, byId: Map<number
   if (!keep || !isReadable(keep)) return { problem: 'That record is not available.', ...none };
   let set: CycleRecord[];
   if (c.kind === 'skip-payment') set = facts.filter((f) => f.body!.fact === 'skip');
+  else if (c.kind === 'typed-and-finance') set = facts.filter((f) => f.body!.fact === 'paid-outside'); // the typed amounts are set aside (kept under History); the Finance links stay exactly as they are
   else if (c.kind === 'due-date') { const keepDate = (keep.body as { dueDate?: string | null }).dueDate; set = facts.filter((f) => f.id !== keep.id && (f.body as { dueDate?: string | null }).dueDate !== keepDate); }
   else set = facts.filter((f) => f.id !== keep.id);
   return { problem: set.length === 0 ? 'There is nothing to set aside.' : null, ...none, supersede: set.map((f) => f.id) };
@@ -86,13 +87,13 @@ export async function planRepair(key: string, choice: RepairChoice, d: FinanceDB
   } else {
     lines.push(`Remove ${e.remove.length} record${e.remove.length === 1 ? '' : 's'} that belong to a bill that is not on this device. You can undo this.`);
   }
-  lines.push('Nothing in Finance is read or changed.');
+  lines.push('Nothing in Finance is changed.');
   return { conflict: c, problem: null, lines };
 }
 
 /** Applies a repair in one transaction. Refused (nothing written) if the conflict is no longer exactly what was previewed. */
 export function applyRepair(input: { key: string; choice: RepairChoice; today: string }, d: FinanceDB = db): Promise<{ undo: Undo }> {
-  return d.transaction('rw', ...cycleTables(d), async () => {
+  return inBillsTx(d, cycleTables(d), 'all', async (lookup) => {
     const [obs, cycles] = await Promise.all([loadObligationRows(d), loadCycles(d)]);
     const c = findConflicts(obs, cycles).find((x) => x.key === input.key);
     if (!c) throw new Error(STALE_REPAIR);
@@ -119,7 +120,7 @@ export function applyRepair(input: { key: string; choice: RepairChoice; today: s
       await rows(d).put({ id: ob.id, module: MODULE, kind: KIND, data: toStored(applyEdit(ob.data, { acknowledged: ack })) });
     }
     const touched = new Set<number>([...e.supersede, ...e.move, ...e.remove].map((id) => byId.get(id)?.obligationId).filter((x): x is number => typeof x === 'number'));
-    for (const oid of touched) await ensureBillTasksIn(oid, input.today, d, rec);
+    for (const oid of touched) await ensureBillTasksIn(oid, input.today, d, lookup, rec);
     return { undo: await rec.seal(d) };
   });
 }
@@ -178,13 +179,13 @@ export async function planMove(obligationId: number, from: string, to: string, d
     ...source.map((r) => `${r.body!.fact === 'invoice' ? 'The bill' : r.body!.fact === 'due-date' ? 'The due date' : r.body!.fact === 'paid-outside' ? 'The "paid outside Finance" record' : r.body!.fact === 'paid-in-full' ? 'The "paid in full" record' : r.body!.fact === 'skip' ? 'The "not billed" record' : 'The credit'}${r.supersededBy !== null ? ' (already set aside)' : ''}`),
     'Every amount, payment record and actual due date stays exactly as it is. Only the period they belong to changes, and each record remembers where it came from.',
     'A record added to the old period later (for example from another device) is NOT moved or merged: it is listed for you to look at.',
-    'Nothing in Finance is read or changed. You can undo this unless something changes first.',
+    'Nothing in Finance is changed. You can undo this unless something changes first.',
   ];
   return { ...base, problem: null, lines };
 }
 
 export function applyMove(input: { obligationId: number; from: string; to: string; expect: { id: number; updatedAt: number }[]; today: string }, d: FinanceDB = db): Promise<{ undo: Undo; moved: number }> {
-  return d.transaction('rw', ...cycleTables(d), async () => {
+  return inBillsTx(d, cycleTables(d), [input.obligationId], async (lookup) => {
     const ob = (await loadObligationRows(d)).find((o) => o.id === input.obligationId);
     if (!ob) throw new Error('That bill no longer exists. Nothing was changed.');
     const cycles = (await loadCycles(d)).filter((c) => c.obligationId === input.obligationId);
@@ -197,7 +198,7 @@ export function applyMove(input: { obligationId: number; from: string; to: strin
       await rec.capture(f.id, d);
       await rows(d).put({ id: f.id, module: MODULE, kind: CYCLE_KIND, data: storedCycle({ raw: f.raw, obligationId: input.obligationId, slot: input.to, op: f.op, supersededBy: f.supersededBy, movedFrom: input.from }, f.body!) });
     }
-    await ensureBillTasksIn(input.obligationId, input.today, d, rec);
+    await ensureBillTasksIn(input.obligationId, input.today, d, lookup, rec);
     return { undo: await rec.seal(d), moved: source.length };
   });
 }

@@ -169,9 +169,9 @@ describe('B2 reading facts: defensive, lossless, nothing invented (B0 N8)', () =
     expect(back.invoicedCents).toBe(11420);
   });
   it('an unknown fact type is kept, flagged, never counted and never rewritten', () => {
-    const r = rawFact(6, { obligationId: 1, slot: 'm2026-12', fact: 'payment-link', ref: { txnId: 99 } });
+    const r = rawFact(6, { obligationId: 1, slot: 'm2026-12', fact: 'suggestion-reject', ref: { txnId: 99 } });
     expect(r.body).toBeNull();
-    expect(r.problem).toMatch(/payment-link/);
+    expect(r.problem).toMatch(/suggestion-reject/);
     const p = derivePeriod(OB, 'm2026-12', '2026-12-18', true, [r], TODAY);
     expect(p.unreadable).toHaveLength(1);
     expect(p.effective).toHaveLength(0);
@@ -331,7 +331,7 @@ describe('B2 conflicts: contradictory evidence is reported, complementary eviden
     expect(findConflicts([q], [fact(4, 'm2026-10', inv(100), 1)])).toEqual([]);
   });
   it('facts whose bill is missing, and records this version cannot read, are reported and kept', () => {
-    const c = findConflicts([OB], [fact(99, 'm2026-12', inv(100), 1), rawFact(2, { obligationId: 1, slot: 'm2026-12', fact: 'payment-link' }), rawFact(3, { nonsense: true })]);
+    const c = findConflicts([OB], [fact(99, 'm2026-12', inv(100), 1), rawFact(2, { obligationId: 1, slot: 'm2026-12', fact: 'suggestion-reject' }), rawFact(3, { nonsense: true })]);
     expect(c.map((x) => x.kind).sort()).toEqual(['missing-obligation', 'unreadable', 'unreadable']);
     expect(c.find((x) => x.kind === 'missing-obligation')!.repairs).toEqual(['remove']);
     expect(c.filter((x) => x.kind === 'unreadable').every((x) => x.repairs.length === 0)).toBe(true);

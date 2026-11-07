@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
@@ -5,13 +6,35 @@ import { loadCalendar } from '../lib/calendarLive';
 import { toIcs } from '../lib/calendar';
 import { downloadText } from '../lib/download';
 import { todayISO } from '../lib/money';
+import { maskMoney } from '../ui/TxnRefs';
+import { loadHideAmounts } from '../modules/today/layout';
 
 const KIND: Record<string, string> = { vest: 'RSU', tax: 'Tax', rmd: 'RMD', cap: 'Pay', bill: 'Bill', loan: 'Loan', 'year-end': 'Tax' };
 const fmtDay = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
+/**
+ * The words shown for a key date. With Hide Amounts on, any money figure in the title (a scheduled item or loan payment) shows as the usual masked figure; the date, payee,
+ * kind, link and identifier are untouched. The calendar FILE ("Add to my calendar") is a separate, deliberate export and keeps the full text.
+ */
+export const comingUpTitle = (title: string, hide: boolean) => (hide ? maskMoney(title) : title);
+
+/** The shared Hide Amounts switch, re-read when the window regains focus or another tab changes it (nothing is stored here). */
+function useHideAmounts() {
+  const [hide, setHide] = useState(() => loadHideAmounts());
+  useEffect(() => {
+    const read = () => setHide(loadHideAmounts());
+    window.addEventListener('storage', read);
+    window.addEventListener('focus', read);
+    document.addEventListener('visibilitychange', read);
+    return () => { window.removeEventListener('storage', read); window.removeEventListener('focus', read); document.removeEventListener('visibilitychange', read); };
+  }, []);
+  return hide;
+}
+
 /** The next dates that matter, with a download so they show up in your phone's calendar. */
 export default function ComingUp({ limit = 6, withDownload = true }: { limit?: number; withDownload?: boolean }) {
   const today = todayISO();
+  const hide = useHideAmounts();
   const events = useLiveQuery(() => loadCalendar(db, today, 365), [today]);
   const soon = (events ?? []).filter((e) => e.date <= `${Number(today.slice(0, 4)) + 1}-01-01`).slice(0, limit);
   const download = async () => {
@@ -27,7 +50,7 @@ export default function ComingUp({ limit = 6, withDownload = true }: { limit?: n
         <ul className="plain">
           {soon.map((e) => (
             <li key={e.id} className="row spread">
-              <span><strong>{fmtDay(e.date)}</strong> <span className="badge">{KIND[e.kind]}</span> <Link to={e.to}>{e.title}</Link></span>
+              <span><strong>{fmtDay(e.date)}</strong> <span className="badge">{KIND[e.kind]}</span> <Link to={e.to}>{comingUpTitle(e.title, hide)}</Link></span>
             </li>
           ))}
         </ul>

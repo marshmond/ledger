@@ -7,7 +7,9 @@ export default function Modal({ title, onClose, children, wide = false }: { titl
   // Keep the latest onClose without re-running the effect (which would steal focus from the field being typed in).
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
-  useEffect(() => attachModal(document as never, box.current as never, () => closeRef.current()), []);
+  // Where focus was before this dialog drew (an autofocused field inside has taken it by the time the effect runs).
+  const opener = useRef<Element | null>(typeof document === 'undefined' ? null : document.activeElement);
+  useEffect(() => attachModal(document as never, box.current as never, () => closeRef.current(), opener.current), []);
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}>
       <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={box} tabIndex={-1}>

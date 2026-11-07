@@ -51,6 +51,13 @@ export interface DerivedItem extends Pick<DueItemInput, 'sourceModule' | 'source
   icsUid?: string;
   /** Calendar-file export: add an alarm this many minutes before the event. */
   icsAlarmMinutes?: number;
+  /**
+   * Calendar-file export only: the full title and detail, when `title` and `detail` were shortened for the screen (Hide Amounts, B3.0B).
+   * A provider that never shortens them leaves these out. The exported file is a separate, deliberate act with its own privacy decision
+   * (see docs/due-provider.md); hiding amounts on screen does not silently change what a file contains.
+   */
+  icsTitle?: string;
+  icsDetail?: string;
 }
 
 export interface DueProvider {

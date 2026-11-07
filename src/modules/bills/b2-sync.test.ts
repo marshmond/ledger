@@ -168,13 +168,13 @@ describe('B2 two devices: independent evidence is never overwritten (tests 39, 8
   });
   it('10. a record kind or fact this build does not know travels through sync and an edit of the same period without any loss', async () => {
     const { A, B, id } = await seeded();
-    await A.d.moduleRecords.add({ id: 880001, module: MODULE, kind: 'cycle', data: { obligationId: id, slot: 'm2026-11', fact: 'payment-link', ref: { txnId: 77, snapshot: { amountCents: -9000 } }, extra: [1, { z: 'kept' }] }, createdAt: Date.now(), updatedAt: Date.now(), deletedAt: null } as never);
+    await A.d.moduleRecords.add({ id: 880001, module: MODULE, kind: 'cycle', data: { obligationId: id, slot: 'm2026-11', fact: 'suggestion-reject', ref: { txnId: 77, snapshot: { amountCents: -9000 } }, extra: [1, { z: 'kept' }] }, createdAt: Date.now(), updatedAt: Date.now(), deletedAt: null } as never);
     await A.d.moduleRecords.add({ id: 880002, module: MODULE, kind: 'newer-kind', data: { anything: true }, createdAt: Date.now(), updatedAt: Date.now(), deletedAt: null } as never);
     await settle(A, B);
     await rec(B.d, id, 'm2026-11', inv(9000)); // an ordinary edit of the same period on the other device
     await settle(A, B);
     for (const d of [A.d, B.d]) {
-      expect((await d.moduleRecords.get(880001))!.data).toMatchObject({ fact: 'payment-link', ref: { txnId: 77, snapshot: { amountCents: -9000 } }, extra: [1, { z: 'kept' }] });
+      expect((await d.moduleRecords.get(880001))!.data).toMatchObject({ fact: 'suggestion-reject', ref: { txnId: 77, snapshot: { amountCents: -9000 } }, extra: [1, { z: 'kept' }] });
       expect((await d.moduleRecords.get(880002))!.data).toEqual({ anything: true });
       const p = await period(d, id);
       expect(p.unreadable.map((r) => r.id)).toEqual([880001]);
@@ -238,7 +238,7 @@ describe('B2 backup and restore (test 42, 43)', () => {
     await rec(d, r.id, 'm2026-11', creditF(500, 'goodwill'));
     await rec(d, r.id, 'm2026-11', paidOut('2026-11-20', 10920), t.id);
     await rec(d, r.id, 'm2026-12', skipF('away'));
-    await d.moduleRecords.add({ id: 770001, module: MODULE, kind: 'cycle', data: { obligationId: r.id, slot: 'm2026-11', fact: 'payment-link', ref: { txnId: 5 }, futureField: { deep: [1, 2] } }, createdAt: 1, updatedAt: 1, deletedAt: null } as never);
+    await d.moduleRecords.add({ id: 770001, module: MODULE, kind: 'cycle', data: { obligationId: r.id, slot: 'm2026-11', fact: 'suggestion-reject', ref: { txnId: 5 }, futureField: { deep: [1, 2] } }, createdAt: 1, updatedAt: 1, deletedAt: null } as never);
     return r.id;
   };
   // a restore re-stamps every row as changed now (documented since Phase 0), so compare everything else exactly
@@ -252,7 +252,7 @@ describe('B2 backup and restore (test 42, 43)', () => {
     await e.open();
     await importAll(e, await exportAll(d));
     expect(await everything(e)).toBe(before);
-    expect((await e.moduleRecords.get(770001))!.data).toMatchObject({ fact: 'payment-link', futureField: { deep: [1, 2] } });
+    expect((await e.moduleRecords.get(770001))!.data).toMatchObject({ fact: 'suggestion-reject', futureField: { deep: [1, 2] } });
     await importAll(e, await exportAll(d));
     expect(await everything(e)).toBe(before);
     expect(await financeSnapshot(e, false)).toBe(await financeSnapshot(d, false));
@@ -264,7 +264,7 @@ describe('B2 backup and restore (test 42, 43)', () => {
     const e = fresh();
     await e.open();
     await restoreChecked(e, file, mem);
-    expect((await e.moduleRecords.get(770001))!.data).toMatchObject({ fact: 'payment-link' });
+    expect((await e.moduleRecords.get(770001))!.data).toMatchObject({ fact: 'suggestion-reject' });
     expect((await loadCycles(e)).length).toBe(5); // four readable facts and the one this version cannot read
     const groups = summarizeBackup(await exportAll(d));
     const g = groups.find((x) => x.id === 'bills')!;

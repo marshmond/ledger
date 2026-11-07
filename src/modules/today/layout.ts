@@ -68,8 +68,9 @@ export function moveEntry(layout: LayoutEntry[], id: string, by: -1 | 1): Layout
 export const toggleEntrySize = (layout: LayoutEntry[], id: string): LayoutEntry[] => layout.map((c) => (c.id === id ? { ...c, size: c.size === 'full' ? 'half' : 'full' } : c));
 export const toggleEntryHidden = (layout: LayoutEntry[], id: string): LayoutEntry[] => layout.map((c) => (c.id === id ? { ...c, hidden: !c.hidden } : c));
 
-export function loadHideAmounts(store: Pick<Storage, 'getItem'> = localStorage): boolean {
-  try { return store.getItem(HIDE_AMOUNTS_KEY) === '1'; } catch { return false; }
+export function loadHideAmounts(store?: Pick<Storage, 'getItem'>): boolean {
+  // `localStorage` is looked up INSIDE the try: where there is no storage (a test, a private window) the answer is "not hidden", never an error.
+  try { return (store ?? localStorage).getItem(HIDE_AMOUNTS_KEY) === '1'; } catch { return false; }
 }
 export function saveHideAmounts(on: boolean, store: Pick<Storage, 'setItem'> = localStorage): void {
   try { store.setItem(HIDE_AMOUNTS_KEY, on ? '1' : '0'); } catch { /* private window: lasts until the page closes */ }

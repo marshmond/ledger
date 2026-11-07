@@ -18,7 +18,7 @@ import { saveHandoff } from './handoff';
 import { blankArrangement, type Cadence } from './model';
 import { setVisitPayment } from './payments';
 import { linkProject } from './projectLinks';
-import { loadServicesOverview, UPCOMING_DAYS } from './servicesOverview';
+import { loadServicesOverview } from './servicesOverview';
 import { attentionCounts, loadSnapshot } from './views';
 import { logStandaloneVisit } from './visits';
 import { setContractDates } from './contractData';
@@ -124,8 +124,9 @@ describe('S5-A upcoming services, from the schedule, without creating anything',
     const mine = ov.upcoming.filter((u) => u.arrangementId === a.id);
     expect(mine[0]).toMatchObject({ kind: 'task', date: TODAY });
     expect(mine.slice(1).every((u) => u.kind === 'expected')).toBe(true);
-    expect(mine.slice(1).map((u) => u.date)).toEqual(['2026-11-20', '2026-12-04', '2026-12-18', '2027-01-01'].filter((x) => x <= addDays(TODAY, UPCOMING_DAYS)));
-    expect(mine.slice(1).every((u) => u.date <= addDays(TODAY, UPCOMING_DAYS))).toBe(true);
+    // B3.0A: the window is now the owner's choice (7, 14, 30 or 90 days; default 30), no longer a fixed 60 days. Today is 2026-11-06, so 30 days ends on 2026-12-06.
+    expect(mine.slice(1).map((u) => u.date)).toEqual(['2026-11-20', '2026-12-04'].filter((x) => x <= addDays(TODAY, 30)));
+    expect(mine.slice(1).every((u) => u.date <= addDays(TODAY, 30))).toBe(true);
     expect(ov.upcoming.some((u) => u.arrangementId === p.id)).toBe(false);
     expect(await openTasks(d, a.id)).toHaveLength(1); // still ONE actionable Task
   });

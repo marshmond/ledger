@@ -126,10 +126,10 @@ export function buildIcs(o: IcsOptions): string {
       `DTSTAMP:${stamp}`,
       `DTSTART;VALUE=DATE:${compact(it.date)}`,
       `DTEND;VALUE=DATE:${compact(addDays(it.endDate ?? it.date, 1))}`,
-      `SUMMARY:${esc(it.title)}`,
-      `DESCRIPTION:${esc(it.detail ?? '')}`,
+      `SUMMARY:${esc(it.icsTitle ?? it.title)}`,
+      `DESCRIPTION:${esc(it.icsDetail ?? it.detail ?? '')}`,
     );
-    if (it.icsAlarmMinutes !== undefined) lines.push(...alarm(it.icsAlarmMinutes, it.title));
+    if (it.icsAlarmMinutes !== undefined) lines.push(...alarm(it.icsAlarmMinutes, it.icsTitle ?? it.title));
     lines.push('END:VEVENT');
   }
   lines.push('END:VCALENDAR');

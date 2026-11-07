@@ -17,8 +17,12 @@ export interface DocLike {
 
 export const FOCUSABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
-export function attachModal(doc: DocLike, box: BoxLike | null, close: () => void): () => void {
-  const before = doc.activeElement as { focus?: () => void } | null;
+/**
+ * `opener` is the element that had focus BEFORE the dialog was drawn (the caller reads it during the first render). Reading it here instead is too late for a dialog
+ * with an autofocused field: that field has already taken focus, and closing would then send focus to the page instead of back to the button that opened it.
+ */
+export function attachModal(doc: DocLike, box: BoxLike | null, close: () => void, opener?: unknown): () => void {
+  const before = (opener ?? doc.activeElement) as { focus?: () => void } | null;
   const onKey = (e: KeyEventLike) => {
     if (e.key === 'Escape') {
       e.stopPropagation();

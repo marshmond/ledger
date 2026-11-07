@@ -15,6 +15,11 @@ import { runUndo } from './undo';
 
 const GROUP: { id: AttentionCategory[]; title: string; hint: string }[] = [
   { id: ['conflicts'], title: 'Records that disagree or look alike', hint: 'Nothing was merged or deleted. Choose what to keep, or leave them as they are.' },
+  { id: ['typedFinance'], title: 'A typed payment and a Finance payment', hint: 'Ledger counts one source at a time: the Finance payment counts and the typed amount is left out and kept. Choose the Finance payment to set the typed one aside, or leave it as it is.' },
+  { id: ['duplicatePieces'], title: 'The same payment linked more than once', hint: 'A payment is counted once however many times it is linked. Nothing was deleted; remove a link you did not mean from its billing period.' },
+  { id: ['paymentReview', 'paymentChanged'], title: 'Linked Finance payments to look at', hint: 'A linked payment is missing, restructured, no longer spending, reversed or changed in Finance. The link is kept and shown; what Finance says now is used, and one that cannot be trusted counts nothing until you pick the payment again.' },
+  { id: ['declaredShort'], title: 'Marked paid in full, but Finance shows less', hint: 'Your declaration is kept and nothing was added or cleared. Link the remaining payment, or remove the declaration if the bill is not paid in full.' },
+  { id: ['partlyPaid'], title: 'Partly paid and due', hint: 'Part of the bill is recorded as paid and the rest is due or late.' },
   { id: ['unconfirmedTasks'], title: 'Finished reminder Tasks, not yet confirmed', hint: 'A finished Task is not evidence of payment. Tell Ledger what happened.' },
   { id: ['notConfirmed', 'autopayCheck'], title: 'Not confirmed paid', hint: 'Ledger only knows that no payment is recorded, not that anything is unpaid.' },
   { id: ['records'], title: 'Records that need a look', hint: 'Unreadable records, records without their bill, and periods left behind by a schedule change. All are kept.' },

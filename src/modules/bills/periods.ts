@@ -11,6 +11,8 @@
  */
 import { addDays } from '../../lib/dates';
 import { deriveAmounts, declared, paymentEvidence, type Amounts } from './amounts';
+import { NO_FINANCE } from './payments';
+import type { TxnLookup } from '../../lib/txnRef';
 import { dueDateOf, isEffective, isReadable, type CycleRecord, type FactBody } from './cycleModel';
 import { expectedAmountOn, scheduleSource, type ObligationRecord } from './model';
 import { expectedDates } from './schedule';
@@ -43,6 +45,8 @@ export interface Period {
   skipped: boolean;
   /** A skip AND payment evidence are both recorded: the payment counts, the skip is ignored for the label. */
   skipVsPayment: boolean;
+  /** B3: an explicit declaration that live Finance contradicts (a linked payment is missing, changed in structure or reversed, and nothing is counted). */
+  suspended: boolean;
   label: LabelId;
   /** The label is one of the "still open" ones: money may still be owed, or its payment is not confirmed. */
   open: boolean;
@@ -51,7 +55,7 @@ export interface Period {
 const newestFirst = (a: CycleRecord, b: CycleRecord) => b.createdAt - a.createdAt || b.id - a.id;
 
 /** Derives one period from its records. `nominal` is the schedule date for the slot (or null). */
-export function derivePeriod(ob: ObligationRecord, slot: string, nominal: string | null, expected: boolean, records: CycleRecord[], today: string): Period {
+export function derivePeriod(ob: ObligationRecord, slot: string, nominal: string | null, expected: boolean, records: CycleRecord[], today: string, lookup: TxnLookup = NO_FINANCE): Period {
   const recs = [...records].sort(newestFirst);
   const effective = recs.filter(isEffective) as Eff[];
   const superseded = recs.filter((r) => isReadable(r) && r.supersededBy !== null);
@@ -59,19 +63,24 @@ export function derivePeriod(ob: ObligationRecord, slot: string, nominal: string
   const dueDates = effective.flatMap((f) => { const x = dueDateOf(f.body); return x ? [x] : []; });
   const timing = deriveTiming(dueDates, nominal, today);
   const exp = nominal ? expectedAmountOn(ob.data, nominal) : null;
-  const amounts = deriveAmounts(effective, exp);
+  const amounts = deriveAmounts(effective, exp, lookup);
   const decl = declared(effective);
+  const fin = amounts.finance;
+  // B0 C1/C2: a declaration never silently overrides live Finance. When the linked payments count for nothing because one is missing, changed in
+  // structure or reversed, the declaration is suspended (kept, shown, not relied on) until the owner looks.
+  const suspended = decl && !!fin && fin.paidCents <= 0 && (fin.counts.review > 0 || fin.reversed);
   const evidence = amounts.paid > 0 || decl || paymentEvidence(effective);
   const skipRecorded = effective.some((f) => f.body.fact === 'skip');
   const skipVsPayment = skipRecorded && evidence;
   const label = primaryLabel({
-    skip: skipRecorded, owed: amounts.owed, owedFromBill: amounts.basis === 'billed', paid: amounts.paid, remaining: amounts.remaining, declared: decl, suspended: false,
+    skip: skipRecorded, owed: amounts.owed, owedFromBill: amounts.basis === 'billed', paid: amounts.paid, remaining: amounts.remaining, declared: decl, suspended,
+    fromFinance: amounts.source === 'finance', declaredFull: effective.some((f) => f.body.fact === 'paid-in-full'),
     timing: timing.class, days: timing.days, how: ob.data.payment.how, invoiceRecorded: amounts.invoiceRecorded,
   });
   const isExtra = slot.startsWith('x');
   return {
     obligationId: ob.id, slot, nominal, expected, fromEarlier: !isExtra && nominal === null && recs.length > 0, isExtra,
-    records: recs, effective, superseded, unreadable, timing, amounts, declared: decl, skipped: skipRecorded && !evidence, skipVsPayment, label,
+    records: recs, effective, superseded, unreadable, timing, amounts, declared: decl, skipped: skipRecorded && !evidence, skipVsPayment, suspended, label,
     open: OPEN_LABELS.has(label),
   };
 }
@@ -91,6 +100,8 @@ export interface PeriodWindow { from: string; to: string }
 export interface PeriodOptions {
   /** Include every period that holds records, whatever its date (the bill's own page). Otherwise only periods whose timing date is inside the window. */
   allRecorded?: boolean;
+  /** B3: the live Finance transactions the period's payment links point at (read once, in bulk, by the caller). Without it every link reads as "not found". */
+  lookup?: TxnLookup;
 }
 
 /**
@@ -109,7 +120,7 @@ export function periodsOf(ob: ObligationRecord, cycles: CycleRecord[], today: st
     const records = mine.get(`${ob.id}|${slot}`) ?? [];
     const isExtra = slot.startsWith('x');
     const nominal = isExtra ? null : exp.get(slot) ?? scheduleProduces(src, slot);
-    const p = derivePeriod(ob, slot, nominal, exp.has(slot), records, today);
+    const p = derivePeriod(ob, slot, nominal, exp.has(slot), records, today, opts.lookup ?? NO_FINANCE);
     const inWindow = p.timing.date !== null && p.timing.date >= win.from && p.timing.date <= win.to;
     if (inWindow || (opts.allRecorded && records.length > 0)) out.push(p);
   }

@@ -22,6 +22,10 @@
 .cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); margin: 0 0 var(--sp-3); }
 .cal-legend-item { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 36px; padding: 0 var(--sp-3); border-radius: 999px; font-size: var(--fs-sm); }
 .cal-legend-item.off { color: var(--muted); }
+.cal-legend-bulk { display: inline-flex; gap: var(--sp-1); }
+.cal-legend-all { min-height: 36px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+.cal-legend-count { flex-basis: 100%; }
+.cal-allhidden { margin: 0 0 var(--sp-3); }
 .cal-swatch { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; border: 2px solid transparent; color: #fff; font-size: 11px; line-height: 1; flex: none; }
 
 /* ---- items (chips) ---- */

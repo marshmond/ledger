@@ -5,7 +5,7 @@
  *
  *   obligationId  the bill this is about (a whole number)
  *   slot          the period's immutable identity (`m2026-12`, `s2026-12a`, `w2026-12-07`, `x<id>`), see schedule.ts. NEVER a date.
- *   fact          invoice | due-date | paid-outside | paid-in-full | skip | credit
+ *   fact          invoice | due-date | paid-outside | paid-in-full | skip | credit | payment-link (B3: one confirmed Finance payment piece)
  *   op            an id made when a form was opened, so a double press saves once
  *   supersededBy  the id of the record that replaced this one after an owner repair. A superseded fact stays visible as history and is
  *                 excluded from every figure.
@@ -22,14 +22,15 @@ import type { ModuleRecord } from '../../core/entities';
 import { MODULE } from './model';
 import { parseSlot, type ParsedSlot } from './schedule';
 import { isCents, isDate, isInt, str, tidy } from './util';
+import { pieceKey, readTxnRefs, validateTxnRefs, type TxnRef } from '../../lib/txnRef';
 
 export const CYCLE_KIND = 'cycle';
 export const cycleRefId = (id: number) => `cycle:${id}`;
 
-export const FACTS = ['invoice', 'due-date', 'paid-outside', 'paid-in-full', 'skip', 'credit'] as const;
+export const FACTS = ['invoice', 'due-date', 'paid-outside', 'paid-in-full', 'skip', 'credit', 'payment-link'] as const;
 export type FactType = (typeof FACTS)[number];
 export const FACT_LABEL: Record<FactType, string> = {
-  invoice: 'Bill (invoice)', 'due-date': 'Due date', 'paid-outside': 'Paid outside Finance', 'paid-in-full': 'Marked paid in full', skip: 'Not billed (skipped)', credit: 'Provider credit',
+  invoice: 'Bill (invoice)', 'due-date': 'Due date', 'paid-outside': 'Paid outside Finance', 'paid-in-full': 'Marked paid in full', skip: 'Not billed (skipped)', credit: 'Provider credit', 'payment-link': 'Payment linked from Finance',
 };
 
 export type FactBody =
@@ -38,7 +39,9 @@ export type FactBody =
   | { fact: 'paid-outside'; paidOn: string; cents: number | null }
   | { fact: 'paid-in-full'; on: string | null }
   | { fact: 'skip'; reason: string }
-  | { fact: 'credit'; cents: number; note: string };
+  | { fact: 'credit'; cents: number; note: string }
+  /** B3: ONE Finance payment piece (a whole transaction or one part) the owner confirmed as a payment toward this period. Added or removed, NEVER edited. Holds a reference (and an explanatory snapshot), never a copy of the money. */
+  | { fact: 'payment-link'; ref: TxnRef };
 
 /** A fact record as read. `body` is null when this version cannot read it (then `problem` says why). */
 export interface CycleRecord {
@@ -59,7 +62,7 @@ export interface CycleRecord {
   raw: Record<string, unknown>;
 }
 
-const KNOWN = new Set(['obligationId', 'slot', 'fact', 'op', 'supersededBy', 'movedFrom', 'invoicedCents', 'invoiceDate', 'dueDate', 'invoiceNumber', 'nominal', 'paidOn', 'cents', 'on', 'reason', 'note']);
+const KNOWN = new Set(['obligationId', 'slot', 'fact', 'op', 'supersededBy', 'movedFrom', 'invoicedCents', 'invoiceDate', 'dueDate', 'invoiceNumber', 'nominal', 'paidOn', 'cents', 'on', 'reason', 'note', 'ref']);
 const present = (v: unknown) => v !== undefined && v !== null;
 const optDate = (v: unknown): string | null | 'bad' => (!present(v) ? null : isDate(v) ? v : 'bad');
 
@@ -108,6 +111,11 @@ export function readCycle(r: ModuleRecord): CycleRecord {
       if (!isCents(d.cents)) return bad('The credit amount');
       if (present(d.note) && typeof d.note !== 'string') return bad('The note');
       return ok({ fact: 'credit', cents: d.cents, note: str(d.note) });
+    case 'payment-link': {
+      // the shared reference reader keeps a well-formed reference and drops junk; exactly one is required
+      const refs = readTxnRefs([d.ref]);
+      return refs.length === 1 ? ok({ fact: 'payment-link', ref: refs[0] }) : bad('The linked payment');
+    }
     default:
       return fail(typeof d.fact === 'string' && d.fact ? `Its type ("${d.fact}") is not one this version of Ledger understands. It is kept exactly as saved.` : 'Its type is missing.');
   }
@@ -129,8 +137,15 @@ export function bodyFields(b: FactBody): Record<string, unknown> {
     case 'paid-in-full': return { fact: 'paid-in-full', ...(b.on ? { on: b.on } : {}) };
     case 'skip': return { fact: 'skip', ...(b.reason ? { reason: b.reason } : {}) };
     case 'credit': return { fact: 'credit', cents: b.cents, ...(b.note ? { note: b.note } : {}) };
+    case 'payment-link': return { fact: 'payment-link', ref: refFields(b.ref) };
   }
 }
+
+/** The stored form of a reference: only the shared reference fields, in a fixed shape. */
+const refFields = (r: TxnRef): Record<string, unknown> => ({
+  txnId: r.txnId, ...(r.splitIndex !== undefined ? { splitIndex: r.splitIndex } : {}),
+  snapshot: { date: r.snapshot.date, payee: r.snapshot.payee, amountCents: r.snapshot.amountCents }, ...(r.fp ? { fp: { splitCount: r.fp.splitCount, amountCents: r.fp.amountCents, categoryId: r.fp.categoryId } } : {}),
+});
 
 /** The whole row data to store for a record: unknown fields kept exactly, the known ones from `next`. */
 export function storedCycle(c: { raw: Record<string, unknown>; obligationId: number; slot: string; op: string | null; supersededBy: number | null; movedFrom: string | null }, body: FactBody): Record<string, unknown> {
@@ -163,6 +178,7 @@ export function validateBody(b: FactBody): string | null {
     case 'credit':
       if (!isCents(b.cents) || b.cents <= 0) return 'Enter the credit amount, above $0.00.';
       return b.note.length > 200 ? 'The note is too long.' : null;
+    case 'payment-link': return validateTxnRefs([b.ref]);
   }
 }
 
@@ -175,7 +191,14 @@ export function factWords(b: FactBody, money: (c: number) => string): string {
     case 'paid-in-full': return `Marked paid in full${b.on ? ` on ${b.on}` : ''}, no amount recorded`;
     case 'skip': return `Not billed this period${b.reason ? ` (${b.reason})` : ''}`;
     case 'credit': return `Credit ${money(b.cents)}${b.note ? ` (${b.note})` : ''}`;
+    case 'payment-link': {
+      const r = b.ref;
+      return `Finance payment linked: ${r.snapshot.payee || 'a transaction'}${r.snapshot.date ? ` on ${r.snapshot.date}` : ''}${r.splitIndex !== undefined ? ` (part ${r.splitIndex + 1}${r.fp ? ` of ${r.fp.splitCount}` : ''})` : ''}, ${r.snapshot.amountCents > 0 ? 'money back ' : 'paid '}${money(Math.abs(r.snapshot.amountCents))} when linked`;
+    }
   }
 }
+
+/** The piece a payment-link fact points at (the shared `pieceKey`). */
+export const linkKey = (b: Extract<FactBody, { fact: 'payment-link' }>) => pieceKey(b.ref);
 
 export { MODULE };

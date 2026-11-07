@@ -7,12 +7,18 @@
  *                > unknown. Two different invoice amounts give `disagree`: owed is UNKNOWN, never one of them picked.
  *   credit       the sum of effective credits (a credit recorded twice with the same amount and note counts once)
  *   owed         max(0, basis - credit); unknown when the basis is unknown or the invoices disagree
- *   paid         ONLY an amount the owner typed as paid outside Finance. A declaration with no amount adds nothing. Two DIFFERENT typed amounts
- *                count as 0 and are listed for review (identical ones count once). Finance payments arrive in B3; this is only the typed side.
+ *   paid         ONE source per period, never both added together (B0 3.4):
+ *                  - if ANY Finance payment link is in force, paid is the net of the counted Finance pieces (payments.ts, live amounts), and every
+ *                    typed outside-Finance amount is LEFT OUT of every figure and listed for review (even when every link is stale: the owner chose
+ *                    Finance, and a stale link counts 0 rather than letting a typed amount stand in silently);
+ *                  - otherwise paid is the typed outside-Finance amount. A declaration with no amount adds nothing. Two DIFFERENT typed amounts
+ *                    count as 0 and are listed for review (identical ones count once).
  *   remaining    max(0, owed - paid) when owed is known, else unknown; overpaid = max(0, paid - owed)
  */
 import type { ExpectedAmount } from './model';
 import type { CycleRecord, FactBody } from './cycleModel';
+import { EMPTY_PAYMENTS, financePayments, NO_FINANCE, type FinancePayments } from './payments';
+import type { TxnLookup } from '../../lib/txnRef';
 
 export type OwedBasis = 'billed' | 'expected' | 'estimate' | 'unknown' | 'disagree';
 export interface Amounts {
@@ -21,6 +27,12 @@ export interface Amounts {
   creditCents: number;
   owed: number | null;
   paid: number;
+  /** Where `paid` comes from: Finance links, a typed outside-Finance amount, or nothing recorded. */
+  source: 'finance' | 'typed' | 'none';
+  /** The Finance payments (every link with its role and Finance's own status), or null when no link is in force. */
+  finance: FinancePayments | null;
+  /** Typed outside-Finance amounts (whole cents, distinct) that were left out of every figure because Finance links are in force. Kept, shown, never counted. */
+  typedLeftOut: number[];
   /** Whole-cent amounts typed as paid outside Finance, after de-duplication (two different ones => counted as 0). */
   paidConflict: boolean;
   remaining: number | null;
@@ -38,7 +50,7 @@ const distinct = <T,>(xs: T[], key: (x: T) => string) => { const keys = xs.map(k
 /** The credits that count: identical ones (same amount and note) count once. */
 export const effectiveCredits = (facts: Eff[]) => distinct(bodies(facts, 'credit'), (c) => `${c.cents}|${c.note.trim().toLowerCase()}`);
 
-export function deriveAmounts(effective: Eff[], expected: ExpectedAmount | null): Amounts {
+export function deriveAmounts(effective: Eff[], expected: ExpectedAmount | null, lookup: TxnLookup = NO_FINANCE): Amounts {
   const invoices = bodies(effective, 'invoice');
   const invoiceAmounts = [...new Set(invoices.map((i) => i.invoicedCents))];
   let basis: OwedBasis;
@@ -53,11 +65,15 @@ export function deriveAmounts(effective: Eff[], expected: ExpectedAmount | null)
   const owed = basisCents === null ? null : Math.max(0, basisCents - creditCents);
 
   const typed = [...new Set(bodies(effective, 'paid-outside').flatMap((p) => (p.cents !== null && p.cents > 0 ? [p.cents] : [])))];
-  const paidConflict = typed.length > 1;
-  const paid = typed.length === 1 ? typed[0] : 0;
+  const links = effective.flatMap((x) => (x.body.fact === 'payment-link' ? [{ factId: x.id, createdAt: x.createdAt, ref: x.body.ref }] : []));
+  const fin = links.length > 0 ? financePayments(links, lookup) : EMPTY_PAYMENTS;
+  const finance = fin.linked ? fin : null;
+  const paidConflict = !finance && typed.length > 1;
+  const paid = finance ? finance.paidCents : typed.length === 1 ? typed[0] : 0;
 
   return {
-    basis, basisCents, creditCents, owed, paid, paidConflict,
+    basis, basisCents, creditCents, owed, paid, paidConflict, finance, typedLeftOut: finance ? typed : [],
+    source: finance ? 'finance' : typed.length > 0 ? 'typed' : 'none',
     remaining: owed === null ? null : Math.max(0, owed - paid),
     overpaid: owed === null ? 0 : Math.max(0, paid - owed),
     invoiceRecorded: invoices.length > 0,
@@ -69,4 +85,4 @@ export function declared(effective: Eff[]): boolean {
   return effective.some((x) => x.body.fact === 'paid-in-full' || (x.body.fact === 'paid-outside' && (x.body.cents === null || x.body.cents === 0)));
 }
 /** Does any effective record say a payment happened (typed amount or declaration)? */
-export const paymentEvidence = (effective: Eff[]) => effective.some((x) => x.body.fact === 'paid-outside' || x.body.fact === 'paid-in-full');
+export const paymentEvidence = (effective: Eff[]) => effective.some((x) => x.body.fact === 'paid-outside' || x.body.fact === 'paid-in-full' || x.body.fact === 'payment-link');

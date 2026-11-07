@@ -18,13 +18,20 @@
  *   moved-arrival [review]      a record that arrived at a period whose records were moved elsewhere (for example from another device)
  *   missing-obligation [review] records whose bill is not here
  *   unreadable [review]         a record this version cannot read (an unknown type, damaged fields): kept exactly as saved, counted for nothing
+ *   typed-and-finance [disagree] (B3) a typed outside-Finance amount AND a Finance payment link on one period: the Finance payment counts, the typed amount is
+ *                               left out of every figure and kept, until the owner chooses (never both added, never erased)
+ *   payment-duplicate [duplicate] (B3) the same Finance piece linked twice to one period: counted once
+ *   payment-overlap [duplicate]  (B3) a whole Finance transaction and one of its parts linked to one period: the whole counts, the part is left out
+ *   payment-shared [duplicate]   (B3) one Finance piece linked to more than one billing period (any bills): counted once in totals, flagged as a possible
+ *                               duplicate attribution. Reading never decides which period it belongs to
  */
 import { dueDateOf, isEffective, type CycleRecord, type FactBody } from './cycleModel';
 import { scheduleSource, type ObligationRecord } from './model';
 import { slotWords2 } from './schedule';
+import { pieceKey } from '../../lib/txnRef';
 import { scheduleProduces } from './slots';
 
-export type ConflictKind = 'invoice-amount' | 'invoice-duplicate' | 'due-date' | 'skip-payment' | 'paid-amount' | 'duplicate-record' | 'invoice-number' | 'earlier-schedule' | 'moved-arrival' | 'missing-obligation' | 'unreadable';
+export type ConflictKind = 'invoice-amount' | 'invoice-duplicate' | 'due-date' | 'skip-payment' | 'paid-amount' | 'duplicate-record' | 'invoice-number' | 'earlier-schedule' | 'moved-arrival' | 'missing-obligation' | 'unreadable' | 'typed-and-finance' | 'payment-duplicate' | 'payment-overlap' | 'payment-shared';
 export type Severity = 'disagree' | 'duplicate' | 'review';
 export type Repair = 'use-one' | 'different-bills' | 'leave' | 'remove' | 'move';
 
@@ -109,12 +116,23 @@ export function findConflicts(obligations: ObligationRecord[], cycles: CycleReco
 
     // a skip beside a payment
     const skips = of('skip');
-    const pays = facts.filter((f) => f.body.fact === 'paid-outside' || f.body.fact === 'paid-in-full');
+    const pays = facts.filter((f) => f.body.fact === 'paid-outside' || f.body.fact === 'paid-in-full' || f.body.fact === 'payment-link');
     if (skips.length && pays.length) add({ kind: 'skip-payment', severity: 'disagree', obligationId: oid, slot, ids: [], recs: [...skips, ...pays], candidates: pays.map((p) => p.id), repairs: ['use-one', 'leave'], text: `${words} is recorded as not billed and also as paid. The payment still counts; the skip is ignored until you choose.` });
 
     // two different typed paid amounts
     const typed = of('paid-outside').filter((p) => p.body.cents !== null && p.body.cents > 0);
     if (new Set(typed.map((p) => p.body.cents)).size > 1) add({ kind: 'paid-amount', severity: 'disagree', obligationId: oid, slot, ids: [], recs: typed, candidates: typed.map((p) => p.id), repairs: ['use-one', 'leave'], text: `Two different amounts are recorded as paid outside Finance for ${words}. Neither is counted until you choose.` });
+
+    // B3: Finance payment links
+    const links = of('payment-link');
+    const typedPaid = typed; // typed outside-Finance amounts (above): both are monetary evidence
+    if (links.length && typedPaid.length) add({ kind: 'typed-and-finance', severity: 'disagree', obligationId: oid, slot, ids: [], recs: [...typedPaid, ...links], candidates: links.map((l) => l.id), repairs: ['use-one', 'leave'], text: `A payment you typed as paid outside Finance and a Finance payment are both recorded for ${words}. Ledger counts the Finance payment only. The typed amount is kept but left out of every figure until you choose.` });
+    const byPiece = new Map<string, typeof links>();
+    for (const l of links) byPiece.set(pieceKey(l.body.ref), [...(byPiece.get(pieceKey(l.body.ref)) ?? []), l]);
+    for (const g of byPiece.values()) if (g.length > 1) add({ kind: 'payment-duplicate', severity: 'duplicate', obligationId: oid, slot, ids: [], recs: g, candidates: g.map((l) => l.id), repairs: ['use-one', 'leave'], text: `The same Finance payment is linked more than once to ${words}. It is counted once. Nothing was deleted.` });
+    const wholes = new Set(links.filter((l) => l.body.ref.splitIndex === undefined).map((l) => l.body.ref.txnId));
+    const overlapIds = [...wholes].filter((id) => links.some((l) => l.body.ref.txnId === id && l.body.ref.splitIndex !== undefined));
+    for (const id of overlapIds) { const g = links.filter((l) => l.body.ref.txnId === id); add({ kind: 'payment-overlap', severity: 'duplicate', obligationId: oid, slot, ids: [], recs: g, candidates: g.map((l) => l.id), repairs: ['use-one', 'leave'], text: `A whole Finance transaction and one of its parts are both linked to ${words}. The whole is counted and the part is left out, so the same money is not counted twice.` }); }
 
     // identical records, recorded twice (look-alikes: flagged, never deleted)
     for (const f of ['skip', 'paid-in-full', 'paid-outside', 'due-date', 'credit'] as const) {
@@ -135,6 +153,16 @@ export function findConflicts(obligations: ObligationRecord[], cycles: CycleReco
       const arrivals = facts.filter((f) => f.movedFrom !== slot);
       if (arrivals.length) add({ kind: 'moved-arrival', severity: 'review', obligationId: oid, slot, ids: [], recs: arrivals, repairs: targets.size === 1 ? ['move', 'leave'] : ['leave'], target: targets.size === 1 ? [...targets][0] : null, text: `${arrivals.length} record${arrivals.length === 1 ? ' was' : 's were'} added to ${words} after the records of that period were moved to another period (perhaps from another device). They have not been moved or merged; look and choose.` });
     }
+  }
+
+  // B3: one Finance piece linked to more than one billing period (on one bill or several): counted once in totals, flagged, never decided here
+  const sharedPieces = new Map<string, Eff[]>();
+  for (const f of readable) if (f.body.fact === 'payment-link' && obById.has(f.obligationId)) sharedPieces.set(pieceKey(f.body.ref), [...(sharedPieces.get(pieceKey(f.body.ref)) ?? []), f]);
+  for (const g of sharedPieces.values()) {
+    const periods = new Set(g.map((f) => `${f.obligationId}|${f.slot}`));
+    if (periods.size < 2) continue;
+    const bills = new Set(g.map((f) => f.obligationId));
+    add({ kind: 'payment-shared', severity: 'duplicate', obligationId: g[0].obligationId, slot: null, ids: [], recs: g, repairs: ['leave'], text: `One Finance payment is linked to ${periods.size} billing periods${bills.size > 1 ? ` of ${bills.size} bills` : ''}. It is counted once in totals. If that is not what you meant, remove the link from the period it does not belong to.` });
   }
 
   // one document number on two different periods
