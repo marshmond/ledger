@@ -15,6 +15,9 @@ export default function AmountInput({
   placeholder = '0.00',
   onEnter,
   label,
+  id,
+  invalid,
+  describedBy,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -23,6 +26,10 @@ export default function AmountInput({
   placeholder?: string;
   onEnter?: () => void;
   label?: string;
+  /** For a form that moves focus to this box and points its error message at it. */
+  id?: string;
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const keypad = useKeypadAmounts();
   const ref = useRef<HTMLInputElement>(null);
@@ -49,6 +56,9 @@ export default function AmountInput({
         inputMode={keypad ? 'numeric' : 'decimal'}
         placeholder={placeholder}
         aria-label={label}
+        id={id}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
         value={value}
         onChange={(e) => {
           const raw = e.target.value;

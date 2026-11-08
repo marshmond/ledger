@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { parseAmountMath } from '../lib/money';
 
 /** A typed-in percent (min to max): any text is allowed while typing; the value is checked and kept within range when you click away. */
@@ -52,13 +52,16 @@ export function MoneyField({
   const fmt = (c: number) => (c ? (c / 100).toFixed(2) : '');
   const [text, setText] = useState(fmt(cents));
   const [bad, setBad] = useState(false);
+  const errId = useId();
   const input = (
     <input
       style={{ width }}
       inputMode="decimal"
       placeholder="0.00"
       value={text}
+      aria-label={label}
       aria-invalid={bad}
+      aria-describedby={bad ? errId : undefined}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
         const c = text.trim() === '' ? 0 : parseAmountMath(text);
@@ -73,10 +76,10 @@ export function MoneyField({
     <label className="f">
       {label}
       {input}
-      {bad && <span className="error">Not a valid amount</span>}
+      {bad && <span className="error" id={errId} role="alert">Not a valid amount</span>}
     </label>
   ) : (
-    <>{input}{bad && <span className="error">?</span>}</>
+    <>{input}{bad && <span className="error" id={errId} role="alert">Not a valid amount</span>}</>
   );
 }
 

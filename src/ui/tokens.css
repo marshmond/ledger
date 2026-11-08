@@ -40,6 +40,11 @@
   --pos-soft: color-mix(in srgb, var(--pos) 13%, var(--bg));
   --neg-soft: color-mix(in srgb, var(--neg) 13%, var(--bg));
   --warn-soft: color-mix(in srgb, var(--warn) 14%, var(--bg));
+  /* ST-S3 (AX-04): text in the palette colours, for words that sit on that colour's own light tint (chips, badges, banners). The colour is pulled 22% toward the text colour, which keeps its hue and gives at least 4.8:1 on every built-in palette, light and dark. */
+  --accent-text: color-mix(in srgb, var(--accent) 78%, var(--fg));
+  --warn-text: color-mix(in srgb, var(--warn) 78%, var(--fg));
+  --pos-text: color-mix(in srgb, var(--pos) 78%, var(--fg));
+  --neg-text: color-mix(in srgb, var(--neg) 78%, var(--fg));
   --hover: color-mix(in srgb, var(--fg) 6%, transparent);
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
 }

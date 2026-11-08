@@ -124,7 +124,7 @@ export default function HomePage() {
     attention: {
       node: (
         <section className="card" aria-label="Needs attention">
-          <div className="card-head"><strong>Needs attention</strong>{alerts.length > 0 && <span className="badge">{alerts.length}</span>}</div>
+          <div className="card-head"><h2 className="card-title">Needs attention</h2>{alerts.length > 0 && <span className="badge">{alerts.length}</span>}</div>
           {alerts.length === 0 ? (
             <p className="muted" style={{ margin: 0 }}>{hasData ? 'Nothing needs attention right now.' : 'Alerts will show here once you have entered some data.'}</p>
           ) : (
@@ -146,7 +146,7 @@ export default function HomePage() {
     month: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>{monthLabel(month)}</strong><Link className="card-link" to="/budget">Budget</Link></div>
+          <div className="card-head"><h2 className="card-title">{monthLabel(month)}</h2><Link className="card-link" to="/budget">Budget</Link></div>
           <BarList bars={[
             { name: 'Income', ratio: spending.incomeCents / monthMax, detail: formatCents(spending.incomeCents), good: true },
             { name: 'Spent', ratio: spending.spentCents / monthMax, detail: formatCents(spending.spentCents), over: spending.spentCents > spending.incomeCents && spending.incomeCents > 0 },
@@ -158,7 +158,7 @@ export default function HomePage() {
     spending: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>Spending by category</strong><Link className="card-link" to="/reports">Reports</Link></div>
+          <div className="card-head"><h2 className="card-title">Spending by category</h2><Link className="card-link" to="/reports">Reports</Link></div>
           {slices.length === 0
             ? <p className="muted">No spending recorded in {monthLabel(month)} yet.</p>
             : <Donut slices={slices} label={`Spending by category in ${monthLabel(month)}, ${formatCents(spending.spentCents)} in total`} center={<><strong>{formatCents(spending.spentCents)}</strong><span className="muted">spent</span></>} />}
@@ -168,7 +168,7 @@ export default function HomePage() {
     budget: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>Budget progress</strong><Link className="card-link" to="/budget">Budget</Link></div>
+          <div className="card-head"><h2 className="card-title">Budget progress</h2><Link className="card-link" to="/budget">Budget</Link></div>
           {bars.length === 0
             ? <p className="muted">Assign money to categories on the Budget page to track it here.</p>
             : <BarList bars={bars.map((b) => ({ name: b.name, ratio: b.ratio, over: b.over, detail: b.fundsCents > 0 ? `${formatCents(b.spentCents)} of ${formatCents(b.fundsCents)}` : `${formatCents(b.spentCents)}, none set aside` }))} />}
@@ -178,7 +178,7 @@ export default function HomePage() {
     cashflow: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>Income vs spending</strong><Link className="card-link" to="/reports">Reports</Link></div>
+          <div className="card-head"><h2 className="card-title">Income vs spending</h2><Link className="card-link" to="/reports">Reports</Link></div>
           {flow.every((f) => f.incomeCents === 0 && f.spentCents === 0)
             ? <p className="muted">Income and spending for the last six months will chart here.</p>
             : <PairedColumns aName="Income" bName="Spent" label={`Income and spending by month: ${flow.map((f) => `${monthLabel(f.month)} ${formatCents(f.incomeCents)} in, ${formatCents(f.spentCents)} out`).join('; ')}`} points={flow.map((f) => ({ label: shortMonth(f.month), a: f.incomeCents, b: f.spentCents }))} />}
@@ -188,7 +188,7 @@ export default function HomePage() {
     breakdown: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>What you own and owe</strong><Link className="card-link" to="/networth">Net worth</Link></div>
+          <div className="card-head"><h2 className="card-title">What you own and owe</h2><Link className="card-link" to="/networth">Net worth</Link></div>
           {assets.length === 0
             ? <p className="muted">Add accounts, investments or property to see the mix.</p>
             : (
@@ -205,7 +205,7 @@ export default function HomePage() {
     recent: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>Recent transactions</strong><Link className="card-link" to="/transactions">All</Link></div>
+          <div className="card-head"><h2 className="card-title">Recent transactions</h2><Link className="card-link" to="/transactions">All</Link></div>
           {recent.length === 0 ? (
             <EmptyState title="No transactions yet" action={<button className="primary" onClick={openAddTransaction}>Add a transaction</button>}>Add one by hand or import a bank file.</EmptyState>
           ) : recent.map((t) => (
@@ -222,7 +222,7 @@ export default function HomePage() {
       hidden: checkinOn ? undefined : 'There is no check-in to show yet.',
       node: (
         <div className="card">
-          <div className="card-head"><strong>Monthly check-in</strong><Link className="card-link" to="/checkin">{checkin.progress.complete ? 'Done ✓' : 'Open'}</Link></div>
+          <div className="card-head"><h2 className="card-title">Monthly check-in</h2><Link className="card-link" to="/checkin">{checkin.progress.complete ? 'Done ✓' : 'Open'}</Link></div>
           <div className="ring-row">
             <Ring fraction={checkin.progress.total ? checkin.progress.done / checkin.progress.total : 0} label={`Check-in: ${checkin.progress.done} of ${checkin.progress.total} steps done`}>
               <strong>{checkin.progress.done}/{checkin.progress.total}</strong>
@@ -235,7 +235,7 @@ export default function HomePage() {
     goals: {
       node: (
         <div className="card">
-          <div className="card-head"><strong>Goals</strong><Link className="card-link" to="/goals">Goals</Link></div>
+          <div className="card-head"><h2 className="card-title">Goals</h2><Link className="card-link" to="/goals">Goals</Link></div>
           {goals.length === 0 ? (
             <EmptyState title="No goals yet" action={<Link className="btn" to="/goals">Plan a goal</Link>}>College, a purchase, or retirement.</EmptyState>
           ) : (
@@ -270,7 +270,7 @@ export default function HomePage() {
 
       {editing && (
         <div className="card edit-panel">
-          <div className="card-head"><strong>Edit Home</strong><button className="link" onClick={() => update(DEFAULT_LAYOUT.map((c) => ({ ...c })))}>Reset to default</button></div>
+          <div className="card-head"><h2 className="card-title">Edit Home</h2><button className="link" onClick={() => update(DEFAULT_LAYOUT.map((c) => ({ ...c })))}>Reset to default</button></div>
           <p className="muted">Use the arrows to reorder, the width button to make a card wider or narrower (computer screens), and Remove to take one off. This layout is saved on this device only.</p>
           {missing.length > 0
             ? <div className="row"><span className="muted">Add a card:</span>{missing.map((id) => <button key={id} onClick={() => update(addCard(layout, id))}>+ {TITLES[id]}</button>)}</div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { rovingKeys } from '../../ui/rovingKeys';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Priority } from '../../core/entities';
@@ -165,10 +166,10 @@ export default function TasksPage() {
       <div className="row spread"><h1 className="cal-title">Tasks</h1><button className="link" onClick={() => setManageLists(true)}>Lists…</button></div>
       <QuickAddBar />
 
-      <div className="tk-tabs" role="tablist" aria-label="Task views">
+      <div className="tk-tabs" role="tablist" aria-label="Task views" onKeyDown={rovingKeys}>
         {VIEWS.map((v) => {
           const n = v.id === 'today' ? badge.today : v.id === 'overdue' ? badge.overdue : v.id === 'waiting' ? badge.waiting : 0;
-          return <button key={v.id} role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => go(v.id)}>{v.label}{n > 0 && <span className="count">{n}</span>}</button>;
+          return <button key={v.id} role="tab" aria-selected={view === v.id} tabIndex={(view === v.id) ? 0 : -1} className={view === v.id ? 'on' : ''} onClick={() => go(v.id)}>{v.label}{n > 0 && <span className="count">{n}</span>}</button>;
         })}
       </div>
 
@@ -226,7 +227,7 @@ export default function TasksPage() {
 
       {groups.length === 0 ? <p className="muted tk-empty">{filtering ? 'No tasks match these filters.' : EMPTY[view]}</p> : groups.map((g) => (
         <section key={g.key} className={`tk-group ${g.tone ?? ''}`} aria-label={g.title}>
-          <h3>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="muted">· {g.tasks.length}</span></h3>
+          <h2>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="muted">· {g.tasks.length}</span></h2>
           <ul className="plain">
             {g.tasks.map((t) => (
               <TaskRow key={t.id} task={t} lists={lists} tags={tagList} projects={projects} today={today} selecting={selecting} selected={selected.has(t.id)}

@@ -1,13 +1,21 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatCents } from '../lib/money';
+
+/**
+ * A page normally has ONE h1. A page that is shown inside another titled page (the pages under Settings) says so by providing level 2,
+ * so its title is an h2 under the outer h1 instead of a second h1.
+ */
+export const PageHeadingLevel = createContext<1 | 2>(1);
 
 /** Page title, one line of explanation, and the page's main action on the right. Longer help goes in `about`, collapsed until asked for. */
 export function PageHeader({ title, description, actions, about, className = '' }: { title: string; description?: ReactNode; actions?: ReactNode; about?: ReactNode; className?: string }) {
+  const level = useContext(PageHeadingLevel);
+  const Title = level === 2 ? 'h2' : 'h1';
   return (
     <>
       <header className={`page-head ${className}`}>
         <div className="page-head-text">
-          <h1>{title}</h1>
+          <Title>{title}</Title>
           {description && <p className="page-desc">{description}</p>}
         </div>
         {actions && <div className="page-actions">{actions}</div>}

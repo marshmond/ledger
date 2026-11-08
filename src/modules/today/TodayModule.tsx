@@ -1,3 +1,4 @@
+import Main from '../../shell/Main';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ModuleBase } from '../../core/router';
@@ -29,11 +30,11 @@ export default function TodayModule() {
       <ToastProvider>
         <div className="shell-main">
           <BackupReminder />
-          <main className="main cal-main">
+          <Main className="main cal-main">
             <TodayDataProvider today={today}>
               <TodayScreen today={today} />
             </TodayDataProvider>
-          </main>
+          </Main>
         </div>
       </ToastProvider>
     </ModuleBase>
@@ -86,7 +87,7 @@ function TodayScreen({ today }: { today: string }) {
 
       {editing && (
         <div className="card edit-panel">
-          <div className="card-head"><strong>Edit Today</strong><button className="link" onClick={reset}>Reset to default</button></div>
+          <div className="card-head"><h2 className="card-title">Edit Today</h2><button className="link" onClick={reset}>Reset to default</button></div>
           <p className="muted">Use the arrows to reorder, the width button to make a card wider or narrower (computer screens), and Hide to take one off. The layout is saved on this device only. The two settings below are shared with your other devices.</p>
           <label className="f" style={{ maxWidth: 260 }}>Coming up looks ahead
             <select value={settings?.lookAheadDays ?? 7} onChange={(e) => void saveTodaySettings({ lookAheadDays: Number(e.target.value) })}>

@@ -1,7 +1,8 @@
+import Main from '../shell/Main';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ModuleBase, NavLink } from '../core/router';
 import { ToastProvider } from '../ui/Toast';
-import { PageHeader } from '../ui/components';
+import { PageHeader, PageHeadingLevel } from '../ui/components';
 import BackupReminder from '../shell/BackupReminder';
 import BackupPage from './BackupPage';
 import SyncPage from './SyncPage';
@@ -19,7 +20,7 @@ export default function SettingsPage() {
       <ModuleBase value="/settings">
         <div className="shell-main">
           <BackupReminder />
-          <main className="main">
+          <Main className="main">
             <PageHeader title="Settings" description="Which module opens first, colors and light/dark, backup and restore, device sync and Calendar options for the whole app. Each module keeps its own options inside the module." />
             <nav className="sectiontabs settings-tabs" aria-label="Settings pages">
               <NavLink to="/general" end className={({ isActive }) => (isActive ? "active" : "")}>General</NavLink>
@@ -28,6 +29,7 @@ export default function SettingsPage() {
               <NavLink to="/sync" end className={({ isActive }) => (isActive ? 'active' : '')}>Sync devices</NavLink>
               <NavLink to="/calendar" end className={({ isActive }) => (isActive ? "active" : "")}>Calendar</NavLink>
             </nav>
+            <PageHeadingLevel.Provider value={2}>
             <Routes>
               <Route path="general" element={<GeneralSettings />} />
               <Route path="appearance" element={<AppearanceCard />} />
@@ -36,7 +38,8 @@ export default function SettingsPage() {
               <Route path="calendar" element={<CalendarSettingsCard />} />
               <Route path="*" element={<Navigate to="/settings/backup" replace />} />
             </Routes>
-          </main>
+            </PageHeadingLevel.Provider>
+          </Main>
         </div>
       </ModuleBase>
     </ToastProvider>

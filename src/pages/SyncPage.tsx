@@ -4,10 +4,11 @@ import { clearConfig, engineFor, meta, readConfig, refreshConflicts, saveConfig,
 import { githubRemote, parseRepo } from '../lib/sync/github';
 import type { Conflict } from '../lib/sync/merge';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { db } from '../db';
 import { downloadText } from '../lib/download';
 import { listSnapshots, readSnapshot, restoreLostVersion, takeSnapshot } from '../lib/sync/safety';
-import { clearConflicts as clearConflictList, conflictKey, readConflicts, removeConflict } from '../lib/sync/conflicts';
+import { conflictKey, readConflicts, removeConflict, removeConflicts } from '../lib/sync/conflicts';
 
 /** The encrypted file passes this size: time to think about a faster way to sync (see docs/PHASE0-PLAN-2026-11-05.md). */
 const BIG_FILE = 5 * 1024 * 1024;
@@ -23,7 +24,9 @@ export default function SyncPage() {
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   // Display only: the list is long when many edits clashed. Every saved version is still kept; this only limits the rows drawn.
   const [showAll, setShowAll] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
+  // The saved versions the owner was looking at when they asked to clear (their keys). Only these are removed, never ones that arrived later.
+  const [clearKeys, setClearKeys] = useState<string[] | null>(null);
+  const [askStop, setAskStop] = useState(false);
   useEffect(() => { readConflicts(meta).then(setConflicts); }, [s.lastSyncedAt, s.configured, s.conflicts]);
 
   const [snaps, setSnaps] = useState<Awaited<ReturnType<typeof listSnapshots>>>([]);
@@ -41,11 +44,14 @@ export default function SyncPage() {
       setErr(e instanceof Error ? e.message : String(e));
     }
   }
-  async function clearConflicts() {
-    await clearConflictList(meta);
-    setConflicts([]);
-    setConfirmClear(false);
+  /** Removes exactly the versions that were listed in the question. Anything a sync added since stays, and is mentioned. */
+  async function clearConflicts(keys: string[]) {
+    const removed = await removeConflicts(meta, keys);
+    const rest = await readConflicts(meta);
+    setConflicts(rest);
     refreshConflicts();
+    setClearKeys(null);
+    setMsg(rest.length > 0 ? `Removed ${removed} saved version${removed === 1 ? '' : 's'}. ${rest.length} newer one${rest.length === 1 ? ' that arrived' : 's that arrived'} while you were deciding ${rest.length === 1 ? 'was' : 'were'} kept.` : `Removed ${removed} saved version${removed === 1 ? '' : 's'}.`);
   }
   async function downloadSnap(key: string) {
     const snap = await readSnapshot(meta, key);
@@ -113,10 +119,10 @@ export default function SyncPage() {
   }
 
   async function disconnect() {
-    if (!confirm('Stop syncing this device? Your data here stays, and the copy on GitHub is untouched.')) return;
     const c = readConfig();
     if (c) await engineFor(c).forget();
     clearConfig();
+    setAskStop(false);
     setMsg('Sync is off for this device.');
   }
 
@@ -135,7 +141,32 @@ export default function SyncPage() {
       <PageHeader title="Sync devices" description="Keep your phone and computer in step, encrypted." about={<>Keep your phone and computer in step. Your data is encrypted on this device with your sync passphrase, then stored as one file in a private repository
         of yours on GitHub. GitHub only ever sees scrambled data. Each device syncs when you open the app, when you come back to it, and a few seconds after you change something.</>} />
       {msg && <div className="ok" role="status">{msg}</div>}
-      {err && <div className="error" role="alert">{err}</div>}
+      {err && <div className="error" id="sync-error" role="alert">{err}</div>}
+
+      {clearKeys && (
+        <ConfirmDialog
+          title={`Remove ${clearKeys.length === 1 ? 'this saved version' : `all ${clearKeys.length} saved versions`}?`}
+          confirmLabel={clearKeys.length === 1 ? 'Remove it for good' : 'Remove them for good'}
+          busyLabel="Removing…"
+          onCancel={() => setClearKeys(null)}
+          onConfirm={() => clearConflicts(clearKeys)}
+        >
+          <p>These are the other versions of edits that lost a tie between your devices. Once removed, you can no longer put them back.</p>
+          <p>Your current data, and the copy on your other devices, are not changed. Only the versions listed on this page now are removed; any that arrive later are kept.</p>
+        </ConfirmDialog>
+      )}
+      {askStop && (
+        <ConfirmDialog
+          title="Stop syncing this device?"
+          tone="primary"
+          confirmLabel="Stop syncing"
+          onCancel={() => setAskStop(false)}
+          onConfirm={disconnect}
+        >
+          <p>Your data on this device stays exactly as it is, and the copy on GitHub is untouched.</p>
+          <p>The sync token and passphrase are forgotten on this device, so you would type them in again to turn sync back on.</p>
+        </ConfirmDialog>
+      )}
 
       {s.configured ? (
         <>
@@ -151,7 +182,7 @@ export default function SyncPage() {
                 {s.stats.fileBytes > BIG_FILE && ' The file is getting large; a faster way to sync may be needed soon.'}
               </p>
             )}
-            {s.state === 'error' && <div className="error">{s.error}</div>}
+            {s.state === 'error' && <div className="error" role="status">{s.error}</div>}
             <div className="row">
               <button className="primary" disabled={s.state === 'syncing'} onClick={() => syncNow()}>Sync now</button>
               <label className="chk"><input type="checkbox" checked={s.auto} onChange={(e) => { const c = readConfig(); if (c) saveConfig({ ...c, auto: e.target.checked }); }} /> Sync automatically</label>
@@ -162,15 +193,7 @@ export default function SyncPage() {
             <div className="card" id="conflicts">
               <div className="row spread">
                 <strong>Edits that lost a tie ({conflicts.length})</strong>
-                {confirmClear ? (
-                  <span className="row">
-                    <span>Remove all {conflicts.length} saved versions for good?</span>
-                    <button className="danger" onClick={clearConflicts}>Yes, remove all</button>
-                    <button onClick={() => setConfirmClear(false)}>Keep them</button>
-                  </span>
-                ) : (
-                  <button className="link" onClick={() => setConfirmClear(true)}>clear this list</button>
-                )}
+                <button className="link" onClick={() => setClearKeys(conflicts.map(conflictKey))}>clear this list</button>
               </div>
               <p className="muted">You and another device both changed these since the last sync. The later edit was kept. The other version is saved here so nothing is lost: put it back if you prefer it.</p>
               <ul className="plain">
@@ -214,7 +237,7 @@ export default function SyncPage() {
           <div className="card">
             <strong>Turn off</strong>
             <p className="muted">Stops syncing on this device only. Nothing is deleted. To use sync again here you would replace this device’s data with the synced copy.</p>
-            <button onClick={disconnect}>Stop syncing on this device</button>
+            <button onClick={() => setAskStop(true)}>Stop syncing on this device</button>
           </div>
         </>
       ) : (
@@ -230,9 +253,9 @@ export default function SyncPage() {
               <li>Fill in the boxes below on this device. The token and passphrase are kept in this browser only. Choose the sync passphrase once and use the same one on every device; it cannot be recovered.</li>
             </ol>
             <div className="row">
-              <label className="f">Repository<input value={repoText} onChange={(e) => setRepoText(e.target.value)} placeholder="owner/ledger-data" autoComplete="off" /></label>
-              <label className="f">Token<input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></label>
-              <label className="f">Sync passphrase<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+              <label className="f">Repository<input aria-invalid={err ? true : undefined} aria-describedby={err ? 'sync-error' : undefined} value={repoText} onChange={(e) => setRepoText(e.target.value)} placeholder="owner/ledger-data" autoComplete="off" /></label>
+              <label className="f">Token<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'sync-error' : undefined} value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></label>
+              <label className="f">Sync passphrase<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'sync-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
               <button className="primary" disabled={busy} onClick={check}>{busy && !probe ? 'Checking…' : 'Check connection'}</button>
             </div>
           </div>

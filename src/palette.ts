@@ -99,7 +99,9 @@ export const PRESETS: PaletteDef[] = [
 
 /** The original look, as the page's default styles define it (used as a starting point for your own colors). */
 export const CLASSIC: { light: Colors; dark: Colors } = {
-  light: { bg: '#FFFFFF', card: '#F8F9FB', fg: '#1C2024', muted: '#667085', line: '#E4E7EC', accent: '#1F6FEB', pos: '#1B7F3B', neg: '#C92A2A', warn: '#B26A00', sideBg: '#F8F9FB', sideFg: '#1C2024', sideActive: '#1F6FEB' },
+  // ST-S3 (AX-04): these light values now match the Classic stylesheet (src/styles.css), which was darkened a little for contrast. Before, Classic's own values here
+  // (accent #1F6FEB, muted #667085, warn #B26A00) fell under 4.5:1 for links and quiet text, and a custom palette started from them inherited that.
+  light: { bg: '#FFFFFF', card: '#F8F9FB', fg: '#1C2024', muted: '#5D6779', line: '#E4E7EC', accent: '#1A5FD0', pos: '#187636', neg: '#C02424', warn: '#8C5200', sideBg: '#F8F9FB', sideFg: '#1C2024', sideActive: '#1A5FD0' },
   dark: { bg: '#12151A', card: '#1A1E25', fg: '#E8EAED', muted: '#98A2B3', line: '#2A2F38', accent: '#5B9BFF', pos: '#56D364', neg: '#FF7B72', warn: '#E3B341', sideBg: '#1A1E25', sideFg: '#E8EAED', sideActive: '#5B9BFF' },
 };
 

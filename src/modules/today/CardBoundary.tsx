@@ -9,7 +9,7 @@ export default class CardBoundary extends Component<{ title: string; children: R
     if (!this.state.failed) return this.props.children;
     return (
       <section className="card" role="alert">
-        <div className="card-head"><strong>{this.props.title}</strong></div>
+        <div className="card-head"><h2 className="card-title">{this.props.title}</h2></div>
         <p className="muted" style={{ margin: 0 }}>This card could not be shown. The rest of Today still works.</p>
         <button className="link" onClick={() => this.setState({ failed: false })}>Try again</button>
       </section>

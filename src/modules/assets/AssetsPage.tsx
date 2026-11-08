@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { rovingKeys } from '../../ui/rovingKeys';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate } from '../../core/router';
@@ -82,9 +83,9 @@ export default function AssetsPage() {
         description="Every asset, as a tree by where things are or as a flat list. Open one for its maintenance, history, warranties and spending."
         actions={<button className="btn primary" onClick={() => setParams({ new: '1' })}>Add asset</button>}
       />
-      <div className="as-tabs" role="tablist" aria-label="Show">
+      <div className="as-tabs" role="tablist" aria-label="Show" onKeyDown={rovingKeys}>
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} tabIndex={(tab === t.id) ? 0 : -1} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
             {t.label} <span className="count">{counts[t.id]}</span>
           </button>
         ))}

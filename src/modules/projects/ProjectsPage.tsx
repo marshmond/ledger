@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { rovingKeys } from '../../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate } from '../../core/router';
 import { dayLabel } from '../../core/time';
@@ -58,9 +59,9 @@ export default function ProjectsPage() {
         description="Renovations, trips and other big jobs: a budget made of lines, and the people involved."
         actions={<button className="btn primary" onClick={() => setCreating(true)}>New project</button>}
       />
-      <div className="pj-tabs" role="tablist" aria-label="Show">
+      <div className="pj-tabs" role="tablist" aria-label="Show" onKeyDown={rovingKeys}>
         {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+          <button key={t.id} role="tab" aria-selected={tab === t.id} tabIndex={(tab === t.id) ? 0 : -1} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
             {t.label} <span className="count">{counts[t.id]}</span>
           </button>
         ))}

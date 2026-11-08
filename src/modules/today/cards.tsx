@@ -18,7 +18,7 @@ function AgendaCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
   useReportEmpty(!!items && list.length === 0, reportEmpty);
   return (
     <section className="card" aria-label="Today">
-      <div className="card-head"><strong>Today</strong><a className="card-link" href="#/calendar?v=agenda">Calendar</a></div>
+      <div className="card-head"><h2 className="card-title">Today</h2><a className="card-link" href="#/calendar?v=agenda">Calendar</a></div>
       {!items ? <Loading /> : list.length === 0
         ? <p className="muted" style={{ margin: 0 }}>Nothing scheduled for today.</p>
         : <ul className="plain td-list">{list.map((i) => <TodayRow key={i.key} item={i} hideAmounts={hideAmounts} />)}</ul>}
@@ -35,7 +35,7 @@ function OverdueCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
   useReportEmpty(!!items && total === 0 && older.length === 0, reportEmpty);
   return (
     <section className="card" aria-label="Overdue">
-      <div className="card-head"><strong>Overdue</strong>{total > 0 && <span className="badge">{total}</span>}</div>
+      <div className="card-head"><h2 className="card-title">Overdue</h2>{total > 0 && <span className="badge">{total}</span>}</div>
       {!items ? <Loading /> : (
         <>
           {total === 0 && <p className="muted" style={{ margin: 0 }}>Nothing overdue in the last {overdueDays} days.</p>}
@@ -71,7 +71,7 @@ function UpcomingCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
   useReportEmpty(!!items && days.length === 0, reportEmpty);
   return (
     <section className="card" aria-label="Coming up">
-      <div className="card-head"><strong>Coming up</strong><span className="muted">next {lookAheadDays} days</span></div>
+      <div className="card-head"><h2 className="card-title">Coming up</h2><span className="muted">next {lookAheadDays} days</span></div>
       {!items ? <Loading /> : days.length === 0
         ? <p className="muted" style={{ margin: 0 }}>Nothing in the next {lookAheadDays} days.</p>
         : days.map((d) => (
@@ -90,7 +90,7 @@ function RemindersCard({ hideAmounts, reportEmpty }: TodayCardProps) {
   useReportEmpty(!!items && list.length === 0, reportEmpty);
   return (
     <section className="card" aria-label="Reminders due">
-      <div className="card-head"><strong>Reminders due</strong>{list.length > 0 && <span className="badge">{list.length}</span>}</div>
+      <div className="card-head"><h2 className="card-title">Reminders due</h2>{list.length > 0 && <span className="badge">{list.length}</span>}</div>
       {!items ? <Loading /> : list.length === 0
         ? <p className="muted" style={{ margin: 0 }}>No reminders are due right now.</p>
         : <ul className="plain td-list">{list.map((i) => <TodayRow key={i.key} item={i} hideAmounts={hideAmounts} />)}</ul>}

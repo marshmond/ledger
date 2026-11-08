@@ -10,6 +10,7 @@ import PlainBackupCard, { RestoreConfirm } from './PlainBackupCard';
 import { buildBackup, localDay, prepareEncryptedRestore, recordBackup, restoreWithSafetyCopy, type BackupSummary } from '../lib/backupFile';
 import type { BackupFile } from '../lib/backup';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import {
   AUTO_BACKUP_KEEP, AUTO_BACKUP_MIN_PASSPHRASE, autoBackupNow, clearAutoBackup, readAutoBackup, readAutoStatus, saveAutoBackup,
 } from '../lib/autoBackup';
@@ -48,6 +49,7 @@ function AutoBackupCard() {
   const [again, setAgain] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [askChange, setAskChange] = useState(false);
 
   if (!sync) {
     return (
@@ -65,7 +67,12 @@ function AutoBackupCard() {
     setErr('');
     if (pass.length < AUTO_BACKUP_MIN_PASSPHRASE) return setErr(`Use a passphrase of at least ${AUTO_BACKUP_MIN_PASSPHRASE} characters. You cannot recover the backups without it.`);
     if (pass !== again) return setErr('The two passphrases are different.');
-    if (cfg && cfg.passphrase !== pass && !confirm('Copies already saved stay locked with the OLD passphrase, so keep it. Change to the new one?')) return;
+    // Replacing a working passphrase gets a real question first (the old copies stay locked with the old one). The new passphrase is never shown in it.
+    if (cfg && cfg.passphrase !== pass) return setAskChange(true);
+    applyPassphrase();
+  }
+
+  function applyPassphrase() {
     saveAutoBackup({ passphrase: pass });
     setCfg({ passphrase: pass });
     setPass('');
@@ -99,8 +106,8 @@ function AutoBackupCard() {
           <details style={{ marginTop: 8 }}>
             <summary>Change the passphrase</summary>
             <div className="row">
-              <label className="f">New passphrase<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
-              <label className="f">Again<input type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="off" /></label>
+              <label className="f">New passphrase<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'auto-backup-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+              <label className="f">Again<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'auto-backup-error' : undefined} value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="off" /></label>
               <button onClick={turnOn}>Change</button>
             </div>
           </details>
@@ -108,12 +115,23 @@ function AutoBackupCard() {
         </>
       ) : (
         <div className="row">
-          <label className="f">Passphrase<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
-          <label className="f">Again<input type="password" value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="off" /></label>
+          <label className="f">Passphrase<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'auto-backup-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+          <label className="f">Again<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'auto-backup-error' : undefined} value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="off" /></label>
           <button className="primary" onClick={turnOn}>Turn on automatic backups</button>
         </div>
       )}
-      {err && <div className="error">{err}</div>}
+      {err && <div className="error" id="auto-backup-error" role="alert">{err}</div>}
+      {askChange && (
+        <ConfirmDialog
+          title="Change the backup passphrase?"
+          tone="primary"
+          confirmLabel="Change passphrase"
+          onCancel={() => setAskChange(false)}
+          onConfirm={() => { applyPassphrase(); setAskChange(false); }}
+        >
+          <p>Copies already saved in your repository stay locked with the <strong>old</strong> passphrase, so keep it somewhere safe. New copies will use the new one.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
@@ -194,18 +212,18 @@ export default function BackupPage() {
         </p>
         <div className="row">
           <label className="f">Passphrase
-            <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" />
+            <input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'backup-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" />
           </label>
           <button className="primary" onClick={doExport}>Export encrypted backup</button>
         </div>
         <div className="row" style={{ marginTop: 12 }}>
           <label className="f">Restore an encrypted backup (replaces everything on this device)
-            <input key={fileKey} type="file" accept=".ledgerbackup,application/json" disabled={busy} onChange={(e) => doImport(e.target.files?.[0])} />
+            <input key={fileKey} id="encrypted-restore-file" type="file" accept=".ledgerbackup,application/json" disabled={busy} onChange={(e) => doImport(e.target.files?.[0])} />
           </label>
         </div>
-        {pending && <RestoreConfirm encrypted pending={pending} busy={busy} onConfirm={replaceFromEncrypted} onCancel={() => { setPending(null); setFileKey((k) => k + 1); }} />}
-        {msg && <div className="ok">{msg}</div>}
-        {err && <div className="error">{err}</div>}
+        {pending && <RestoreConfirm encrypted pending={pending} busy={busy} onConfirm={replaceFromEncrypted} onCancel={() => { setPending(null); setFileKey((k) => k + 1); setTimeout(() => document.getElementById('encrypted-restore-file')?.focus(), 0); }} />}
+        {msg && <div className="ok" role="status">{msg}</div>}
+        {err && <div className="error" id="backup-error" role="alert">{err}</div>}
       </div>
 
       <AutoBackupCard />

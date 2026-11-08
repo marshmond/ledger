@@ -33,7 +33,7 @@ function AttentionCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
 
   return (
     <section className="card" aria-label="Needs attention">
-      <div className="card-head"><strong>Needs attention</strong>{shown.length > 0 && <span className="badge">{shown.length}</span>}<a className="card-link" href="#/ledger">Ledger Home</a></div>
+      <div className="card-head"><h2 className="card-title">Needs attention</h2>{shown.length > 0 && <span className="badge">{shown.length}</span>}<a className="card-link" href="#/ledger">Ledger Home</a></div>
       {shown.length === 0 ? (
         <p className="muted" style={{ margin: 0 }}>{hasData ? 'Nothing needs attention right now.' : 'Alerts will show here once you have entered some data in Ledger.'}</p>
       ) : (
@@ -102,7 +102,7 @@ function CashCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
   const money = (c: number) => (hideAmounts ? '$••••' : formatCents(c));
   return (
     <section className="card" aria-label="Cash outlook">
-      <div className="card-head"><strong>Cash outlook</strong><a className="card-link" href="#/ledger/forecast">Forecast</a></div>
+      <div className="card-head"><h2 className="card-title">Cash outlook</h2><a className="card-link" href="#/ledger/forecast">Forecast</a></div>
       <div className={`td-cash-low ${o.below ? 'neg' : ''}`}>{money(o.lowCents)}</div>
       <div className="muted">Lowest point in the next 90 days, on {dayLabel(o.lowDate)}</div>
       <p className={o.below ? 'warn' : 'ok'} style={{ margin: 'var(--sp-2) 0 0' }}>

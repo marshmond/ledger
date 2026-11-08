@@ -1,3 +1,4 @@
+import Main from '../../shell/Main';
 import { Route, Routes } from 'react-router-dom';
 import { ModuleBase } from '../../core/router';
 import BackupReminder from '../../shell/BackupReminder';
@@ -17,14 +18,14 @@ export default function AssetsModule() {
       <ToastProvider>
         <div className="shell-main">
           <BackupReminder />
-          <main className="main as-main">
+          <Main className="main as-main">
             <Routes>
               <Route index element={<OverviewPage />} />
               <Route path="list" element={<AssetsPage />} />
               <Route path=":id" element={<AssetPage />} />
               <Route path="*" element={<OverviewPage />} />
             </Routes>
-          </main>
+          </Main>
         </div>
       </ToastProvider>
     </ModuleBase>

@@ -8,7 +8,9 @@ import type { Txn } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { finalizeReconcile, reconcileCheck, type ReconcileResult } from '../lib/ledger';
 import Modal from '../shell/Modal';
-import { blockedReasons, blocksDeletion, confirmText, deleteAccountWithTransactions, readAccountDependents, type AccountDependents } from '../lib/accountDependents';
+import { blockedReasons, blocksDeletion, confirmParts, deleteAccountWithTransactions, readAccountDependents, type AccountDependents } from '../lib/accountDependents';
+import ConfirmDialog from '../shell/ConfirmDialog';
+import { txnRowLabel } from '../lib/a11yLabels';
 import { findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
 import TxnForm from './TxnForm';
 import TxnDeleteDialog from './TxnDeleteDialog';
@@ -25,6 +27,8 @@ export default function LedgerPage() {
   const id = Number(useParams().id);
   const nav = useNavigate();
   const [blocked, setBlocked] = useState<AccountDependents | null>(null);
+  // The account-deletion question (what depends on the account was read just before it opened; the deletion reads it again).
+  const [confirmingDelete, setConfirmingDelete] = useState<AccountDependents | null>(null);
   const account = useLiveQuery(() => db.accounts.get(id), [id]);
   const txns = useLiveQuery(() => db.txns.where('accountId').equals(id).toArray(), [id]);
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
@@ -130,16 +134,16 @@ export default function LedgerPage() {
           <label className="f">Ending balance<input value={recBal} onChange={(e) => setRecBal(e.target.value)} inputMode="decimal" /></label>
           <button onClick={runReconcile}>Check</button>
         </div>
-        {recErr && <div className="error">{recErr}</div>}
+        {recErr && <div className="error" role="alert">{recErr}</div>}
         {rec && (
           <div style={{ marginTop: 8 }}>
             <div>Cleared balance through {recDate}: <strong>{formatCents(isCard ? -rec.clearedBalanceCents : rec.clearedBalanceCents)}</strong></div>
             {rec.differenceCents === 0 ? (
-              <div className="ok">
+              <div className="ok" role="status">
                 Balanced. <button onClick={async () => { await finalizeReconcile(db, rec.clearedTxnIds, id); setRec(null); }}>Lock {rec.clearedTxnIds.length} cleared transactions as reconciled</button>
               </div>
             ) : (
-              <div className="warn">
+              <div className="warn" role="status">
                 Off by {formatCents(Math.abs(rec.differenceCents))}. Look for a missing or duplicated transaction, or one still marked pending that has cleared.
               </div>
             )}
@@ -218,11 +222,12 @@ export default function LedgerPage() {
                 <td className="c-act">
                   <div className="row" style={{ justifyContent: 'inherit', flexWrap: 'nowrap' }}>
                     <TaskActions module="ledger" id={`txn:${t.id}`} label={`${t.payee || 'Transaction'} ${t.date}`} />
-                    {t.status === 'pending' && <button className="link" onClick={() => updateTxn(db, t.id!, { status: 'cleared' })}>Clear</button>}
-                    <button className="link" onClick={() => { setAdding(false); setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
-                    {t.transferTxnId && <button className="link" onClick={() => unlinkTransfer(db, t.id!)}>Unlink</button>}
+                    {t.status === 'pending' && <button className="link" aria-label={txnRowLabel('Clear', t.payee, t.date)} onClick={() => updateTxn(db, t.id!, { status: 'cleared' })}>Clear</button>}
+                    <button className="link" aria-label={txnRowLabel('Edit', t.payee, t.date)} onClick={() => { setAdding(false); setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
+                    {t.transferTxnId && <button className="link" aria-label={txnRowLabel('Unlink', t.payee, t.date)} onClick={() => unlinkTransfer(db, t.id!)}>Unlink</button>}
                     <button
                       className="link danger"
+                      aria-label={txnRowLabel('Delete', t.payee, t.date)}
                       onClick={() => setDeletingTxn(t.id!)}
                     >Delete</button>
                   </div>
@@ -244,14 +249,34 @@ export default function LedgerPage() {
             // ST-S1 (DI-01): look at what still depends on this account first. Scheduled items and linked loans BLOCK the deletion.
             const dep = await readAccountDependents(db, id);
             if (blocksDeletion(dep)) return setBlocked(dep);
-            if (!confirm(confirmText(account.name, dep))) return;
-            const res = await deleteAccountWithTransactions(db, id); // re-checks inside one transaction
-            if (!res.ok) return setBlocked(res.dependents);
-            nav('/');
+            setConfirmingDelete(dep);
           }}
         >Delete account</button>
       </div>
       {deletingTxn !== null && <TxnDeleteDialog ids={[deletingTxn]} subject="transaction" onClose={() => setDeletingTxn(null)} onDeleted={() => setDeletingTxn(null)} />}
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title={`Delete "${account.name}"?`}
+          confirmLabel="Delete account"
+          busyLabel="Deleting…"
+          onCancel={() => setConfirmingDelete(null)}
+          onConfirm={async () => {
+            const res = await deleteAccountWithTransactions(db, id); // re-checks inside one transaction, so an out-of-date question cannot get around a block
+            setConfirmingDelete(null);
+            if (!res.ok) return setBlocked(res.dependents);
+            nav('/');
+          }}
+        >
+          <p><strong>{confirmParts(account.name, confirmingDelete).headline}</strong></p>
+          {confirmParts(account.name, confirmingDelete).notes.length > 0 && (
+            <>
+              <p>Also:</p>
+              <ul>{confirmParts(account.name, confirmingDelete).notes.map((n) => <li key={n}>{n}</li>)}</ul>
+            </>
+          )}
+        </ConfirmDialog>
+      )}
 
       {blocked && (
         <Modal title="This account cannot be deleted yet" onClose={() => setBlocked(null)}>

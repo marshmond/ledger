@@ -1,3 +1,4 @@
+import Main from '../../shell/Main';
 import { Route, Routes, useParams } from 'react-router-dom';
 import { ModuleBase } from '../../core/router';
 import BackupReminder from '../../shell/BackupReminder';
@@ -19,7 +20,7 @@ export default function BillsModule() {
       <ToastProvider>
         <div className="shell-main">
           <BackupReminder />
-          <main className="main bl-main">
+          <Main className="main bl-main">
             <Routes>
               <Route index element={<OverviewPage />} />
               <Route path="list" element={<ListPage />} />
@@ -28,7 +29,7 @@ export default function BillsModule() {
               <Route path="o/:id" element={<Obligation />} />
               <Route path="*" element={<OverviewPage />} />
             </Routes>
-          </main>
+          </Main>
         </div>
       </ToastProvider>
     </ModuleBase>

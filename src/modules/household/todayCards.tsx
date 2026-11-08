@@ -22,12 +22,12 @@ export function todayRows(c: TodayCounts): { id: string; text: string }[] {
 /** The pure view: loading, unavailable (a discreet notice and a link, never a zero), or the counts (hidden by the caller when there are none). */
 export function HouseholdCardView({ state }: { state: TodayState }) {
   const label = 'Household finances needing attention';
-  if (state === undefined) return <section className="card" aria-label={label}><div className="card-head"><strong>Household finances</strong></div><p className="muted" style={{ margin: 0 }}>Loading…</p></section>;
-  if (state === 'unavailable') return <section className="card" aria-label={label}><div className="card-head"><strong>Household finances</strong><a className="card-link" href="#/household">Open</a></div><p className="muted" role="status" style={{ margin: 0 }}>Household figures could not be read just now, so nothing is shown. <a href="#/household">Look at the page</a>.</p></section>;
+  if (state === undefined) return <section className="card" aria-label={label}><div className="card-head"><h2 className="card-title">Household finances</h2></div><p className="muted" style={{ margin: 0 }}>Loading…</p></section>;
+  if (state === 'unavailable') return <section className="card" aria-label={label}><div className="card-head"><h2 className="card-title">Household finances</h2><a className="card-link" href="#/household">Open</a></div><p className="muted" role="status" style={{ margin: 0 }}>Household figures could not be read just now, so nothing is shown. <a href="#/household">Look at the page</a>.</p></section>;
   const rows = todayRows(state);
   return (
     <section className="card" aria-label={label}>
-      <div className="card-head"><strong>Household finances</strong>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/household">Open</a></div>
+      <div className="card-head"><h2 className="card-title">Household finances</h2>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/household">Open</a></div>
       <ul className="plain td-list">{rows.map((r) => <li key={r.id} className="td-proj"><a href="#/household">{r.text}</a></li>)}</ul>
     </section>
   );

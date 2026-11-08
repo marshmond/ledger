@@ -21,6 +21,9 @@ export default function TxnDeleteDialog({ ids, subject, onClose, onDeleted }: { 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const alive = useRef(true);
+  // Cancel takes focus once the dialog is up (set after Modal has set itself up, so it holds even when development re-runs effects).
+  const cancel = useRef<HTMLButtonElement>(null);
+  useEffect(() => { cancel.current?.focus(); }, []);
   // A caller may pass a fresh array each render; only a change in WHICH transactions re-runs the check.
   const idsRef = useRef(ids);
   idsRef.current = ids;
@@ -112,7 +115,7 @@ export default function TxnDeleteDialog({ ids, subject, onClose, onDeleted }: { 
         )}
         {error && <div className="banner bad" role="alert">{error}</div>}
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} autoFocus>Cancel</button>
+          <button ref={cancel} onClick={onClose}>Cancel</button>
           <button className="danger" disabled={!canDelete} onClick={() => void confirmDelete()}>{busy ? 'Deleting…' : n > 1 ? `Delete ${n} transactions` : 'Delete'}</button>
         </div>
       </div>

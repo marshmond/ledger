@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { rovingKeys } from '../ui/rovingKeys';
 import { useEdgeFade } from '../ui/components';
 
 const KEY = 'ledger-tabs';
@@ -39,9 +40,9 @@ export default function PageTabs({ id, tabs, jumpTo }: { id: string; tabs: TabDe
   return (
     <>
       <div className={`pagetabs-wrap ${fade.className}`}>
-      <div className="pagetabs" role="tablist" ref={fade.ref}>
+      <div className="pagetabs" role="tablist" onKeyDown={rovingKeys} ref={fade.ref}>
         {tabs.map((t) => (
-          <button key={t.id} role="tab" aria-selected={t.id === active.id} className={t.id === active.id ? 'on' : ''} onClick={() => { setCur(t.id); write(id, t.id); }}>{t.label}</button>
+          <button key={t.id} role="tab" aria-selected={t.id === active.id} tabIndex={(t.id === active.id) ? 0 : -1} className={t.id === active.id ? 'on' : ''} onClick={() => { setCur(t.id); write(id, t.id); }}>{t.label}</button>
         ))}
       </div>
       </div>

@@ -36,7 +36,7 @@ export default function AgendaView({ from, days, today, items, onOpenItem, onCre
     <div className="cal-agenda">
       {overdue.length > 0 && (
         <section className="cal-ag-day overdue-section" aria-label="Overdue">
-          <h3>Overdue <span className="muted">· {overdue.length}</span></h3>
+          <h2>Overdue <span className="muted">· {overdue.length}</span></h2>
           <ul className="plain">
             {overdue.map((i) => (
               <li key={i.key}>
@@ -56,7 +56,7 @@ export default function AgendaView({ from, days, today, items, onOpenItem, onCre
       {groups.length === 0 && <p className="muted cal-empty">Nothing on the calendar from {dayLabel(from, { year: true })} to {dayLabel(to, { year: true })}. <button className="link" onClick={() => onCreate(from > today ? from : today)}>Add an event</button></p>}
       {groups.map(({ d, list }) => (
         <section key={d} className={`cal-ag-day ${d === today ? 'today' : ''}`} aria-label={dayLabel(d, { weekday: 'long', year: true })}>
-          <h3>{dayLabel(d, { weekday: 'long' })}{d === today && <span className="badge scheduled">Today</span>}</h3>
+          <h2>{dayLabel(d, { weekday: 'long' })}{d === today && <span className="badge scheduled">Today</span>}</h2>
           <ul className="plain">{list.map((i) => <AgendaRow key={i.key} item={i} onOpen={onOpenItem} />)}</ul>
         </section>
       ))}

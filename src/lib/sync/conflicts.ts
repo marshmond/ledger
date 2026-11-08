@@ -72,3 +72,18 @@ export function clearConflicts(meta: MetaStore): Promise<void> {
     await meta.set(CONFLICTS_KEY, []);
   });
 }
+
+/**
+ * Removes exactly the entries whose keys are given, in ONE step, and returns how many were removed. This is what the Sync page's "clear this list"
+ * question uses: the keys are the versions the owner was looking at when they confirmed, so a version that a sync added a moment later is never
+ * removed without being seen. Reads the current list first, like `removeConflict`.
+ */
+export function removeConflicts(meta: MetaStore, keys: string[]): Promise<number> {
+  return serial(async () => {
+    const drop = new Set(keys);
+    const have = await readConflicts(meta);
+    const rest = have.filter((c) => !drop.has(conflictKey(c)));
+    if (rest.length !== have.length) await meta.set(CONFLICTS_KEY, rest);
+    return have.length - rest.length;
+  });
+}

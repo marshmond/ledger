@@ -103,10 +103,16 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={onKey}
+        role="combobox"
+        aria-expanded={total > 0}
+        aria-haspopup="listbox"
+        aria-autocomplete="list"
         aria-controls="search-results"
         aria-activedescendant={cur < total ? `hit-${cur}` : undefined}
       />
-      <ul className="hits" id="search-results" role="listbox" data-ms={ms ?? ''}>
+      {/* Said once the answers are in, so a screen reader hears how many there are without having to move through them. */}
+      <div className="sr-only" role="status" aria-live="polite">{q.trim() === '' || busy ? '' : total === 0 ? 'No results' : `${total} result${total === 1 ? '' : 's'}. Use the up and down arrow keys, then Enter.`}</div>
+      <ul className="hits" id="search-results" role="listbox" aria-label="Search results" data-ms={ms ?? ''}>
         {q.trim() === '' && <li className="muted hint">Try “budget”, a task, an event, a payee, a ticker like VTI, or an amount like 45.20.</li>}
         {actions.length > 0 && <li className="group" role="presentation">Actions</li>}
         {actions.map((a, i) => (

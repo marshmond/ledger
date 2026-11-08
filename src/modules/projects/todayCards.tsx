@@ -20,7 +20,7 @@ function ProjectsCard({ today, reportEmpty }: TodayCardProps) {
   const shown = list.slice(0, MAX_ROWS);
   return (
     <section className="card" aria-label="Projects needing attention">
-      <div className="card-head"><strong>Projects</strong>{list.length > 0 && <span className="badge">{list.length}</span>}<a className="card-link" href="#/projects">All projects</a></div>
+      <div className="card-head"><h2 className="card-title">Projects</h2>{list.length > 0 && <span className="badge">{list.length}</span>}<a className="card-link" href="#/projects">All projects</a></div>
       {!ready ? <p className="muted" style={{ margin: 0 }}>Loading…</p> : (
         <>
           <ul className="plain td-list">

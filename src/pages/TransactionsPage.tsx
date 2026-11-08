@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
+import { txnRowLabel } from '../lib/a11yLabels';
 import { Link } from '../core/router';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSearchParams } from 'react-router-dom';
@@ -306,7 +307,7 @@ export default function TransactionsPage() {
             {pageRows.map(({ txn: t, accountName, categoryLabel }) => (
               <Fragment key={t.id}>
               <tr className={sel.has(t.id!) ? 'selected' : ''}>
-                <td className="c-sel"><input type="checkbox" aria-label={`Select ${t.payee || 'transaction'}`} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></td>
+                <td className="c-sel"><input type="checkbox" aria-label={txnRowLabel('Select', t.payee, t.date)} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></td>
                 <td className="c-date">{t.date}</td>
                 <td className="c-acct">{accountName}</td>
                 <td className="c-payee">
@@ -319,9 +320,10 @@ export default function TransactionsPage() {
                 <td className={`num c-amt ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{signedCents(t.amountCents)}</td>
                 <td className="c-status"><span className={`badge ${t.status}`}>{t.status}</span></td>
                 <td className="c-act">
-                  <button className="link" onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
+                  <button className="link" aria-label={txnRowLabel('Edit', t.payee, t.date)} onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
                   <button
                     className="link danger"
+                    aria-label={txnRowLabel('Delete', t.payee, t.date)}
                     onClick={() => setDeleting({ ids: [t.id!], subject: 'transaction' })}
                   >Delete</button>
                 </td>

@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { allModules, lastModuleId } from '../core/registry';
 import { loadShellSettings, resolveLanding, saveShellSettings } from '../core/shellSettings';
+import DevicePreferencesCard from './DevicePreferencesCard';
 
 /** App-wide options: for now, which module the app opens to. Saved in the settings table, so it follows you to your other devices. */
 export default function GeneralSettings() {
@@ -10,8 +11,9 @@ export default function GeneralSettings() {
   const ids = mods.map((m) => m.id);
   const value = s.landing === 'last' || ids.includes(s.landing) ? s.landing : 'today';
   return (
+    <>
     <div className="card">
-      <div className="card-head"><strong>When the app opens</strong></div>
+      <div className="card-head"><h2 className="card-title">When the app opens</h2></div>
       <label className="f">Open to
         <select value={value} onChange={(e) => void saveShellSettings({ landing: e.target.value })}>
           {mods.map((m) => <option key={m.id} value={m.id}>{m.id === 'today' ? 'Today (recommended)' : m.name}</option>)}
@@ -24,5 +26,7 @@ export default function GeneralSettings() {
         This choice is shared with your other devices.
       </p>
     </div>
+    <DevicePreferencesCard />
+    </>
   );
 }

@@ -9,6 +9,7 @@ import { deleteRule, dueInstances, postInstance, skipInstance, type DueInstance 
 import { orphanedRules } from '../lib/accountDependents';
 import Modal from '../shell/Modal';
 import { PageHeader } from '../ui/components';
+import { dueAmountLabel, dueApproveLabel, dueDateLabel, dueSkipLabel, ruleActionLabel } from '../lib/a11yLabels';
 
 const FREQ: Record<Frequency, string> = {
   weekly: 'Weekly',
@@ -21,11 +22,16 @@ const FREQ: Record<Frequency, string> = {
 
 const LOOKAHEAD_DAYS = 7;
 
-function DueRow({ item, accountMissing }: { item: DueInstance; accountMissing: boolean }) {
+type FormField = 'account' | 'payee' | 'amount' | 'other' | 'semi1';
+const FIELD_ID: Record<FormField, string> = { account: 'sched-account', payee: 'sched-payee', amount: 'sched-amount', other: 'sched-other', semi1: 'sched-semi1' };
+const FORM_ERROR_ID = 'sched-form-error';
+
+export function DueRow({ item, accountMissing }: { item: DueInstance; accountMissing: boolean }) {
   const { rule, date } = item;
   const [d, setD] = useState(date);
   const [amt, setAmt] = useState((Math.abs(rule.amountCents) / 100).toFixed(2));
   const [err, setErr] = useState('');
+  const errId = `due-err-${rule.id}-${date}`;
   const sign = rule.amountCents < 0 ? -1 : 1;
   const overdue = date < todayISO();
 
@@ -42,7 +48,7 @@ function DueRow({ item, accountMissing }: { item: DueInstance; accountMissing: b
   return (
     <tr>
       <td>
-        <input type="date" value={d} onChange={(e) => setD(e.target.value)} />
+        <input type="date" aria-label={dueDateLabel(rule.payee, date)} value={d} onChange={(e) => setD(e.target.value)} />
         <div className={overdue ? 'warn' : 'muted'}>{overdue ? 'overdue · ' : ''}scheduled {date}</div>
       </td>
       <td>
@@ -51,15 +57,15 @@ function DueRow({ item, accountMissing }: { item: DueInstance; accountMissing: b
         {accountMissing && <div className="warn" role="note">Its account no longer exists, so it cannot be approved. Skip it, or fix or delete it under Recurring items below.</div>}
       </td>
       <td className="num">
-        <input style={{ width: 100 }} inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} />
+        <input style={{ width: 100 }} inputMode="decimal" aria-label={dueAmountLabel(rule.payee, date)} aria-invalid={err ? true : undefined} aria-describedby={err ? errId : undefined} value={amt} onChange={(e) => { setAmt(e.target.value); setErr(''); }} />
         <div className="muted">{sign < 0 ? 'out' : 'in'} · {formatCents(rule.amountCents)} expected</div>
       </td>
       <td>
         <div className="row">
-          <button className="primary" onClick={approve} disabled={accountMissing} title={accountMissing ? 'Its account no longer exists' : undefined}>Approve</button>
-          <button onClick={() => skipInstance(db, rule, date)}>Skip</button>
+          <button className="primary" aria-label={dueApproveLabel(rule.payee, date)} onClick={approve} disabled={accountMissing} title={accountMissing ? 'Its account no longer exists' : undefined}>Approve</button>
+          <button aria-label={dueSkipLabel(rule.payee, date)} onClick={() => skipInstance(db, rule, date)}>Skip</button>
         </div>
-        {err && <div className="error">{err}</div>}
+        {err && <div className="error" id={errId} role="alert">{err}</div>}
       </td>
     </tr>
   );
@@ -88,6 +94,8 @@ export default function ScheduledPage() {
   const [semi2, setSemi2] = useState('15');
   const [memo, setMemo] = useState('');
   const [error, setError] = useState('');
+  // Which field the message is about, so it can be tied to that field (aria-describedby) and focus can go straight to it.
+  const [errField, setErrField] = useState<FormField | ''>('');
   // An in-app confirmation (the browser's own pop-up can be blocked, which made Delete look broken).
   const [askDelete, setAskDelete] = useState<RecurringRule | null>(null);
 
@@ -131,17 +139,27 @@ export default function ScheduledPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wanted, rules.length]);
 
+  /** Shows the message, ties it to the field it is about, and moves focus there so the person can correct it. */
+  function fail(field: FormField, message: string) {
+    setErrField(field);
+    setError(message);
+    setTimeout(() => document.getElementById(FIELD_ID[field])?.focus(), 0);
+  }
+  const invalid = (f: FormField) => (error && errField === f ? true : undefined);
+  const described = (f: FormField) => (error && errField === f ? FORM_ERROR_ID : undefined);
+
   async function save() {
     setError('');
+    setErrField('');
     const cents = parseAmountToCents(amount);
-    if (!accountId) return setError('Choose an account');
-    if (!payee.trim()) return setError('Give it a name');
-    if (cents === null || cents === 0) return setError('Enter an amount');
-    if (choice === 'transfer' && (!other || other === accountId)) return setError('Choose a different account for the transfer');
+    if (!accountId) return fail('account', 'Choose an account');
+    if (!payee.trim()) return fail('payee', 'Give it a name');
+    if (cents === null || cents === 0) return fail('amount', 'Enter an amount');
+    if (choice === 'transfer' && (!other || other === accountId)) return fail('other', 'Choose a different account for the transfer');
     const d1 = Number(semi1);
     const d2 = Number(semi2);
     if (freq === 'semimonthly' && (![d1, d2].every((x) => Number.isInteger(x) && x >= 1 && x <= 31) || d1 === d2)) {
-      return setError('Pick two different days of the month (31 means the last day)');
+      return fail('semi1', 'Pick two different days of the month (31 means the last day)');
     }
     const rule: RecurringRule = {
       accountId: Number(accountId),
@@ -207,9 +225,9 @@ export default function ScheduledPage() {
               <td>
                 <div className="row">
                   <TaskActions module="ledger" id={`scheduled:${r.id}`} label={r.payee} />
-                  <button className="link" onClick={() => load(r)}>edit</button>
-                  <button className="link" onClick={() => db.recurring.update(r.id!, { active: !r.active })}>{r.active ? 'pause' : 'resume'}</button>
-                  <button className="link danger" onClick={() => setAskDelete(r)}>delete</button>
+                  <button className="link" aria-label={ruleActionLabel('Edit', r.payee)} onClick={() => load(r)}>edit</button>
+                  <button className="link" aria-label={ruleActionLabel(r.active ? 'Pause' : 'Resume', r.payee)} onClick={() => db.recurring.update(r.id!, { active: !r.active })}>{r.active ? 'pause' : 'resume'}</button>
+                  <button className="link danger" aria-label={ruleActionLabel('Delete', r.payee)} onClick={() => setAskDelete(r)}>delete</button>
                 </div>
               </td>
             </tr>
@@ -221,19 +239,19 @@ export default function ScheduledPage() {
       <div className="card">
         <div className="grid">
           <label className="f">Account
-            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+            <select id={FIELD_ID.account} aria-invalid={invalid('account')} aria-describedby={described('account')} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               <option value="">Choose…</option>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
-          <label className="f">Name<input value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="e.g. Rent" /></label>
+          <label className="f">Name<input id={FIELD_ID.payee} aria-invalid={invalid('payee')} aria-describedby={described('payee')} value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="e.g. Rent" /></label>
           <label className="f">Type
             <select value={dir} onChange={(e) => setDir(e.target.value as 'out' | 'in')}>
               <option value="out">Outflow (−)</option>
               <option value="in">Inflow (+)</option>
             </select>
           </label>
-          <label className="f">Amount<input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /></label>
+          <label className="f">Amount<input id={FIELD_ID.amount} aria-invalid={invalid('amount')} aria-describedby={described('amount')} value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /></label>
           <label className="f">Category
             <select value={choice} onChange={(e) => setChoice(e.target.value)}>
               <option value="">Uncategorized</option>
@@ -247,7 +265,7 @@ export default function ScheduledPage() {
           </label>
           {choice === 'transfer' && (
             <label className="f">{dir === 'out' ? 'To account' : 'From account'}
-              <select value={other} onChange={(e) => setOther(e.target.value)}>
+              <select id={FIELD_ID.other} aria-invalid={invalid('other')} aria-describedby={described('other')} value={other} onChange={(e) => setOther(e.target.value)}>
                 <option value="">Choose…</option>
                 {accounts.filter((a) => String(a.id) !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -262,7 +280,7 @@ export default function ScheduledPage() {
           <label className="f">Ends (optional)<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label>
           {freq === 'semimonthly' && (
             <>
-              <label className="f">1st day of month<input value={semi1} onChange={(e) => setSemi1(e.target.value)} inputMode="numeric" /></label>
+              <label className="f">1st day of month<input id={FIELD_ID.semi1} aria-invalid={invalid('semi1')} aria-describedby={described('semi1')} value={semi1} onChange={(e) => setSemi1(e.target.value)} inputMode="numeric" /></label>
               <label className="f">2nd day (31 = last)<input value={semi2} onChange={(e) => setSemi2(e.target.value)} inputMode="numeric" /></label>
             </>
           )}
@@ -272,7 +290,7 @@ export default function ScheduledPage() {
           <button className="primary" onClick={save}>{editing ? 'Save changes' : 'Add recurring item'}</button>
           {editing && <button onClick={reset}>Cancel</button>}
         </div>
-        {error && <div className="error">{error}</div>}
+        {error && <div className="error" id={FORM_ERROR_ID} role="alert">{error}</div>}
       </div>
 
       {askDelete && (

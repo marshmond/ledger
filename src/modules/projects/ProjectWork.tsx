@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { rovingKeys } from '../../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dayLabel } from '../../core/time';
 import { projectLabel, useProjectChoices } from '../../core/projectLink';
@@ -152,9 +153,9 @@ export default function ProjectWork({ project }: { project: ProjectRecord }) {
       <section className="card pj-card" id="pj-tasks" aria-labelledby="pj-tk-h">
         <div className="pj-card-head"><h2 id="pj-tk-h">Tasks</h2></div>
         <Progress done={sum.tasks.done} total={sum.tasks.total} label="Tasks" />
-        <div className="tk-tabs pj-tabs" role="tablist" aria-label="Task filter">
+        <div className="tk-tabs pj-tabs" role="tablist" aria-label="Task filter" onKeyDown={rovingKeys}>
           {([['open', 'To do', counts.open], ['overdue', 'Overdue', counts.overdue], ['done', 'Done', counts.done], ['all', 'All', sum.tasks.total]] as const).map(([id, label, n]) => (
-            <button key={id} role="tab" aria-selected={group === id} className={group === id ? 'on' : ''} onClick={() => setGroup(id)}>{label}<span className="count">{n}</span></button>
+            <button key={id} role="tab" aria-selected={group === id} tabIndex={(group === id) ? 0 : -1} className={group === id ? 'on' : ''} onClick={() => setGroup(id)}>{label}<span className="count">{n}</span></button>
           ))}
         </div>
         {shownTasks.length === 0 ? <p className="muted">{plain.length === 0 ? 'No tasks on this project yet.' : 'Nothing in this filter.'}</p> : (

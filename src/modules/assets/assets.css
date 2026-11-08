@@ -26,7 +26,7 @@
 
 .as-chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; border: 1px solid var(--line-strong); color: var(--muted); background: var(--card); white-space: nowrap; }
 .as-chip.s-past { color: var(--warn, #9a6700); border-color: currentColor; }
-.as-chip.w-ok { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.as-chip.w-ok { color: var(--accent-text); border-color: var(--accent-line); background: var(--accent-soft); }
 .as-chip.w-soon { color: var(--warn, #9a6700); border-color: currentColor; }
 .as-chip.w-past { color: var(--neg); border-color: currentColor; }
 

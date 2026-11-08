@@ -87,13 +87,18 @@ export function noteLines(dep: AccountDependents): string[] {
   return out;
 }
 
-/** The sentence for the final confirmation. */
+/** The final question and the "also" lines, kept apart so a dialog can show them as a sentence and a list. */
+export function confirmParts(accountName: string, dep: AccountDependents): { headline: string; notes: string[] } {
+  return {
+    headline: `Delete "${accountName}" and all ${dep.transactions} of its transactions? Linked transfer entries on other accounts are removed too. This cannot be undone.`,
+    notes: noteLines(dep),
+  };
+}
+
+/** The sentence for the final confirmation (the same words as `confirmParts`, as one string). */
 export function confirmText(accountName: string, dep: AccountDependents): string {
-  const notes = noteLines(dep);
-  return (
-    `Delete "${accountName}" and all ${dep.transactions} of its transactions? Linked transfer entries on other accounts are removed too. This cannot be undone.` +
-    (notes.length ? `\n\nAlso:\n- ${notes.join('\n- ')}` : '')
-  );
+  const { headline, notes } = confirmParts(accountName, dep);
+  return headline + (notes.length ? `\n\nAlso:\n- ${notes.join('\n- ')}` : '');
 }
 
 export type DeleteAccountResult = { ok: true; transactionsDeleted: number } | { ok: false; dependents: AccountDependents };

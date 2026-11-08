@@ -9,6 +9,7 @@ import { registerModules } from './modules';
 import { legacyTarget } from './core/legacy';
 import SettingsPage from './pages/SettingsPage';
 import { TaskCreator } from './modules/tasks/QuickTask';
+import { RouteAnnouncer, SkipLink } from './shell/SkipAndRoute';
 
 registerModules();
 
@@ -29,8 +30,11 @@ function Fallback() {
 }
 
 export default function App() {
+  const loc = useLocation();
   return (
     <>
+      <SkipLink />
+      <RouteAnnouncer pathname={loc.pathname} />
       <ModuleBar />
       <GlobalFrame />
       <TaskCreator />

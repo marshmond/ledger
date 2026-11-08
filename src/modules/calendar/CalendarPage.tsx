@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { rovingKeys } from '../../ui/rovingKeys';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { loadCalendarSettings, saveCalendarSettings, type ViewId } from '../../core/calendarSettings';
@@ -109,7 +110,7 @@ export default function CalendarPage() {
   return (
     <div className="cal">
       <div className="cal-toolbar">
-        <h1 className="cal-title" aria-live="polite">{title}</h1>
+        <h1 className="cal-title" aria-live="polite" data-page-title="Calendar">{title}</h1>
         <div className="row cal-nav">
           <button className="btn" onClick={() => step(-1)} aria-label="Previous">‹</button>
           <button className="btn" onClick={() => go({ d: today })} disabled={range.from <= today && range.to >= today && anchor === today}>Today</button>
@@ -120,8 +121,8 @@ export default function CalendarPage() {
         </div>
       </div>
       <div className="cal-toolbar2">
-        <div className="cal-views" role="tablist" aria-label="View">
-          {VIEWS.map((v) => <button key={v.id} role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => go({ v: v.id })}>{v.label}</button>)}
+        <div className="cal-views" role="tablist" aria-label="View" onKeyDown={rovingKeys}>
+          {VIEWS.map((v) => <button key={v.id} role="tab" aria-selected={view === v.id} tabIndex={(view === v.id) ? 0 : -1} className={view === v.id ? 'on' : ''} onClick={() => go({ v: v.id })}>{v.label}</button>)}
         </div>
         {view === 'agenda' && (
           <label className="row cal-range">Show <select value={rangeDays} onChange={(e) => go({ r: Number(e.target.value) })} aria-label="Agenda range">{RANGES.map((r) => <option key={r} value={r}>next {r} days</option>)}</select></label>

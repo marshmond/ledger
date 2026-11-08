@@ -13,14 +13,16 @@ import InlineTarget from './InlineTarget';
 import { PageHeader } from '../ui/components';
 import { readCollapsed, writeCollapsed } from './Collapsible';
 import { sortByOrder } from '../lib/order';
+import { assignedLabel, budgetEditTargetLabel, budgetFundLabel, budgetFundPaymentLabel, budgetSetTargetLabel } from '../lib/a11yLabels';
 
 const foldKey = (groupId: number) => `budget.g${groupId}`;
 
-function Assigned({ month, row }: { month: string; row: BudgetRow }) {
+export function Assigned({ month, row }: { month: string; row: BudgetRow }) {
   return (
     <input
       key={`${month}-${row.key}-${row.assigned}`}
       className="assign"
+      aria-label={assignedLabel(row.name)}
       inputMode="decimal"
       defaultValue={row.assigned ? (row.assigned / 100).toFixed(2) : ''}
       placeholder="0.00"
@@ -103,19 +105,19 @@ export default function BudgetPage() {
         {r.name}
         {r.kind === 'category' && needOf(r).map((n) => (
           <div key={n.target.id} className={n.funded ? 'muted' : 'warn'} style={{ fontSize: '0.8rem' }}>
-            Target {n.description}: {n.funded ? 'funded ✓' : <>needs {formatCents(n.needCents)} this month{' '}<button className="link" onClick={() => setAssignment(db, month, r.key, r.assigned + n.needCents)}>fund</button></>}{' '}
-            <button className="link" onClick={() => setEditingTarget({ categoryId: r.categoryId!, targetId: n.target.id })}>edit</button>
+            Target {n.description}: {n.funded ? 'funded ✓' : <>needs {formatCents(n.needCents)} this month{' '}<button className="link" aria-label={budgetFundLabel(r.name)} onClick={() => setAssignment(db, month, r.key, r.assigned + n.needCents)}>fund</button></>}{' '}
+            <button className="link" aria-label={budgetEditTargetLabel(r.name)} onClick={() => setEditingTarget({ categoryId: r.categoryId!, targetId: n.target.id })}>edit</button>
           </div>
         ))}
         {r.kind === 'category' && needOf(r).length === 0 && editingTarget?.categoryId !== r.categoryId && (
-          <div><button className="link" style={{ fontSize: '0.8rem' }} onClick={() => setEditingTarget({ categoryId: r.categoryId! })}>+ set a target</button></div>
+          <div><button className="link" style={{ fontSize: '0.8rem' }} aria-label={budgetSetTargetLabel(r.name)} onClick={() => setEditingTarget({ categoryId: r.categoryId! })}>+ set a target</button></div>
         )}
         {r.kind === 'payment' && (() => {
           const u = budget.unfunded.find((x) => `p${x.accountId}` === r.key);
           return u ? (
             <div className="warn">
               Owed {formatCents(u.owedCents)}; {formatCents(u.unfundedCents)} not funded yet{' '}
-              <button className="link" onClick={() => setAssignment(db, month, r.key, r.assigned + (u.owedCents - r.available))}>
+              <button className="link" aria-label={budgetFundPaymentLabel(r.name)} onClick={() => setAssignment(db, month, r.key, r.assigned + (u.owedCents - r.available))}>
                 fund it
               </button>
             </div>
@@ -127,7 +129,7 @@ export default function BudgetPage() {
       <td className={`num ${r.available < 0 ? 'neg' : r.available > 0 ? 'pos' : 'muted'}`}>
         {formatCents(r.available)}
         {r.available < 0 && (
-          <div><button className="link" onClick={() => cover(r)}>cover {formatCents(-r.available)}</button></div>
+          <div><button className="link" aria-label={`Cover ${formatCents(-r.available)} overspent in ${r.name}`} onClick={() => cover(r)}>cover {formatCents(-r.available)}</button></div>
         )}
       </td>
     </tr>

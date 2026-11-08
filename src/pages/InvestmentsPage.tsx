@@ -90,7 +90,7 @@ function HoldingForm({ account, securities, classes, onDone }: { account: InvAcc
         <button className="primary" onClick={add}>Add holding</button>
         <button onClick={onDone}>Cancel</button>
       </div>
-      {err && <div className="error">{err}</div>}
+      {err && <div className="error" role="alert">{err}</div>}
     </div>
   );
 }

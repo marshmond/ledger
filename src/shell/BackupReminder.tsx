@@ -42,7 +42,7 @@ export default function BackupReminder() {
     <div className="banner warn backup-reminder" role="status">
       <span>
         It has been more than {REMIND_AFTER_DAYS} days since your last backup. Your data lives only in this browser.
-        {err && <span className="error"> {err}</span>}
+        {err && <span className="error" role="alert"> {err}</span>}
       </span>
       <span className="row">
         <button className="primary" onClick={exportNow} disabled={busy}>{busy ? 'Saving…' : 'Export now'}</button>

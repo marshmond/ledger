@@ -3,7 +3,7 @@
 .tk { max-width: none; }
 .tk-quick { margin: var(--sp-2) 0 var(--sp-3); }
 .tk-preview { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
-.tk-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-line); font-weight: 600; font-size: var(--fs-xs); }
+.tk-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--accent-line); font-weight: 600; font-size: var(--fs-xs); }
 .tk-plain { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: auto; color: var(--muted); }
 
 .tk-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; padding: var(--sp-1) 0 var(--sp-2); scrollbar-width: none; }
@@ -19,8 +19,8 @@
 .tk-bulk input[type="date"] { max-width: 150px; }
 
 .tk-group { margin-bottom: var(--sp-4); }
-.tk-group h3 { margin: 0 0 var(--sp-1); padding-bottom: var(--sp-1); border-bottom: 1px solid var(--line); font-size: var(--fs-base); }
-.tk-group.bad h3 { color: var(--neg); }
+.tk-group h2 { line-height: inherit; font-weight: 600; margin: 0 0 var(--sp-1); padding-bottom: var(--sp-1); border-bottom: 1px solid var(--line); font-size: var(--fs-base); }
+.tk-group.bad h2 { color: var(--neg); }
 .tk-group .plain li { padding: 0; }
 .tk-empty { padding: var(--sp-4) 0; }
 
@@ -67,4 +67,4 @@
 @media (pointer: coarse) { .tk-main { min-height: 52px; } }
 
 /* Project name on a task row: same quiet weight as the list name. */
-.tk-proj { color: var(--accent); }
+.tk-proj { color: var(--accent-text); }

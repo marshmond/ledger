@@ -29,7 +29,7 @@ function ServicesCard({ today, reportEmpty }: TodayCardProps) {
   useEffect(() => { reportEmpty(!!counts && rows.length === 0); }, [counts, rows.length, reportEmpty]);
   return (
     <section className="card" aria-label="Household services needing attention">
-      <div className="card-head"><strong>Household Services</strong>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/services">Open</a></div>
+      <div className="card-head"><h2 className="card-title">Household Services</h2>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/services">Open</a></div>
       {!counts ? <p className="muted" style={{ margin: 0 }}>Loading…</p> : (
         <ul className="plain td-list">
           {rows.map((r) => <li key={r.id} className="td-proj"><a href={r.href}>{r.text}</a></li>)}

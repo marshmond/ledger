@@ -1,3 +1,4 @@
+import Main from '../../shell/Main';
 import { ModuleBase } from '../../core/router';
 import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
@@ -14,9 +15,9 @@ export default function TasksModule() {
       <ToastProvider>
         <div className="shell-main">
           <BackupReminder />
-          <main className="main cal-main">
+          <Main className="main cal-main">
             <TasksPage />
-          </main>
+          </Main>
         </div>
       </ToastProvider>
     </ModuleBase>

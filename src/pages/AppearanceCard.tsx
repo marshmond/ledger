@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { rovingIndex, rovingKeys } from '../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { COLOR_ROLES, PRESETS, CLASSIC, colorsOf, contrastNotes, isHex, loadPalette, savePalette, varsFor, type Colors, type ColorKey, type PaletteChoice, type PaletteId } from '../palette';
@@ -112,13 +113,13 @@ export default function AppearanceCard() {
       <ThemeToggle />
 
       <h3>Colors</h3>
-      <div className="pal-grid" role="radiogroup" aria-label="Color palette">
+      <div className="pal-grid" role="radiogroup" aria-label="Color palette" onKeyDown={rovingKeys}>
         {(['classic', ...PRESETS.map((p) => p.id), 'custom'] as PaletteId[]).map((id) => {
           const sample = id === 'custom' ? (custom?.light ?? CLASSIC.light) : id === 'classic' ? CLASSIC.light : PRESETS.find((p) => p.id === id)!.light;
           const sampleDark = id === 'custom' ? (custom?.dark ?? CLASSIC.dark) : id === 'classic' ? CLASSIC.dark : PRESETS.find((p) => p.id === id)!.dark;
           const on = id === 'custom' ? choice.id === 'custom' && !active : choice.id === id;
           return (
-            <button key={id} role="radio" aria-checked={on} className={`pal ${on ? 'on' : ''}`} onClick={() => (id === 'custom' ? (custom ? set({ id: 'custom', custom }) : startCustom(base)) : set({ id }))}>
+            <button key={id} role="radio" aria-checked={on} tabIndex={(on) ? 0 : -1} className={`pal ${on ? 'on' : ''}`} onClick={() => (id === 'custom' ? (custom ? set({ id: 'custom', custom }) : startCustom(base)) : set({ id }))}>
               <strong>{NAMES[id]}</strong>
               <div className="swatches" aria-hidden="true">{dots(sample).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
               <div className="swatches" aria-hidden="true">{dots(sampleDark).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
@@ -132,9 +133,9 @@ export default function AppearanceCard() {
       {themes.length === 0 ? (
         <p className="muted">Nothing saved yet. Choose “My own colors”, adjust the colors, and save them here with a name. Saved themes sync to your other devices.</p>
       ) : (
-        <div className="pal-grid" role="radiogroup" aria-label="My saved themes">
-          {themes.map((t) => (
-            <button key={t.id} role="radio" aria-checked={choice.savedId === t.id} className={`pal ${choice.savedId === t.id ? 'on' : ''}`} onClick={() => set({ id: 'custom', custom: { light: { ...t.light }, dark: { ...t.dark } }, savedId: t.id })}>
+        <div className="pal-grid" role="radiogroup" aria-label="My saved themes" onKeyDown={rovingKeys}>
+          {themes.map((t, i) => (
+            <button key={t.id} role="radio" aria-checked={choice.savedId === t.id} tabIndex={rovingIndex(i, themes.findIndex((x) => x.id === choice.savedId))} className={`pal ${choice.savedId === t.id ? 'on' : ''}`} onClick={() => set({ id: 'custom', custom: { light: { ...t.light }, dark: { ...t.dark } }, savedId: t.id })}>
               <strong>{t.name}</strong>
               <div className="swatches" aria-hidden="true">{dots(t.light).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
               <div className="swatches" aria-hidden="true">{dots(t.dark).map((c, i) => <i key={i} style={{ background: c }} />)}</div>

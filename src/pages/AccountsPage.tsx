@@ -38,16 +38,26 @@ export default function AccountsPage() {
   const [date, setDate] = useState(todayISO());
   const [limit, setLimit] = useState('');
   const [error, setError] = useState('');
+  // The field the message is about: it points at the message and takes focus, so the person knows what to correct.
+  const [errField, setErrField] = useState<'name' | 'balance' | 'limit' | ''>('');
+  const fail = (field: 'name' | 'balance' | 'limit', message: string) => {
+    setErrField(field);
+    setError(message);
+    setTimeout(() => document.getElementById(`add-account-${field}`)?.focus(), 0);
+  };
+  const bad = (f: 'name' | 'balance' | 'limit') => (error && errField === f ? true : undefined);
+  const why = (f: 'name' | 'balance' | 'limit') => (error && errField === f ? 'add-account-error' : undefined);
 
   async function add() {
     setError('');
-    if (!name.trim()) return setError('Give the account a name');
+    setErrField('');
+    if (!name.trim()) return fail('name', 'Give the account a name');
     const cents = balance.trim() === '' ? 0 : parseAmountToCents(balance);
-    if (cents === null) return setError('Starting balance is not a valid amount');
+    if (cents === null) return fail('balance', 'Starting balance is not a valid amount');
     // For cards the user types what they owe (positive); we store debt as negative.
     const signed = kind === 'credit_card' ? -Math.abs(cents) : cents;
     const lim = kind === 'credit_card' ? parseLimit(limit) : { cents: undefined };
-    if ('error' in lim) return setError(`Credit limit: ${lim.error}`);
+    if ('error' in lim) return fail('limit', `Credit limit: ${lim.error}`);
     await db.accounts.add({ name: name.trim(), kind, openingBalanceCents: signed, openingDate: date, ...(lim.cents ? { creditLimitCents: lim.cents } : {}) });
     setName('');
     setBalance('');
@@ -117,23 +127,23 @@ export default function AccountsPage() {
       <h2>Add account</h2>
       <div className="card" id="add-account">
         <div className="grid">
-          <label className="f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Capital One" /></label>
+          <label className="f">Name<input id="add-account-name" aria-invalid={bad('name')} aria-describedby={why('name')} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Capital One" /></label>
           <label className="f">Type
             <select value={kind} onChange={(e) => setKind(e.target.value as AccountKind)}>
               {ADDABLE.map((v) => <option key={v} value={v}>{KIND_LABEL[v]}</option>)}
             </select>
           </label>
           <label className="f">{kind === 'credit_card' ? 'Amount currently owed' : 'Starting balance'}
-            <input value={balance} onChange={(e) => setBalance(e.target.value)} inputMode="decimal" placeholder="0.00" />
+            <input id="add-account-balance" aria-invalid={bad('balance')} aria-describedby={why('balance')} value={balance} onChange={(e) => setBalance(e.target.value)} inputMode="decimal" placeholder="0.00" />
           </label>
-          {kind === 'credit_card' && <label className="f">Credit limit (optional)<input value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" placeholder="e.g. 5000" /></label>}
+          {kind === 'credit_card' && <label className="f">Credit limit (optional)<input id="add-account-limit" aria-invalid={bad('limit')} aria-describedby={why('limit')} value={limit} onChange={(e) => setLimit(e.target.value)} inputMode="decimal" placeholder="e.g. 5000" /></label>}
           <label className="f">As of<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         </div>
         <div className="row" style={{ marginTop: 8 }}>
           <button className="primary" onClick={add}>Add account</button>
           <span className="muted">Transactions before the “as of” date are treated as already included in the starting balance.</span>
         </div>
-        {error && <div className="error">{error}</div>}
+        {error && <div className="error" id="add-account-error" role="alert">{error}</div>}
       </div>
     </>
   );

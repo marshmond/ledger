@@ -16,7 +16,7 @@ function AssetsCard({ today, reportEmpty }: TodayCardProps) {
   useEffect(() => { reportEmpty(!!ov && rows.length === 0); }, [ov, rows.length, reportEmpty]);
   return (
     <section className="card" aria-label="Home and assets needing attention">
-      <div className="card-head"><strong>Home &amp; Assets</strong>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/assets">Overview</a></div>
+      <div className="card-head"><h2 className="card-title">Home &amp; Assets</h2>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/assets">Overview</a></div>
       {!ov ? <p className="muted" style={{ margin: 0 }}>Loading…</p> : (
         <ul className="plain td-list">
           {rows.map((r) => (

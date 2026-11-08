@@ -1,3 +1,4 @@
+import Main from './Main';
 import { useEffect, useState, type ReactNode } from 'react';
 import { matchPath } from 'react-router-dom';
 import { Link, NavLink, useLocation } from '../core/router';
@@ -60,7 +61,7 @@ export default function Shell({ children }: { children: ReactNode }) {
   return (
     <ToastProvider>
     <div className="shell">
-      <aside className="sidebar" aria-label="Main">
+      <nav className="sidebar" aria-label="Ledger pages">
         <button className="searchbtn side" onClick={openSearch} aria-label="Search">
           <span aria-hidden="true">⌕</span> Search <kbd>Ctrl K</kbd>
         </button>
@@ -94,7 +95,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/more" className="side-link">Settings &amp; about</NavLink>
           <ThemeToggle />
         </div>
-      </aside>
+      </nav>
 
       <div className="shell-main">
         <header className="topbar">
@@ -113,7 +114,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         <BackupReminder />
-        <main className="main">{children}</main>
+        <Main className="main">{children}</Main>
       </div>
 
       <nav className="tabbar" aria-label="Sections">

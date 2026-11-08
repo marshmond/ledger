@@ -77,6 +77,8 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   const projects = useProjectChoices();
   const toast = useToast();
   const [error, setError] = useState('');
+  // Which field the message is about: that field points at the message (aria-describedby) and focus moves to it.
+  const [errField, setErrField] = useState<'amount' | 'date' | 'other' | 'acct' | ''>('');
   const [hint, setHint] = useState('');
   // When editing, the account can be changed (an entry made on the wrong account). The one it is on now is always offered.
   const [acctId, setAcctId] = useState(String(account.id));
@@ -88,16 +90,25 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   const total = parseAmountMath(amount);
   const splitTotal = splits.reduce((s, r) => s + (parseAmountMath(r.amt) ?? 0), 0);
 
+  const FIELD = { amount: 'txn-amount', date: 'txn-date', other: 'txn-other', acct: 'txn-acct' } as const;
+  function fail(field: 'amount' | 'date' | 'other' | 'acct', message: string) {
+    setErrField(field);
+    setError(message);
+    setTimeout(() => document.getElementById(FIELD[field])?.focus(), 0);
+  }
+  const bad = (f: 'amount' | 'date' | 'other' | 'acct') => !!error && errField === f;
+
   async function save() {
     setError('');
+    setErrField('');
     const abs = total === null ? null : Math.abs(total);
-    if (abs === null || abs === 0) return setError('Enter an amount');
-    if (!date) return setError('Pick a date');
+    if (abs === null || abs === 0) return fail('amount', 'Enter an amount');
+    if (!date) return fail('date', 'Pick a date');
     const signed = dir === 'out' ? -abs : abs;
     const wantsTransfer = choice === 'transfer';
-    if (wantsTransfer && !isTransfer && !other) return setError('Choose the other account for the transfer');
-    if (moving && isTransfer && acctId === String(otherAccountId)) return setError('A transfer needs two different accounts');
-    if (moving && wantsTransfer && !isTransfer && other === acctId) return setError('A transfer needs two different accounts');
+    if (wantsTransfer && !isTransfer && !other) return fail('other', 'Choose the other account for the transfer');
+    if (moving && isTransfer && acctId === String(otherAccountId)) return fail('acct', 'A transfer needs two different accounts');
+    if (moving && wantsTransfer && !isTransfer && other === acctId) return fail('acct', 'A transfer needs two different accounts');
     if (reconciledMove && !confirm(`This transaction is reconciled. Moving it to ${current.name} changes the reconciled balance of both accounts, and it goes back to Cleared so you can reconcile again. Move it?`)) return;
 
     try {
@@ -170,12 +181,12 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
       <div className="grid">
         {editing && (
           <label className="f">Account
-            <select value={acctId} onChange={(e) => setAcctId(e.target.value)}>
+            <select id="txn-acct" aria-invalid={bad('acct') || undefined} aria-describedby={bad('acct') ? 'txn-form-error' : undefined} value={acctId} onChange={(e) => setAcctId(e.target.value)}>
               {choices.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
         )}
-        <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <label className="f">Date<input id="txn-date" aria-invalid={bad('date') || undefined} aria-describedby={bad('date') ? 'txn-form-error' : undefined} type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         {!isTransfer && (
           <label className="f">Payee
             <PayeeInput
@@ -200,7 +211,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             <option value="in">{incomeWord}</option>
           </select>
         </label>
-        <label className="f">Amount<AmountInput value={amount} onChange={setAmount} /></label>
+        <label className="f">Amount<AmountInput id="txn-amount" invalid={bad('amount')} describedBy={bad('amount') ? 'txn-form-error' : undefined} value={amount} onChange={setAmount} /></label>
         <label className="f">Status
           <select value={status} onChange={(e) => setStatus(e.target.value as TxnStatus)}>
             <option value="pending">Pending</option>
@@ -219,7 +230,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
           )}
           {choice === 'transfer' && (
             <label className="f">{dir === 'out' ? 'To account' : 'From account'}
-              <select value={other} onChange={(e) => setOther(e.target.value)}>
+              <select id="txn-other" aria-invalid={bad('other') || undefined} aria-describedby={bad('other') ? 'txn-form-error' : undefined} value={other} onChange={(e) => setOther(e.target.value)}>
                 <option value="">Choose…</option>
                 {accounts.filter((a) => a.id !== current.id).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
@@ -282,7 +293,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
         <button className="primary" onClick={save}>{editing ? 'Save' : 'Add transaction'}</button>
         <button onClick={onDone}>Cancel</button>
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" id="txn-form-error" role="alert">{error}</div>}
     </div>
   );
 }

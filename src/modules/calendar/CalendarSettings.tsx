@@ -22,7 +22,7 @@ export default function CalendarSettingsCard() {
   return (
     <>
       <div className="card">
-        <div className="card-head"><strong>Calendar</strong></div>
+        <div className="card-head"><h2 className="card-title">Calendar</h2></div>
         <div className="grid">
           <label className="f">First day of the week
             <select value={s.weekStart} onChange={(e) => set({ weekStart: Number(e.target.value) })}>
@@ -55,7 +55,7 @@ export default function CalendarSettingsCard() {
       </div>
 
       <div className="card">
-        <div className="card-head"><strong>Finance items: default priority</strong></div>
+        <div className="card-head"><h2 className="card-title">Finance items: default priority</h2></div>
         <p className="muted small">Each kind of Finance item gets this priority on the Calendar (it is not per item). Bills and loan payments set to Medium become High when due within 3 days or overdue.</p>
         <div className="grid">
           {FINANCE_CLASSES.map((c: FinanceClass) => (

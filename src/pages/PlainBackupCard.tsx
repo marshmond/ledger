@@ -92,6 +92,7 @@ export default function PlainBackupCard() {
           <li><strong>Never included:</strong> the price-lookup key, the sync token and passphrase, and the weekly-backup passphrase. They stay on each device, so after restoring on a new device you set them up again.</li>
           <li><strong>Not the same as sync:</strong> sync keeps devices in step; it is not a backup. This file is the copy you control.</li>
         </ul>
+        <p className="muted small">Which choices follow you to other devices and which stay on one: see Settings &gt; General.</p>
         <p className="muted small">File format: data version {CURRENT_SCHEMA_VERSION}, written by Ledger {APP_VERSION}. Older files are upgraded automatically; files from a newer Ledger are refused before anything changes.</p>
       </details>
       {restored && <div className="ok" role="status">Backup restored. Your previous data was saved first as “{restored}”.</div>}
@@ -103,14 +104,14 @@ export default function PlainBackupCard() {
       <h3 style={{ margin: '16px 0 0' }}>Restore Ledger data</h3>
       <div className="row">
         <label className="f">Choose a backup file (replaces everything on this device)
-          <input key={fileKey} type="file" accept=".json,application/json" disabled={busy} onChange={(e) => choose(e.target.files?.[0])} />
+          <input key={fileKey} id="plain-restore-file" type="file" accept=".json,application/json" disabled={busy} onChange={(e) => choose(e.target.files?.[0])} />
         </label>
       </div>
 
-      {w && pending && <RestoreConfirm pending={pending} busy={busy} onConfirm={replace} onCancel={() => { setPending(null); setFileKey((k) => k + 1); }} />}
+      {w && pending && <RestoreConfirm pending={pending} busy={busy} onConfirm={replace} onCancel={() => { setPending(null); setFileKey((k) => k + 1); setTimeout(() => document.getElementById('plain-restore-file')?.focus(), 0); }} />}
 
-      {msg && <div className="ok">{msg}</div>}
-      {err && <div className="error">{err}</div>}
+      {msg && <div className="ok" role="status">{msg}</div>}
+      {err && <div className="error" role="alert">{err}</div>}
 
       <details style={{ marginTop: 12 }}>
         <summary>Testing tools (for checking the backup reminder)</summary>

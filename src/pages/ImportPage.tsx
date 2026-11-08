@@ -97,7 +97,7 @@ export default function ImportPage() {
           Re-importing the same or an overlapping file is safe: rows already imported are skipped, and rows that match something you
           entered by hand mark it cleared instead of creating a duplicate. Nothing is written until you confirm.
         </p>
-        {message && <div className="ok">{message}</div>}
+        {message && <div className="ok" role="status">{message}</div>}
       </div>
 
       {csv && map && (

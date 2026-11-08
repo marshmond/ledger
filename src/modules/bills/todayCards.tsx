@@ -21,7 +21,7 @@ function BillsCard({ today, reportEmpty }: TodayCardProps) {
   useEffect(() => { reportEmpty(!!a && rows.length === 0); }, [a, rows.length, reportEmpty]);
   return (
     <section className="card" aria-label="Bills and subscriptions needing attention">
-      <div className="card-head"><strong>Bills &amp; Subscriptions</strong>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/bills">Open</a></div>
+      <div className="card-head"><h2 className="card-title">Bills &amp; Subscriptions</h2>{rows.length > 0 && <span className="badge">{rows.length}</span>}<a className="card-link" href="#/bills">Open</a></div>
       {!a ? <p className="muted" style={{ margin: 0 }}>Loading…</p> : (
         <ul className="plain td-list">
           {rows.map((r) => <li key={r.id} className="td-proj"><a href={HREF[r.id]}>{r.text}</a></li>)}
