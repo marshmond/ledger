@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { db } from '../../db';
 import { allQuickAdds, allSearchSources, recordSource } from '../../core/registry';
@@ -162,7 +163,7 @@ describe('B1: Search and record links show title, provider and type only (test 3
     expect(found).toEqual([{ id: `obligation:${r.id}`, label: 'Linkable Subscription, Link Provider', kind: 'Subscription' }]);
     const info = await billRecords.describe(`obligation:${r.id}`);
     expect(info).toEqual({ label: 'Linkable Subscription, Link Provider', kind: 'Subscription', path: `/bills/o/${r.id}` });
-    expect(JSON.stringify([found, info])).not.toMatch(/424242|4244|secret|\$/);
+    expect(scanText([found, info])).not.toMatch(/424242|4244|secret|\$/);
     expect(await billRecords.describe('obligation:1')).toBeNull();
     expect(await billRecords.describe('arrangement:5')).toBeNull();
     await applyUndo(r.undo, d);
@@ -185,7 +186,7 @@ describe('B1: Hide Amounts and wording: an amount is never shown as spent, unkno
   it('no text produced for Search, record links or Quick Add previews carries a currency amount', async () => {
     const q = billQuickAdd.parse!('Priv Test 15.49 monthly 12th autopay', {})!;
     expect(q.summary).toMatch(/\$15\.49/); // the person typed it and is about to add it (masked when Hide Amounts is on)
-    expect(JSON.stringify(searchBillsData('priv', [rec({ title: 'Priv Test', prices: [{ from: TODAY, cents: 1549, label: '' }] })]))).not.toMatch(/\$|15\.49|1549/);
+    expect(scanText(searchBillsData('priv', [rec({ title: 'Priv Test', prices: [{ from: TODAY, cents: 1549, label: '' }] })]))).not.toMatch(/\$|15\.49|1549/);
   });
 });
 

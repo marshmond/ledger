@@ -7,6 +7,8 @@ import { db } from '../db';
 import type { Txn } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { finalizeReconcile, reconcileCheck, type ReconcileResult } from '../lib/ledger';
+import Modal from '../shell/Modal';
+import { blockedReasons, blocksDeletion, confirmText, deleteAccountWithTransactions, readAccountDependents, type AccountDependents } from '../lib/accountDependents';
 import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
 import TxnForm from './TxnForm';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
@@ -21,6 +23,7 @@ import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, TxnFilterPanel, fil
 export default function LedgerPage() {
   const id = Number(useParams().id);
   const nav = useNavigate();
+  const [blocked, setBlocked] = useState<AccountDependents | null>(null);
   const account = useLiveQuery(() => db.accounts.get(id), [id]);
   const txns = useLiveQuery(() => db.txns.where('accountId').equals(id).toArray(), [id]);
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
@@ -239,15 +242,23 @@ export default function LedgerPage() {
         <button
           className="danger"
           onClick={async () => {
-            if (!confirm(`Delete "${account.name}" and all ${txns.length} of its transactions? Linked transfer entries on other accounts are removed too.`)) return;
-            await db.transaction('rw', db.accounts, db.txns, async () => {
-              for (const t of txns) await deleteTxn(db, t.id!);
-              await db.accounts.delete(id);
-            });
+            // ST-S1 (DI-01): look at what still depends on this account first. Scheduled items and linked loans BLOCK the deletion.
+            const dep = await readAccountDependents(db, id);
+            if (blocksDeletion(dep)) return setBlocked(dep);
+            if (!confirm(confirmText(account.name, dep))) return;
+            const res = await deleteAccountWithTransactions(db, id); // re-checks inside one transaction
+            if (!res.ok) return setBlocked(res.dependents);
             nav('/');
           }}
         >Delete account</button>
       </div>
+      {blocked && (
+        <Modal title="This account cannot be deleted yet" onClose={() => setBlocked(null)}>
+          {blockedReasons(account.name, blocked).map((r) => <p key={r}>{r}</p>)}
+          <p>Nothing was deleted. Before deleting the account, move each of those items to another account (open it and change its account) or delete it yourself.{blocked.rules.length > 0 && <> You can do that on the <Link to="/scheduled">Scheduled page</Link>.</>} Pausing an item is not enough, because a paused item can be turned back on. Then come back and delete the account.</p>
+          <div className="row"><button className="primary" onClick={() => setBlocked(null)}>OK</button></div>
+        </Modal>
+      )}
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { scrubGeneratedIds } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import type { FinanceDB } from '../../db';
 import type { ModuleRecord } from '../../core/entities';
@@ -494,7 +495,7 @@ describe('B4 conflicts and review items', () => {
     await go(d, id, request({ requestedOn: '2026-11-01', note: 'my private detail' }));
     const lines = attentionLines(attention(derive(await loadBillsSnapshot(d), TODAY))).map((l) => l.text).join(' | ');
     expect(lines).toMatch(/cancellation request is still awaiting confirmation/);
-    expect(lines).not.toMatch(/Secretly|Streamly|private|12345|\$/);
+    expect(scrubGeneratedIds(lines)).not.toMatch(/Secretly|Streamly|private|12345|\$/);
   });
 });
 

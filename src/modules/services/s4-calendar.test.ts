@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { buildBackup, checkBackupText, restoreChecked } from '../../lib/backupFile';
@@ -209,7 +210,7 @@ describe('S4 correction 1: rolling 12-month expected visits on the Calendar', ()
       data: blankArrangement({ title: 'Lawn care', cadence: weekly(TODAY), notes: 'gate code 4455 account 99887766', refs: [{ label: 'Contract', url: 'https://example.com/secret' }], expected: { basis: 'perVisit', cents: 12345 } }),
       provider: { name: 'Pat Lawns', phone: '555-0100', email: 'pat@example.com' }, today: TODAY,
     }, d);
-    const text = JSON.stringify((await visits(d)).map(({ openSource: _o, ...rest }) => rest));
+    const text = scanText((await visits(d)).map(({ openSource: _o, ...rest }) => rest));
     expect(text).not.toMatch(/4455|99887766|secret|12345|123\.45|555-0100|pat@example/);
     expect((await visits(d))[0].title).toBe('Lawn care: Pat Lawns');
   });

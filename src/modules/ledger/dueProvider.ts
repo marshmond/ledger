@@ -16,6 +16,7 @@ import type { CalKind } from '../../lib/calendar';
 import { maskMoney } from '../../ui/TxnRefs';
 import { loadHideAmounts } from '../today/layout';
 import { dueInstances } from '../../lib/schedule';
+import { orphanedRules } from '../../lib/accountDependents';
 
 export const LEDGER_LAYER_COLOR = '#2f8f6b';
 
@@ -53,7 +54,9 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery, hide: boolean = 
   const out: DerivedItem[] = [];
   // Ledger only looks forward from today; ask far enough ahead to cover the end of the range (a year or so at most).
   const ahead = Math.max(1, Math.min(800, daysBetween(q.to, q.today)));
-  const [events, due] = await Promise.all([loadCalendar(d, q.today, ahead), dueInstances(d, q.today, ahead)]);
+  const [events, due, accountRows] = await Promise.all([loadCalendar(d, q.today, ahead), dueInstances(d, q.today, ahead), d.accounts.toArray()]);
+  // Read-only note for a scheduled item whose account no longer exists (ST-S1, DI-01). The item still shows, so it is not forgotten.
+  const orphanIds = new Set(orphanedRules(due.map((x) => x.rule), new Set(accountRows.map((a) => a.id!))).map((r) => r.id));
 
   // Everything except scheduled items: exactly what Home's "Coming up" lists.
   for (const e of events) {
@@ -95,7 +98,7 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery, hide: boolean = 
       allDay: true,
       priority: financePriority(cls, date, q.today, prios[cls]),
       status: 'open',
-      detail: rule.transferAccountId ? 'Scheduled transfer to approve.' : rule.amountCents < 0 ? 'Scheduled payment to approve.' : 'Scheduled income to approve.',
+      detail: (rule.transferAccountId ? 'Scheduled transfer to approve.' : rule.amountCents < 0 ? 'Scheduled payment to approve.' : 'Scheduled income to approve.') + (orphanIds.has(rule.id) ? ' Its account no longer exists, so it cannot be approved. Open it to fix or delete it.' : ''),
       ...(hide ? { icsTitle: `${rule.payee} ${formatCents(Math.abs(rule.amountCents))}` } : {}),
       // Opens that item in the Scheduled page's edit form (the date and amount are changed there, never in the Calendar).
       openSource: () => goTo(`/ledger/scheduled?rule=${rule.id}`),

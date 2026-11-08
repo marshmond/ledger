@@ -7,28 +7,34 @@ import { PageHeader } from '../ui/components';
 import { db } from '../db';
 import { downloadText } from '../lib/download';
 import { listSnapshots, readSnapshot, restoreLostVersion, takeSnapshot } from '../lib/sync/safety';
+import { clearConflicts as clearConflictList, conflictKey, readConflicts, removeConflict } from '../lib/sync/conflicts';
 
 /** The encrypted file passes this size: time to think about a faster way to sync (see docs/PHASE0-PLAN-2026-11-05.md). */
 const BIG_FILE = 5 * 1024 * 1024;
 const fileSize = (b: number) => (b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`);
 const when = (ms?: number) => (ms ? new Date(ms).toLocaleString() : 'never');
 
+/** How many saved versions are drawn before "Show all". A display limit only; nothing beyond it is ever discarded. */
+const SHOWN_AT_FIRST = 50;
+
 /** Keep your phone and computer in step through a private GitHub repository. The data is encrypted before it leaves the device. */
 export default function SyncPage() {
   const s = useSyncStatus();
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
-  useEffect(() => { meta.get<Conflict[]>('conflicts').then((c) => setConflicts(c ?? [])); }, [s.lastSyncedAt, s.configured]);
+  // Display only: the list is long when many edits clashed. Every saved version is still kept; this only limits the rows drawn.
+  const [showAll, setShowAll] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  useEffect(() => { readConflicts(meta).then(setConflicts); }, [s.lastSyncedAt, s.configured, s.conflicts]);
 
   const [snaps, setSnaps] = useState<Awaited<ReturnType<typeof listSnapshots>>>([]);
   useEffect(() => { listSnapshots(meta).then(setSnaps).catch(() => undefined); }, [s.lastSyncedAt, s.configured]);
 
-  async function putBack(i: number) {
-    const c = conflicts[i];
+  async function putBack(c: Conflict) {
     try {
       await restoreLostVersion(db, c);
-      const rest = conflicts.filter((_, j) => j !== i);
-      await meta.set('conflicts', rest);
-      setConflicts(rest);
+      // Remove only this entry, from the CURRENT saved list (a sync may have added entries since this screen was drawn).
+      await removeConflict(meta, conflictKey(c));
+      setConflicts(await readConflicts(meta));
       refreshConflicts();
       setMsg(`Put back “${c.label}”. It will reach your other devices at the next sync.`);
     } catch (e) {
@@ -36,8 +42,9 @@ export default function SyncPage() {
     }
   }
   async function clearConflicts() {
-    await meta.set('conflicts', []);
+    await clearConflictList(meta);
     setConflicts([]);
+    setConfirmClear(false);
     refreshConflicts();
   }
   async function downloadSnap(key: string) {
@@ -155,17 +162,28 @@ export default function SyncPage() {
             <div className="card" id="conflicts">
               <div className="row spread">
                 <strong>Edits that lost a tie ({conflicts.length})</strong>
-                <button className="link" onClick={clearConflicts}>clear this list</button>
+                {confirmClear ? (
+                  <span className="row">
+                    <span>Remove all {conflicts.length} saved versions for good?</span>
+                    <button className="danger" onClick={clearConflicts}>Yes, remove all</button>
+                    <button onClick={() => setConfirmClear(false)}>Keep them</button>
+                  </span>
+                ) : (
+                  <button className="link" onClick={() => setConfirmClear(true)}>clear this list</button>
+                )}
               </div>
               <p className="muted">You and another device both changed these since the last sync. The later edit was kept. The other version is saved here so nothing is lost: put it back if you prefer it.</p>
               <ul className="plain">
-                {conflicts.map((c, i) => (
-                  <li key={i} className="row spread">
+                {(showAll ? conflicts : conflicts.slice(0, SHOWN_AT_FIRST)).map((c) => (
+                  <li key={conflictKey(c)} className="row spread">
                     <span>{c.label} <span className="muted">({c.table}, {when(c.at)}): {c.kept === 'this device' ? 'the other device’s version was replaced by the one here' : 'the version on this device was replaced by the other device’s'}</span></span>
-                    {c.lost ? <button onClick={() => putBack(i)}>Put that version back</button> : <span className="muted">no copy saved</span>}
+                    {c.lost ? <button onClick={() => putBack(c)}>Put that version back</button> : <span className="muted">no copy saved</span>}
                   </li>
                 ))}
               </ul>
+              {conflicts.length > SHOWN_AT_FIRST && (
+                <button className="link" onClick={() => setShowAll((v) => !v)}>{showAll ? `Show only the newest ${SHOWN_AT_FIRST}` : `Show all ${conflicts.length}`}</button>
+              )}
             </div>
           )}
 

@@ -9,7 +9,7 @@
 
 ## How conflicts are handled
 - A record that exists on one device only is added to the other.
-- If both devices changed the same record since the last sync, **the later edit wins** and **the other version is saved** in the "Edits that lost a tie" list on the Sync page (and the top bar shows "Review N"). A "Put that version back" button re-applies it as a new edit that then reaches every device. Nothing is silently lost.
+- If both devices changed the same record since the last sync, **the later edit wins** and **the other version is saved** in the "Edits that lost a tie" list on the Sync page (and the top bar shows "Review N"). A "Put that version back" button re-applies it as a new edit that then reaches every device. Nothing is silently lost: **every** overwritten version is kept, with no limit, until you put it back or choose to clear the list (the page draws the newest 50 and a "Show all" button; that is a display limit only). The versions are saved **before** anything is overwritten, so a sync that fails part-way still leaves them safe. Replacing this device from the synced copy, or forgetting the sync setup, does not discard them either.
 - Deleted on one device and edited on the other: the deletion stands, and the edit is saved the same way.
 - Deleting is noticed by comparing with the list of records from the last sync; the deletion is remembered for a year. Shared-store records use a soft delete (a `deletedAt` marker), which syncs like any other edit.
 - A restored backup counts as an edit made now, so it wins and replaces the data on your other devices at their next sync (records the backup does not contain are removed there).

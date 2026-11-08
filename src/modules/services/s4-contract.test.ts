@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { installTracking } from '../../lib/sync/track';
@@ -128,7 +129,7 @@ describe('S4-C2 the derived Calendar layer', () => {
       data: blankArrangement({ title: 'Lawn care', notes: 'gate code 4455 account 99887766', refs: [{ label: 'Contract', url: 'https://example.com/secret-contract' }], expected: { basis: 'perMonth', cents: 12345 }, renewalDate: '2027-04-01', noticeByDate: '2027-03-01' }),
       provider: { name: 'Pat Lawns', phone: '555-0100', email: 'pat@example.com' }, today: TODAY,
     }, d);
-    const text = JSON.stringify((await items(d)).map(({ openSource: _o, ...rest }) => rest));
+    const text = scanText((await items(d)).map(({ openSource: _o, ...rest }) => rest));
     expect(text).not.toMatch(/4455|99887766|secret-contract|12345|123\.45|555-0100|pat@example|Pat Lawns/);
     expect(text).toMatch(/Lawn care/);
   });
@@ -174,7 +175,7 @@ describe('S4-C3 Today', () => {
   it('33. Today holds counts only: no title, provider, link, note or amount', async () => {
     const d = fresh();
     await createArrangement({ data: blankArrangement({ title: 'Secret Title', notes: 'code 4455', expected: { basis: 'perMonth', cents: 12345 }, renewalDate: '2026-11-20' }), provider: { name: 'Pat Lawns', phone: '555-0100' }, today: TODAY }, d);
-    const text = JSON.stringify(attentionLines(attentionCounts(await loadSnapshot(d), TODAY)));
+    const text = scanText(attentionLines(attentionCounts(await loadSnapshot(d), TODAY)));
     expect(text).not.toMatch(/Secret Title|Pat Lawns|555-0100|4455|12345|\$/);
     expect(text).toMatch(/1 renewal date in the next 30 days/);
   });

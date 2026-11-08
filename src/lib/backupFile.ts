@@ -99,6 +99,8 @@ export const PREFERENCE_KEYS = [
   'ledger-tabs', 'ledger-side-open', 'ledger-flow-last', 'ledger.onboarding.dismissed', 'ledger-sale-method', 'ledger-quick-account',
   // Today (per device): card order, widths and hidden cards; and the "Hide amounts" switch. Shared Today options live in the settings table instead.
   'today.layout.v1', 'today.hideAmounts.v1',
+  // ST-S1 (BK-01): three more convenience choices kept on this device. Each is read defensively (a bad or missing value gives the default), so restoring one can never break a screen.
+  'services-upcoming-days', 'tasks-last-view', 'ledger-last-module',
 ];
 
 export function collectPreferences(storage?: Pick<Storage, 'getItem'>): Record<string, string> {

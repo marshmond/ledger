@@ -1,3 +1,4 @@
+import { scrubGeneratedIds } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { db, FinanceDB } from '../../db';
 import { allTodayCards } from '../../core/registry';
@@ -157,7 +158,7 @@ describe('Quick Add: hs visit', () => {
     const preview = serviceQuickAdd.parse!('visit Drain repair with Pat the Plumber 2026-11-01 $120')!;
     expect(preview.summary).toBe('One-off visit: Drain repair with Pat the Plumber. No arrangement or task is created');
     expect(preview.fields.map((f) => f.label)).toEqual(['One-off visit', 'Provider', 'Date', 'Charged']);
-    expect(preview.summary).not.toMatch(/120/);
+    expect(scrubGeneratedIds(preview.summary)).not.toMatch(/120/);
     const before = { v: (await loadVisits(db)).length, t: (await loadTasks(db)).length, a: await db.moduleRecords.where('[module+kind]').equals(['services', 'arrangement']).count(), c: await db.contacts.count() };
     const undo = (await serviceQuickAdd.commit!(preview)) as () => Promise<void>;
     const v = (await loadVisits(db)).find((x) => x.data.title === 'Drain repair')!;

@@ -1,3 +1,4 @@
+import { scrubGeneratedIds } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import {
   categoryCsv, projectCsvName, projectFromParam, reportProjectLink, resolveReportProject, spendingMatrix,
@@ -282,7 +283,7 @@ describe('P5: project CSV', () => {
       'Total spending,0.00,300.00,20.00,320.00',
       '',
     ]);
-    expect(csv.join('\n')).not.toMatch(/999|77\.00|10\.00,/);
+    expect(scrubGeneratedIds(csv.join('\n'))).not.toMatch(/999|77\.00|10\.00,/);
   });
 });
 

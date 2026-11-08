@@ -7,6 +7,7 @@ import Dexie from 'dexie';
 import type { FinanceDB } from '../../db';
 import { decodeSnapshot, encodeSnapshot } from './codec';
 import { emptySnapshot, idsOf, mergeSnapshots, stable, type BaseIds, type Conflict, type Rec, type Snapshot } from './merge';
+import { addConflicts, readConflicts } from './conflicts';
 import { applying } from './track';
 
 export interface RemoteFile {
@@ -78,8 +79,6 @@ export interface SyncStats {
 interface UploadEntry { at: number; bytes: number }
 const LOG_KEEP_DAYS = 60;
 
-const MAX_CONFLICTS = 50;
-
 /** Size and activity figures kept by the engine, readable without a passphrase or a connection. */
 export async function syncStats(meta: MetaStore, now = Date.now()): Promise<SyncStats> {
   const log = (await meta.get<UploadEntry[]>('uploadLog')) ?? [];
@@ -102,14 +101,16 @@ export class SyncEngine {
   async lastSyncedAt() {
     return this.meta.get<number>('lastSyncedAt');
   }
+  /** Every overwritten version still waiting for review (never truncated; see conflicts.ts). */
   async conflicts() {
-    return (await this.meta.get<Conflict[]>('conflicts')) ?? [];
+    return readConflicts(this.meta);
   }
   stats(now = Date.now()): Promise<SyncStats> {
     return syncStats(this.meta, now);
   }
   async forget() {
-    for (const k of ['base', 'lastSync', 'lastSyncedAt', 'conflicts', 'remoteSha', 'fileBytes', 'recordCount', 'uploadLog']) await this.meta.set(k, undefined);
+    // 'conflicts' is deliberately NOT cleared: those are overwritten edits the owner has not reviewed yet (ST-S1, SY-01).
+    for (const k of ['base', 'lastSync', 'lastSyncedAt', 'remoteSha', 'fileBytes', 'recordCount', 'uploadLog']) await this.meta.set(k, undefined);
   }
 
   /** Does the remote already hold a synced copy? */
@@ -150,7 +151,7 @@ export class SyncEngine {
     await this.meta.set('recordCount', count(remote));
     await this.meta.set('lastSync', Date.now());
     await this.meta.set('lastSyncedAt', Date.now());
-    await this.meta.set('conflicts', []);
+    // Unreviewed overwritten edits are kept: replacing this device is the owner's choice, but it was never a choice to discard them (ST-S1, SY-01).
   }
 
   /** Has anything changed on this device since the last sync? Cheap (no network, no encryption). When unsure it says yes. */
@@ -189,6 +190,10 @@ export class SyncEngine {
       const file = await this.remote.getFile();
       const remote = file ? await decodeSnapshot(file.bytes, this.pass) : emptySnapshot();
       const m = mergeSnapshots({ local, remote, base, lastSync, now });
+      // ST-S1 (SY-01): save every overwritten version BEFORE anything is overwritten. This device's copy is replaced by applyLocal below and the
+      // other device's copy by the upload, so if the list cannot be saved the sync stops here with nothing changed anywhere, and if the upload
+      // fails afterwards the overwritten versions are already safe. A retry that sees the same clash does not add it twice.
+      if (m.conflicts.length) await addConflicts(this.meta, m.conflicts);
       const { pulled, removedHere } = await this.applyLocal(local, m.put, m.del);
       let pushed = false;
       let sha = file?.sha;
@@ -212,7 +217,6 @@ export class SyncEngine {
       await this.meta.set('recordCount', count(m.merged));
       await this.meta.set('lastSync', now);
       await this.meta.set('lastSyncedAt', Date.now());
-      if (m.conflicts.length) await this.meta.set('conflicts', [...m.conflicts, ...(await this.conflicts())].slice(0, MAX_CONFLICTS));
       return { pulled, removedHere, pushed, conflicts: m.conflicts };
     }
   }

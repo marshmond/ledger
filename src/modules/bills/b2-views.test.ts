@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { addDays } from '../../lib/dates';
@@ -154,7 +155,7 @@ describe('B2 Calendar layer: rolling 12 months, derived, never stored (tests 31,
     const { id } = await mk(d, { notes: 'account 12345678', payment: { how: 'manual', fundingAccountId: 5 } });
     await rec(d, id, 'm2026-11', inv(123456, { invoiceNumber: 'A-1042' }));
     for (const i of await billsDueItems(d, q())) {
-      const text = JSON.stringify({ t: i.title, d: i.detail, u: i.icsUid, s: i.sourceLabel });
+      const text = scanText({ t: i.title, d: i.detail, u: i.icsUid, s: i.sourceLabel });
       expect(text).not.toMatch(/\$|1234|12345678|A-1042|\d+\.\d{2}\b/);
     }
   });
@@ -300,7 +301,7 @@ describe('B2 Search stays free of recorded billing facts', () => {
     const obs = await loadObligations(d);
     for (const q2 of ['ZX-9981', '1234.56', '123456', 'goodwill', 'gesture']) expect(searchBillsData(q2, obs), q2).toEqual([]);
     expect(searchBillsData('example power', obs).map((r) => r.title)).toEqual(['Example Power Co']);
-    const subtitles = JSON.stringify(searchBillsData('example power', obs));
+    const subtitles = scanText(searchBillsData('example power', obs));
     expect(subtitles).not.toMatch(/ZX-9981|1234|goodwill/);
   });
 });

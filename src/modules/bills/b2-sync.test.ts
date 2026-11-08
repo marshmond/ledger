@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { exportAll, importAll } from '../../lib/backup';
@@ -270,7 +271,7 @@ describe('B2 backup and restore (test 42, 43)', () => {
     const g = groups.find((x) => x.id === 'bills')!;
     expect([...g.items].sort((x, y) => x.label.localeCompare(y.label))).toEqual([{ label: 'Billing-period records', n: 5 }, { label: 'Bills and subscriptions', n: 1 }]); // four readable facts plus the one this version cannot read
     expect(groups.find((x) => x.id === 'other')).toBeUndefined();
-    expect(JSON.stringify(groups)).not.toMatch(/Example Power|11420|114.20|goodwill|A-1/);
+    expect(scanText(groups)).not.toMatch(/Example Power|11420|114.20|goodwill|A-1/);
   });
   it('an unknown fact survives a restore and an ordinary edit of its period, and is still never counted', async () => {
     const d = fresh();

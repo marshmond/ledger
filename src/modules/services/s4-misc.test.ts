@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { installTracking } from '../../lib/sync/track';
@@ -32,8 +33,8 @@ describe('S4 privacy and small safeguards', () => {
     }
     const hit = searchServicesData('lawn', arrangements).filter((r) => r.kind === 'Service');
     expect(hit).toHaveLength(1);
-    expect(JSON.stringify(hit)).not.toMatch(/2027|4455|secret|12345|555-0100|pat@example/);
-    expect(JSON.stringify(await serviceRecords.describe(`arrangement:${arrangements[0].id}`))).not.toMatch(/2027|4455|secret|12345|555-0100|pat@example/);
+    expect(scanText(hit)).not.toMatch(/2027|4455|secret|12345|555-0100|pat@example/);
+    expect(scanText(await serviceRecords.describe(`arrangement:${arrangements[0].id}`))).not.toMatch(/2027|4455|secret|12345|555-0100|pat@example/);
   });
   it('a Move to replacement refreshes the arrangement\'s updated time, so an edit form opened earlier (which would quietly re-link the old asset) is refused', async () => {
     const d = fresh();

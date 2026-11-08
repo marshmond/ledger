@@ -55,7 +55,7 @@ A module can offer "turn this event into one of mine". It names the event types 
 
 ## Ledger's provider (`src/modules/ledger/dueProvider.ts`)
 
-Reuses `dueInstances()` for scheduled items and `loadCalendar()` for vests, tax dates, RMDs, pay milestones and the next loan payment, so it matches Home, the sidebar count and the Scheduled page. Scheduled items past due drop off after the overdue window (Calendar settings, default 30 days). Not included: budget bill goals (month only), windfalls and goals (year only), donations and HSA withdrawals (records of past actions).
+Reuses `dueInstances()` for scheduled items and `loadCalendar()` for vests, tax dates, RMDs, pay milestones and the next loan payment, so it matches Home, the sidebar count and the Scheduled page. A scheduled item whose account no longer exists is still listed (so it is not forgotten) with a plain note added to its detail (ST-S1); it cannot be approved, because `postInstance` refuses to post to a missing account. Scheduled items past due drop off after the overdue window (Calendar settings, default 30 days). Not included: budget bill goals (month only), windfalls and goals (year only), donations and HSA withdrawals (records of past actions).
 
 ## Tasks' provider (src/modules/tasks/dueProvider.ts)
 

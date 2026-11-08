@@ -68,6 +68,9 @@ export interface PostOverrides {
   categoryId?: number | null;
 }
 
+/** Thrown when a scheduled item names an account that no longer exists. Nothing is posted and nothing is logged. */
+export class MissingAccountError extends Error {}
+
 /** Approves a scheduled item: posts it as a pending transaction (or transfer) and remembers it was handled. */
 export async function postInstance(d: FinanceDB, rule: RecurringRule, scheduledDate: string, o: PostOverrides = {}) {
   const date = o.date ?? scheduledDate;
@@ -76,6 +79,11 @@ export async function postInstance(d: FinanceDB, rule: RecurringRule, scheduledD
   if (amount === 0) throw new Error('Amount cannot be zero');
 
   return d.transaction('rw', d.txns, d.accounts, d.recurringLog, async () => {
+    // Checked INSIDE the transaction, right before anything is written: the account may have been deleted on another device, or
+    // since this screen was drawn. A refusal writes no transaction, no log entry and changes no balance (ST-S1, DI-01).
+    const [own, other] = await Promise.all([d.accounts.get(rule.accountId), rule.transferAccountId ? d.accounts.get(rule.transferAccountId) : Promise.resolve(undefined)]);
+    if (!own) throw new MissingAccountError('Nothing was posted: the account this scheduled item belongs to no longer exists. You can skip this item, or delete it on the Scheduled page and add it again for an account that exists.');
+    if (rule.transferAccountId && !other) throw new MissingAccountError('Nothing was posted: the account this transfer goes to or comes from no longer exists. You can skip this item, or edit it on the Scheduled page and choose another account.');
     let txnId: number;
     if (rule.transferAccountId) {
       const [from, to] = amount < 0 ? [rule.accountId, rule.transferAccountId] : [rule.transferAccountId, rule.accountId];

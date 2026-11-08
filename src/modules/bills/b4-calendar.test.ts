@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import type { FinanceDB } from '../../db';
 import type { ModuleRecord } from '../../core/entities';
@@ -108,7 +109,7 @@ describe('B4 Calendar: cancellation and price markers', () => {
     await go(d, id, renewal({ auto: false, noticeDays: 30 }));
     await go(d, id, { type: 'price', from: '2027-01-01', until: null, cents: 1799, status: 'fixed', label: 'intro', source: 'invoice', note: 'secret price note' });
     await go(d, id, confirm());
-    const text = JSON.stringify(await billsDueItems(d, Q));
+    const text = scanText(await billsDueItems(d, Q));
     expect(text).not.toMatch(/private|secret|4242|REF-9|1799|17\.99|14\.99|\$\d/);
   });
 

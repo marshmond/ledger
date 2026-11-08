@@ -7,8 +7,8 @@ import { db } from '../../db';
 import { dexieMeta, syncStats, SyncEngine, type SyncStats, type SyncSummary } from './engine';
 import { githubRemote, SYNC_FILE } from './github';
 import { setChangeListener } from './track';
-import type { Conflict } from './merge';
 import { ensureFirstSyncSnapshot } from './safety';
+import { readConflicts } from './conflicts';
 
 /** Kept in this browser only. The token and passphrase never leave the device except to talk to GitHub / to encrypt. */
 export interface SyncConfig {
@@ -88,7 +88,7 @@ export function syncNow(opts: { auto?: boolean } = {}): Promise<void> {
         throw new Error(`Sync paused: the automatic safety copy could not be saved (${snapErr instanceof Error ? snapErr.message : String(snapErr)}). Free some browser storage or export a backup, then try again.`);
       }
       const last = await e.sync({ allowSkip: opts.auto });
-      emit({ state: 'idle', last, stats: await syncStats(meta), lastSyncedAt: await e.lastSyncedAt(), error: undefined, conflicts: ((await meta.get<Conflict[]>('conflicts')) ?? []).length });
+      emit({ state: 'idle', last, stats: await syncStats(meta), lastSyncedAt: await e.lastSyncedAt(), error: undefined, conflicts: (await readConflicts(meta)).length });
     } catch (err) {
       emit({ state: 'error', error: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -99,7 +99,7 @@ export function syncNow(opts: { auto?: boolean } = {}): Promise<void> {
 }
 
 export async function loadLastSynced() {
-  emit({ stats: await syncStats(meta), lastSyncedAt: await meta.get<number>('lastSyncedAt'), conflicts: ((await meta.get<Conflict[]>('conflicts')) ?? []).length });
+  emit({ stats: await syncStats(meta), lastSyncedAt: await meta.get<number>('lastSyncedAt'), conflicts: (await readConflicts(meta)).length });
 }
 
 /** Call after the list of overwritten edits changed (restored or cleared), so the status in the top bar follows. */

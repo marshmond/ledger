@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { createStore } from '../../core/store';
@@ -51,7 +52,7 @@ describe('S4-A1 the asset page lists the arrangements that serve it', () => {
     const d = fresh();
     const a = await asset(d, 'Furnace');
     await createArrangement({ data: blankArrangement({ title: 'Plan', notes: 'code 4455', expected: { basis: 'perMonth', cents: 9999 }, refs: [{ label: 'C', url: 'https://example.com/secret' }] }), provider: { name: 'Pat', phone: '555-0100' }, assetIds: [a], today: TODAY }, d);
-    expect(JSON.stringify(await loadAssetServices(a, d))).not.toMatch(/4455|9999|secret|555-0100/);
+    expect(scanText(await loadAssetServices(a, d))).not.toMatch(/4455|9999|secret|555-0100/);
   });
   it('a soft-deleted arrangement is skipped and counted, never a crash; links received before their record are tolerated', async () => {
     const d = fresh();

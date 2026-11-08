@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { exportAll, importAll } from '../../lib/backup';
@@ -435,7 +436,7 @@ describe('H2 shared records, search and Quick Add', () => {
     expect(sv[0].subtitle).toContain('Home > Dishwasher');
     expect(sv[0].path).toMatch(/^\/assets\/\d+\?service=\d+$/);
     expect(searchAssetsData('12345', assets, 8, services).filter((h) => h.kind === 'Service')).toHaveLength(1); // notes are searchable...
-    expect(JSON.stringify(hits)).not.toMatch(/12345|9900|99\.00|SENTINEL|Sentinel Test Lane/); // ...but never shown
+    expect(scanText(hits)).not.toMatch(/12345|9900|99\.00|SENTINEL|Sentinel Test Lane/); // ...but never shown
     expect(searchAssetsData('nothing like this', assets, 8, services)).toEqual([]);
   });
   it('a service record whose asset is gone still searches, pointing at the list', async () => {

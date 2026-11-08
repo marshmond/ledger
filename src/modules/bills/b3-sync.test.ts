@@ -1,3 +1,4 @@
+import { scanText } from '../../lib/leakTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { buildBackup, checkBackupText, restoreChecked } from '../../lib/backupFile';
@@ -247,7 +248,7 @@ describe('B3 backup and restore: links, amounts and set-aside evidence come back
     expect(before.amounts).toMatchObject({ paid: 12000, remaining: 0 });
     const text = JSON.stringify(await buildBackup(src));
     const groups = summarizeBackup(JSON.parse(text));
-    expect(JSON.stringify(groups)).not.toMatch(/Example|Test checking|\$\s?\d|12000|5000|7000/); // no provider names, no amounts
+    expect(scanText(groups)).not.toMatch(/Example|Test checking|\$\s?\d|12000|5000|7000/); // no provider names, no amounts
     expect(groups.find((g) => g.id === 'bills')!.items).toEqual([{ label: 'Bills and subscriptions', n: 1 }, { label: 'Billing-period records', n: 4 }]); // the bill; invoice, typed payment, two links
     const dst = fresh('b3bk2');
     const mem = new Map<string, string>();

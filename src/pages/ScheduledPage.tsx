@@ -6,6 +6,7 @@ import { db } from '../db';
 import type { Frequency, RecurringRule } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { deleteRule, dueInstances, postInstance, skipInstance, type DueInstance } from '../lib/schedule';
+import { orphanedRules } from '../lib/accountDependents';
 import Modal from '../shell/Modal';
 import { PageHeader } from '../ui/components';
 
@@ -20,7 +21,7 @@ const FREQ: Record<Frequency, string> = {
 
 const LOOKAHEAD_DAYS = 7;
 
-function DueRow({ item }: { item: DueInstance }) {
+function DueRow({ item, accountMissing }: { item: DueInstance; accountMissing: boolean }) {
   const { rule, date } = item;
   const [d, setD] = useState(date);
   const [amt, setAmt] = useState((Math.abs(rule.amountCents) / 100).toFixed(2));
@@ -47,6 +48,7 @@ function DueRow({ item }: { item: DueInstance }) {
       <td>
         {rule.payee} <span className="badge">scheduled</span>
         <div className="muted">{rule.transferAccountId ? 'Transfer' : ''}</div>
+        {accountMissing && <div className="warn" role="note">Its account no longer exists, so it cannot be approved. Skip it, or fix or delete it under Recurring items below.</div>}
       </td>
       <td className="num">
         <input style={{ width: 100 }} inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} />
@@ -54,7 +56,7 @@ function DueRow({ item }: { item: DueInstance }) {
       </td>
       <td>
         <div className="row">
-          <button className="primary" onClick={approve}>Approve</button>
+          <button className="primary" onClick={approve} disabled={accountMissing} title={accountMissing ? 'Its account no longer exists' : undefined}>Approve</button>
           <button onClick={() => skipInstance(db, rule, date)}>Skip</button>
         </div>
         {err && <div className="error">{err}</div>}
@@ -70,6 +72,8 @@ export default function ScheduledPage() {
   const rules = useLiveQuery(() => db.recurring.toArray(), []) ?? [];
   const due = useLiveQuery(() => dueInstances(db, todayISO(), LOOKAHEAD_DAYS), []);
 
+  // Read-only: rules that name an account which no longer exists. Nothing is repaired automatically (ST-S1, DI-01).
+  const orphans = new Set(orphanedRules(rules, new Set(accounts.map((a) => a.id!))).map((r) => r.id!));
   const [editing, setEditing] = useState<number | null>(null);
   const [accountId, setAccountId] = useState('');
   const [payee, setPayee] = useState('');
@@ -164,12 +168,19 @@ export default function ScheduledPage() {
       <PageHeader title="Scheduled" description="Recurring items you approve before they post." about={<>Recurring items show up here as they come due (up to {LOOKAHEAD_DAYS} days ahead). Nothing is posted until you approve it, and you
         can change the date or amount first. Approved items land in the ledger as pending, marked “scheduled”.</>} />
 
+      {orphans.size > 0 && (
+        <div className="card" role="note">
+          <strong>{orphans.size === 1 ? '1 scheduled item points' : `${orphans.size} scheduled items point`} at an account that no longer exists.</strong>
+          <p className="muted">They cannot be approved, because nothing can be posted to a missing account. Nothing has been changed. For each one, choose an account that exists (edit it below) or delete it; skipping only clears one date.</p>
+        </div>
+      )}
+
       <h2>Due now</h2>
       {due && due.length === 0 && <p className="muted">Nothing due.</p>}
       {due && due.length > 0 && (
         <table>
           <thead><tr><th>Date</th><th>Item</th><th className="num">Amount</th><th></th></tr></thead>
-          <tbody>{due.map((x) => <DueRow key={`${x.rule.id}-${x.date}`} item={x} />)}</tbody>
+          <tbody>{due.map((x) => <DueRow key={`${x.rule.id}-${x.date}`} item={x} accountMissing={orphans.has(x.rule.id!)} />)}</tbody>
         </table>
       )}
 
@@ -182,7 +193,7 @@ export default function ScheduledPage() {
               <td>
                 {r.payee}
                 <div className="muted">
-                  {acctName(r.accountId)} · {r.transferAccountId ? `transfer ${r.amountCents < 0 ? 'to' : 'from'} ${acctName(r.transferAccountId)}` : catName(r.categoryId)}
+                  {orphans.has(r.id!) && <span className="badge">account missing</span>} {acctName(r.accountId)} · {r.transferAccountId ? `transfer ${r.amountCents < 0 ? 'to' : 'from'} ${acctName(r.transferAccountId)}` : catName(r.categoryId)}
                 </div>
               </td>
               <td>
