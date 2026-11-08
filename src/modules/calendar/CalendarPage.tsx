@@ -15,6 +15,7 @@ import type { Occurrence } from './occurrences';
 import TimeGrid, { weekStartOf, workWeekDays } from './TimeGrid';
 import { dayLabel } from './time';
 import { useCalendarData, useLayerVisibility, useNow, type CalItem } from './useCalendarData';
+import { dropCovered } from './markerCoordination';
 
 const VIEWS: { id: ViewId; label: string }[] = [
   { id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }, { id: 'workweek', label: 'Work week' }, { id: 'agenda', label: 'Agenda' },
@@ -67,7 +68,8 @@ export default function CalendarPage() {
   const data = useCalendarData(range.from, range.to, view === 'agenda', now);
   const layerIds = useMemo(() => (data?.layers ?? []).map((l) => l.id), [data]);
   const vis = useLayerVisibility(layerIds);
-  const items = useMemo(() => (data?.items ?? []).filter((i) => vis.isVisible(i.layerId)), [data, vis.vis]); // eslint-disable-line react-hooks/exhaustive-deps
+  // B3.1: a Bills marker is left out only while the Finance marker of its linked Scheduled payment is itself shown (display only; nothing is stored or deleted)
+  const items = useMemo(() => dropCovered((data?.items ?? []).filter((i) => vis.isVisible(i.layerId))), [data, vis.vis]); // eslint-disable-line react-hooks/exhaustive-deps
   const defaultCal = useLiveQuery(() => defaultCalendarId(), [settings?.defaultCalendarId]) ?? PERSONAL_ID;
 
   const [editor, setEditor] = useState<Editor | null>(null);

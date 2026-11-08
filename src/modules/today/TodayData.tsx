@@ -11,6 +11,7 @@ import { useSharedLive } from '../../core/sharedLive';
 import { getModule } from '../../core/registry';
 import { addDays } from '../../lib/dates';
 import { useCalendarData, useNow, type CalItem } from '../calendar/useCalendarData';
+import { dropCovered } from '../calendar/markerCoordination';
 import { loadTodaySettings } from './settings';
 
 export interface OlderLink {
@@ -60,7 +61,7 @@ export function TodayDataProvider({ today, children }: { today: string; children
   });
 
   const value = useMemo<TodayData>(
-    () => ({ today, items: data?.items, overdueDays, lookAheadDays, overdueRows, older: olderRaw ?? [] }),
+    () => ({ today, items: data?.items ? dropCovered(data.items) : undefined, overdueDays, lookAheadDays, overdueRows, older: olderRaw ?? [] }),
     [today, data, overdueDays, lookAheadDays, overdueRows, olderRaw],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

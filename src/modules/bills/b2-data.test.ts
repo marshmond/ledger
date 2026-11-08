@@ -482,7 +482,7 @@ describe('B2 repairs: use this one, different bills, leave as is (tests 60, 82)'
     const d = fresh();
     const { id } = await mk(d, {}, null);
     await remote(d, 777, 'm2026-11', { fact: 'invoice', invoicedCents: 100 });
-    const weird = await remote(d, id, 'm2026-11', { fact: 'suggestion-reject', ref: { txnId: 5 } });
+    const weird = await remote(d, id, 'm2026-11', { fact: 'cancellation-notice', ref: { txnId: 5 } });
     const cs = findConflicts([(await getObligation(id, d))!], await loadCycles(d));
     const orphan = cs.find((x) => x.kind === 'missing-obligation')!;
     const r = await repair(d, orphan.key, { kind: 'remove' });
@@ -491,7 +491,7 @@ describe('B2 repairs: use this one, different bills, leave as is (tests 60, 82)'
     expect((await loadCycles(d)).filter((x) => x.obligationId === 777)).toHaveLength(1);
     const unreadable = cs.find((x) => x.kind === 'unreadable')!;
     expect(unreadable.repairs).toEqual([]);
-    expect((await d.moduleRecords.get(weird))!.data).toMatchObject({ fact: 'suggestion-reject', ref: { txnId: 5 } });
+    expect((await d.moduleRecords.get(weird))!.data).toMatchObject({ fact: 'cancellation-notice', ref: { txnId: 5 } });
   });
 });
 

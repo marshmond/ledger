@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import Modal from '../../shell/Modal';
 import ScheduleFields from './ScheduleFields';
@@ -8,6 +8,9 @@ import { store } from '../../core/store';
 import { parseAmountToCents } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import { createObligation, editObligation, type ProviderInput } from './data';
+import { newOp } from './cycleData';
+import { createFromSeed } from './discoveryData';
+import type { FormSeed } from './formSeed';
 import { blankDraft, draftOfSchedule, draftProblem, scheduleOfDraft } from './scheduleDraft';
 import { runUndo } from './undo';
 import {
@@ -22,27 +25,31 @@ const sameSchedule = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stri
  * Add or edit a bill or subscription. Three questions come first (what is it, how much, how often); everything else is under "More details".
  * An amount here is what the bill is EXPECTED to cost. It is never described as spent or paid. Nothing in Finance, Tasks or the Calendar is created or changed.
  */
-export default function ObligationForm({ obligation, onClose, onSaved }: { obligation?: ObligationRecord; onClose: () => void; onSaved?: (id: number) => void }) {
+export default function ObligationForm({ obligation, seed, onClose, onSaved }: { obligation?: ObligationRecord; /** B3.1: a prefill from a suggestion or a Finance scheduled payment. Every field stays editable and nothing is saved until Add. */ seed?: FormSeed; onClose: () => void; onSaved?: (id: number) => void }) {
   const toast = useToast();
   const today = useToday();
   const editing = !!obligation;
-  const d = obligation?.data ?? blankObligation({}, today);
+  const d = obligation?.data ?? blankObligation(seed ? { title: seed.title, type: seed.type, need: defaultNeed(seed.type), amountKind: seed.amountKind, prices: seed.amountCents !== null ? [{ from: today, cents: seed.amountCents, label: '' }] : [], schedule: seed.schedule, payment: { how: 'unknown', fundingAccountId: seed.fundingAccountId } } : {}, today);
+  const op = useRef(newOp()).current; // one per open form: a second press writes nothing
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
 
   const [title, setTitle] = useState(d.title);
   const [type, setType] = useState<BillType>(d.type);
-  const [typeTouched, setTypeTouched] = useState(editing);
+  const [typeTouched, setTypeTouched] = useState(editing || !!seed);
   const [need, setNeed] = useState<Need>(editing ? d.need : defaultNeed(d.type));
   const [needTouched, setNeedTouched] = useState(editing);
-  const [choice, setChoice] = useState<string>(d.providerContactId !== null ? String(d.providerContactId) : '');
-  const [newName, setNewName] = useState('');
+  const [choice, setChoice] = useState<string>(seed ? NEW : d.providerContactId !== null ? String(d.providerContactId) : '');
+  const [choiceTouched, setChoiceTouched] = useState(false);
+  const [newName, setNewName] = useState(seed?.providerName ?? '');
+  const [rememberPayee, setRememberPayee] = useState(!!seed?.payeeHint);
+  const [linkRuleToo, setLinkRuleToo] = useState(!!seed?.ruleId);
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [amountKind, setAmountKind] = useState<AmountKind>(editing ? d.amountKind : 'fixed');
+  const [amountKind, setAmountKind] = useState<AmountKind>(editing || seed ? d.amountKind : 'fixed');
   const first = firstAmountCents(d);
   const [amount, setAmount] = useState(first === null ? '' : (first / 100).toFixed(2));
-  const [draft, setDraft] = useState(() => (editing ? draftOfSchedule(d.schedule, today) : blankDraft(today)));
+  const [draft, setDraft] = useState(() => (editing || seed ? draftOfSchedule(d.schedule, today) : blankDraft(today)));
   const [how, setHow] = useState<How>(d.payment.how);
   const [payTask, setPayTask] = useState(editing ? d.reminders?.payTask === true : d.payment.how === 'manual');
   const [payTaskTouched, setPayTaskTouched] = useState(editing);
@@ -56,6 +63,13 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
   const [notes, setNotes] = useState(d.notes);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // a seeded provider that is already one of your Contacts is used, so no second Contact is made
+  useEffect(() => {
+    if (!seed || choiceTouched) return;
+    const m = contacts.find((c) => c.name.trim().toLowerCase() === seed.providerName.trim().toLowerCase());
+    if (m) setChoice(String(m.id));
+  }, [contacts, seed, choiceTouched]);
 
   const typed = newName.trim().toLowerCase();
   const sameAsExisting = !!typed && contacts.some((c) => c.name.trim().toLowerCase() === typed);
@@ -95,10 +109,10 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
         onSaved?.(obligation.id);
       } else {
         const prices = amountKind !== 'unknown' && cents !== null ? [{ from: tracking, cents, label: '' }] : [];
-        const r = await createObligation({
-          data: blankObligation({ title, type, need, amountKind, prices, schedule, trackingSince: tracking, payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote.trim(), since: reviewOn ? today : null }, refs, notes, reminders: { payTask, leadDays: 3 } }, today),
-          provider, today,
-        });
+        const data = blankObligation({ title, type, need, amountKind, prices, schedule, trackingSince: tracking, payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote.trim(), since: reviewOn ? today : null }, refs, notes, reminders: { payTask, leadDays: 3 }, payeeHints: seed?.payeeHint && rememberPayee ? [seed.payeeHint] : [] }, today);
+        const r = seed
+          ? await createFromSeed({ data, provider, today, from: seed.from ? { ...seed.from, op } : null, ruleId: seed.ruleId && linkRuleToo ? seed.ruleId : null })
+          : await createObligation({ data, provider, today });
         toast('Added. Nothing was paid or created in Finance.', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(r.id);
       }
@@ -114,6 +128,12 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
   return (
     <Modal title={editing ? 'Edit bill or subscription' : 'Add a bill or subscription'} onClose={onClose} wide>
       <form className="bl-form" onSubmit={(e) => { e.preventDefault(); void save(); }} noValidate>
+        {seed && (
+          <div className="bl-banner" role="note">
+            <strong>Prefilled from {seed.source === 'suggestion' ? 'the payments Ledger found in Finance' : 'a Finance scheduled payment'}.</strong> Check every field and change what is wrong. Nothing is saved until you press Add, and no past payment is linked to this bill: you can link those yourself afterwards.
+            {seed.notes.map((n, i) => <span key={i} className="small" style={{ display: 'block' }}>{n}</span>)}
+          </div>
+        )}
         <label className="f">What is it?
           <input value={title} onChange={(e) => onTitle(e.target.value)} placeholder="Streamly Premium, Example Power Co, Home insurance…" autoFocus maxLength={120} aria-invalid={!!error && !title.trim()} />
         </label>
@@ -147,7 +167,7 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
         </fieldset>
 
         <label className="f">Provider
-          <select value={choice} onChange={(e) => setChoice(e.target.value)} aria-label="Provider">
+          <select value={choice} onChange={(e) => { setChoice(e.target.value); setChoiceTouched(true); }} aria-label="Provider">
             <option value="">No provider</option>
             {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value={NEW}>A new provider…</option>
@@ -163,6 +183,14 @@ export default function ObligationForm({ obligation, onClose, onSaved }: { oblig
             </div>
             <p className="muted small">Saved in your shared Contacts.</p>
           </div>
+        )}
+
+        {seed && !editing && (seed.payeeHint || seed.ruleId) && (
+          <fieldset className="bl-sub">
+            <legend>Also, if you agree</legend>
+            {seed.payeeHint && <label className="as-check"><input type="checkbox" checked={rememberPayee} onChange={(e) => setRememberPayee(e.target.checked)} /> Remember the payee name "{seed.payeeHint}" so Ledger can suggest this bill's payments later</label>}
+            {seed.ruleId && <label className="as-check"><input type="checkbox" checked={linkRuleToo} onChange={(e) => setLinkRuleToo(e.target.checked)} /> Link the matching Finance scheduled payment to this bill (Finance keeps controlling it; nothing there changes)</label>}
+          </fieldset>
         )}
 
         <details className="bl-sec">

@@ -155,3 +155,21 @@ a.btn.disabled { opacity: .5; pointer-events: none; }
 .bl-histrow { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
 .bl-histrow:first-child { border-top: 0; padding-top: 0; }
 @media (max-width: 560px) { .bl-payrow .bl-actionrow .btn { min-height: 44px; } }
+
+/* B3.1: suggested payments, recurring-expense discovery and the Finance Scheduled panel */
+.bl-suggs { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.bl-sugg-list { display: grid; gap: var(--sp-3); margin: 0; padding: 0; }
+.bl-sugg { border: 1px solid var(--line); border-radius: var(--radius, 10px); padding: var(--sp-3); display: grid; gap: var(--sp-2); }
+.bl-sugg-dim { opacity: 1; background: color-mix(in srgb, var(--muted, #888) 6%, transparent); }
+.bl-sugg-head { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: baseline; flex-wrap: wrap; }
+.bl-ev { margin: 0; padding-left: 1.1rem; list-style: disc; font-size: var(--fs-sm, .92rem); display: grid; gap: 2px; }
+.bl-ev-against { color: var(--muted); }
+.bl-disc-row { display: flex; justify-content: space-between; gap: var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.bl-disc-sum { display: block; }
+.bl-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--sp-2) var(--sp-4); margin: var(--sp-2) 0; }
+.bl-facts dt { font-size: var(--fs-xs); color: var(--muted); }
+.bl-facts dd { margin: 0; }
+@media (max-width: 560px) {
+  .bl-disc-row { flex-direction: column; align-items: stretch; }
+  .bl-sugg .bl-actionrow .btn, .bl-disc-row .btn, .bl-sub .bl-actionrow .btn { min-height: 44px; }
+}

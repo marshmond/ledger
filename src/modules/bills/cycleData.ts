@@ -16,7 +16,7 @@ import { newId } from '../../lib/sync/track';
 import { extraSlot } from './slots';
 import { effectiveLinks, linkProblem, switchLines, TYPED_WHILE_LINKED, typedPayments } from './paymentLinks';
 import { financeLookupFor, inBillsTx } from './tasks';
-import type { TxnRef } from '../../lib/txnRef';
+import { pieceKey, type TxnRef } from '../../lib/txnRef';
 import type { LabelId } from './labels';
 import {
   CYCLE_KIND, isEffective, readCycle, storedCycle, validateBody, type CycleRecord, type FactBody,
@@ -138,6 +138,7 @@ export async function editFact(id: number, body: FactBody, expectUpdatedAt: numb
     if (c.updatedAt !== expectUpdatedAt) throw new Error(STALE);
     if (body.fact !== c.body.fact) throw new Error('A record cannot change its type. Remove it and add a new one. Nothing was changed.');
     if (c.body.fact === 'payment-link') throw new Error('A linked payment cannot be edited. Remove the link and link another payment. Nothing was changed.');
+    if (c.body.fact === 'suggestion-reject') throw new Error('A rejection cannot be edited. Reconsider it and reject another payment instead. Nothing was changed.');
     const ob = await obligationIn(c.obligationId, d);
     if (!ob) throw new Error('That bill no longer exists. Nothing was changed.');
     const bad = validateBody(body);
@@ -166,6 +167,61 @@ export async function removeFact(id: number, expectUpdatedAt: number, today: str
     await rec.capture(id, d);
     await rows(d).remove(id);
     if (c.obligationId !== null) await ensureBillTasksIn(c.obligationId, today, d, lookup, rec);
+    return { undo: await rec.seal(d) };
+  });
+}
+
+// ---- B3.1: "Not this payment" ----
+
+export interface RejectInput {
+  obligationId: number;
+  slot: string;
+  /** The ONE Finance piece (a whole transaction or one part) that is not a payment for this period. */
+  ref: TxnRef;
+  /** One per open dialog or press: a second submission with the same one writes nothing. */
+  op: string;
+}
+export interface RejectResult { id: number; reused: boolean; undo: Undo }
+
+/**
+ * Records that ONE Finance piece is NOT a payment for ONE billing period, so Ledger stops suggesting it for that period. It is a fact, added and
+ * never edited (B0 3.4), so two devices that each reject something add two separate records and neither overwrites the other. Its scope is the period:
+ * rejecting November's payment says nothing about December. It touches nothing but a Bills record: no Finance transaction, no payment, no status, no Task
+ * (a rejection changes no period's money, so it never plans or makes a reminder). Rejecting the same piece again for the same period is a no-op that
+ * returns the existing record. One transaction; guarded Undo.
+ */
+export function rejectSuggestion(input: RejectInput, d: FinanceDB = db): Promise<RejectResult> {
+  return d.transaction('rw', cycleTables(d), async () => {
+    const ob = await obligationIn(input.obligationId, d);
+    if (!ob) throw new Error('That bill no longer exists. Nothing was changed.');
+    const body: FactBody = { fact: 'suggestion-reject', ref: input.ref };
+    const bad = validateBody(body);
+    if (bad) throw new Error(bad);
+    if (!parseSlot(input.slot)) throw new Error('That is not a billing period this version understands.');
+    const mine = await cycleRecordsOf(input.obligationId, d);
+    const again = mine.find((c) => c.op !== null && c.op === input.op);
+    if (again) return { id: again.id, reused: true, undo: { rows: [], sealed: {} } };
+    const same = mine.find((c) => c.slot === input.slot && isEffective(c) && c.body.fact === 'suggestion-reject' && pieceKey(c.body.ref) === pieceKey(input.ref));
+    if (same) return { id: same.id, reused: true, undo: { rows: [], sealed: {} } };
+    const rec = new Recorder();
+    const id = await rows(d).put({ module: MODULE, kind: CYCLE_KIND, data: storedCycle({ raw: {}, obligationId: input.obligationId, slot: input.slot, op: input.op, supersededBy: null, movedFrom: null }, body) });
+    rec.made(id);
+    return { id, reused: false, undo: await rec.seal(d) };
+  });
+}
+
+/**
+ * Takes a rejection back ("look at this payment again"): a soft delete, so the record stays in the database as history and Undo can bring it back.
+ * Refuses if the record changed since the owner opened it. Never touches Finance or any other record.
+ */
+export function reconsiderRejection(id: number, expectUpdatedAt: number, d: FinanceDB = db): Promise<{ undo: Undo }> {
+  return d.transaction('rw', cycleTables(d), async () => {
+    const c = await getCycle(id, d);
+    if (!c || c.body === null || c.body.fact !== 'suggestion-reject') throw new Error('That rejection can no longer be changed here. Nothing was changed.');
+    if (c.updatedAt !== expectUpdatedAt) throw new Error(STALE);
+    const rec = new Recorder();
+    await rec.capture(id, d);
+    await rows(d).remove(id);
     return { undo: await rec.seal(d) };
   });
 }

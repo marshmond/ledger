@@ -5,7 +5,11 @@ import { useToday } from '../../ui/useToday';
 import { RefLine, TxnPicker, useResolved } from '../../ui/TxnRefs';
 import { pieceKey, type TxnRef } from '../../lib/txnRef';
 import { Lines, useMoney, type Money } from './BillsParts';
+import { db } from '../../db';
 import { newOp, planFact, recordFact, type FactPlan } from './cycleData';
+import { SuggestedMatches } from './SuggestionsUI';
+import { suggestionStale } from './suggest';
+import { financeLookupFor } from './tasks';
 import type { CycleRecord } from './cycleModel';
 import { LABEL_TEXT } from './labels';
 import type { ObligationRecord } from './model';
@@ -83,6 +87,8 @@ export function LinkPaymentDialog({ obligation, period, replace, onClose }: { ob
   const { money, hide } = useMoney();
   const op = useRef(newOp()).current; // one per open dialog: a second press writes nothing
   const [picked, setPicked] = useState<TxnRef | null>(null);
+  /** The piece came from a suggestion: it is checked against a FRESH read of Finance just before it is written. */
+  const [fromSuggestion, setFromSuggestion] = useState(false);
   const [switchTyped, setSwitchTyped] = useState(false);
   const [finishTask, setFinishTask] = useState(true);
   const [plan, setPlan] = useState<FactPlan | null>(null);
@@ -106,6 +112,10 @@ export function LinkPaymentDialog({ obligation, period, replace, onClose }: { ob
     if (busy || !picked || !plan || plan.problem) return;
     setBusy(true); setError('');
     try {
+      if (fromSuggestion) {
+        const stale = suggestionStale(picked, await financeLookupFor(db, [obligation.id], [picked]));
+        if (stale) { setError(stale); setPicked(null); setFromSuggestion(false); setBusy(false); return; }
+      }
       const finish = plan.taskId != null && finishTask ? plan.taskId : null;
       const r = await recordFact({ obligationId: obligation.id, slot, body: { fact: 'payment-link', ref: picked }, op, today, finishTaskId: finish, switchTyped, replaceFactId: replace?.id ?? null });
       toast(r.reused ? 'That payment was already linked' : `${replace ? 'Payment replaced' : 'Payment linked'}. Nothing was changed in Finance.`, () => runUndo(r.undo, toast).then(() => undefined));
@@ -120,8 +130,10 @@ export function LinkPaymentDialog({ obligation, period, replace, onClose }: { ob
         <p className="muted" style={{ margin: 0 }}><strong>{obligation.data.title}</strong>, {words}</p>
         {!picked ? (
           <>
+            <SuggestedMatches obligation={obligation} period={period} today={today} onUse={(r) => { setPicked(r); setFromSuggestion(true); setError(''); }} />
+            <h3 className="bl-h3">Or search all transactions</h3>
             <p className="muted small">Pick the payment you made, from the transactions already in Finance. Ledger links the one you choose and never guesses. Split transactions can be linked one part at a time.</p>
-            <TxnPicker chosen={links} onPick={(r) => { setPicked(r); setError(''); }} onClose={onClose} hide={hide} />
+            <TxnPicker chosen={links} onPick={(r) => { setPicked(r); setFromSuggestion(false); setError(''); }} onClose={onClose} hide={hide} />
           </>
         ) : (
           <>
@@ -145,7 +157,7 @@ export function LinkPaymentDialog({ obligation, period, replace, onClose }: { ob
             )}
             {error && <div className="error" role="alert">{error}</div>}
             <div className="row bl-actions">
-              <button type="button" className="btn" onClick={() => { setPicked(null); setSwitchTyped(false); }}>Pick another</button>
+              <button type="button" className="btn" onClick={() => { setPicked(null); setFromSuggestion(false); setSwitchTyped(false); }}>Pick another</button>
               <button type="button" className="btn primary" disabled={busy || !plan || !!plan.problem} onClick={() => void confirm()}>{replace ? 'Replace the payment' : 'Link this payment'}</button>
             </div>
           </>

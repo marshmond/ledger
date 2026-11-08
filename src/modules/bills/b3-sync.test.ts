@@ -246,7 +246,9 @@ describe('B3 backup and restore: links, amounts and set-aside evidence come back
     const before = await period(src, r.id);
     expect(before.amounts).toMatchObject({ paid: 12000, remaining: 0 });
     const text = JSON.stringify(await buildBackup(src));
-    expect(summarizeBackup(JSON.parse(text)).toString()).not.toMatch(/Example|\$\d/);
+    const groups = summarizeBackup(JSON.parse(text));
+    expect(JSON.stringify(groups)).not.toMatch(/Example|Test checking|\$\s?\d|12000|5000|7000/); // no provider names, no amounts
+    expect(groups.find((g) => g.id === 'bills')!.items).toEqual([{ label: 'Bills and subscriptions', n: 1 }, { label: 'Billing-period records', n: 4 }]); // the bill; invoice, typed payment, two links
     const dst = fresh('b3bk2');
     const mem = new Map<string, string>();
     await restoreChecked(dst, checkBackupText(text).file, { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v); }, removeItem: (k: string) => { mem.delete(k); } } as never);

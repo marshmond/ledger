@@ -10,6 +10,7 @@ import ObligationForm from './ObligationForm';
 import ContractCard from './ContractCard';
 import PeriodsCard from './PeriodsCard';
 import PaymentHistoryCard from './PaymentHistoryCard';
+import { ScheduledCard } from './ScheduledUI';
 import { amountOf, day, NeedChip, StatusChip, TypeChip, useMoney } from './BillsParts';
 import { getObligation, type LifecycleAction } from './data';
 import { expectedAmountOn, HOW_LABEL, isLoanExcluded, needsReview, scheduleSource, STATUS_LABEL } from './model';
@@ -114,6 +115,7 @@ export default function ObligationPage({ id }: { id: number }) {
 
       <PeriodsCard ob={r} />
       <PaymentHistoryCard ob={r} />
+      <ScheduledCard ob={r} account={(id) => accounts?.find((a) => a.id === id)?.name ?? 'An account that no longer exists'} />
       <ContractCard ob={r} />
 
       <section className="card bl-card" aria-labelledby="bl-rev-h">

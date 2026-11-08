@@ -22,6 +22,7 @@ import { localISO } from '../../core/time';
 import { derivePeriod, periodsOf, type Period } from './periods';
 import { SETTLED_LABELS } from './labels';
 import { scheduleProduces } from './slots';
+import { ruleLinkConflicts } from './scheduledLink';
 import { slotWords2 } from './schedule';
 import { markersOf, planBillTasks, planningPeriods, taskAckKey } from './tasks';
 import { deadlinesOf, DEADLINE_LABEL, readTerms, relativeDay, type DeadlineKind } from './terms';
@@ -48,7 +49,8 @@ export async function loadBillsSnapshot(d: FinanceDB = db): Promise<BillsSnapsho
   ]);
   const cycles = cyRows.filter(isLive).map(readCycle);
   // one bulk read for every transaction any payment link points at (a link that was set aside is history, shown from its snapshot, and is not looked up)
-  const financeTxns = await loadTxnMap(cycles.flatMap((c) => (c.body?.fact === 'payment-link' && c.supersededBy === null ? [c.body.ref] : [])), d);
+  // B3.1: a rejected piece is read too (still one bulk read), so a rejection can say whether the piece has changed since
+  const financeTxns = await loadTxnMap(cycles.flatMap((c) => ((c.body?.fact === 'payment-link' || c.body?.fact === 'suggestion-reject') && c.supersededBy === null ? [c.body.ref] : [])), d);
   return {
     obligations: obRows.filter(isLive).map(asObligation).sort((a, b) => a.data.title.localeCompare(b.data.title) || a.id - b.id),
     cycles,
@@ -99,7 +101,9 @@ export type AttentionCategory = 'dueSoon' | 'notConfirmed' | 'autopayCheck' | 'u
   /** B3: one Finance payment piece is linked more than once (in a period, whole beside its part, or on several periods). */
   | 'duplicatePieces'
   /** B3 follow-up: the owner declared a period paid in full, and the Finance payments linked to it show less than the bill. The declaration is kept; the difference is listed. */
-  | 'declaredShort';
+  | 'declaredShort'
+  /** B3.1: one Finance Scheduled payment is linked to more than one bill in force (for example linked on two offline devices). Both links are kept; the owner chooses. */
+  | 'ruleShared';
 export interface AttentionItem {
   id: string;
   category: AttentionCategory;
@@ -111,10 +115,12 @@ export interface AttentionItem {
   conflict?: Conflict;
   taskId?: number;
   date?: string;
+  /** B3.1: the Finance Scheduled payment a "ruleShared" item is about. */
+  ruleId?: number;
 }
 export type Attention = Record<AttentionCategory, number> & { total: number; items: AttentionItem[] };
 
-const CATEGORIES: AttentionCategory[] = ['dueSoon', 'notConfirmed', 'autopayCheck', 'paymentReview', 'paymentChanged', 'partlyPaid', 'typedFinance', 'duplicatePieces', 'declaredShort', 'unconfirmedTasks', 'conflicts', 'records', 'passedDates', 'taskProblems', 'trials', 'notices', 'renewals'];
+const CATEGORIES: AttentionCategory[] = ['dueSoon', 'notConfirmed', 'autopayCheck', 'paymentReview', 'paymentChanged', 'partlyPaid', 'typedFinance', 'duplicatePieces', 'declaredShort', 'ruleShared', 'unconfirmedTasks', 'conflicts', 'records', 'passedDates', 'taskProblems', 'trials', 'notices', 'renewals'];
 const settledByRecord = (p: Period) => SETTLED_LABELS.has(p.label) || p.label === 'partly-paid' || p.amounts.paid > 0 || p.declared || p.skipped;
 
 const PASSED_DAYS = 60;
@@ -178,6 +184,11 @@ export function attention(x: Derived): Attention {
     const category: AttentionCategory = c.kind === 'typed-and-finance' ? 'typedFinance' : c.kind === 'payment-duplicate' || c.kind === 'payment-overlap' || c.kind === 'payment-shared' ? 'duplicatePieces' : c.severity === 'review' ? 'records' : 'conflicts';
     items.push({ id: `c-${c.key}`, category, obligationId: c.obligationId, slot: c.slot, conflict: c, text: `${ob ? `${ob.data.title}: ` : ''}${c.text}` });
   }
+  // B3.1: a Finance Scheduled payment linked to more than one bill. Both pointers are kept; only the owner chooses which bill keeps it.
+  for (const c of ruleLinkConflicts(x.snap.obligations)) {
+    if (c.acknowledged) continue;
+    items.push({ id: `rule-${c.ruleId}`, category: 'ruleShared', obligationId: c.holders[0].id, ruleId: c.ruleId, text: `One Finance scheduled payment is linked to more than one bill: ${c.holders.map((h) => h.data.title).join(' and ')}` });
+  }
   const out = Object.fromEntries(CATEGORIES.map((c) => [c, items.filter((i) => i.category === c).length])) as Record<AttentionCategory, number>;
   const total = CATEGORIES.reduce((n, c) => n + out[c], 0);
   return { ...out, total, items: items.sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category) || (a.date ?? '').localeCompare(b.date ?? '') || a.id.localeCompare(b.id)) };
@@ -196,6 +207,7 @@ export function attentionLines(a: Attention): { id: AttentionCategory; text: str
   if (a.typedFinance) rows.push({ id: 'typedFinance', text: `${n(a.typedFinance, 'bill has', 'bills have')} a typed payment and a Finance payment` });
   if (a.declaredShort) rows.push({ id: 'declaredShort', text: `${n(a.declaredShort, 'bill marked paid in full shows', 'bills marked paid in full show')} less in Finance` });
   if (a.duplicatePieces) rows.push({ id: 'duplicatePieces', text: `${n(a.duplicatePieces, 'payment is', 'payments are')} linked more than once` });
+  if (a.ruleShared) rows.push({ id: 'ruleShared', text: `${n(a.ruleShared, 'Finance scheduled payment is', 'Finance scheduled payments are')} linked to more than one bill` });
   if (a.unconfirmedTasks) rows.push({ id: 'unconfirmedTasks', text: `${n(a.unconfirmedTasks, 'finished reminder Task', 'finished reminder Tasks')} not yet confirmed` });
   if (a.conflicts) rows.push({ id: 'conflicts', text: `${n(a.conflicts, 'billing record disagrees', 'billing records disagree')} with another` });
   if (a.records) rows.push({ id: 'records', text: `${n(a.records, 'billing record needs', 'billing records need')} a look` });

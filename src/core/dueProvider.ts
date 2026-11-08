@@ -58,6 +58,13 @@ export interface DerivedItem extends Pick<DueItemInput, 'sourceModule' | 'source
    */
   icsTitle?: string;
   icsDetail?: string;
+  /**
+   * B3.1 display coordination. The id of ANOTHER layer's item that already stands for this same occurrence (a Bills expected-payment marker whose linked
+   * Finance Scheduled payment shows the same date). A DISPLAY filter may leave this item out, but ONLY while that other item is itself being shown
+   * (`calendar/markerCoordination.ts`), so switching a layer off can never make both disappear. It is not a financial event and changes no record:
+   * nothing is deleted, no status changes, and the other layer's item (which may be an approval action) is never touched.
+   */
+  coveredBy?: string;
 }
 
 export interface DueProvider {

@@ -12,10 +12,13 @@ import { obligationRoute, overviewRoute, upcomingRoute } from './paths';
 import { leaveTaskAsIs } from './cycleRepair';
 import { tidyReminders } from './contractData';
 import { runUndo } from './undo';
+import { KeepRuleDialog, leaveRuleAsIs } from './ScheduledUI';
+import { ruleLinkConflicts } from './scheduledLink';
 
 const GROUP: { id: AttentionCategory[]; title: string; hint: string }[] = [
   { id: ['conflicts'], title: 'Records that disagree or look alike', hint: 'Nothing was merged or deleted. Choose what to keep, or leave them as they are.' },
   { id: ['typedFinance'], title: 'A typed payment and a Finance payment', hint: 'Ledger counts one source at a time: the Finance payment counts and the typed amount is left out and kept. Choose the Finance payment to set the typed one aside, or leave it as it is.' },
+  { id: ['ruleShared'], title: 'One scheduled payment linked to two bills', hint: 'Both links are kept. Choose which bill keeps the Finance scheduled payment, or leave it as it is. Nothing in Finance is changed.' },
   { id: ['duplicatePieces'], title: 'The same payment linked more than once', hint: 'A payment is counted once however many times it is linked. Nothing was deleted; remove a link you did not mean from its billing period.' },
   { id: ['paymentReview', 'paymentChanged'], title: 'Linked Finance payments to look at', hint: 'A linked payment is missing, restructured, no longer spending, reversed or changed in Finance. The link is kept and shown; what Finance says now is used, and one that cannot be trusted counts nothing until you pick the payment again.' },
   { id: ['declaredShort'], title: 'Marked paid in full, but Finance shows less', hint: 'Your declaration is kept and nothing was added or cleared. Link the remaining payment, or remove the declaration if the bill is not paid in full.' },
@@ -36,6 +39,7 @@ export default function ReviewPage() {
   const toast = useToast();
   const x = useLiveQuery(async () => derive(await loadBillsSnapshot(), today), [today]);
   const [paid, setPaid] = useState<{ ob: ObligationRecord; slot: string; taskId: number | null } | null>(null);
+  const [keep, setKeep] = useState<{ ruleId: number; keepId: number } | null>(null);
   if (!x) return <div className="bl"><PageHeader title="Needs review" /><p className="muted">Loading…</p></div>;
   const a = attention(x);
   const byRec = new Map(x.snap.cycles.map((c) => [c.id, c]));
@@ -79,6 +83,8 @@ export default function ReviewPage() {
                     <div className="bl-actionrow">
                       {ob && <Link className="btn" to={obligationRoute(ob.id)}>Open the bill</Link>}
                       {ob && i.slot && (i.category === 'unconfirmedTasks' || i.category === 'notConfirmed' || i.category === 'autopayCheck') && <button className="btn primary" onClick={() => setPaid({ ob, slot: i.slot!, taskId: null })}>Mark paid…</button>}
+                      {i.category === 'ruleShared' && i.ruleId !== undefined && ruleLinkConflicts(x.snap.obligations).find((c) => c.ruleId === i.ruleId)?.holders.map((h) => <button key={h.id} className="btn" onClick={() => setKeep({ ruleId: i.ruleId!, keepId: h.id })}>Keep it on “{h.data.title}”</button>)}
+                      {i.category === 'ruleShared' && i.ruleId !== undefined && <button className="btn" onClick={() => void leaveRuleAsIs(i.ruleId!, toast)}>Leave as is</button>}
                       {i.category === 'taskProblems' && <button className="btn" onClick={() => void tidy(i)}>Update reminders</button>}
                       {i.category === 'unconfirmedTasks' && <button className="btn" onClick={() => void leaveTask(i)}>Leave as is</button>}
                     </div>
@@ -96,6 +102,7 @@ export default function ReviewPage() {
           <ul className="plain bl-items">{acked.map((c) => <li key={c.key}><ConflictCard conflict={c} records={byRec} obligation={obOf(c.obligationId)} /></li>)}</ul>
         </details>
       )}
+      {keep && (() => { const c = ruleLinkConflicts(x.snap.obligations).find((k) => k.ruleId === keep.ruleId); const k = c?.holders.find((h) => h.id === keep.keepId); return c && k ? <KeepRuleDialog ruleId={keep.ruleId} keep={k} holders={c.holders} onClose={() => setKeep(null)} /> : null; })()}
       {paid && <FactDialog obligation={paid.ob} slot={paid.slot} kind="paid" taskId={paid.taskId} onClose={() => setPaid(null)} />}
     </div>
   );

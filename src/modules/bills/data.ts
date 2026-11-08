@@ -67,12 +67,18 @@ export interface NewObligation {
   today?: string;
   /** An existing contact, or a name to find/create. Omit for "no provider yet". */
   provider?: ProviderInput | null;
+  /** B3.1: runs FIRST inside the transaction. Returning a result stops everything (nothing is written): how a repeated press with the same operation id reuses the earlier bill. */
+  before?: (d: FinanceDB) => Promise<Created | null>;
+  /** B3.1: runs inside the same transaction right after the bill is written, so whatever it also writes (a review-choice record, a validated Scheduled link) commits or rolls back WITH the bill. Throwing undoes the whole addition. */
+  also?: (ctx: { d: FinanceDB; id: number; rec: Recorder }) => Promise<void>;
 }
 export interface Created { id: number; contactCreated: boolean; contactId: number | null; taskIds: number[]; /** takes the whole addition back (refused if it was changed since); a made Contact is kept */ undo: Undo }
 
 /** Adds an obligation in one transaction: all or nothing. */
 export function createObligation(input: NewObligation, d: FinanceDB = db): Promise<Created> {
   return inBillsTx(d, tables(d), [], async (lookup) => {
+    const earlier = input.before ? await input.before(d) : null;
+    if (earlier) return earlier;
     let data = input.data;
     let contact: ResolvedProvider | null = null;
     if (hasProvider(input.provider)) {
@@ -82,6 +88,7 @@ export function createObligation(input: NewObligation, d: FinanceDB = db): Promi
     const id = await writeObligation(undefined, data, d);
     const rec = new Recorder();
     rec.made(id);
+    if (input.also) await input.also({ d, id, rec });
     const ens = input.today ? await ensureBillTasksIn(id, input.today, d, lookup, rec) : null;
     return { id, contactCreated: contact?.created ?? false, contactId: contact?.id ?? null, taskIds: ens?.created ?? [], undo: await rec.seal(d) };
   });

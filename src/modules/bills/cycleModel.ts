@@ -27,10 +27,11 @@ import { pieceKey, readTxnRefs, validateTxnRefs, type TxnRef } from '../../lib/t
 export const CYCLE_KIND = 'cycle';
 export const cycleRefId = (id: number) => `cycle:${id}`;
 
-export const FACTS = ['invoice', 'due-date', 'paid-outside', 'paid-in-full', 'skip', 'credit', 'payment-link'] as const;
+export const FACTS = ['invoice', 'due-date', 'paid-outside', 'paid-in-full', 'skip', 'credit', 'payment-link', 'suggestion-reject'] as const;
 export type FactType = (typeof FACTS)[number];
 export const FACT_LABEL: Record<FactType, string> = {
   invoice: 'Bill (invoice)', 'due-date': 'Due date', 'paid-outside': 'Paid outside Finance', 'paid-in-full': 'Marked paid in full', skip: 'Not billed (skipped)', credit: 'Provider credit', 'payment-link': 'Payment linked from Finance',
+  'suggestion-reject': 'Suggested payment rejected',
 };
 
 export type FactBody =
@@ -41,7 +42,14 @@ export type FactBody =
   | { fact: 'skip'; reason: string }
   | { fact: 'credit'; cents: number; note: string }
   /** B3: ONE Finance payment piece (a whole transaction or one part) the owner confirmed as a payment toward this period. Added or removed, NEVER edited. Holds a reference (and an explanatory snapshot), never a copy of the money. */
-  | { fact: 'payment-link'; ref: TxnRef };
+  | { fact: 'payment-link'; ref: TxnRef }
+  /**
+   * B3.1: the owner said "Not this payment" about ONE Finance piece for THIS billing period. Scope is the period, never the payee: a rejection for
+   * November says nothing about December. It holds the same shared reference as a payment link (transaction, optional split part, explanatory snapshot,
+   * split fingerprint) so a changed or reordered transaction is recognised and judged conservatively. It is never evidence of anything: it counts no money,
+   * marks nothing paid or skipped and changes no Finance record. Added or removed (a soft delete), never edited.
+   */
+  | { fact: 'suggestion-reject'; ref: TxnRef };
 
 /** A fact record as read. `body` is null when this version cannot read it (then `problem` says why). */
 export interface CycleRecord {
@@ -116,6 +124,10 @@ export function readCycle(r: ModuleRecord): CycleRecord {
       const refs = readTxnRefs([d.ref]);
       return refs.length === 1 ? ok({ fact: 'payment-link', ref: refs[0] }) : bad('The linked payment');
     }
+    case 'suggestion-reject': {
+      const refs = readTxnRefs([d.ref]);
+      return refs.length === 1 ? ok({ fact: 'suggestion-reject', ref: refs[0] }) : bad('The rejected payment');
+    }
     default:
       return fail(typeof d.fact === 'string' && d.fact ? `Its type ("${d.fact}") is not one this version of Ledger understands. It is kept exactly as saved.` : 'Its type is missing.');
   }
@@ -138,6 +150,7 @@ export function bodyFields(b: FactBody): Record<string, unknown> {
     case 'skip': return { fact: 'skip', ...(b.reason ? { reason: b.reason } : {}) };
     case 'credit': return { fact: 'credit', cents: b.cents, ...(b.note ? { note: b.note } : {}) };
     case 'payment-link': return { fact: 'payment-link', ref: refFields(b.ref) };
+    case 'suggestion-reject': return { fact: 'suggestion-reject', ref: refFields(b.ref) };
   }
 }
 
@@ -179,6 +192,7 @@ export function validateBody(b: FactBody): string | null {
       if (!isCents(b.cents) || b.cents <= 0) return 'Enter the credit amount, above $0.00.';
       return b.note.length > 200 ? 'The note is too long.' : null;
     case 'payment-link': return validateTxnRefs([b.ref]);
+    case 'suggestion-reject': return validateTxnRefs([b.ref]);
   }
 }
 
@@ -194,6 +208,10 @@ export function factWords(b: FactBody, money: (c: number) => string): string {
     case 'payment-link': {
       const r = b.ref;
       return `Finance payment linked: ${r.snapshot.payee || 'a transaction'}${r.snapshot.date ? ` on ${r.snapshot.date}` : ''}${r.splitIndex !== undefined ? ` (part ${r.splitIndex + 1}${r.fp ? ` of ${r.fp.splitCount}` : ''})` : ''}, ${r.snapshot.amountCents > 0 ? 'money back ' : 'paid '}${money(Math.abs(r.snapshot.amountCents))} when linked`;
+    }
+    case 'suggestion-reject': {
+      const r = b.ref;
+      return `You said this is not a payment for this period: ${r.snapshot.payee || 'a transaction'}${r.snapshot.date ? ` on ${r.snapshot.date}` : ''}${r.splitIndex !== undefined ? ` (part ${r.splitIndex + 1}${r.fp ? ` of ${r.fp.splitCount}` : ''})` : ''}, ${money(Math.abs(r.snapshot.amountCents))}`;
     }
   }
 }

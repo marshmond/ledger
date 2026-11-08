@@ -4,6 +4,7 @@ import { Link } from '../../core/router';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToday } from '../../ui/useToday';
 import ObligationForm from './ObligationForm';
+import { DiscoverCard } from './DiscoverCard';
 import { day, useMoney } from './BillsParts';
 import { CashFigures, CASH_NOTE } from './UpcomingPage';
 import { amountLine, PeriodLabel } from './PeriodParts';
@@ -30,7 +31,7 @@ export default function OverviewPage() {
   const lines = attentionLines(att);
   const wins = cashTiming(x);
   const soon = upcoming(x).ahead.filter((e) => e.period.timing.date! <= addDays(today, UPCOMING_DAYS)).slice(0, 12);
-  const LINK: Record<AttentionCategory, string> = { dueSoon: upcomingRoute(), trials: upcomingRoute(), notices: upcomingRoute(), renewals: upcomingRoute(), notConfirmed: reviewRoute(), autopayCheck: reviewRoute(), unconfirmedTasks: reviewRoute(), conflicts: reviewRoute(), records: reviewRoute(), passedDates: reviewRoute(), taskProblems: reviewRoute(), paymentReview: reviewRoute(), paymentChanged: reviewRoute(), partlyPaid: reviewRoute(), typedFinance: reviewRoute(), duplicatePieces: reviewRoute(), declaredShort: reviewRoute() };
+  const LINK: Record<AttentionCategory, string> = { dueSoon: upcomingRoute(), trials: upcomingRoute(), notices: upcomingRoute(), renewals: upcomingRoute(), notConfirmed: reviewRoute(), autopayCheck: reviewRoute(), unconfirmedTasks: reviewRoute(), conflicts: reviewRoute(), records: reviewRoute(), passedDates: reviewRoute(), taskProblems: reviewRoute(), paymentReview: reviewRoute(), paymentChanged: reviewRoute(), partlyPaid: reviewRoute(), typedFinance: reviewRoute(), duplicatePieces: reviewRoute(), declaredShort: reviewRoute(), ruleShared: reviewRoute() };
   const c = ov.commitments;
   const n = ov.counts;
   const unknownBits = [c.unknown.periods > 0 ? `${c.unknown.periods} expected date${c.unknown.periods === 1 ? '' : 's'} (${c.unknown.obligations} bill${c.unknown.obligations === 1 ? '' : 's'}) have no amount, so they are in neither figure` : '', c.onDemand > 0 ? `${c.onDemand} on-demand bill${c.onDemand === 1 ? '' : 's'} with no schedule not counted` : '', c.loanExcluded > 0 ? `${c.loanExcluded} loan-related bill${c.loanExcluded === 1 ? '' : 's'} left out (see Loans)` : ''].filter(Boolean);
@@ -46,6 +47,9 @@ export default function OverviewPage() {
         <EmptyState title="No bills or subscriptions yet" action={<button className="btn primary" onClick={() => setAdding(true)}>Add your first one</button>}>
           Add a bill or subscription with three answers: what it is, how much, and how often. Ledger works out the next expected dates. Nothing is paid, posted or created in Finance.
         </EmptyState>
+      ) : null}
+      {n.total === 0 ? (
+        <DiscoverCard />
       ) : (
         <>
           <section className="card bl-card" aria-labelledby="bl-count-h">
@@ -64,6 +68,8 @@ export default function OverviewPage() {
               <p className="muted small">The same counts the Today card shows. Nothing here is a payment.</p>
             </section>
           )}
+
+          <DiscoverCard />
 
           <section className="card bl-card" aria-labelledby="bl-cash-h">
             <h2 id="bl-cash-h">Expected cash needed</h2>

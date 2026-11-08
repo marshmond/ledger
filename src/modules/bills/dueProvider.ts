@@ -24,11 +24,14 @@ import { db, type FinanceDB } from '../../db';
 import { derivedId, goTo, type DerivedItem, type DueProvider, type DueQuery } from '../../core/dueProvider';
 import { addDays, addMonths } from '../../lib/dates';
 import { LABEL_TEXT, SETTLED_LABELS } from './labels';
-import { isLoanExcluded } from './model';
+import { isLoanExcluded, type ObligationRecord } from './model';
+import type { RecurringLog, RecurringRule } from '../../types';
 import { obligationPath } from './paths';
 import { periodsOf } from './periods';
 import { loadBillsSnapshot } from './readModel';
 import { lookupOfMap } from '../../lib/txnLookup';
+import { loadScheduled, occurrencesBetween } from '../../lib/financeRead';
+import { driftUnresolved, ruleKind, ruleLive, scheduleDrift } from './scheduledLink';
 import { markersOf } from './tasks';
 import { deadlinesOf, DEADLINE_MEANING, DEADLINE_SHORT, isActionDeadline, readTerms } from './terms';
 import { daysUntil } from './timing';
@@ -38,6 +41,25 @@ export const HORIZON_MONTHS = 12;
 /** The last day shown: the same day of the month, 12 calendar months after `today`, clamped. Inclusive. */
 export const horizonEnd = (today: string) => addMonths(today, HORIZON_MONTHS);
 
+/**
+ * B3.1: the id of the Finance Scheduled marker that already stands for this expected payment, or null. Decided ONLY from an explicit relationship, never
+ * from titles or amounts: the bill points at the rule, the rule is a live spending rule, Finance offers it on THE SAME DATE (no posting or skip is logged
+ * for it, so its approval marker exists), and nothing unresolved disagrees between the bill and the rule (drift). The Calendar leaves the Bills marker out
+ * only while that Finance marker is itself shown (calendar/markerCoordination.ts), so the Finance approval action is never the one hidden.
+ */
+export function coveringId(ob: ObligationRecord, date: string, sched: { rules: RecurringRule[]; log: RecurringLog[] } | null, today: string): string | null {
+  if (!sched || ob.data.status === 'ended') return null;
+  for (const id of ob.data.scheduledRuleIds) {
+    const r = sched.rules.find((x) => x.id === id);
+    if (!r || ruleKind(r) !== 'spending' || !ruleLive(r, today)) continue;
+    if (!occurrencesBetween(r, date, date).includes(date)) continue;
+    if (sched.log.some((l) => l.ruleId === id && l.date === date)) continue; // already approved or skipped: Finance shows no marker for it
+    if (driftUnresolved(scheduleDrift(ob.data, r, sched.log, today))) continue; // never conceal a disagreement nobody has looked at
+    return derivedId('ledger', `scheduled-${id}`, date); // the id Finance's own provider gives that marker
+  }
+  return null;
+}
+
 export async function billsDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedItem[]> {
   const snap = await loadBillsSnapshot(d);
   if (snap.obligations.length === 0) return [];
@@ -46,6 +68,9 @@ export async function billsDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedI
   if (lo > hi) return [];
   const openTasks = snap.tasks.filter((t) => t.data.status !== 'done');
   const lookup = lookupOfMap(snap.financeTxns); // a period paid by linked Finance payments is not an open due marker (read only; nothing is stored)
+  // B3.1: the Finance Scheduled rules bills point at (one small read, only when some bill links one), so a Due marker can be marked as covered
+  const linkedIds = snap.obligations.flatMap((o) => (o.data.status === 'ended' ? [] : o.data.scheduledRuleIds));
+  const sched = linkedIds.length ? await loadScheduled(d, linkedIds) : null;
   const out: DerivedItem[] = [];
 
   for (const ob of snap.obligations) {
@@ -60,11 +85,13 @@ export async function billsDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedI
         const task = openTasks.find((t) => { const m = markersOf(t); return m && m.obligation === ob.id && m.purpose === 'pay' && m.cycle === p.slot && t.data.dueDate === date; });
         if (task) continue; // the open Task for this very period is dated the same day and stands for it
         const manual = ob.data.payment.how !== 'auto';
+        const coveredBy = coveringId(ob, date, sched, q.today);
         out.push({
           id: derivedId('bills', `due-${ob.id}-${p.slot}`, date), sourceModule: 'bills', sourceRecordId: `obligation:${ob.id}`, title: `Due: ${title}`, date, allDay: true,
           priority: manual && late ? 'high' : manual && p.timing.days !== null && p.timing.days <= 3 ? 'high' : manual ? 'medium' : 'low', status: 'open',
           detail: `${LABEL_TEXT[p.label]}. ${p.timing.source === 'due' ? 'The due date is the one recorded for this bill.' : p.timing.source === 'conflict' ? 'The due date is to be confirmed: different dates are recorded.' : 'Expected date from the schedule; the provider\'s own due date is not recorded.'} Ledger does not know whether it was paid.`,
           openSource: go, sourceLabel: 'Open bill', icsUid: `bills-${ob.id}-${p.slot}@ledger.local`,
+          ...(coveredBy ? { coveredBy } : {}),
         });
       }
     }

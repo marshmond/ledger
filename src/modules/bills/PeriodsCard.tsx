@@ -11,7 +11,9 @@ import { FactDialog, RemoveFactDialog, type FactKind } from './CycleDialogs';
 import { amountLine, dueLine, PeriodLabel, periodName } from './PeriodParts';
 import { ConflictCard, MoveDialog } from './RepairDialogs';
 import { findConflicts } from './cycleConflicts';
-import { loadCycles } from './cycleData';
+import { loadCycles, reconsiderRejection } from './cycleData';
+import { useToast } from '../../ui/Toast';
+import { runUndo } from './undo';
 import { factWords, type CycleRecord } from './cycleModel';
 import { isLoanExcluded, type ObligationRecord } from './model';
 import { periodsOf, type Period } from './periods';
@@ -38,6 +40,10 @@ interface Dlg { slot: string; kind: FactKind; existing?: CycleRecord; taskId?: n
 
 function PeriodRow({ p, x }: { p: Period; x: RowCtx }) {
   const { ob, data, view, loan, money, hide, setLink, setDlg, setRm, setMv } = x;
+  const toast = useToast();
+  const reconsider = async (r: CycleRecord) => {
+    try { const out = await reconsiderRejection(r.id, r.updatedAt); toast('Ledger may suggest that payment again.', () => runUndo(out.undo, toast).then(() => undefined)); } catch (e) { toast(e instanceof Error ? e.message : 'Could not change that. Nothing was changed.'); }
+  };
   const eff = (pp: Period, f: string) => pp.effective.filter((y) => y.body.fact === f);
   const openTasks = (pp: Period) => data.tasks.filter((t) => { const m = markersOf(t); return m?.purpose === 'pay' && m.cycle === pp.slot && t.data.status !== 'done'; });
   const doneTasks = (pp: Period) => data.tasks.filter((t) => { const m = markersOf(t); return m?.purpose === 'pay' && m.cycle === pp.slot && t.data.status === 'done'; });
@@ -77,7 +83,7 @@ function PeriodRow({ p, x }: { p: Period; x: RowCtx }) {
               <li key={r.id} className="bl-rec">
                 <span>{r.body ? factWords(r.body, money) : `Needs review: ${r.problem}`}</span>
                 <span className="muted small">Recorded {day(localISO(r.createdAt))}{r.movedFrom ? ` · moved here from ${slotWords2(r.movedFrom)}` : ''}{typeof r.raw.separatedFrom === 'string' ? ` · made separate from ${slotWords2(r.raw.separatedFrom)}` : ''}</span>
-                {r.body && <span className="bl-actionrow">{r.body.fact !== 'payment-link' && <button className="btn" onClick={() => setDlg({ slot: p.slot, kind: r.body!.fact === 'invoice' ? 'invoice' : r.body!.fact === 'due-date' ? 'due-date' : r.body!.fact === 'skip' ? 'skip' : r.body!.fact === 'credit' ? 'credit' : 'paid', existing: r })}>Change</button>}<button className="btn" onClick={() => setRm({ rec: r, words: factWords(r.body!, money) })}>Remove</button></span>}
+                {r.body && <span className="bl-actionrow">{r.body.fact !== 'payment-link' && r.body.fact !== 'suggestion-reject' && <button className="btn" onClick={() => setDlg({ slot: p.slot, kind: r.body!.fact === 'invoice' ? 'invoice' : r.body!.fact === 'due-date' ? 'due-date' : r.body!.fact === 'skip' ? 'skip' : r.body!.fact === 'credit' ? 'credit' : 'paid', existing: r })}>Change</button>}{r.body.fact === 'suggestion-reject' ? <button className="btn" onClick={() => void reconsider(r)}>Look at it again</button> : <button className="btn" onClick={() => setRm({ rec: r, words: factWords(r.body!, money) })}>Remove</button>}</span>}
               </li>
             ))}
           </ul>
