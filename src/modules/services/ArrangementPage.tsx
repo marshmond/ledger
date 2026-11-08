@@ -23,6 +23,7 @@ import { ArrangementMoney } from './PaymentUI';
 import { contractWarnings, datesOf } from './contract';
 import ProjectLinks from './ProjectLinkCard';
 import { ContractDialog, MoveDialog } from './S4Dialogs';
+import RelatedBill from '../household/RelatedBillCard';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 
@@ -105,6 +106,8 @@ export default function ArrangementPage({ id }: { id: number }) {
       </section>
 
       <ArrangementMoney arrangement={a} />
+
+      <RelatedBill arrangementId={a.id} />
 
       <section className="card sv-card" aria-labelledby="sv-asset-h">
         <h2 id="sv-asset-h">Property or assets it serves</h2>

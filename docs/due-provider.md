@@ -94,6 +94,10 @@ The Bills layer (`bills`, same colour, same rolling window of today through the 
 
 Privacy and Hide Amounts: titles are the bill's own title plus a short word; details name no amount, note, reference or account (a test serialises every item and looks for them). Calendar-file (.ics) export is unchanged: only the Finance layer is exported.
 
+## Household finances (B5): no Calendar layer, no marker, no change here
+
+B5's consolidated Overview is a READ-ONLY financial composition, not a Calendar authority. It adds no layer, no due provider, no derived item and no marker, and it changes none of the existing ones: the Finance approval marker, the Bills layer (`..._107`), the Household Services layer (`..._106`) with its rolling 12-month visits, the `coveredBy` coordination and the layer-visibility choice (`calendar-hidden-layers`) are all as B4 left them. Folding a linked bill and arrangement into one commitment on the Overview never hides a Calendar item: every visit, Task, date and Finance approval stays on the Calendar whatever the Overview says. The Overview's page controls (period, 7/30/90 days) are page state only and never touch the Calendar's preference.
+
 ## Hide Amounts and the Finance layer (B3.0B)
 
 `ledgerDueItems` honors the app-wide Hide Amounts switch for the SCREEN text of every Finance item. With it on, a scheduled item is titled with its payee only (detail still "Scheduled payment to approve."), and any other amount in a Finance title or detail (a loan payment, an RSU vest, an estimated-tax shortfall) shows as the usual masked figure. Dates, ids, priorities and scheduling do not change, and nothing about the Scheduled payment, balances or posting is touched.
