@@ -4,16 +4,14 @@
  *  - Overdue = Tasks' own rule (`isOverdue`).
  *  - "Completed task, not yet saved to service history" = a done task linked to the asset that has no live service record with its id.
  */
+import { localISO } from '../../core/time';
 import { describeRule, type Recurrence } from '../../core/recurrence';
 import type { TaskRecord } from '../tasks/model';
 import { isOverdue } from '../tasks/views';
 import type { ServiceRecord } from './service';
 
 /** The local calendar day of a time stamp ('YYYY-MM-DD'). */
-export function localDate(ms: number): string {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+export const localDate = localISO;
 
 /** The day a completed task was finished. A done task with no completion time (an odd or old record) falls back to its last change. */
 export const completedOn = (t: TaskRecord): string => localDate(t.data.completedAt ?? t.updatedAt);

@@ -63,7 +63,7 @@ describe('B5 screen: structure and words', () => {
     expect(html).toMatch(/These are plans, not payments/);
     expect(html).toMatch(/not all of your spending/);
     expect(html).toMatch(/never as zero/);
-    expect(html).toMatch(/Not fully reconciled|Nothing unresolved is affecting this figure/);
+    expect(html).toMatch(/Some spending relationships need review|Cross-module totals verified/);
     expect(html).toMatch(/Finance's words are marks you keep|<\/p>/); // pending words are not presented as settlement
   });
 
@@ -73,7 +73,7 @@ describe('B5 screen: structure and words', () => {
     await A.d.txns.delete(s.T4.id!); // a linked payment deleted in Finance
     const o = await loadHouseholdOverview('all', TODAY, A.d);
     const bad = renderToStaticMarkup(h(SpendingCard, { s: o.spending, periodLabel: 'All time', periodOptions: [], period: 'all', onPeriod: () => undefined, money: shown }));
-    expect(bad).toMatch(/Not fully reconciled/);
+    expect(bad).toMatch(/Some spending relationships need review/);
     expect(bad).not.toMatch(/Nothing unresolved is affecting this figure/);
     const { A: B } = devices();
     await seed(B.d);

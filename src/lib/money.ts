@@ -1,3 +1,5 @@
+import { localISO } from '../core/time';
+
 export function formatCents(cents: number): string {
   cents = Math.round(cents); // callers sometimes pass computed (fractional) cents
   const sign = cents < 0 ? '-' : '';
@@ -64,11 +66,9 @@ export function assignedFromEntry(raw: string, currentCents: number): number | n
   return /^[+-]/.test(text) ? currentCents + n : n;
 }
 
+/** Today's date on this device's calendar, 'YYYY-MM-DD' (not UTC). The same rule as every other local-date helper: see `localISO` in core/time.ts. */
 export function todayISO(): string {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
+  return localISO(Date.now());
 }
 
 export function daysBetween(a: string, b: string): number {

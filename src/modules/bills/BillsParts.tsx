@@ -1,6 +1,6 @@
 import { formatCents } from '../../lib/money';
 import { maskMoney } from '../../ui/TxnRefs';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { dayLabel } from '../../core/time';
 import { NEED_LABEL, STATUS_LABEL, TYPE_LABEL, type ExpectedAmount, type ObligationData } from './model';
 import { currentAmount } from './views';

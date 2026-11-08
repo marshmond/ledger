@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatCents } from '../../lib/money';
 import { maskMoney } from '../../ui/TxnRefs';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { loadRelatedBills } from './relatedBill';
 
 /**

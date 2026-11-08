@@ -5,6 +5,7 @@ import { billQuickAdd } from './quickAddDef';
 import { billRecords } from './records';
 import { billsSearchSource } from './searchSource';
 import { billsDueProvider } from './dueProvider';
+import { billsTxnReferences } from './txnReferences';
 import { BILLS_TODAY_CARDS } from './todayCards';
 
 /**
@@ -18,5 +19,5 @@ export const billsModule: ModuleDef = {
   Component: BillsModule,
   routePaths: ['/', '/list', '/upcoming', '/review', '/o/:id'],
   nav: [],
-  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, dueProvider: billsDueProvider },
+  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, dueProvider: billsDueProvider, txnReferences: billsTxnReferences },
 };

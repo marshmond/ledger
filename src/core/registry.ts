@@ -5,6 +5,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { RecordId } from './entities';
 import { registerDueProvider, type DueProvider } from './dueProvider';
+import type { TxnReferenceProvider } from './txnDependents';
 
 export interface ModuleNavItem {
   to: string;
@@ -51,6 +52,11 @@ export interface ModuleDef {
     searchSource?: SearchSource;
     /** What the global quick-add box can create in this module. See docs/module-hooks.md. */
     quickAdd?: QuickAddDef | QuickAddDef[];
+    /**
+     * Which records of this module point at a Finance transaction. READ ONLY. Finance asks every module through this hook before it deletes a
+     * transaction, so it never has to import a household module. See `src/core/txnDependents.ts` and docs/module-hooks.md.
+     */
+    txnReferences?: TxnReferenceProvider;
   };
 }
 
@@ -220,6 +226,10 @@ export function allTodayCards(mods: readonly ModuleDef[] = modules): (TodayCardD
 /** Every module that can be searched, with its search hook. */
 export function allSearchSources(mods: readonly ModuleDef[] = modules): { moduleId: string; moduleName: string; source: SearchSource }[] {
   return mods.flatMap((m) => (m.contributes?.searchSource ? [{ moduleId: m.id, moduleName: m.name, source: m.contributes.searchSource }] : []));
+}
+/** Every module's reader of "which records point at a Finance transaction", in module order. */
+export function allTxnReferenceProviders(mods: readonly ModuleDef[] = modules): TxnReferenceProvider[] {
+  return mods.flatMap((m) => (m.contributes?.txnReferences ? [m.contributes.txnReferences] : []));
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {

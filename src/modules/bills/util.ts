@@ -13,9 +13,9 @@ export const isDate = (v: unknown): v is string => {
 };
 /** A real month written YYYY-MM. */
 export const isMonth = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v);
-export function isSafeUrl(u: string): boolean {
-  try { const p = new URL(u); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; }
-}
+import { isSafeUrl } from '../../lib/safeUrl';
+/** One shared check (lib/safeUrl.ts); still exported here so existing imports keep working. */
+export { isSafeUrl };
 /** Largest amount accepted anywhere in this module (whole cents). */
 export const MAX_CENTS = 1e11;
 export const isCents = (v: unknown): v is number => isInt(v) && v >= 0 && v <= MAX_CENTS;

@@ -1,6 +1,6 @@
 import type { FinanceDB } from '../db';
 import type { TxnStatus } from '../types';
-import { deleteTxn, updateTxn } from './transfers';
+import { updateTxn } from './transfers';
 import { EMPTY_FILTER, DEFAULT_SORT, type Sort, type TxnFilter } from './txnQuery';
 
 /** Bulk actions for the All Transactions screen. Transfers keep both halves in sync. */
@@ -45,16 +45,25 @@ export async function bulkSetStatus(d: FinanceDB, ids: number[], status: TxnStat
   return n;
 }
 
-/** Deletes many transactions. Deleting one half of a transfer deletes the other, so the count can include those. */
+/**
+ * Deletes many transactions in ONE database transaction: all of them or none (ST-S2; before, each one was its own transaction, so an interruption could leave a partial
+ * deletion). Deleting one half of a transfer deletes the other, so the count can include those.
+ *
+ * This is the PLAIN operation: it does not look at what other modules link. The Transactions screen asks `planTxnDeletion` / `applyTxnDeletion` (lib/txnDeletion.ts)
+ * instead, which shows the owner those links first and refuses if anything changed. This one stays for internal clean-up and tests.
+ */
 export async function bulkDelete(d: FinanceDB, ids: number[]): Promise<number> {
-  let n = 0;
-  for (const id of new Set(ids)) {
-    const t = await d.txns.get(id);
-    if (!t) continue; // already removed as the other half of a transfer
-    n += t.transferTxnId && (await d.txns.get(t.transferTxnId)) ? 2 : 1;
-    await deleteTxn(d, id);
-  }
-  return n;
+  return d.transaction('rw', d.txns, async () => {
+    let n = 0;
+    for (const id of new Set(ids)) {
+      const t = await d.txns.get(id);
+      if (!t) continue; // already removed as the other half of a transfer
+      n += t.transferTxnId && (await d.txns.get(t.transferTxnId)) ? 2 : 1;
+      await d.txns.delete(id);
+      if (t.transferTxnId) await d.txns.delete(t.transferTxnId);
+    }
+    return n;
+  });
 }
 
 // ---- saved filters (stored with the app's settings, so they are included in backups) ----

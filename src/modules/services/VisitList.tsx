@@ -1,7 +1,7 @@
 import { Link } from '../../core/router';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { arrangementRoute, visitRoute } from './paths';
 import { chargeWords, statusWords } from './visitModel';
 import type { VisitRow } from './views';

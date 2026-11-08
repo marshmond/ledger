@@ -14,7 +14,7 @@ import { chooseCost, initialChoice, type CostChoice } from './costSource';
 import type { AssetRecord, AssetRef } from './model';
 import { CostSourceField } from './TxnRefs';
 import { HandoffExistsError, saveHandoff, type Prefill } from '../services/handoff';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { blankService, costFromText, SERVICE_KINDS, SERVICE_KIND_LABEL, type ServiceKind, type ServiceRecord } from './service';
 import { createService, deleteService, DuplicateServiceError, logTaskService, restoreService, updateService } from './serviceData';
 

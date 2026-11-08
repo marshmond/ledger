@@ -9,8 +9,9 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { finalizeReconcile, reconcileCheck, type ReconcileResult } from '../lib/ledger';
 import Modal from '../shell/Modal';
 import { blockedReasons, blocksDeletion, confirmText, deleteAccountWithTransactions, readAccountDependents, type AccountDependents } from '../lib/accountDependents';
-import { deleteTxn, findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
+import { findTransferCandidates, linkPair, unlinkTransfer, updateTxn } from '../lib/transfers';
 import TxnForm from './TxnForm';
+import TxnDeleteDialog from './TxnDeleteDialog';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
 import CreditLimit from './CreditLimit';
 import MinBalance from './MinBalance';
@@ -35,6 +36,7 @@ export default function LedgerPage() {
 
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<Txn | null>(null);
+  const [deletingTxn, setDeletingTxn] = useState<number | null>(null);
   const [recDate, setRecDate] = useState(todayISO());
   const [recBal, setRecBal] = useState('');
   const [rec, setRec] = useState<ReconcileResult | null>(null);
@@ -221,10 +223,7 @@ export default function LedgerPage() {
                     {t.transferTxnId && <button className="link" onClick={() => unlinkTransfer(db, t.id!)}>Unlink</button>}
                     <button
                       className="link danger"
-                      onClick={() => {
-                        const msg = t.transferTxnId ? 'Delete this transfer? The matching entry on the other account will be deleted too.' : 'Delete this transaction?';
-                        if (confirm(msg)) deleteTxn(db, t.id!);
-                      }}
+                      onClick={() => setDeletingTxn(t.id!)}
                     >Delete</button>
                   </div>
                 </td>
@@ -252,6 +251,8 @@ export default function LedgerPage() {
           }}
         >Delete account</button>
       </div>
+      {deletingTxn !== null && <TxnDeleteDialog ids={[deletingTxn]} subject="transaction" onClose={() => setDeletingTxn(null)} onDeleted={() => setDeletingTxn(null)} />}
+
       {blocked && (
         <Modal title="This account cannot be deleted yet" onClose={() => setBlocked(null)}>
           {blockedReasons(account.name, blocked).map((r) => <p key={r}>{r}</p>)}

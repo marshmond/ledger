@@ -4,6 +4,7 @@ import LedgerModule, { LEDGER_BASE, LEDGER_ROUTES } from './LedgerModule';
 import { ledgerDueProvider } from './dueProvider';
 import { ledgerRecords } from './records';
 import { ledgerSearchSource } from './searchSource';
+import { ledgerTxnReferences } from './txnReferences';
 import { LEDGER_QUICK_ADDS } from './quickAddDef';
 import ScheduledFromEvent from './ScheduledFromEvent';
 import { LEDGER_TODAY_CARDS } from './todayCards';
@@ -29,5 +30,7 @@ export const ledgerModule: ModuleDef = {
     searchSource: ledgerSearchSource,
     // Global Add box: a transaction (Ledger's quick form) and a scheduled payment (opens Ledger's Scheduled screen).
     quickAdd: LEDGER_QUICK_ADDS,
+    // Which scheduled payments remember posting a transaction (read-only; asked before a transaction is deleted).
+    txnReferences: ledgerTxnReferences,
   },
 };

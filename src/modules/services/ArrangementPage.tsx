@@ -6,7 +6,7 @@ import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import { useToday } from '../../ui/useToday';
 import { formatCents, todayISO } from '../../lib/money';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import ArrangementForm from './ArrangementForm';
 import { LifecycleDialog, RepairDialog, ScheduleDialog } from './Dialogs';
 import type { LifecycleAction, RepairKind } from './changes';

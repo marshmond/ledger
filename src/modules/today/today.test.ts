@@ -3,7 +3,8 @@ import { FinanceDB } from '../../db';
 import { cashOutlook } from '../../lib/cashOutlook';
 import type { CalItem } from '../calendar/useCalendarData';
 import { dayHeading, limitOverdue, maskAmounts, overdueMorePath, moduleOf, overdueGroups, reminderItems, todayList, upcomingDays } from './logic';
-import { defaultLayout, HIDE_AMOUNTS_KEY, LAYOUT_KEY, loadHideAmounts, loadLayout, moveEntry, resolveLayout, saveHideAmounts, saveLayout, toggleEntryHidden, toggleEntrySize } from './layout';
+import { HIDE_AMOUNTS_KEY, loadHideAmounts, saveHideAmounts } from '../../core/hideAmounts';
+import { defaultLayout, LAYOUT_KEY, loadLayout, moveEntry, resolveLayout, saveLayout, toggleEntryHidden, toggleEntrySize } from './layout';
 import { alertKey, DEFAULT_TODAY_SETTINGS, isAlertHidden, isValidSnoozeDate, loadAlertMemory, loadTodaySettings, normalizeAlertMemory, normalizeTodaySettings, rememberAlert, restoreAlert, saveTodaySettings } from './settings';
 
 const TODAY = '2026-11-05';

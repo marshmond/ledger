@@ -192,9 +192,9 @@ export const blankArrangement = (over: Partial<ArrangementData> = {}): Arrangeme
   cadence: null, visitTime: null, expected: null, refs: [], notes: '', predecessorId: null, openTaskId: null, acknowledged: [], txnRefs: [], renewalDate: null, noticeByDate: null, ...over,
 });
 
-export function isSafeUrl(u: string): boolean {
-  try { const p = new URL(u); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; }
-}
+import { isSafeUrl } from '../../lib/safeUrl';
+/** One shared check (lib/safeUrl.ts); still exported here so existing imports keep working. */
+export { isSafeUrl };
 
 /** Is `date` one of the cadence's own dates? (A fixed cadence only; a repeat-after-visit cadence has no fixed dates.) */
 export function isCadenceDate(c: Cadence, date: string): boolean {

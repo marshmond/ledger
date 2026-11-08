@@ -9,7 +9,8 @@ import { useToday } from '../../ui/useToday';
 import '../calendar/calendar.css';
 import './today.css';
 import CardBoundary from './CardBoundary';
-import { HIDE_AMOUNTS_KEY, loadHideAmounts, loadLayout, moveEntry, resetLayout, saveHideAmounts, saveLayout, toggleEntryHidden, toggleEntrySize, type LayoutEntry } from './layout';
+import { HIDE_AMOUNTS_KEY, HIDE_AMOUNTS_SCOPE, loadHideAmounts, saveHideAmounts } from '../../core/hideAmounts';
+import { loadLayout, moveEntry, resetLayout, saveLayout, toggleEntryHidden, toggleEntrySize, type LayoutEntry } from './layout';
 import { LOOK_AHEAD_CHOICES, OVERDUE_ROWS_CHOICES, loadTodaySettings, saveTodaySettings } from './settings';
 import { TodayDataProvider } from './TodayData';
 
@@ -72,13 +73,16 @@ function TodayScreen({ today }: { today: string }) {
         description={longDate(today)}
         actions={
           <>
-            <button type="button" role="switch" aria-checked={hideAmounts} className={`td-switch ${hideAmounts ? 'on' : ''}`} onClick={() => setHide(!hideAmounts)} data-key={HIDE_AMOUNTS_KEY}>
+            <button type="button" role="switch" aria-checked={hideAmounts} className={`td-switch ${hideAmounts ? 'on' : ''}`} onClick={() => setHide(!hideAmounts)} data-key={HIDE_AMOUNTS_KEY} aria-describedby="td-hide-help">
               <span className="td-switch-box" aria-hidden="true" /> Hide amounts
             </button>
             <button className={editing ? 'primary' : ''} onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit layout'}</button>
           </>
         }
       />
+
+      {/* What the switch covers: always read out as the switch's description, and shown on screen while it is on. */}
+      {hideAmounts ? <p id="td-hide-help" className="muted small" style={{ margin: '0 0 8px' }}>{HIDE_AMOUNTS_SCOPE.help}</p> : <span id="td-hide-help" className="sr-only">{HIDE_AMOUNTS_SCOPE.help}</span>}
 
       {editing && (
         <div className="card edit-panel">

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
 import { maskMoney } from '../../ui/TxnRefs';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import type { CommitmentRow, Consolidation, HouseholdCommitments, Totals, WindowFigures } from './commitments';
 import { ATTRIBUTION_LABEL, ATTRIBUTION_ORDER, CERTAINTY_LABEL, HMOD_LABEL, REVIEW_CLASS_LABEL, type ReviewClass } from './model';
 import type { ContractAction } from './overview';
@@ -149,8 +149,8 @@ export function SpendingCard({ s, periodLabel, periodOptions, period, onPeriod, 
       </dl>
       {(s.statusCents.pending !== 0) && <p className="small muted">Of the Finance-backed amount, {money(s.statusCents.pending)} is {STATUS_WORDS.pending}. Finance's words are marks you keep, not proof that the bank has settled.</p>}
       {!s.reconciled ? (
-        <div className="hh-warn" role="status"><strong>Not fully reconciled.</strong> This figure counts what is recorded, but:<ul className="plain">{s.caveats.map((c) => <li key={c}>{c}.</li>)}</ul></div>
-      ) : <p className="hh-ok" role="status">Nothing unresolved is affecting this figure.</p>}
+        <div className="hh-warn" role="status"><strong>Some spending relationships need review.</strong> This figure counts what is recorded, but:<ul className="plain">{s.caveats.map((c) => <li key={c}>{c}.</li>)}</ul></div>
+      ) : <p className="hh-ok" role="status"><strong>Cross-module totals verified.</strong> Nothing unresolved is affecting this figure. This compares Ledger's own records with each other; it is not a check against a bank statement.</p>}
       {(s.unknown.completedVisits > 0 || s.unknown.homeWork > 0) && <p className="small muted">{[s.unknown.completedVisits > 0 ? `${n(s.unknown.completedVisits, 'completed visit has', 'completed visits have')} no payment recorded` : '', s.unknown.homeWork > 0 ? `${n(s.unknown.homeWork, 'maintenance record has', 'maintenance records have')} no cost recorded` : ''].filter(Boolean).join('; ')}. Those are unknown, not zero.</p>}
     </section>
   );

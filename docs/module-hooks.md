@@ -9,6 +9,7 @@ contributes: {
   todayCards?: TodayCardDef[];
   searchSource?: SearchSource;
   quickAdd?: QuickAddDef;
+  txnReferences?: TxnReferenceProvider; // ST-S2: see "txnReferences" below
 }
 ```
 
@@ -85,6 +86,28 @@ The box never guesses a destination: no shortcut and no choice means it asks. `a
 - **Destinations in use.** Tasks: `task` (`modules/tasks/quickAddDef.ts`, the Tasks bar's own parser). Calendar: `event` (`modules/calendar/quickAddDef.ts`, parser in `quickEvent.ts`). Ledger: `transaction` (the quick transaction form) and `scheduled` (opens Ledger Scheduled) in `modules/ledger/quickAddDef.tsx`.
 - **Events from anywhere:** `requestEvent({title, date})` (`core/eventBridge.ts`) opens the box on Event with that text, like `requestTask` for tasks.
 - **Event words:** the same date, priority, tag and repeat words as the Tasks bar (it reuses that parser), plus time ranges (`3-4pm`), `@calendar`. No date = today, no time = all-day, one time = one hour.
+
+## `txnReferences`: which of my records point at a Finance transaction (ST-S2)
+
+Added in Stabilization ST-S2 (DI-02). A module that holds references to Finance transactions contributes a **read-only** reader, so Finance can say what depends on a payment before it is deleted **without importing any household module**. Types and the reader live in `src/core/txnDependents.ts`; the registry exposes `allTxnReferenceProviders()`.
+
+```ts
+contributes: { txnReferences?: { label: string; find(ctx: { ids: number[]; txns: Map<number, Txn>; d: FinanceDB }): Promise<TxnDependent[]> } }
+```
+
+| Rule | Meaning |
+|---|---|
+| Read only | Nothing is written, deleted or repaired. A guard test (`src/lib/txnDeletionGuards.test.ts`) rejects table writes, `.transaction(`, logging, storage and network calls in the readers. |
+| Tables | Read only `txns` and `moduleRecords` (Ledger's own reader also reads `recurring` and `recurringLog`). The delete runs the readers again inside one database transaction scoped to those four tables; a reader that touches another table makes the delete refuse (safe) until the scope is widened in `src/lib/txnDeletion.ts`. |
+| By id | A record points at a transaction by id or it does not. Never match by payee, amount or date. |
+| One row per record | Two stored references to one record are one dependent (`recordId` is unique within the module). `scope` is `whole` or `part` (with `parts`). |
+| `standing` | `current` (in force), `stale` (already needs review, judged with the shared `resolveRef`), `historical` (kept as history: replaced, rejected, or a saved entry this version cannot read). `evidence` is true only for `current` records that count the payment. |
+| No money | Titles and notes never contain an amount. |
+| Failure | Throw. The caller reports "could not check" and refuses to delete; it never says "nothing depends on this". No readers registered is also "could not check". |
+
+Registered by Bills, Household Services, Home & Assets, Projects (the tag sits on the transaction itself) and Ledger (scheduled-payment history). A new module that stores a Finance reference must add one, with a test that its reader finds it.
+
+`searchSource` note (ST-S2, NV-01): Household finances contributes a **page-only** search source (no records, no figures), the same pattern as Today.
 
 ## The shell around them (also Part A)
 

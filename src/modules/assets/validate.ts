@@ -27,9 +27,9 @@ export function wouldCreateReplaceLoop(id: number | undefined, replacedById: num
   return cur !== null;
 }
 
-export function isSafeUrl(u: string): boolean {
-  try { const p = new URL(u); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; }
-}
+import { isSafeUrl } from '../../lib/safeUrl';
+/** One shared check (lib/safeUrl.ts); still exported here so existing imports keep working. */
+export { isSafeUrl };
 
 /** Soft hints that do not block saving. */
 export function assetWarnings(d: Pick<AssetData, 'purchaseDate' | 'installDate'>): string[] {

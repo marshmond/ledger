@@ -5,6 +5,7 @@ import ProjectsModule, { PROJECTS_BASE } from './ProjectsModule';
 import { projectQuickAdd } from './quickAddDef';
 import { projectRecords } from './records';
 import { projectsSearchSource } from './searchSource';
+import { projectsTxnReferences } from './txnReferences';
 
 /** Projects, module #4: a renovation, a trip or any big job, with a budget made of lines and the vendors involved. Money tracking comes in later steps. */
 export const projectsModule: ModuleDef = {
@@ -14,5 +15,5 @@ export const projectsModule: ModuleDef = {
   Component: ProjectsModule,
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd },
+  contributes: { dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd, txnReferences: projectsTxnReferences },
 };

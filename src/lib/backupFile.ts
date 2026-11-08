@@ -1,3 +1,4 @@
+import { localISO } from '../core/time';
 import type { FinanceDB } from '../db';
 import { decryptText, exportAll, importAll, type BackupFile } from './backup';
 import { summarizeBackup, type SummaryGroup } from './backupSummary';
@@ -55,7 +56,7 @@ export function writeMeta(patch: Partial<BackupMeta>, storage?: Store): BackupMe
 
 /** Your own local date as YYYY-MM-DD (not UTC). */
 export function localDay(d: Date = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return localISO(d.getTime());
 }
 
 /** Whole calendar days from one local date (YYYY-MM-DD) to another. */

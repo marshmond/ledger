@@ -12,7 +12,7 @@ import { buildIcs } from './ics';
 import { loadEvents, createCalendar, deleteCalendar, updateCalendar } from './data';
 import { PRIORITY_LABEL, PERSONAL_ID, SWATCHES, type CalendarLayer } from './model';
 import { PriorityMark } from './parts';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { dayLabel } from './time';
 import { onDay, type CalItem } from './useCalendarData';
 

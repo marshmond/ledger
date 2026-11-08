@@ -13,6 +13,7 @@
  */
 import { db, type FinanceDB } from '../../db';
 import type { Link } from '../../core/entities';
+import { localISO } from '../../core/time';
 import { createStore, isLive } from '../../core/store';
 import { dayLabel } from '../../core/time';
 import { addDays } from '../../lib/dates';
@@ -32,9 +33,8 @@ import {
 } from './visitModel';
 
 const dl = (s: string | null) => (s ? dayLabel(s, { weekday: 'short', year: true }) : 'no date');
-const p2 = (n: number) => String(n).padStart(2, '0');
 /** The local calendar date of a moment (when a Task was finished). */
-export const isoOfMs = (ms: number) => { const x = new Date(ms); return `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}`; };
+export const isoOfMs = localISO;
 
 // ---- reading ----
 

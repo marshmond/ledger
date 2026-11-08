@@ -14,7 +14,7 @@ import { daysBetween, formatCents } from '../../lib/money';
 import { loadCalendar } from '../../lib/calendarLive';
 import type { CalKind } from '../../lib/calendar';
 import { maskMoney } from '../../ui/TxnRefs';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { dueInstances } from '../../lib/schedule';
 import { orphanedRules } from '../../lib/accountDependents';
 

@@ -7,7 +7,7 @@ import { toIcs } from '../lib/calendar';
 import { downloadText } from '../lib/download';
 import { todayISO } from '../lib/money';
 import { maskMoney } from '../ui/TxnRefs';
-import { loadHideAmounts } from '../modules/today/layout';
+import { loadHideAmounts } from '../core/hideAmounts';
 
 const KIND: Record<string, string> = { vest: 'RSU', tax: 'Tax', rmd: 'RMD', cap: 'Pay', bill: 'Bill', loan: 'Loan', 'year-end': 'Tax' };
 const fmtDay = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });

@@ -14,7 +14,7 @@ import { loadEvents, loadLayers } from './data';
 import { msAt, parseHM } from './time';
 import { PERSONAL_ID, type CalendarLayer, type EventRecord } from './model';
 import { occurrencesOf, statusOf, type Occurrence } from './occurrences';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import {
   ALL_ON, deselectAll, isLayerVisible, parseVisibility, selectAll, serializeVisibility, toggleLayer, VISIBILITY_KEY, visibleCount, type Visibility,
 } from './layerVisibility';

@@ -8,7 +8,7 @@ import { loadTxnMap, lookupOfMap } from '../../lib/txnLookup';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { addDays } from '../../lib/dates';
 import { pieceKey, type TxnRef, type TxnLookup } from '../../lib/txnRef';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { loadProjects } from '../projects/data';
 import { expectedWindow, scheduleStateOf, type ExpectedWindow, type ScheduleState } from './expectedCharges';
 import { droppedBySwitch, setArrangementPayments, setVisitPayment } from './payments';

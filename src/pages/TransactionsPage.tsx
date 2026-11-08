@@ -5,12 +5,12 @@ import { useSearchParams } from 'react-router-dom';
 import { db } from '../db';
 import type { Txn, TxnStatus } from '../types';
 import { formatCents, todayISO } from '../lib/money';
-import { deleteTxn } from '../lib/transfers';
+import TxnDeleteDialog from './TxnDeleteDialog';
 import {
   DEFAULT_SORT, EMPTY_FILTER, applyFilter, buildRows, presetRange, sortRows, toCsv, totals, visibleSelection,
   type DatePreset, type Sort, type SortKey, type TxnFilter,
 } from '../lib/txnQuery';
-import { bulkDelete, bulkSetCategory, bulkSetStatus, deleteSavedFilter, listSavedFilters, saveFilter } from '../lib/txnBulk';
+import { bulkSetCategory, bulkSetStatus, deleteSavedFilter, listSavedFilters, saveFilter } from '../lib/txnBulk';
 import { EmptyState, PageHeader, signedCents } from '../ui/components';
 import { useToast } from '../ui/Toast';
 import { openAddTransaction } from '../shell/QuickAdd';
@@ -57,6 +57,8 @@ export default function TransactionsPage() {
   const [pageSize, setPageSize] = useState(100);
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<Txn | null>(null);
+  /** The delete confirmation: one transaction, or the whole selection. */
+  const [deleting, setDeleting] = useState<{ ids: number[]; subject: 'transaction' | 'selection' } | null>(null);
   const [bulkCat, setBulkCat] = useState('');
   const [bulkStatus, setBulkStatus] = useState('');
   const [saveName, setSaveName] = useState('');
@@ -109,10 +111,7 @@ export default function TransactionsPage() {
   async function doBulk(kind: 'category' | 'delete') {
     if (selIds.length === 0) return;
     if (kind === 'delete') {
-      if (!confirm(`Delete ${selIds.length} selected transaction(s)? Deleting one side of a transfer also deletes the other side.`)) return;
-      const n = await bulkDelete(db, selIds);
-      toast(`Deleted ${n} transaction${n === 1 ? '' : 's'}.`);
-      setSel(new Set());
+      setDeleting({ ids: selIds, subject: 'selection' });
     } else if (kind === 'category') {
       const label = bulkCat === 'none' ? 'Uncategorized' : categories.find((c) => String(c.id) === bulkCat)?.name ?? '';
       if (!confirm(`Set the category to "${label}" on ${selIds.length} transaction(s)? Split transactions are replaced by this single category; transfers are skipped.`)) return;
@@ -259,6 +258,15 @@ export default function TransactionsPage() {
         </div>
       )}
 
+      {deleting && (
+        <TxnDeleteDialog
+          ids={deleting.ids}
+          subject={deleting.subject}
+          onClose={() => setDeleting(null)}
+          onDeleted={(n) => { toast(`Deleted ${n} transaction${n === 1 ? '' : 's'}.`); if (deleting.subject === 'selection') setSel(new Set()); setDeleting(null); }}
+        />
+      )}
+
       {editing && accountOf(editing) && (
         <TxnForm
           key={editing.id}
@@ -314,7 +322,7 @@ export default function TransactionsPage() {
                   <button className="link" onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
                   <button
                     className="link danger"
-                    onClick={() => confirm(t.transferTxnId ? 'Delete this transfer? The matching entry on the other account is deleted too.' : 'Delete this transaction?') && deleteTxn(db, t.id!)}
+                    onClick={() => setDeleting({ ids: [t.id!], subject: 'transaction' })}
                   >Delete</button>
                 </td>
               </tr>

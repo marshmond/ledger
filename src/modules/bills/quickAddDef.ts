@@ -6,7 +6,7 @@ import { nameKey } from '../../core/contacts';
 import { addDays, dayOfWeek, endOfMonth, lastBusinessDay, monthOf, nextMonth } from '../../lib/dates';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { dayLabel } from '../../core/time';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { createObligation } from './data';
 import { blankObligation, defaultNeed, guessType, normalizeObligation, validateObligation, type How, type ObligationData } from './model';
 import { describeSchedule, nextExpected, type Schedule } from './schedule';

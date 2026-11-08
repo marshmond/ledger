@@ -30,7 +30,7 @@ describe('B5 guard: the household module is read only', () => {
 
   it('imports from lib only the pure date, money and Finance-reference helpers, and never a Finance writer, the forecast or the posting code', () => {
     for (const s of sources) {
-      for (const m of s.text.matchAll(/from '\.\.\/\.\.\/lib\/([A-Za-z/]+)'/g)) expect(['dates', 'money', 'txnLookup', 'txnRef'], `${s.f} imports lib/${m[1]}`).toContain(m[1]);
+      for (const m of s.text.matchAll(/from '\.\.\/\.\.\/lib\/([A-Za-z/]+)'/g)) expect(s.f.endsWith('searchSource.ts') ? ['dates', 'money', 'txnLookup', 'txnRef', 'search'] : ['dates', 'money', 'txnLookup', 'txnRef'], `${s.f} imports lib/${m[1]}`).toContain(m[1]);
       // (the imports above are whitelisted, so no forecast or posting module can come in; the words are not searched because on-screen copy says "not a forecast")
       expect(code(s.text), s.f).not.toMatch(/recurringLog|\.recurring\b|loadScheduled|d\.txns|db\.txns/);
     }
@@ -67,11 +67,11 @@ describe('B5 guard: the existing readers are untouched and unaware of the househ
 });
 
 describe('B5 guard: registration', () => {
-  it('registers the household module once, with a counts-only Today card whose id starts with the module id, and no Calendar layer, search source, quick add or record kind', () => {
+  it('registers the household module once, with a counts-only Today card whose id starts with the module id, a page-only search source (ST-S2, NV-01), and no Calendar layer, quick add or record kind', () => {
     registerModules();
     const m = allModules().find((x) => x.id === 'household')!;
     expect(m).toBeDefined();
-    expect(Object.keys(m.contributes ?? {})).toEqual(['todayCards']);
+    expect(Object.keys(m.contributes ?? {}).sort()).toEqual(['searchSource', 'todayCards']);
     expect(m.contributes!.todayCards!.map((c) => c.id)).toEqual(['household.attention']);
     expect(m.contributes!.todayCards![0].hideWhenEmpty).toBe(true);
   });

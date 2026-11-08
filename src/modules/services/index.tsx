@@ -4,6 +4,7 @@ import { servicesDueProvider } from './dueProvider';
 import { serviceQuickAdd } from './quickAddDef';
 import { serviceRecords } from './records';
 import { servicesSearchSource } from './searchSource';
+import { servicesTxnReferences } from './txnReferences';
 import { SERVICES_TODAY_CARDS } from './todayCards';
 
 /** Household Services, module #6: who comes to the house (cleaners, lawn care, repair people), how often, and when they are next due. */
@@ -14,5 +15,5 @@ export const servicesModule: ModuleDef = {
   Component: ServicesModule,
   routePaths: ['/', '/a/:id', '/providers/:contactId', '/v/:id'],
   nav: [],
-  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, dueProvider: servicesDueProvider },
+  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences },
 };

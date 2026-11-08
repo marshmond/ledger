@@ -4,6 +4,7 @@ import { assetQuickAdd } from './quickAddDef';
 import { assetsDueProvider } from './dueProvider';
 import { assetRecords } from './records';
 import { assetsSearchSource } from './searchSource';
+import { assetsTxnReferences } from './txnReferences';
 import { serviceQuickAdd } from './serviceQuickAdd';
 import { ASSETS_TODAY_CARDS } from './todayCards';
 
@@ -15,5 +16,5 @@ export const assetsModule: ModuleDef = {
   Component: AssetsModule,
   routePaths: ['/', '/list'],
   nav: [],
-  contributes: { todayCards: ASSETS_TODAY_CARDS, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd] },
+  contributes: { todayCards: ASSETS_TODAY_CARDS, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences },
 };

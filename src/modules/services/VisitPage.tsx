@@ -4,7 +4,7 @@ import { Link } from '../../core/router';
 import { dayLabel } from '../../core/time';
 import { EmptyState } from '../../ui/components';
 import { formatCents } from '../../lib/money';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { loadAssets, publicLabel } from '../assets/data';
 import { arrangementRoute, providerRoute, visitRoute } from './paths';
 import { chargeWords, duplicateGroups, statusWords } from './visitModel';

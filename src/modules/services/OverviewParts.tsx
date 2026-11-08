@@ -3,7 +3,7 @@ import { Link } from '../../core/router';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
 import { maskMoney } from '../../ui/TxnRefs';
-import { loadHideAmounts } from '../today/layout';
+import { loadHideAmounts } from '../../core/hideAmounts';
 import { MODULE_LABEL, type Claim, type ClaimStatus } from './householdSpend';
 import type { Insight } from './insights';
 import { arrangementRoute } from './paths';
