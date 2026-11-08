@@ -17,18 +17,21 @@ import { expectedDates, planScheduleChange, type Schedule } from './schedule';
 import { cycleRecordsOf, ensureBillTasksIn, financeLookupFor, inBillsTx, loadBillTasks, markersOf, planBillTasks, planningPeriods } from './tasks';
 import { Recorder, type Undo } from './undo';
 import { tidy } from './util';
+import { lifecycleRecordsOf, loadLifecycleRecords, withLifecycle } from './lifecycleRead';
 
 export const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
 /** Every table an obligation operation may touch. */
 export const tables = (d: FinanceDB) => [d.moduleRecords, d.links, d.contacts] as const;
 
 export async function loadObligations(d: FinanceDB = db): Promise<ObligationRecord[]> {
-  return (await d.moduleRecords.where('[module+kind]').equals([MODULE, KIND]).toArray()).filter(isLive).map(asObligation)
+  const obs = (await d.moduleRecords.where('[module+kind]').equals([MODULE, KIND]).toArray()).filter(isLive).map(asObligation)
     .sort((a, b) => a.data.title.localeCompare(b.data.title) || a.id - b.id);
+  return withLifecycle(obs, await loadLifecycleRecords(d)); // B4: each bill with lifecycle records carries its derived view (reader only, never stored)
 }
 export async function getObligation(id: number, d: FinanceDB = db): Promise<ObligationRecord | undefined> {
   const r = await d.moduleRecords.get(id);
-  return r && r.module === MODULE && r.kind === KIND && isLive(r) ? asObligation(r) : undefined;
+  if (!(r && r.module === MODULE && r.kind === KIND && isLive(r))) return undefined;
+  return withLifecycle([asObligation(r)], await lifecycleRecordsOf(id, d))[0];
 }
 
 /** Writes an obligation record (keeps fields this code does not know). Validates strictly. */
@@ -310,6 +313,9 @@ export async function planDelete(id: number, d: FinanceDB = db): Promise<DeleteP
   const reasons = historyReasons(ob.data);
   const cycles = await cycleRowsOf(id, d);
   if (cycles.length) reasons.push(`${cycles.length} billing-period record${cycles.length === 1 ? '' : 's'} refer to it`);
+  // B4: trial, price, renewal and cancellation records are history too (a restore or another device may bring some)
+  const lifecycle = await lifecycleRecordsOf(id, d);
+  if (lifecycle.length) reasons.push(`${lifecycle.length} lifecycle record${lifecycle.length === 1 ? '' : 's'} (trial, price, renewal or cancellation) refer to it`);
   const links = await createStore(d).shared.links.linkedTo(obligationRef(id));
   // a Task link counts only while its Task is still there: a Task the owner deleted leaves its link row behind, and that is not history
   let taskLinks = 0, deadTaskLinks = 0;

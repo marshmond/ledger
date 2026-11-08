@@ -8,6 +8,10 @@ import { store } from '../../core/store';
 import { DeleteDialog, LifecycleDialog, ReviewDialog } from './Dialogs';
 import ObligationForm from './ObligationForm';
 import ContractCard from './ContractCard';
+import LifecycleCard from './LifecycleCard';
+import { lifecycleStates } from './lifecycleState';
+import { lcOf } from './lifecycleRead';
+import { readTerms } from './terms';
 import PeriodsCard from './PeriodsCard';
 import PaymentHistoryCard from './PaymentHistoryCard';
 import { ScheduledCard } from './ScheduledUI';
@@ -46,6 +50,7 @@ export default function ObligationPage({ id }: { id: number }) {
   const review2 = needsReview(d);
   const collisions = slotCollisions(expectedDates(src, addDays(today, -62), addDays(today, 400)));
   const pausedBefore = d.pauses.filter((p) => p.to !== null);
+  const lcFlag = lifecycleStates(lcOf(d), readTerms(d.terms), { status: d.status, endedOn: d.endedOn }, today)[0];
   const reviewable = d.status === 'active' || d.status === 'paused' || d.status === 'ended';
 
   return (
@@ -56,6 +61,7 @@ export default function ObligationPage({ id }: { id: number }) {
           <h1>{d.title}</h1>
           <p className="bl-chips">
             <StatusChip d={d} /> <TypeChip d={d} /> <NeedChip d={d} />
+            {lcFlag && <span className={`bl-chip lc-${lcFlag.tone}`} data-testid="lc-chip">{lcFlag.label}</span>}
             {d.review.on && <span className="bl-chip">On your review list</span>}
             {d.providerNameSnapshot ? <span>{d.providerNameSnapshot}{contactGone ? ' (contact removed)' : ''}</span> : <span className="muted">No provider</span>}
           </p>
@@ -112,6 +118,8 @@ export default function ObligationPage({ id }: { id: number }) {
         )}
         <p className="muted small">Expected dates only, worked out from the schedule. Nothing is stored for a future date (the Calendar shows them without creating events), and none of these is recorded as paid. What you record about each period is below.</p>
       </section>
+
+      <LifecycleCard ob={r} />
 
       <PeriodsCard ob={r} />
       <PaymentHistoryCard ob={r} />

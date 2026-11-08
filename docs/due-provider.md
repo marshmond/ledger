@@ -81,6 +81,19 @@ The same expected payment can be drawn twice: by a Bills "Due" marker and by the
 - **When both stay.** Different dates (a payment-action date versus a due date), different schedules, an unresolved amount or cadence disagreement, a rule that is switched off, ended, income or a transfer, a missing rule, an ended bill, or a Scheduled item already approved or skipped in Finance (a posting is not proof of payment, so the Bills marker returns). Contract deadline markers (renewal, cancel-by, trial end) and reminder Tasks are never covered. A pay Task on another date keeps its own meaning (the existing same-day rule is unchanged).
 - **Calendar file (.ics).** Unchanged: only the Finance layer is exported, with the same ids. The Bills layer is not exported, so no phone-calendar identity changes.
 
+## B4 markers: renewals, cancellation and price changes (Bills)
+
+The Bills layer (`bills`, same colour, same rolling window of today through the same day 12 calendar months later) draws these additional kinds, all worked out when the Calendar draws and never stored, copied or turned into events or Tasks:
+
+- **`bills:renewal-<bill>:<date>`**: the recorded renewal date, then the renewal cadence repeated (weekly, monthly, every 3 months, yearly) inside the window. Titled "Renewal expected: <bill>" and described as expected, not confirmed. A confirmed cancellation stops the series at its effective date. A renewal date that has passed is `handled`; nothing is made when it passes. A recorded renewal the owner must make by hand also gets ONE decision Task for the nearest date; its marker is left out only when that Task is dated the same day.
+- **`bills:cancel-<bill>:<date>`**: "Cancellation effective: <bill>" on the CONFIRMED effective date (only when no two confirmations disagree). Informational, low priority.
+- **`bills:price-<bill>:<date>`**: "Price change: <bill>" on the day a recorded later price takes effect. Titles and details carry no amount.
+- **`bills:notice-<bill>:<date>` and `bills:trial-<bill>:<date>`** (unchanged ids) now come from the dates in force: a recorded trial end or cancel-by date replaces the matching B2 contract date, a disputed one does not (the B2 date stays), only one cancel-by date is kept at a time, and a date after a confirmed cancellation is dropped.
+
+**Household Services coordination (`coveredBy`, B3.1 mechanism).** Only when the owner linked the bill to a Household Services arrangement (`bills-for`), a Bills notice or renewal marker gets `coveredBy` = the id Services gives its own marker of the SAME kind on the SAME day (`services:<renewal|notice>-<arrangement>:<date>`; Bills writes that format itself because it must not import the Services module, and a test compares the two). The Calendar leaves the Bills marker out only while the Services marker is itself shown. A different day, a different kind, a trial, a cancellation date, a price change, a service visit, a Task and a Finance approval are never covered or hidden. Linking is never inferred from names.
+
+Privacy and Hide Amounts: titles are the bill's own title plus a short word; details name no amount, note, reference or account (a test serialises every item and looks for them). Calendar-file (.ics) export is unchanged: only the Finance layer is exported.
+
 ## Hide Amounts and the Finance layer (B3.0B)
 
 `ledgerDueItems` honors the app-wide Hide Amounts switch for the SCREEN text of every Finance item. With it on, a scheduled item is titled with its payee only (detail still "Scheduled payment to approve."), and any other amount in a Finance title or detail (a loan payment, an RSU vest, an estimated-tax shortfall) shows as the usual masked figure. Dates, ids, priorities and scheduling do not change, and nothing about the Scheduled payment, balances or posting is touched.

@@ -50,7 +50,11 @@ export function providersOf(obligations: ObligationRecord[]): { contactId: numbe
 /** What the person sees as "the amount" today: the price in force today, else the first price entered. Null when it is not known. */
 export function currentAmount(d: ObligationData, today: string): ExpectedAmount {
   if (d.amountKind === 'unknown') return { cents: null, basis: 'unknown' };
-  return { cents: priceOn(d.prices, today)?.cents ?? firstAmountCents(d), basis: d.amountKind };
+  // B4: recorded price steps count. A step in force wins even when its amount is unknown or in dispute (that reads as unknown, never as the first price); the
+  // first price entered is only the fallback when no step is in force yet.
+  if (!d.lc || d.lc.prices.length === 0) return { cents: priceOn(d.prices, today)?.cents ?? firstAmountCents(d), basis: d.amountKind };
+  const step = priceOn(d.lc.prices, today);
+  return { cents: step ? step.cents : firstAmountCents(d), basis: step?.estimated && d.amountKind === 'fixed' ? 'variable' : d.amountKind };
 }
 
 export interface UpcomingRow { ob: ObligationRecord; slot: string; nominal: string; amount: ExpectedAmount }

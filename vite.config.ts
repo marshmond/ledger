@@ -23,5 +23,5 @@ function contentSecurityPolicy(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), contentSecurityPolicy()],
-  test: { environment: 'node', setupFiles: ['./src/lib/test-setup.ts'] },
+  test: { environment: 'node', setupFiles: ['./src/lib/test-setup.ts'], testTimeout: 30_000 }, // two-device sync tests (real encryption) and exhaustive sweeps can exceed the 5 s default when the whole suite runs in parallel
 });

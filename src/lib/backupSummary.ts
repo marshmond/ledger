@@ -20,7 +20,7 @@ const MODULE_KINDS: Record<string, { group: string; kinds: Record<string, string
   projects: { group: 'projects', kinds: { project: 'Projects', commitment: 'Commitments', budgetLine: 'Budget lines' } },
   assets: { group: 'assets', kinds: { asset: 'Items', service: 'Service entries', warranty: 'Warranties' } },
   services: { group: 'services', kinds: { arrangement: 'Arrangements', visit: 'Visits' } },
-  bills: { group: 'bills', kinds: { obligation: 'Bills and subscriptions', cycle: 'Billing-period records', discovery: 'Recurring-expense review choices' } },
+  bills: { group: 'bills', kinds: { obligation: 'Bills and subscriptions', cycle: 'Billing-period records', discovery: 'Recurring-expense review choices', lifecycle: 'Subscription lifecycle records' } },
 };
 const GROUP_LABEL: Record<string, string> = {
   finance: 'Finance', 'tasks-calendar': 'Tasks & Calendar', projects: 'Projects', assets: 'Home & Assets', services: 'Household Services', bills: 'Bills & Subscriptions',

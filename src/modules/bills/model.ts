@@ -14,6 +14,7 @@ import type { ModuleRecord } from '../../core/entities';
 import { localISO } from '../../core/time';
 import { readSchedule, scheduleProblem, type Pause, type Schedule, type ScheduleRevision, type ScheduleSource } from './schedule';
 import { finite, isCents, isDate, isInt, notesWarning, str, tidy, without, isSafeUrl } from './util';
+import type { LifecycleView } from './lifecycleState';
 
 export const MODULE = 'bills';
 export const KIND = 'obligation';
@@ -67,7 +68,13 @@ export function guessType(title: string): BillType {
 export const isSubscriptionType = (t: BillType) => t === 'subscription' || t === 'membership';
 
 /** One price in force from a date (B0 3.2). B1 writes the first step only; the list shape is final so later phases add steps. `cents: null` = unknown. */
-export interface PriceStep { from: string; cents: number | null; label: string }
+export interface PriceStep {
+  from: string; cents: number | null; label: string;
+  /** B4, reader only (never stored on the obligation): the amount is an estimate, not a fixed price. */
+  estimated?: boolean;
+  /** B4, reader only: recorded prices disagree for this day, so the amount reads as unknown. */
+  conflict?: boolean;
+}
 export interface Payment { how: How; /** A Finance account, read live and never written. NOT proof of payment. */ fundingAccountId: number | null }
 export interface Review { on: boolean; note: string; since: string | null }
 /** B2: `payTask` = keep ONE open "pay" Task for the next unpaid period (off unless the owner turns it on); `leadDays` = how many days before the due date the Task is for. (The "no Tasks for cancel-by and trial-end dates" choice is the separate top-level field `noDeadlineTasks`, so an older build that rewrites `reminders` cannot drop it.) */
@@ -111,6 +118,11 @@ export interface ObligationData {
   notes: string;
   /** Reader only, never stored: exact raw values of fields that were present but unreadable. Written back unchanged by an ordinary edit. */
   rawKept: Record<string, unknown>;
+  /**
+   * B4, reader only, NEVER stored: what the bill's lifecycle records (trial, price steps, renewal, cancellation) add up to. The loaders attach it
+   * (`withLifecycle`); `toStored` drops it, so no lifecycle evidence is ever copied into the obligation record.
+   */
+  lc?: LifecycleView;
 }
 export interface ObligationRecord { id: number; createdAt: number; updatedAt: number; data: ObligationData }
 
@@ -249,7 +261,8 @@ export const blankObligation = (over: Partial<ObligationData> = {}, today = ''):
  * feature leaves no trace; raw values kept by the reader are written back; unknown fields ride along inside `rest`.
  */
 export function toStored(d: ObligationData): Record<string, unknown> {
-  const { rawKept, providerContactId, providerNameSnapshot, prices, schedule, scheduleHistory, pauses, payment, scheduledRuleIds, payeeHints, categoryId, loanId, paidThroughLoan, reminders, noDeadlineTasks, terms, cancellation, predecessorId, acknowledged, endedOn, endReason, lifecycle, review, refs, notes, ...rest } = d;
+  const { rawKept, lc: _lc, providerContactId, providerNameSnapshot, prices, schedule, scheduleHistory, pauses, payment, scheduledRuleIds, payeeHints, categoryId, loanId, paidThroughLoan, reminders, noDeadlineTasks, terms, cancellation, predecessorId, acknowledged, endedOn, endReason, lifecycle, review, refs, notes, ...rest } = d;
+  void _lc; // B4: the lifecycle view is derived from other records and is never written into the obligation
   const out: Record<string, unknown> = {
     ...rest,
     payment: { how: payment.how, ...(payment.fundingAccountId !== null ? { fundingAccountId: payment.fundingAccountId } : {}) },
@@ -352,17 +365,22 @@ export function priceOn(prices: PriceStep[], date: string): PriceStep | null {
 }
 export interface ExpectedAmount { cents: number | null; basis: AmountKind }
 /** What one expected date is expected to cost. `cents: null` = not known (never zero). Fixed amounts are KNOWN, variable ones are ESTIMATES. */
-export function expectedAmountOn(d: Pick<ObligationData, 'amountKind' | 'prices'>, date: string): ExpectedAmount {
+export function expectedAmountOn(d: Pick<ObligationData, 'amountKind' | 'prices' | 'lc'>, date: string): ExpectedAmount {
   if (d.amountKind === 'unknown') return { cents: null, basis: 'unknown' };
-  return { cents: priceOn(d.prices, date)?.cents ?? null, basis: d.amountKind };
+  // B4: recorded price steps count too. A price in dispute, or a price after an end date, reads as unknown (never zero, never one of the candidates).
+  const step = priceOn(d.lc && d.lc.prices.length ? d.lc.prices : d.prices, date);
+  return { cents: step?.cents ?? null, basis: step?.estimated && d.amountKind === 'fixed' ? 'variable' : d.amountKind };
 }
 /** The first (or only) amount the owner entered, for the form. */
 export const firstAmountCents = (d: Pick<ObligationData, 'prices'>): number | null => d.prices.find((p) => p.cents !== null)?.cents ?? null;
 
 /** The slice of an obligation the date reader needs. */
-export const scheduleSource = (d: ObligationData): ScheduleSource => ({
-  schedule: d.schedule, scheduleHistory: d.scheduleHistory, trackingSince: d.trackingSince, pauses: d.pauses, status: d.status, endedOn: d.endedOn,
-});
+export const scheduleSource = (d: ObligationData): ScheduleSource => {
+  // B4: a CONFIRMED cancellation that nobody disputes stops expected bills after its effective date, without changing the stored status
+  // (the owner ends the bill; Ledger only stops EXPECTING). Nothing is ended, deleted or hidden: periods that hold records still show.
+  const cut = d.status === 'active' ? d.lc?.cutoffOn ?? null : null;
+  return { schedule: d.schedule, scheduleHistory: d.scheduleHistory, trackingSince: d.trackingSince, pauses: d.pauses, status: cut ? 'ended' : d.status, endedOn: cut ?? d.endedOn };
+};
 
 /** Loans own their payments (A-8): a loan-type obligation, one tracked in Loans, or one paid through the loan is left out of every total. */
 export const isLoanExcluded = (d: ObligationData) => d.type === 'loan' || d.loanId !== null || d.paidThroughLoan;

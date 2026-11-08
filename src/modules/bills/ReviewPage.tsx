@@ -11,6 +11,7 @@ import { attention, derive, loadBillsSnapshot, type AttentionCategory, type Atte
 import { obligationRoute, overviewRoute, upcomingRoute } from './paths';
 import { leaveTaskAsIs } from './cycleRepair';
 import { tidyReminders } from './contractData';
+import { acknowledgeEvidence } from './lifecycleData';
 import { runUndo } from './undo';
 import { KeepRuleDialog, leaveRuleAsIs } from './ScheduledUI';
 import { ruleLinkConflicts } from './scheduledLink';
@@ -26,6 +27,10 @@ const GROUP: { id: AttentionCategory[]; title: string; hint: string }[] = [
   { id: ['unconfirmedTasks'], title: 'Finished reminder Tasks, not yet confirmed', hint: 'A finished Task is not evidence of payment. Tell Ledger what happened.' },
   { id: ['notConfirmed', 'autopayCheck'], title: 'Not confirmed paid', hint: 'Ledger only knows that no payment is recorded, not that anything is unpaid.' },
   { id: ['records'], title: 'Records that need a look', hint: 'Unreadable records, records without their bill, and periods left behind by a schedule change. All are kept.' },
+  { id: ['lifecycleConflict'], title: 'Subscription records that disagree', hint: 'Nothing was merged or deleted, and the disputed date or price is not being used. Open the bill to choose which record stands, or leave it as it is.' },
+  { id: ['cancelAwaiting'], title: 'Cancellation requests awaiting confirmation', hint: 'You recorded a request and no confirmation. The subscription is still treated as active: a request is not proof the provider accepted it. Open the bill to record the confirmation, or leave it as it is.' },
+  { id: ['afterCancel'], title: 'Possible charges after a cancellation', hint: 'Transactions in Finance that look like this subscription are dated after the cancellation date. A matching name is a reason to look, not proof of a mistake: a final or partial-period charge can be correct. Ledger disputes, reverses and links nothing.' },
+  { id: ['scheduledAfterEnd'], title: 'Finance scheduled payments still active', hint: 'Finance still has an active scheduled payment for a bill that was cancelled or ended. Ledger does not change Finance: stop it on the Scheduled page if it should end.' },
   { id: ['passedDates'], title: 'Contract dates that have passed', hint: 'Ledger never renews, cancels or converts anything. Check and update the date.' },
   { id: ['taskProblems'], title: 'Reminder Tasks to check', hint: 'Open Tasks that no longer match their bill. "Update reminders" only removes a Task Bills made and you never changed; yours are never touched.' },
 ];
@@ -52,6 +57,12 @@ export default function ReviewPage() {
       const r = await tidyReminders(item.obligationId, today);
       toast(r.retired || r.created ? `Reminders updated (${r.retired} removed, ${r.created} made)` : 'Nothing needed changing. Tasks you changed are never touched.', () => runUndo(r.undo, toast).then(() => undefined));
     } catch (e) { toast(e instanceof Error ? e.message : 'Could not update. Nothing was changed.'); }
+  }
+  async function leaveEvidence(obligationId: number, key: string) {
+    try {
+      const r = await acknowledgeEvidence(obligationId, key, today);
+      toast('Left as is. It will come back only if the evidence changes.', () => runUndo(r.undo, toast).then(() => undefined));
+    } catch (e) { toast(e instanceof Error ? e.message : 'Could not save. Nothing was changed.'); }
   }
   async function leaveTask(item: AttentionItem) {
     const ob = obOf(item.obligationId);
@@ -87,6 +98,7 @@ export default function ReviewPage() {
                       {i.category === 'ruleShared' && i.ruleId !== undefined && <button className="btn" onClick={() => void leaveRuleAsIs(i.ruleId!, toast)}>Leave as is</button>}
                       {i.category === 'taskProblems' && <button className="btn" onClick={() => void tidy(i)}>Update reminders</button>}
                       {i.category === 'unconfirmedTasks' && <button className="btn" onClick={() => void leaveTask(i)}>Leave as is</button>}
+                      {(i.category === 'cancelAwaiting' || i.category === 'lifecycleConflict' || i.category === 'afterCancel' || i.category === 'scheduledAfterEnd') && ob && i.ackKey && <button className="btn" onClick={() => void leaveEvidence(ob.id, i.ackKey!)}>Leave as is</button>}
                     </div>
                   </li>
                 );

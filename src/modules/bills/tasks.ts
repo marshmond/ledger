@@ -35,7 +35,9 @@ import { loadTxnMap, lookupOfMap } from '../../lib/txnLookup';
 import type { TxnLookup, TxnRef } from '../../lib/txnRef';
 import { asObligation, isLoanExcluded, KIND, MODULE, obligationRef, type ObligationRecord } from './model';
 import { periodsOf, type Period } from './periods';
-import { deadlinesOf, isActionDeadline, DEADLINE_SHORT, readTerms, type DeadlineKind } from './terms';
+import { DEADLINE_SHORT, readTerms, type DeadlineKind } from './terms';
+import { lcOf, lifecycleRecordsOf, withLifecycle } from './lifecycleRead';
+import { effectiveDeadlines } from './lifecycleState';
 import type { Recorder } from './undo';
 
 export const OB_KEY = 'billsObligation';
@@ -48,7 +50,8 @@ export const TASK_LINK = 'about';
 export const PAY_LOOKBACK_DAYS = 30;
 export const PAY_LOOKAHEAD_DAYS = 400;
 
-export type TaskPurpose = 'pay' | 'notice' | 'trial';
+/** B4 adds 'renewal' (a renewal that needs a decision) and 'followup' (a cancellation request still awaiting confirmation). */
+export type TaskPurpose = 'pay' | 'notice' | 'trial' | 'renewal' | 'followup';
 export interface BillMarkers { obligation: number; purpose: TaskPurpose; cycle: string | null; due: string | null; deadline: string | null; doOn: string | null }
 
 const dateText = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
@@ -58,7 +61,7 @@ export function markersOf(t: { data: TaskData }): BillMarkers | null {
   const d = t.data as unknown as Record<string, unknown>;
   const ob = d[OB_KEY];
   const purpose = d[PURPOSE_KEY];
-  if (typeof ob !== 'number' || !Number.isFinite(ob) || (purpose !== 'pay' && purpose !== 'notice' && purpose !== 'trial')) return null;
+  if (typeof ob !== 'number' || !Number.isFinite(ob) || (purpose !== 'pay' && purpose !== 'notice' && purpose !== 'trial' && purpose !== 'renewal' && purpose !== 'followup')) return null;
   return { obligation: ob, purpose, cycle: typeof d[CYCLE_KEY] === 'string' ? (d[CYCLE_KEY] as string) : null, due: dateText(d[DUE_KEY]), deadline: dateText(d[DEADLINE_KEY]), doOn: dateText(d[DOON_KEY]) };
 }
 export function withMarkers(data: TaskData, m: { obligation: number; purpose: TaskPurpose; cycle?: string | null; due?: string | null; deadline?: string | null; doOn?: string | null }): TaskData {
@@ -79,9 +82,13 @@ export const doOnDate = (due: string, leadDays: number, today: string) => { cons
 export const taskAckKey = (t: TaskRecord) => `bt|${t.id}.${t.updatedAt}`;
 
 export const payTaskTitle = (title: string) => `Pay ${title}`;
+export const followUpTaskTitle = (title: string) => `Follow up on the cancellation of ${title}`;
 export const deadlineTaskTitle = (kind: DeadlineKind, title: string) => (kind === 'notice' ? `Cancel or give notice by the deadline: ${title}` : `${DEADLINE_SHORT[kind]}: ${title}`);
 const payNotes = (due: string | null) => `From Bills & Subscriptions.${due ? ` The bill is due ${due}.` : ''} Finishing this Task does not record a payment. Open the bill and choose "Done, mark paid".`;
-const deadlineNotes = (kind: DeadlineKind, date: string) => `From Bills & Subscriptions. ${kind === 'notice' ? 'The last day to cancel or give notice' : 'The trial ends'} on ${date}. Ledger does not cancel or change anything.`;
+const deadlineNotes = (kind: DeadlineKind, date: string) => (kind === 'renewal'
+  ? `From Bills & Subscriptions. A renewal is expected on ${date}, and you said it does not renew by itself. Decide or confirm it. Ledger does not renew anything.`
+  : `From Bills & Subscriptions. ${kind === 'notice' ? 'The last day to cancel or give notice' : 'The trial ends'} on ${date}. Ledger does not cancel or change anything.`);
+const followUpNotes = (date: string) => `From Bills & Subscriptions. You recorded a cancellation request and no confirmation is recorded yet. Follow up by ${date}. Finishing this Task does not record a confirmation. Open the bill and choose "Record confirmation".`;
 
 // ---- the plan (pure) ----
 
@@ -110,6 +117,7 @@ export function planBillTasks(ob: ObligationRecord, periods: Period[], tasks: Ta
   const rem = effectiveReminders(d);
   const mine = tasks.filter((t) => markersOf(t)?.obligation === ob.id && open(t));
 
+  const lc = lcOf(d);
   if (d.status !== 'active') {
     // never creates anything for an inactive bill; decides only which open Tasks are no longer wanted
     const wanted = new Set(periods.filter((p) => p.open && (p.expected || p.records.length > 0)).map((p) => p.slot));
@@ -138,17 +146,34 @@ export function planBillTasks(ob: ObligationRecord, periods: Period[], tasks: Ta
     } else for (const t of pay) plan.stale.push(t.id);
   }
 
+  // B4: a follow-up Task stands for a cancellation request that is still awaiting confirmation. Once a confirmation is recorded it has served its purpose.
+  for (const t of mine.filter((k) => markersOf(k)!.purpose === 'followup')) {
+    if (lc.cancel.confirms.length === 0 && lc.cancel.request) { plan.reused.push(t.id); continue; }
+    (untouched(t, d, markersOf(t)!) ? plan.retire : plan.stale).push(t.id);
+  }
+
   if (rem.deadlineTasks) {
     const terms = readTerms(d.terms);
-    for (const dl of deadlinesOf(terms)) {
-      if (!isActionDeadline(dl.kind) || dl.date < today) continue;
-      const kind = dl.kind as 'notice' | 'trial';
+    const deadlines = effectiveDeadlines(terms, lc, today);
+    // B4: a deadline Task whose kind no longer has a date (a trial outcome was recorded, a cancellation took effect first, a renewal was replaced) is not wanted any more
+    if (lc.records.length > 0) for (const t of mine) {
+      const m = markersOf(t)!;
+      if (m.purpose === 'pay' || m.purpose === 'followup') continue;
+      if (deadlines.some((dl) => dl.kind === m.purpose && dl.action)) continue;
+      (untouched(t, d, m) ? plan.retire : plan.stale).push(t.id);
+    }
+    // a cancellation request that is already recorded means the action was taken: no NEW cancel-by or trial Task is made for a date it came before
+    const requestedOn = lc.cancel.request?.body.requestedOn ?? null;
+    for (const dl of deadlines) {
+      if (!dl.action || dl.date < today) continue;
+      const kind = dl.kind as 'notice' | 'trial' | 'renewal';
       const same = mine.filter((t) => markersOf(t)!.purpose === kind);
       const exact = same.filter((t) => markersOf(t)!.deadline === dl.date);
       if (exact.length > 0) { plan.reused.push(exact[0].id); if (exact.length > 1) plan.duplicates.push(exact.map((t) => t.id)); continue; }
       const stale = same.find((t) => { const m = markersOf(t)!; return m.deadline !== null && m.doOn !== null && t.data.dueDate === m.doOn; });
       if (stale) { plan.reschedule.push({ taskId: stale.id, doOn: doOnDate(dl.date, rem.leadDays, today), due: null, deadline: dl.date }); plan.reused.push(stale.id); continue; }
-      if (same.length > 0) { for (const t of same) plan.stale.push(t.id); continue; }
+      if (same.length > 0) { for (const t of same) if (!plan.retire.includes(t.id) && !plan.stale.includes(t.id)) plan.stale.push(t.id); continue; }
+      if (requestedOn !== null && kind !== 'renewal' && requestedOn <= dl.date) continue;
       plan.create.push({ purpose: kind, cycle: null, due: null, deadline: dl.date, doOn: doOnDate(dl.date, rem.leadDays, today), title: deadlineTaskTitle(kind, d.title), notes: deadlineNotes(kind, dl.date) });
     }
   }
@@ -159,12 +184,13 @@ export function planBillTasks(ob: ObligationRecord, periods: Period[], tasks: Ta
 export function untouched(t: TaskRecord, d: ObligationRecord['data'], m: BillMarkers): boolean {
   const x = t.data;
   const pay = m.purpose === 'pay';
-  const title = pay ? payTaskTitle(d.title) : deadlineTaskTitle(m.purpose as DeadlineKind, d.title);
-  const notes = pay ? payNotes(m.due) : deadlineNotes(m.purpose as DeadlineKind, m.deadline ?? '');
+  const follow = m.purpose === 'followup';
+  const title = pay ? payTaskTitle(d.title) : follow ? followUpTaskTitle(d.title) : deadlineTaskTitle(m.purpose as DeadlineKind, d.title);
+  const notes = pay ? payNotes(m.due) : follow ? followUpNotes(m.deadline ?? '') : deadlineNotes(m.purpose as DeadlineKind, m.deadline ?? '');
   const contacts = d.providerContactId !== null ? [d.providerContactId] : [];
   return x.status === 'todo' && m.doOn !== null && x.dueDate === m.doOn && x.title === title && x.notes === notes && x.dueTime === null && x.startDate === null && !x.repeat
     && x.checklist.length === 0 && x.tagIds.length === 0 && x.listId === null && x.projectId === undefined && x.recurFrom === undefined && !x.createdFrom && x.completedAt === null
-    && x.priority === (pay ? 'medium' : 'high') && JSON.stringify(x.contactIds) === JSON.stringify(contacts);
+    && x.priority === (pay || follow ? 'medium' : 'high') && JSON.stringify(x.contactIds) === JSON.stringify(contacts);
 }
 
 // ---- reading ----
@@ -215,7 +241,8 @@ export interface EnsureResult { created: number[]; rescheduled: number[]; reused
  */
 export async function ensureBillTasksIn(obligationId: number, today: string, d: FinanceDB, lookup: TxnLookup, rec?: Recorder): Promise<EnsureResult> {
   const row = await d.moduleRecords.get(obligationId);
-  const ob = row && row.module === MODULE && row.kind === KIND && isLive(row) ? asObligation(row) : undefined;
+  const base = row && row.module === MODULE && row.kind === KIND && isLive(row) ? asObligation(row) : undefined;
+  const ob = base ? withLifecycle([base], await lifecycleRecordsOf(obligationId, d))[0] : undefined; // B4: the plan reads the bill's lifecycle view
   const none: EnsureResult = { created: [], rescheduled: [], reused: [], duplicates: [], stale: [], retired: [] };
   if (!ob) return none;
   const cycles = await cycleRecordsOf(obligationId, d);
@@ -232,7 +259,7 @@ export async function ensureBillTasksIn(obligationId: number, today: string, d: 
     out.rescheduled.push(r.taskId);
   }
   for (const w of plan.create) {
-    const data = withMarkers(blankTask({ title: w.title, notes: w.notes, dueDate: w.doOn, priority: w.purpose === 'pay' ? 'medium' : 'high', contactIds: ob.data.providerContactId !== null ? [ob.data.providerContactId] : [] }), { obligation: obligationId, purpose: w.purpose, cycle: w.cycle, due: w.due, deadline: w.deadline, doOn: w.doOn });
+    const data = withMarkers(blankTask({ title: w.title, notes: w.notes, dueDate: w.doOn, priority: w.purpose === 'pay' || w.purpose === 'followup' ? 'medium' : 'high', contactIds: ob.data.providerContactId !== null ? [ob.data.providerContactId] : [] }), { obligation: obligationId, purpose: w.purpose, cycle: w.cycle, due: w.due, deadline: w.deadline, doOn: w.doOn });
     const id = await createTask(data, [obligationRef(obligationId)], d);
     rec?.made(id);
     rec?.linkAdded((await d.links.where('[fromModule+fromId]').equals(['tasks', id]).toArray()).filter(isLive).map((l) => l.id as number));
@@ -242,6 +269,24 @@ export async function ensureBillTasksIn(obligationId: number, today: string, d: 
 }
 export function ensureBillTasks(obligationId: number, today: string, d: FinanceDB = db): Promise<EnsureResult> {
   return inBillsTx(d, [d.moduleRecords, d.links, d.contacts], [obligationId], async (lookup) => ensureBillTasksIn(obligationId, today, d, lookup));
+}
+
+/**
+ * B4: makes the ONE follow-up Task the owner asked for when recording a cancellation request ("remind me to check for the provider's reply"). Runs inside the
+ * caller's transaction. It is a plain Task with Bills markers; nothing else is made and nothing is finished. Never makes a second one for the same bill
+ * while one is open.
+ */
+export async function createFollowUpTaskIn(obligationId: number, followUpOn: string, today: string, d: FinanceDB, rec?: Recorder): Promise<number | null> {
+  const row = await d.moduleRecords.get(obligationId);
+  const ob = row && row.module === MODULE && row.kind === KIND && isLive(row) ? asObligation(row) : undefined;
+  if (!ob || ob.data.status !== 'active') return null;
+  if ((await loadBillTasks(d)).some((t) => { const m = markersOf(t); return m && m.obligation === obligationId && m.purpose === 'followup' && open(t); })) return null;
+  const doOn = followUpOn < today ? today : followUpOn;
+  const data = withMarkers(blankTask({ title: followUpTaskTitle(ob.data.title), notes: followUpNotes(doOn), dueDate: doOn, priority: 'medium', contactIds: ob.data.providerContactId !== null ? [ob.data.providerContactId] : [] }), { obligation: obligationId, purpose: 'followup', deadline: doOn, doOn });
+  const id = await createTask(data, [obligationRef(obligationId)], d);
+  rec?.made(id);
+  rec?.linkAdded((await d.links.where('[fromModule+fromId]').equals(['tasks', id]).toArray()).filter(isLive).map((l) => l.id as number));
+  return id;
 }
 
 /** Finishes an open Bills pay Task through the existing Tasks API (it is a plain Task: no repeat, so nothing else is made). Records it for Undo. */

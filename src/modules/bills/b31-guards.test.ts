@@ -32,7 +32,7 @@ describe('B3.1 guards: Finance is read through ONE read-only loader', () => {
   });
 
   it('only these Bills files import it, and no Bills file opens a Finance table of its own (the earlier guards still hold)', () => {
-    expect(scan(/lib\/financeRead'/)).toEqual(['discovery.ts', 'discoveryData.ts', 'dueProvider.ts', 'payeeMatch.ts', 'scheduledLink.ts', 'scheduledLinkData.ts', 'suggest.ts', 'suggestData.ts']);
+    expect(scan(/lib\/financeRead'/)).toEqual(['discovery.ts', 'discoveryData.ts', 'dueProvider.ts', 'lifecycleFinance.ts', 'payeeMatch.ts', 'scheduledLink.ts', 'scheduledLinkData.ts', 'suggest.ts', 'suggestData.ts']);
     expect(scan(/\.(txns|recurring|recurringLog|loans)\b/)).toEqual([]);
   });
 });

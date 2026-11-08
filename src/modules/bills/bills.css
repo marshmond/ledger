@@ -173,3 +173,15 @@ a.btn.disabled { opacity: .5; pointer-events: none; }
   .bl-disc-row { flex-direction: column; align-items: stretch; }
   .bl-sugg .bl-actionrow .btn, .bl-disc-row .btn, .bl-sub .bl-actionrow .btn { min-height: 44px; }
 }
+
+/* B4: subscription life */
+.bl-states { margin: 0 0 .75rem; display: grid; gap: .4rem; }
+.bl-state { padding: .45rem .65rem; border-radius: 8px; border: 1px solid var(--border, #d9d9d9); background: var(--surface, transparent); overflow-wrap: anywhere; }
+.bl-state.s-warn { border-color: #c9892b; }
+.bl-state.s-info { border-color: #4b7bb5; }
+.bl-chip.lc-warn { border-color: #c9892b; }
+.bl-chip.lc-info { border-color: #4b7bb5; }
+.bl-tl .muted { text-decoration: line-through; text-decoration-color: transparent; font-style: italic; }
+.bl-tag { font-size: .75rem; padding: 0 .35rem; border: 1px solid var(--border, #d9d9d9); border-radius: 6px; }
+.bl-radios { border: 0; padding: 0; margin: 0; display: grid; gap: .4rem; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -17,10 +17,10 @@ const DONE: Record<LifecycleAction, string> = { pause: 'Paused', resume: 'Resume
 const DATE_LABEL: Record<LifecycleAction, string> = { pause: 'Paused from', resume: 'Expected again from', end: 'Last day it is expected', reopen: 'Expected again from' };
 
 /** Pause / Resume / End / Reopen. Shows exactly what will happen first; nothing is written until the button is pressed. */
-export function LifecycleDialog({ obligation, action, onClose }: { obligation: ObligationRecord; action: LifecycleAction; onClose: () => void }) {
+export function LifecycleDialog({ obligation, action, onClose, initialDate }: { obligation: ObligationRecord; action: LifecycleAction; onClose: () => void; /** B4: the day to start from (for example a confirmed cancellation's effective date) */ initialDate?: string }) {
   const toast = useToast();
   const today = useToday();
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(initialDate ?? today);
   const [reason, setReason] = useState<EndReason>('cancelled');
   const [plan, setPlan] = useState<LifecyclePlan | null>(null);
   const [error, setError] = useState('');

@@ -40,6 +40,9 @@ export interface Undo {
   sealed?: Record<number, string>;
   /** B2: shared links this action added (a new Task's link to its bill). Undo removes exactly these, after the rows above checked out. */
   linksAdded?: number[];
+  /** B4: shared links this action took away (a soft delete). Undo restores exactly these, after checking each is still as the action left it. */
+  linksRemoved?: number[];
+  sealedLinks?: Record<number, string>;
 }
 
 export class Recorder {
@@ -54,11 +57,18 @@ export class Recorder {
   made(id: number) { if (!this.undo.rows.some((r) => r.id === id)) this.undo.rows.push({ id, before: null }); }
   /** B2: links this action added. */
   linkAdded(ids: number[]) { this.undo.linksAdded = [...(this.undo.linksAdded ?? []), ...ids]; }
+  /** B4: links this action removed. */
+  linkRemoved(ids: number[]) { this.undo.linksRemoved = [...(this.undo.linksRemoved ?? []), ...ids]; }
   /** Call LAST, inside the same transaction as the change. */
   async seal(d: FinanceDB): Promise<Undo> {
     const sealed: Record<number, string> = {};
     for (const { id } of this.undo.rows) sealed[id] = fingerprint(await d.moduleRecords.get(id));
     this.undo.sealed = sealed;
+    if (this.undo.linksRemoved?.length) {
+      const sl: Record<number, string> = {};
+      for (const id of this.undo.linksRemoved) sl[id] = fingerprint(await d.links.get(id));
+      this.undo.sealedLinks = sl;
+    }
     return this.undo;
   }
 }
@@ -70,6 +80,12 @@ export function applyUndo(u: Undo, d: FinanceDB = db): Promise<void> {
     for (const { id } of u.rows) {
       if (fingerprint(await d.moduleRecords.get(id)) !== u.sealed[id]) throw new UndoRefused();
     }
+    for (const id of u.linksRemoved ?? []) {
+      const row = await d.links.get(id);
+      if (fingerprint(row) !== u.sealedLinks?.[id]) throw new UndoRefused();
+      // restoring must never create a DUPLICATE: if someone linked the same two records again since, the relationship exists and Undo refuses
+      if (row && (await d.links.where('[fromModule+fromId]').equals([row.fromModule, row.fromId]).toArray()).some((l) => l.id !== id && l.deletedAt == null && l.toModule === row.toModule && l.toId === row.toId && l.type === row.type)) throw new UndoRefused();
+    }
     const rows = repo<ModuleRecord>(d.moduleRecords);
     for (const { id, before } of u.rows) {
       if (before === null) { await rows.remove(id); continue; }
@@ -79,6 +95,7 @@ export function applyUndo(u: Undo, d: FinanceDB = db): Promise<void> {
     }
     const links = repo<Link>(d.links);
     for (const id of u.linksAdded ?? []) await links.remove(id);
+    for (const id of u.linksRemoved ?? []) await links.restore(id);
   });
 }
 

@@ -7,6 +7,7 @@ const HREF: Record<AttentionCategory, string> = {
   dueSoon: '#/bills/upcoming', trials: '#/bills/upcoming', notices: '#/bills/upcoming', renewals: '#/bills/upcoming',
   notConfirmed: '#/bills/review', autopayCheck: '#/bills/review', unconfirmedTasks: '#/bills/review', conflicts: '#/bills/review', records: '#/bills/review', passedDates: '#/bills/review', taskProblems: '#/bills/review',
   paymentReview: '#/bills/review', paymentChanged: '#/bills/review', partlyPaid: '#/bills/review', typedFinance: '#/bills/review', duplicatePieces: '#/bills/review', declaredShort: '#/bills/review', ruleShared: '#/bills/review',
+  cancelAwaiting: '#/bills/review', lifecycleConflict: '#/bills/review', afterCancel: '#/bills/review', scheduledAfterEnd: '#/bills/review',
 };
 
 /**

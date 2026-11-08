@@ -94,3 +94,22 @@ export const paidOut = (paidOn: string, cents: number | null): FactBody => ({ fa
 export const paidFull = (on: string | null = null): FactBody => ({ fact: 'paid-in-full', on });
 export const skipF = (reason = ''): FactBody => ({ fact: 'skip', reason });
 export const creditF = (cents: number, note = ''): FactBody => ({ fact: 'credit', cents, note });
+
+// ---- B4: building lifecycle records by hand ----
+import { LC_KIND, newLcData, readLifecycle, type LcBody, type LcRecord } from './lifecycleModel';
+import { lifecycleView, type LifecycleView } from './lifecycleState';
+import { withLifecycle } from './lifecycleRead';
+
+/** A lifecycle record as the reader sees it (ids and times are chosen by the test; `link` sets what it replaces, targets and saw). */
+export const lcRec = (id: number, obligationId: number, body: LcBody, link: { replaces?: number[]; targets?: number[]; seen?: number[] } = {}, t = id): LcRecord =>
+  readLifecycle({ id, module: 'bills', kind: LC_KIND, data: newLcData(obligationId, body, link), createdAt: t, updatedAt: t, deletedAt: null } as ModuleRecord);
+export const rawLc = (id: number, data: Record<string, unknown>, t = id): LcRecord => readLifecycle({ id, module: 'bills', kind: LC_KIND, data, createdAt: t, updatedAt: t, deletedAt: null } as ModuleRecord);
+export const lcView = (records: LcRecord[], prices: ObligationData['prices'] = [], obligationId = 1): LifecycleView => lifecycleView({ obligationId, baselinePrices: prices, records });
+/** An obligation record carrying its lifecycle view, as the loaders deliver it. */
+export const obWith = (id: number, records: LcRecord[], over: Partial<ObligationData> = {}, today = '2026-11-07'): ObligationRecord => withLifecycle([obRec(id, over, today)], records)[0];
+
+export const confirmBody = (effectiveOn: string, confirmedOn = effectiveOn, over: Partial<Extract<LcBody, { fact: 'cancel-confirm' }>> = {}): LcBody => ({ fact: 'cancel-confirm', confirmedOn, effectiveOn, providerRef: '', finalCharge: 'unknown', finalChargeCents: null, refundCents: null, accessUntil: null, note: '', ...over });
+export const requestBody = (requestedOn: string, over: Partial<Extract<LcBody, { fact: 'cancel-request' }>> = {}): LcBody => ({ fact: 'cancel-request', requestedOn, requestedEffectiveOn: null, method: 'website', ref: '', awaiting: true, note: '', ...over });
+export const stepBody = (from: string, cents: number | null, over: Partial<Extract<LcBody, { fact: 'price-step' }>> = {}): LcBody => ({ fact: 'price-step', from, until: null, cents, status: cents === null ? 'unknown' : 'fixed', label: '', source: 'owner', note: '', ...over });
+export const renewalBody = (renewalDate: string, over: Partial<Extract<LcBody, { fact: 'renewal' }>> = {}): LcBody => ({ fact: 'renewal', renewalDate, cadence: 'annual', auto: true, noticeDays: null, noticeByDate: null, changes: 'unknown', confirmed: true, note: '', ...over });
+export const trialBody = (endsOn: string, over: Partial<Extract<LcBody, { fact: 'trial' }>> = {}): LcBody => ({ fact: 'trial', startsOn: null, endsOn, paymentOnFile: 'unknown', conversion: 'unknown', convertsToCents: null, cadence: 'unknown', mustCancel: false, noticeBy: null, note: '', ...over });

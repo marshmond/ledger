@@ -33,8 +33,16 @@ import { lookupOfMap } from '../../lib/txnLookup';
 import { loadScheduled, occurrencesBetween } from '../../lib/financeRead';
 import { driftUnresolved, ruleKind, ruleLive, scheduleDrift } from './scheduledLink';
 import { markersOf } from './tasks';
-import { deadlinesOf, DEADLINE_MEANING, DEADLINE_SHORT, isActionDeadline, readTerms } from './terms';
+import { DEADLINE_MEANING, DEADLINE_SHORT, readTerms } from './terms';
+import { lcOf } from './lifecycleRead';
+import { effectiveDeadlines, renewalDates } from './lifecycleState';
 import { daysUntil } from './timing';
+
+/**
+ * The id Household Services gives its contract-date marker: `<renewal|notice>-<arrangement>` (services/contract.ts `deadlineKey`). It is written out here, not imported, because
+ * Bills must not import the Services module (an existing guard); a test compares the two so they cannot drift apart.
+ */
+export const servicesDeadlineKey = (kind: 'renewal' | 'notice', arrangementId: number) => `${kind}-${arrangementId}`;
 
 export const BILLS_LAYER_COLOR = '#b94a7c';
 export const HORIZON_MONTHS = 12;
@@ -96,15 +104,47 @@ export async function billsDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedI
       }
     }
     if (ob.data.status === 'ended') continue;
-    for (const dl of deadlinesOf(readTerms(ob.data.terms))) {
+    const lc = lcOf(ob.data);
+    // B4: a Household Services arrangement the owner explicitly linked may already show the SAME kind of date on the SAME day (its own marker id is derived the same
+    // way). The Calendar leaves the Bills marker out only while that Services marker is shown, so neither a visit nor a Services deadline is ever hidden.
+    const arrangement = [...(snap.serviceLinks?.get(ob.id) ?? [])].sort((a, b) => a - b)[0];
+    const coverFor = (kind: 'notice' | 'renewal', date: string) => (arrangement === undefined ? {} : { coveredBy: derivedId('services', servicesDeadlineKey(kind, arrangement), date) });
+    // the dates in force: the contract dates (B2) with any recorded trial or renewal laid over them; a recorded renewal repeats on its cadence below
+    const dates: { kind: 'notice' | 'trial' | 'renewal'; date: string; action: boolean; expected: boolean }[] = effectiveDeadlines(readTerms(ob.data.terms), lc, q.today)
+      .filter((dl) => !(dl.kind === 'renewal' && lc.renewal.fact))
+      .map((dl) => ({ kind: dl.kind, date: dl.date, action: dl.action, expected: dl.estimated }));
+    if (lc.renewal.fact) {
+      const rf = lc.renewal.fact.body;
+      for (const date of renewalDates(lc, lo, hi)) dates.push({ kind: 'renewal', date, action: rf.auto === false && date === rf.renewalDate, expected: !rf.confirmed || date !== rf.renewalDate });
+    }
+    for (const dl of dates) {
       if (dl.date < lo || dl.date > hi) continue;
-      const task = isActionDeadline(dl.kind) && openTasks.find((t) => { const m = markersOf(t); return m && m.obligation === ob.id && m.purpose === dl.kind && t.data.dueDate === dl.date; });
+      const task = dl.action && openTasks.find((t) => { const m = markersOf(t); return m && m.obligation === ob.id && m.purpose === dl.kind && t.data.dueDate === dl.date; });
       if (task) continue;
       const days = daysUntil(dl.date, q.today);
+      const fromLifecycle = dl.kind === 'renewal' && !!lc.renewal.fact;
       out.push({
-        id: derivedId('bills', `${dl.kind}-${ob.id}`, dl.date), sourceModule: 'bills', sourceRecordId: `obligation:${ob.id}`, title: `${DEADLINE_SHORT[dl.kind]}: ${title}`, date: dl.date, allDay: true,
-        priority: isActionDeadline(dl.kind) ? (days >= 0 && days <= 7 ? 'high' : 'medium') : 'low', status: dl.date >= q.today ? 'open' : 'handled',
-        detail: DEADLINE_MEANING[dl.kind], openSource: go, sourceLabel: 'Open bill', icsUid: `bills-${dl.kind}-${ob.id}@ledger.local`, ...(isActionDeadline(dl.kind) ? { icsAlarmMinutes: 1440 } : {}),
+        id: derivedId('bills', `${dl.kind}-${ob.id}`, dl.date), sourceModule: 'bills', sourceRecordId: `obligation:${ob.id}`, title: `${fromLifecycle ? 'Renewal expected' : DEADLINE_SHORT[dl.kind]}: ${title}`, date: dl.date, allDay: true,
+        priority: dl.action ? (days >= 0 && days <= 7 ? 'high' : 'medium') : 'low', status: dl.date >= q.today ? 'open' : 'handled',
+        detail: dl.kind === 'renewal' && dl.expected ? `${DEADLINE_MEANING.renewal} This date is expected, not confirmed.` : DEADLINE_MEANING[dl.kind], openSource: go, sourceLabel: 'Open bill', icsUid: `bills-${dl.kind}-${ob.id}@ledger.local`, ...(dl.action ? { icsAlarmMinutes: 1440 } : {}),
+        ...(dl.kind === 'notice' || dl.kind === 'renewal' ? coverFor(dl.kind, dl.date) : {}),
+      });
+    }
+    // B4: the confirmed effective cancellation date, and later price changes. Informational: neither is an action, neither says anything about money.
+    if (lc.cutoffOn && lc.cutoffOn >= lo && lc.cutoffOn <= hi) {
+      out.push({
+        id: derivedId('bills', `cancel-${ob.id}`, lc.cutoffOn), sourceModule: 'bills', sourceRecordId: `obligation:${ob.id}`, title: `Cancellation effective: ${title}`, date: lc.cutoffOn, allDay: true,
+        priority: 'low', status: lc.cutoffOn >= q.today ? 'open' : 'handled', detail: 'The effective date of the cancellation you recorded as confirmed. Ledger does not cancel anything, and the provider may still change the date.',
+        openSource: go, sourceLabel: 'Open bill', icsUid: `bills-cancel-${ob.id}@ledger.local`,
+      });
+    }
+    const stepRows = lc.priceRows.filter((r) => r.origin === 'baseline' || r.origin === 'recorded');
+    for (const r of stepRows.slice(1)) {
+      if (r.from < lo || r.from > hi || r.cents === null && r.status !== 'unknown') continue;
+      out.push({
+        id: derivedId('bills', `price-${ob.id}`, r.from), sourceModule: 'bills', sourceRecordId: `obligation:${ob.id}`, title: `Price change: ${title}`, date: r.from, allDay: true,
+        priority: 'low', status: r.from >= q.today ? 'open' : 'handled', detail: 'A price change you recorded takes effect. Open the bill to see the amounts.',
+        openSource: go, sourceLabel: 'Open bill', icsUid: `bills-price-${ob.id}@ledger.local`,
       });
     }
   }
