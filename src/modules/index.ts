@@ -4,6 +4,7 @@ import { calendarModule } from './calendar';
 import { ledgerModule } from './ledger';
 import { assetsModule } from './assets';
 import { billsModule } from './bills';
+import { familyModule } from './family';
 import { householdModule } from './household';
 import { projectsModule } from './projects';
 import { servicesModule } from './services';
@@ -24,4 +25,5 @@ export function registerModules() {
   registerModule(servicesModule);
   registerModule(billsModule);
   registerModule(householdModule);
+  registerModule(familyModule);
 }

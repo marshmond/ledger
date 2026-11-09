@@ -8,6 +8,7 @@ import './calendar/calendar.css';
 import './assets/assets.css';
 import './assets/h3.css';
 import './bills/bills.css';
+import './family/family.css';
 import './household/household.css';
 import './projects/projects.css';
 import './services/services.css';

@@ -54,6 +54,19 @@ export async function findOrCreateContact(d: FinanceDB, input: ContactInput): Pr
   });
 }
 
+/**
+ * Always makes a NEW contact, even when another live contact has the same name. For callers that must never merge two people (Family:
+ * two relatives can share a name). It does not look at names at all, so the caller is responsible for warning the person first.
+ * Safe to call inside a larger transaction that includes `d.contacts` (it then joins it, so a failure later rolls the contact back too).
+ */
+export async function createDistinctContact(d: FinanceDB, input: ContactInput): Promise<number> {
+  const problem = validateContact(input);
+  if (problem) throw new Error(problem);
+  const extra = { phone: tidy(input.phone), email: tidy(input.email), relationship: tidy(input.relationship) };
+  return d.transaction('rw', d.contacts, () =>
+    createStore(d).shared.contacts.put({ name: tidy(input.name), ...(extra.phone ? { phone: extra.phone } : {}), ...(extra.email ? { email: extra.email } : {}), ...(extra.relationship ? { relationship: extra.relationship } : {}) }));
+}
+
 /** Changes a contact's details. An empty phone, email or relationship removes it. Fields this code does not know are kept. */
 export async function updateContactDetails(d: FinanceDB, id: number, input: ContactInput): Promise<void> {
   const problem = validateContact(input);

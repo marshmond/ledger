@@ -45,7 +45,7 @@ describe('what the first download is allowed to contain', () => {
   const files = [...start].map(rel);
 
   it('the start-up code reaches the registrations of every module', () => {
-    for (const m of ['today', 'ledger', 'calendar', 'tasks', 'projects', 'assets', 'services', 'bills', 'household']) {
+    for (const m of ['today', 'ledger', 'calendar', 'tasks', 'projects', 'assets', 'services', 'bills', 'household', 'family']) {
       expect(files, m).toContain(`modules/${m}/index.tsx`);
     }
   });
@@ -69,8 +69,8 @@ describe('what the first download is allowed to contain', () => {
 describe('every module is registered, with its background contributions, without any screen being opened', () => {
   registerModules();
 
-  it('all nine modules, Today first, each with the address list the old-bookmark redirect needs', () => {
-    expect(allModules().map((m) => m.id)).toEqual(['today', 'ledger', 'calendar', 'tasks', 'projects', 'assets', 'services', 'bills', 'household']);
+  it('all ten modules, Today first, each with the address list the old-bookmark redirect needs', () => {
+    expect(allModules().map((m) => m.id)).toEqual(['today', 'ledger', 'calendar', 'tasks', 'projects', 'assets', 'services', 'bills', 'household', 'family']);
     for (const m of allModules()) expect(m.routePaths.length, m.id).toBeGreaterThan(0);
   });
 
