@@ -7,7 +7,8 @@ import { addDays, addMonths, monthLabel } from '../../lib/dates';
 import { todayISO } from '../../lib/money';
 import { requestTask } from '../../core/taskBridge';
 import AgendaView from './AgendaView';
-import { DayPanel, DerivedDetail, ExportDialog, Legend, ManageCalendars } from './dialogs';
+import { DayPanel, DerivedDetail, ExportDialog, ManageCalendars } from './dialogs';
+import LayerMenu from './LayerMenu';
 import { defaultCalendarId, ensureCalendarSeed } from './data';
 import EventEditor, { type EditorStart } from './EventEditor';
 import MonthView, { monthGridStart } from './MonthView';
@@ -127,10 +128,10 @@ export default function CalendarPage() {
         {view === 'agenda' && (
           <label className="row cal-range">Show <select value={rangeDays} onChange={(e) => go({ r: Number(e.target.value) })} aria-label="Agenda range">{RANGES.map((r) => <option key={r} value={r}>next {r} days</option>)}</select></label>
         )}
+        {data && <LayerMenu layers={data.layers.map((l) => ({ id: l.id, name: l.name, color: l.color, derived: l.sourceType === 'derived' }))} isVisible={vis.isVisible} onToggle={vis.toggle} onSelectAll={vis.selectAll} onDeselectAll={vis.deselectAll} onManage={() => setManage(true)} />}
         <button className="link" onClick={() => setExporting({})}>Export…</button>
       </div>
-      {data && <Legend layers={data.layers} isVisible={vis.isVisible} count={vis.count} onToggle={vis.toggle} onSelectAll={vis.selectAll} onDeselectAll={vis.deselectAll} onManage={() => setManage(true)} />}
-      {data && vis.count === 0 && <p className="muted cal-allhidden" role="status">Every calendar is switched off, so nothing is shown. Choose <strong>Select all</strong>, or switch on a calendar above (for example Personal). Nothing was deleted or changed.</p>}
+      {data && vis.count === 0 && <p className="muted cal-allhidden" role="status">Every calendar is switched off, so nothing is shown. Open <strong>Layers</strong> and choose <strong>Select all</strong>, or switch on a calendar (for example Personal). Nothing was deleted or changed.</p>}
 
       {!data ? <p className="muted">Loading…</p> : view === 'month' ? (
         <MonthView month={anchor.slice(0, 7)} weekStart={weekStart} today={today} items={items} onCreate={(date) => setEditor({ start: { date } })} onOpenDay={setDayOpen} onOpenItem={openItem} />

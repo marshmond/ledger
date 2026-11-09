@@ -6,7 +6,6 @@ import { todayISO } from '../../lib/money';
 import { store } from '../../core/store';
 import { queryProviders } from '../../core/dueProvider';
 import Modal from '../../shell/Modal';
-import { isHex, onColor } from '../../palette';
 import { useToast } from '../../ui/Toast';
 import { AgendaRow } from './AgendaView';
 import { buildIcs } from './ics';
@@ -77,34 +76,6 @@ export function DerivedDetail({ item, onClose }: { item: CalItem; onClose: () =>
         <button className="btn" onClick={onClose}>Close</button>
       </div>
     </Modal>
-  );
-}
-
-/**
- * Switch calendars on and off at a glance, one by one or all at once (B3.0B). "Select all" and "Deselect all" change only which calendars
- * the screen draws: no event, Task or record is touched, and nothing is sent anywhere. With every calendar off the Calendar is simply empty.
- */
-export function Legend({ layers, isVisible, count, onToggle, onSelectAll, onDeselectAll, onManage }: {
-  layers: CalendarLayer[]; isVisible: (id: number) => boolean; count: number; onToggle: (id: number) => void; onSelectAll: () => void; onDeselectAll: () => void; onManage: () => void;
-}) {
-  return (
-    <div className="cal-legend" role="group" aria-label="Calendars">
-      <span className="cal-legend-bulk" role="group" aria-label="Show or hide every calendar">
-        <button type="button" className="btn cal-legend-all" onClick={onSelectAll}>Select all</button>
-        <button type="button" className="btn cal-legend-all" onClick={onDeselectAll}>Deselect all</button>
-      </span>
-      {layers.map((l) => {
-        const on = isVisible(l.id);
-        return (
-          <button key={l.id} type="button" className={`cal-legend-item ${on ? 'on' : 'off'}`} aria-pressed={on} onClick={() => onToggle(l.id)} title={l.sourceType === 'derived' ? 'Read-only: worked out from another part of the app' : undefined}>
-            <span className="cal-swatch" style={{ background: on ? l.color : 'transparent', borderColor: l.color, color: on && isHex(l.color) ? onColor(l.color) : undefined }} aria-hidden="true">{on ? '✓' : ''}</span>
-            {l.name}{l.sourceType === 'derived' && <span className="muted"> (auto)</span>}
-          </button>
-        );
-      })}
-      <button type="button" className="link" onClick={onManage}>Manage calendars</button>
-      <span className="muted small cal-legend-count" role="status">{count} of {layers.length} calendar{layers.length === 1 ? '' : 's'} shown</span>
-    </div>
   );
 }
 

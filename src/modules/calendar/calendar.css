@@ -19,14 +19,40 @@
 .cal-views button.on { background: var(--accent); color: var(--on-accent, #fff); }
 .cal-range { gap: var(--sp-2); }
 
-.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); margin: 0 0 var(--sp-3); }
-.cal-legend-item { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 36px; padding: 0 var(--sp-3); border-radius: 999px; font-size: var(--fs-sm); }
-.cal-legend-item.off { color: var(--muted); }
-.cal-legend-bulk { display: inline-flex; gap: var(--sp-1); }
-.cal-legend-all { min-height: 36px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
-.cal-legend-count { flex-basis: 100%; }
 .cal-allhidden { margin: 0 0 var(--sp-3); }
 .cal-swatch { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; border: 2px solid transparent; color: #fff; font-size: 11px; line-height: 1; flex: none; }
+
+/* ---- Calendars & Layers menu (F2.1): one small button that opens the list of layers ---- */
+.cal-toolbar2 { position: relative; }
+.cal-lm { position: relative; min-width: 0; max-width: 100%; }
+.cal-lm-btn { gap: var(--sp-2); max-width: 100%; white-space: nowrap; }
+.cal-lm-btn.partial { border-color: var(--accent); }
+.cal-lm-caret { font-size: 0.8em; }
+.cal-lm-pop { position: absolute; left: 0; top: calc(100% + 4px); z-index: 60; width: 24rem; max-width: calc(100vw - 24px); padding: var(--sp-3); background: var(--bg); color: var(--fg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: var(--shadow-2); box-sizing: border-box; }
+.cal-lm-pop:focus { outline: none; }
+.cal-lm-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.cal-lm-title { font-size: var(--fs-base); }
+.cal-lm-bulk { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); }
+.cal-lm-act { min-height: 36px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+.cal-lm-list { margin: 0; max-height: min(55vh, 20rem); overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.cal-lm-list li { padding: 0; }
+.cal-lm-row { display: flex; align-items: center; gap: var(--sp-2); min-height: 40px; padding: 0 var(--sp-1); cursor: pointer; border-radius: var(--r-sm); }
+.cal-lm-row:hover { background: color-mix(in srgb, var(--fg) 6%, var(--bg)); }
+.cal-lm-row.off .cal-lm-name { color: var(--muted); }
+.cal-lm-row input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.cal-lm-row input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cal-lm-dot { flex: none; width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 25%, transparent); }
+.cal-lm-row.off .cal-lm-dot { opacity: 0.55; }
+.cal-lm-name { min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
+.cal-lm-auto { flex: none; }
+.cal-lm-empty { padding: var(--sp-2) var(--sp-1); }
+.cal-lm-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-2); }
+.cal-lm-foot .link { min-height: 36px; }
+.cal-lm-done { margin-left: auto; }
+@media (max-width: 900px) {
+  /* On a narrower screen the menu is as wide as the toolbar it sits under, so it can never run off the edge. */
+  .cal-lm { position: static; }
+}
 
 /* ---- items (chips) ---- */
 .cal-chip {
@@ -160,6 +186,10 @@
   .cal-jump input { max-width: none; width: 100%; }
   .cal-add, .cal-addtask { flex: 1 1 45%; }
   .cal-views { width: 100%; }
+  /* On a phone the menu is a sheet fixed to the bottom of the screen: all of it is always visible, and only the list inside scrolls. */
+  .cal-lm-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-width: none; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); display: flex; flex-direction: column; }
+  .cal-lm-list { flex: 1 1 auto; min-height: 0; max-height: none; }
+  .cal-lm-btn { flex: 1 1 auto; }
   .cal-views button { flex: 1 1 0; padding: 0 var(--sp-1); font-size: var(--fs-sm); }
   .cal-cell { min-height: 58px; padding: 1px; }
   .cal-chips { display: none; }
@@ -181,10 +211,12 @@
   .cal-detail dd { margin-bottom: var(--sp-2); }
 }
 @media (pointer: coarse) {
+  .cal-lm-row { min-height: 44px; }
+  .cal-lm-act { min-height: 44px; }
   .cal-chip { min-height: 30px; }
   .cal-more { min-height: 32px; }
 }
-@media print { .cal-toolbar, .cal-toolbar2, .cal-legend { display: none; } }
+@media print { .cal-toolbar, .cal-toolbar2, .cal-lm { display: none; } }
 
 /* A project marker on a calendar item: small and quiet, so it never competes with the title. */
 .cal-chip-proj { flex: none; font-size: 0.7em; opacity: 0.7; }

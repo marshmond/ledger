@@ -730,7 +730,7 @@ details.pick label.chk:hover { background: var(--hover); }
   main a:not(.btn):not(.list-row):not(.card-link):not(.alert-act) { padding-block: 4px; }
   summary { padding-block: 12px; }
   /* The module style sheets load after this one, so these selectors are written a little more specifically to win. */
-  main [role="tab"], main [role="radio"], main .collapse-btn, main .cal-legend-item { min-height: 44px; }
+  main [role="tab"], main [role="radio"], main .collapse-btn, main .cal-lm-btn { min-height: 44px; }
   a.btn { display: inline-flex; align-items: center; min-height: 44px; }
   button.btn { min-width: 44px; }
   /* Check boxes and radio buttons: 24 px boxes (AA minimum) with room around them; a label that wraps one is tappable as a whole. */
