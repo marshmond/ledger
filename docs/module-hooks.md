@@ -10,6 +10,7 @@ contributes: {
   searchSource?: SearchSource;
   quickAdd?: QuickAddDef;
   txnReferences?: TxnReferenceProvider; // ST-S2: see "txnReferences" below
+  contactReferences?: ContactReferenceProvider; // C2: see "contactReferences" below
 }
 ```
 
@@ -108,6 +109,26 @@ contributes: { txnReferences?: { label: string; find(ctx: { ids: number[]; txns:
 Registered by Bills, Household Services, Home & Assets, Projects (the tag sits on the transaction itself) and Ledger (scheduled-payment history). A new module that stores a Finance reference must add one, with a test that its reader finds it.
 
 `searchSource` note (ST-S2, NV-01): Household finances contributes a **page-only** search source (no records, no figures), the same pattern as Today.
+
+## `contactReferences`: which of my records point at a shared Contact (Contacts C2)
+
+Added in Contacts & Relationships C2. A module that stores a shared Contact id contributes a **read-only** reader, so the Contacts screens can show real, named, linkable records ("Task: Book the dentist") **without importing any household module**. Types, the shared reader and the grouping words live in `src/core/contactReferences.ts`; the registry exposes `allContactReferenceProviders()`. It is layer 2 of the plan in the C0 document; layer 1 (`src/core/contactUsage.ts`) is the field-blind numeric scan.
+
+```ts
+contributes: { contactReferences?: { label: string; find(ctx: { ids: ReadonlySet<number>; d: FinanceDB; today: string }): Promise<ContactReference[]> } }
+```
+
+| Rule | Meaning |
+|---|---|
+| Read only | Nothing is written, created, repaired or re-stamped. Guard tests reject table writes, `.transaction(`, storage, network and Finance reads in the reader files, and a hook on every table proves no write fires. |
+| Tables | Only `moduleRecords` (and `contacts` for a name). Never a Finance table. |
+| By id | A record names a Contact by its stored id or it does not. Never by a matching name, title, payee, amount or provider-name snapshot. |
+| Each row on its own | Use `readRows(d, module, kind, asX)`: a damaged row is skipped and cannot stop the module's list. (Tasks' and the Calendar's own loaders throw on a row whose data is null.) |
+| One reference per (record, role) | `role` is a short code (`person`, `vendor`, `provider`, `extra`, `member`, `important`). `facet` (member, important, provider, project) feeds the directory filters and comes only from the stored relationship. |
+| Plain words | `title` is the record's name (never an amount, note or contact detail); `relation` says how it uses the Contact; `href` is a path inside Ledger written with the owning module's own deep-link format (it must start with `/`); `inactive` marks a finished, archived or ended record (still listed, shown quietly). |
+| Failure | Throw. The caller says "could not check" and never "nothing found". An item the shared reader cannot understand is dropped and makes the result unverified. |
+
+Registered by Family (member, important contact), Calendar (event `contactIds`), Tasks (`contactIds`), Projects (`vendorContactIds`, commitment `vendorContactId`), Home & Assets (asset `contacts`, service and warranty `providerContactId`), Household Services (arrangement `providerContactId` and `extraContactIds`, visit `providerContactId`) and Bills & Subscriptions (`providerContactId`). Contacts registers none (it owns no records). A module that adds a Contact field must add or extend its reader; `unlistedMentions()` shows the gap on the Contact page until it does. **Removal** (`src/core/contactRemoval.ts`) never relies on these readers alone: it needs the complete layer-1 scan and the older text rule to find nothing as well, and any reader that cannot run blocks it.
 
 ## Loading a module's screens on demand (ST-S4, PF-01)
 

@@ -6,6 +6,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { RecordId } from './entities';
 import { registerDueProvider, type DueProvider } from './dueProvider';
 import type { TxnReferenceProvider } from './txnDependents';
+import type { ContactReferenceProvider } from './contactReferences';
 
 export interface ModuleNavItem {
   to: string;
@@ -57,6 +58,11 @@ export interface ModuleDef {
      * transaction, so it never has to import a household module. See `src/core/txnDependents.ts` and docs/module-hooks.md.
      */
     txnReferences?: TxnReferenceProvider;
+    /**
+     * Which of this module's records point at a shared Contact, by the Contact's id, as named rows with an address to open. READ ONLY. The Contacts
+     * screen asks every module through this hook, so it never imports a household module. See `src/core/contactReferences.ts` and docs/module-hooks.md.
+     */
+    contactReferences?: ContactReferenceProvider;
   };
 }
 
@@ -230,6 +236,10 @@ export function allSearchSources(mods: readonly ModuleDef[] = modules): { module
 /** Every module's reader of "which records point at a Finance transaction", in module order. */
 export function allTxnReferenceProviders(mods: readonly ModuleDef[] = modules): TxnReferenceProvider[] {
   return mods.flatMap((m) => (m.contributes?.txnReferences ? [m.contributes.txnReferences] : []));
+}
+/** Every module's reader of "which of my records point at this Contact", in module order. */
+export function allContactReferenceProviders(mods: readonly ModuleDef[] = modules): ContactReferenceProvider[] {
+  return mods.flatMap((m) => (m.contributes?.contactReferences ? [m.contributes.contactReferences] : []));
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {

@@ -26,9 +26,9 @@ describe('registration', () => {
     registerModules(); registerModules();
     expect(allModules().filter((m) => m.id === 'family')).toHaveLength(1);
   });
-  it('F2 contributes exactly one thing, the due provider: no Today card, search source, Add-box destination or Finance reference', () => {
+  it('F2 contributes the due provider and (C2) the read-only contact reader: no Today card, search source, Add-box destination or Finance reference', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider']);
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences']);
     expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
     expect(allSearchSources().length).toBe(allModules().filter((m) => m.contributes?.searchSource).length);

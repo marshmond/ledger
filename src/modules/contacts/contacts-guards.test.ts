@@ -2,14 +2,15 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { allDueProviders } from '../../core/dueProvider';
-import { allModules, allQuickAdds, allSearchSources, allTodayCards, allTxnReferenceProviders } from '../../core/registry';
+import { allModules, allQuickAdds, allSearchSources, allTodayCards, allTxnReferenceProviders, allContactReferenceProviders } from '../../core/registry';
 import { registerModules } from '../index';
 import { CONTACTS_BASE } from './model';
 
 /** Contacts C1 guard tests: registered once, loaded on demand, stays out of Finance, writes only through the safe Contact helpers, adds no field and shares nothing. */
 const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
 const src = (dir: string, test = false) => walk(dir).filter((f) => /\.(ts|tsx)$/.test(f) && /\.test\./.test(f) === test).map((f) => ({ f: f.replace(/\\/g, '/'), text: readFileSync(f, 'utf8') }));
-const contacts = src('src/modules/contacts');
+// (C2: the shared test kit seeds other modules' rows on purpose, so it is test support, not part of the module.)
+const contacts = src('src/modules/contacts').filter(({ f }) => !f.endsWith('-testkit.ts'));
 
 describe('registration', () => {
   registerModules();
@@ -29,7 +30,7 @@ describe('registration', () => {
     expect(new Set(allModules().map((m) => m.id)).size).toBe(allModules().length);
     expect(allModules().map((m) => m.name)).toContain('Contacts & Relationships');
   });
-  it('contributes exactly one thing, a search source: no Today card, due provider, Add-box destination, record source or Finance reference', () => {
+  it('contributes exactly one thing, a search source: no Today card, due provider, Add-box destination, record source, Finance reference or contact reader (it owns no records)', () => {
     const mod = allModules().find((m) => m.id === 'contacts')!;
     expect(Object.keys(mod.contributes ?? {})).toEqual(['searchSource']);
     expect(allSearchSources().filter((s) => s.moduleId === 'contacts')).toHaveLength(1);
@@ -37,6 +38,7 @@ describe('registration', () => {
     expect(allDueProviders().filter((p) => p.id === 'contacts')).toEqual([]);
     expect(allQuickAdds().filter((q) => q.moduleId === 'contacts')).toEqual([]);
     expect(allTxnReferenceProviders().map((p) => p.label.toLowerCase())).not.toContain('contacts');
+    expect(allContactReferenceProviders().map((p) => p.label.toLowerCase())).not.toContain('contacts');
   });
   it('has a stylesheet loaded with the others, and an icon', () => {
     expect(readFileSync('src/modules/moduleStyles.ts', 'utf8')).toContain("import './contacts/contacts.css';");
@@ -61,12 +63,12 @@ describe('boundaries', () => {
     expect(all).toMatch(/createDistinctContact\(db,/);
     expect(all).toMatch(/updateContactDetails\(db,/);
   });
-  it('the only writes in the module are those two helpers: no direct table write, and the unused notes field is never read, shown or written', () => {
+  it('the only writes in the module are the guarded core helpers (create, edit, and C2 removal/restore): no direct table write, and the unused notes field is never read, shown or written', () => {
     const writers = contacts.filter(({ text }) => /\.(add|put|bulkAdd|bulkPut|update|delete|clear|modify|remove)\(/.test(text)).map((x) => x.f);
     expect(writers).toEqual([]);
     expect(contacts.filter(({ text }) => /\.notes\b|notes:/.test(text)).map((x) => x.f)).toEqual([]);
   });
-  it('adds no field, publishes nothing and shares nothing: no storage, network, console, display or share field, no deletion or archive', () => {
+  it('adds no field, publishes nothing and shares nothing: no storage, network, console, display or share field; no direct deletion or archive (C2: removal only through the guarded core helper)', () => {
     const bad = contacts.filter(({ text }) => /console\.|localStorage|sessionStorage|fetch\(|XMLHttpRequest|sendBeacon|navigator\.share|archivedAt|deletedAt:\s*[^n]|\.remove\(|display(Name|On)|shareWith|publish/.test(text)).map((x) => x.f);
     expect(bad).toEqual([]);
   });

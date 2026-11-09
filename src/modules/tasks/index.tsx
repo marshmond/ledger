@@ -1,3 +1,4 @@
+import { tasksContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { tasksDueProvider } from './dueProvider';
 import { taskQuickAdd } from './quickAddDef';
@@ -14,5 +15,5 @@ export const tasksModule: ModuleDef = {
   Component: lazyModule(() => import('./TasksModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: tasksDueProvider, records: taskRecords, searchSource: tasksSearchSource, quickAdd: taskQuickAdd },
+  contributes: { dueProvider: tasksDueProvider, records: taskRecords, searchSource: tasksSearchSource, quickAdd: taskQuickAdd, contactReferences: tasksContactReferences },
 };

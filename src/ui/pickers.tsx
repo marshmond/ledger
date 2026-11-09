@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import type { RecordRef } from '../core/entities';
+import type { Contact, RecordRef } from '../core/entities';
+import { addPickedContact, contactBrief, contactChoiceLabel, sharedNameIds } from '../core/contactChoice';
 import { allModules, recordSource } from '../core/registry';
 import { store } from '../core/store';
 
@@ -39,38 +40,97 @@ export function TagPicker({ value, onChange }: { value: number[]; onChange: (ids
   );
 }
 
-/** Chips for linked contacts, a list to pick from, and a box to create a new contact by name. */
-export function ContactPicker({ value, onChange }: { value: number[]; onChange: (ids: number[]) => void }) {
-  const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
-  const [text, setText] = useState('');
-  const addNew = async () => {
-    const name = text.trim();
-    if (!name) return;
-    const found = contacts.find((c) => c.name.toLowerCase() === name.toLowerCase());
-    const id = found?.id ?? (await store.shared.contacts.put({ name }));
-    if (!value.includes(id)) onChange([...value, id]);
-    setText('');
-  };
+/**
+ * Chips for the Contacts linked to something, a menu of existing Contacts (chosen by id), and a box to add a NEW Contact on purpose (C2).
+ * Used by the Calendar event editor and the Task editor. It never reuses a Contact because a typed name matches: a name that is already taken is shown
+ * with what tells the entries apart, and a different person with the same name needs an explicit tick. Choosing and removing change only the list of ids.
+ */
+export interface PendingSameName { name: string; matches: Contact[] }
+
+/** The look of the picker for a given state. Pure (no database), so the states can be checked without a browser. */
+export function ContactPickerView({ contacts, value, text, pending, different, error, busy, onText, onPick, onRemove, onAdd, onUse, onDifferent, onCancel }: {
+  contacts: Contact[]; value: number[]; text: string; pending: PendingSameName | null; different: boolean; error: string; busy: boolean;
+  onText: (t: string) => void; onPick: (id: number) => void; onRemove: (id: number) => void; onAdd: () => void; onUse: (id: number) => void;
+  onDifferent: (v: boolean) => void; onCancel: () => void;
+}) {
+  const shared = sharedNameIds(contacts);
   const left = contacts.filter((c) => !value.includes(c.id!));
   return (
     <div className="cal-pick">
       <div className="row">
-        {value.map((id) => (
-          <span key={id} className="chip">{contacts.find((c) => c.id === id)?.name ?? 'contact'}<button type="button" aria-label="Remove contact" onClick={() => onChange(value.filter((x) => x !== id))}>✕</button></span>
-        ))}
+        {value.map((id) => {
+          const c = contacts.find((x) => x.id === id);
+          return (
+            <span key={id} className="chip">
+              {c ? contactChoiceLabel(c, contacts, shared) : 'A contact that no longer exists'}
+              <button type="button" aria-label={`Remove ${c ? c.name : 'contact'}`} onClick={() => onRemove(id)}>✕</button>
+            </span>
+          );
+        })}
       </div>
       <div className="row grow">
-        {/* A plain menu for existing people: the browser's suggestion pop-up (datalist) can open far from the box. */}
+        {/* A plain menu for existing people: the browser's suggestion pop-up (datalist) can open far from the box. Each choice is a stable id. */}
         {left.length > 0 && (
-          <select value="" onChange={(e) => { const id = Number(e.target.value); if (e.target.value && !value.includes(id)) onChange([...value, id]); }} aria-label="Pick an existing person">
+          <select value="" onChange={(e) => { const id = Number(e.target.value); if (e.target.value && Number.isFinite(id)) onPick(id); }} aria-label="Pick an existing person">
             <option value="">Pick a person…</option>
-            {left.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {left.map((c) => <option key={c.id} value={c.id}>{contactChoiceLabel(c, contacts, shared)}</option>)}
           </select>
         )}
-        <input value={text} placeholder={left.length ? 'or type a new name' : 'Type a name to add a contact'} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addNew(); } }} aria-label="Contact name" />
-        <button type="button" className="btn" onClick={() => void addNew()} disabled={!text.trim()}>Add</button>
+        <input value={text} placeholder={left.length ? 'or type a new name' : 'Type a name to add a contact'} onChange={(e) => onText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAdd(); } }} aria-label="Name of a new contact" />
+        <button type="button" className="btn" onClick={onAdd} disabled={!text.trim() || busy}>Add new contact</button>
       </div>
+      {error && <p className="cal-error" role="alert">{error}</p>}
+      {pending && (
+        <div className="cal-pick-same" role="group" aria-label="A contact with this name already exists">
+          <p><strong>{pending.matches.length === 1 ? 'A contact named' : `${pending.matches.length} contacts named`} “{pending.name}” already {pending.matches.length === 1 ? 'exists' : 'exist'}.</strong> Use the right one, or confirm this is someone different.</p>
+          <ul className="plain">
+            {pending.matches.map((m) => (
+              <li key={m.id} className="row spread">
+                <span>{m.name} <span className="muted small">{contactBrief(m)}</span></span>
+                {value.includes(m.id!) ? <span className="muted small">Already added</span> : <button type="button" className="btn" aria-label={`Use ${m.name}, ${contactBrief(m)}`} onClick={() => onUse(m.id!)}>Use this one</button>}
+              </li>
+            ))}
+          </ul>
+          <label className="as-check"><input type="checkbox" checked={different} onChange={(e) => onDifferent(e.target.checked)} /> <span>This is a different person or organization with the same name</span></label>
+          <div className="row">
+            <button type="button" className="btn primary" onClick={onAdd} disabled={!different || busy}>Add as a new contact</button>
+            <button type="button" className="btn" onClick={onCancel}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export function ContactPicker({ value, onChange }: { value: number[]; onChange: (ids: number[]) => void }) {
+  const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
+  const [text, setText] = useState('');
+  const [pending, setPending] = useState<PendingSameName | null>(null);
+  const [different, setDifferent] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const add = (id: number) => { if (!value.includes(id)) onChange([...value, id]); };
+  const reset = () => { setText(''); setPending(null); setDifferent(false); setError(''); };
+  const addNew = async () => {
+    const name = pending?.name ?? text.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const r = await addPickedContact(db, name, !!pending && different);
+      if (r.status === 'created') { add(r.id); reset(); }
+      else { setPending({ name, matches: r.matches }); setDifferent(false); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That contact could not be added.');
+    } finally { setBusy(false); }
+  };
+  return (
+    <ContactPickerView
+      contacts={contacts} value={value} text={text} pending={pending} different={different} error={error} busy={busy}
+      onText={(t) => { setText(t); if (pending) { setPending(null); setDifferent(false); } setError(''); }}
+      onPick={add} onRemove={(id) => onChange(value.filter((x) => x !== id))} onAdd={() => void addNew()}
+      onUse={(id) => { add(id); reset(); }} onDifferent={setDifferent} onCancel={reset}
+    />
   );
 }
 

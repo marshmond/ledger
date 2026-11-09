@@ -11,8 +11,8 @@ import { occurrenceToOpen } from './searchSource';
 const num = (id: string | number) => (typeof id === 'number' ? id : /^\d+$/.test(id) ? Number(id) : NaN);
 
 /** The Calendar address that opens this event (the next date from today, or its first). */
-export function pathFor(ev: ReturnType<typeof asEvent>): string {
-  const occ = occurrenceToOpen(ev, todayISO());
+export function pathFor(ev: ReturnType<typeof asEvent>, today: string = todayISO()): string {
+  const occ = occurrenceToOpen(ev, today);
   const date = occ?.firstDay ?? ev.data.startDate;
   return occ ? `/calendar?v=agenda&d=${date}&open=${encodeURIComponent(`e:${ev.id}:${occ.key}`)}` : `/calendar?v=agenda&d=${date}`;
 }

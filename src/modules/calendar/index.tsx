@@ -1,3 +1,4 @@
+import { calendarContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { CALENDAR_BASE } from '../bases';
 import { lazyModule } from '../../core/lazyModule';
@@ -13,5 +14,5 @@ export const calendarModule: ModuleDef = {
   Component: lazyModule(() => import('./CalendarModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { records: eventRecords, searchSource: calendarSearchSource, quickAdd: eventQuickAdd },
+  contributes: { records: eventRecords, searchSource: calendarSearchSource, quickAdd: eventQuickAdd, contactReferences: calendarContactReferences },
 };

@@ -1,3 +1,4 @@
+import { assetsContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { ASSETS_BASE } from '../bases';
 import { lazyModule } from '../../core/lazyModule';
@@ -17,5 +18,5 @@ export const assetsModule: ModuleDef = {
   Component: lazyModule(() => import('./AssetsModule')),
   routePaths: ['/', '/list'],
   nav: [],
-  contributes: { todayCards: ASSETS_TODAY_CARDS, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences },
+  contributes: { todayCards: ASSETS_TODAY_CARDS, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences, contactReferences: assetsContactReferences },
 };

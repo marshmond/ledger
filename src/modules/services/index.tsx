@@ -1,3 +1,4 @@
+import { servicesContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { SERVICES_BASE } from '../bases';
 import { lazyModule } from '../../core/lazyModule';
@@ -16,5 +17,5 @@ export const servicesModule: ModuleDef = {
   Component: lazyModule(() => import('./ServicesModule')),
   routePaths: ['/', '/a/:id', '/providers/:contactId', '/v/:id'],
   nav: [],
-  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences },
+  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences, contactReferences: servicesContactReferences },
 };

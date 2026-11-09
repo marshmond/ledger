@@ -1,3 +1,4 @@
+import { billsContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { lazyModule } from '../../core/lazyModule';
 import { BILLS_BASE } from './paths';
@@ -19,5 +20,5 @@ export const billsModule: ModuleDef = {
   Component: lazyModule(() => import('./BillsModule')),
   routePaths: ['/', '/list', '/upcoming', '/review', '/o/:id'],
   nav: [],
-  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, dueProvider: billsDueProvider, txnReferences: billsTxnReferences },
+  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, dueProvider: billsDueProvider, txnReferences: billsTxnReferences, contactReferences: billsContactReferences },
 };

@@ -3,19 +3,25 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate } from '../../core/router';
 import { db } from '../../db';
 import { sameNameMatches, validEmail } from '../../core/contacts';
-import { readContactUsage, usageKindText, usageModuleName, usedModules } from '../../core/contactUsage';
+import { readContactUsage } from '../../core/contactUsage';
+import { readContactReferences, unlistedMentions } from '../../core/contactReferences';
+import { allContactReferenceProviders } from '../../core/registry';
+import { todayISO } from '../../lib/money';
 import { isLive, store } from '../../core/store';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import ContactForm from './ContactForm';
+import RemoveContact from './RemoveContact';
+import WhereUsed, { MentionCounts } from './WhereUsed';
 import { contactRoute, dateText, distinguish, mailHref, telHref } from './model';
 
 /** One Contact: its four details, where it is mentioned (counts by module), and Edit. Phone and email are plain `tel:` / `mailto:` links. */
 export default function ContactPage({ id }: { id: number }) {
   const data = useLiveQuery(async () => {
     const c = await db.contacts.get(id);
-    if (!c || !isLive(c)) return { contact: null, usage: null, others: [] };
-    return { contact: c, usage: await readContactUsage(db, [id]), others: sameNameMatches(await store.shared.contacts.query(), c.name, id) };
+    if (!c || !isLive(c)) return { contact: null, usage: null, refs: null, others: [] };
+    const [usage, refs] = await Promise.all([readContactUsage(db, [id]), readContactReferences([id], db, allContactReferenceProviders(), todayISO())]);
+    return { contact: c, usage, refs, others: sameNameMatches(await store.shared.contacts.query(), c.name, id) };
   }, [id]);
   const [editing, setEditing] = useState(false);
   const toast = useToast();
@@ -31,6 +37,8 @@ export default function ContactPage({ id }: { id: number }) {
     );
   }
   const entries = data.usage?.byContact.get(id) ?? [];
+  const refs = data.refs?.byContact.get(id) ?? [];
+  const unlisted = unlistedMentions(entries, refs);
   const tel = c.phone ? telHref(c.phone) : null;
   const mail = c.email ? mailHref(c.email, validEmail) : null;
 
@@ -59,19 +67,9 @@ export default function ContactPage({ id }: { id: number }) {
         <p className="muted small">This is the one shared contact. Changing it here changes it everywhere it is linked. A few places keep the name as it was written at the time (provider names on past bills and service visits, and birthday event titles already created) and are not rewritten.</p>
       </section>
 
-      <section className="card" aria-labelledby="ct-used">
-        <div className="card-head"><h2 className="card-title" id="ct-used">Where this contact is mentioned</h2></div>
-        {entries.length === 0 ? (
-          <p className="muted">No other record mentions this contact yet.</p>
-        ) : (
-          <ul className="plain ct-usage">
-            {usedModules(entries).map((m) => (
-              <li key={m}><strong>{usageModuleName(m)}</strong>: {entries.filter((e) => e.module === m).map(usageKindText).join(', ')}</li>
-            ))}
-          </ul>
-        )}
-        <p className="muted small">These counts come from records that mention this contact. They are a guide to where it is used, not a full list of relationships, and they do not decide whether a contact can be removed. {data.usage?.approximate.has(id) ? 'This contact has an older style of identifier, so the counts may include unrelated records. ' : ''}Detailed lists come later.</p>
-      </section>
+      <WhereUsed refs={refs} unlisted={unlisted} unverified={data.refs?.unverified ?? []} />
+      <MentionCounts entries={entries} approximate={!!data.usage?.approximate.has(id)} />
+      <RemoveContact contact={c} inUse={refs.length > 0 || entries.length > 0} checkedAll={!!data.refs?.verified} />
 
       {editing && (
         <ContactForm

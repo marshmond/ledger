@@ -165,7 +165,25 @@
 .cal-actions { margin-top: var(--sp-3); }
 .cal-actions.spread, .cal-actions { gap: var(--sp-2); }
 .cal-scope { display: grid; gap: var(--sp-2); }
-.cal-pick { display: grid; gap: var(--sp-2); font-weight: 400; }
+.cal-pick { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); font-weight: 400; }
+.cal-pick > * { min-width: 0; }
+/* C2: a typed name that is already taken (shown inside the People box of the event and task editors). */
+.cal-pick-same { border: 1px solid var(--warn, #9a6700); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); display: grid; gap: var(--sp-2); min-width: 0; overflow-wrap: anywhere; }
+.cal-pick-same p { margin: 0; }
+.cal-pick-same .as-check { display: inline-flex; align-items: flex-start; gap: var(--sp-2); min-height: 40px; }
+.cal-pick .chip { max-width: 100%; overflow-wrap: anywhere; }
+.cal-pick select, .cal-pick input[type="text"], .cal-pick input:not([type]) { max-width: 100%; min-width: 0; }
+/* The menu of existing people can have long labels (same-name entries carry details), so it gets its own line; the new-name box and button share the next. */
+.cal-pick .row.grow { flex-wrap: wrap; }
+.cal-pick .row.grow > select { flex: 1 1 100%; }
+.cal-pick .row.grow > input { flex: 1 1 140px; }
+@media (max-width: 480px) {
+  .cal-pick-same .btn, .cal-pick .btn { min-height: 44px; }
+  .cal-pick .chip button { min-width: 44px; min-height: 44px; }
+  .cal-pick-same .as-check { min-height: 44px; align-items: center; }
+  .cal-pick-same .as-check input { width: 24px; height: 24px; flex: none; }
+  .cal-pick-same .row { flex-wrap: wrap; }
+}
 .cal-links li, .cal-results li { padding: 2px 0; }
 .cal-detail { display: grid; grid-template-columns: 90px 1fr; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
 .cal-detail dt { color: var(--muted); font-size: var(--fs-sm); }

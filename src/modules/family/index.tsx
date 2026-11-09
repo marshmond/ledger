@@ -1,3 +1,4 @@
+import { familyContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { lazyModule } from '../../core/lazyModule';
 import { familyDueProvider } from './dueProvider';
@@ -16,5 +17,5 @@ export const familyModule: ModuleDef = {
   Component: lazyModule(() => import('./FamilyModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: familyDueProvider },
+  contributes: { dueProvider: familyDueProvider, contactReferences: familyContactReferences },
 };

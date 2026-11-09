@@ -58,9 +58,9 @@ describe('what may be written', () => {
 
 describe('registration and boundaries are unchanged', () => {
   registerModules();
-  it('Family still contributes only its due provider: no Today card, search source or Add-box destination', () => {
+  it('Family still contributes only its due provider and (C2) its read-only contact reader: no Today card, search source or Add-box destination', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider']);
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences']);
     expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
     expect(allSearchSources().length).toBe(allModules().filter((m) => m.contributes?.searchSource).length);
