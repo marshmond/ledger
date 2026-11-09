@@ -43,7 +43,7 @@ describe('B2 Calendar layer: rolling 12 months, derived, never stored (tests 31,
     expect(bills[0]).toMatchObject({ name: 'Bills & Subscriptions', sourceType: 'derived', providerId: 'bills', builtin: true });
     expect(layers.some((l) => l.id === SERVICES_ID)).toBe(true); // Household Services and Finance layers are preserved
     expect(layers.some((l) => l.id === FINANCE_ID)).toBe(true);
-    expect(layers).toHaveLength(7);
+    expect(layers).toHaveLength(8); // seven earlier layers and Family (F2)
     expect(billsDueProvider.id).toBe('bills');
   });
   it('a monthly bill shows 12 expected dates, today through the same day 12 months later, and stores nothing', async () => {

@@ -36,6 +36,7 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
   const [year, setYear] = useState(start?.birthYear !== undefined ? String(start.birthYear) : '');
   const [color, setColor] = useState(start?.color ?? '');
   const [note, setNote] = useState(start?.note ?? '');
+  const [onCalendar, setOnCalendar] = useState(start?.birthdayOnCalendar !== false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -57,6 +58,7 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
       ...(year.trim() ? { birthYear: Number(year.trim()) } : {}),
       ...(color ? { color } : {}),
       ...(note.trim() ? { note: note.trim() } : {}),
+      ...(!onCalendar ? { birthdayOnCalendar: false } : {}),
     };
     if ((month || day) && (!month || !day || !validMonthDay(fields.birthMonthDay))) return setError('Choose a month and a day that exist together (for example not 31 April), or leave both empty.');
     if (year.trim() && !/^\d{4}$/.test(year.trim())) return setError('Enter the birth year as four digits, or leave it empty.');
@@ -164,6 +166,8 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
             </label>
           </div>
           <label className="f">Birth year (optional)<input value={year} onChange={(e) => setYear(e.target.value)} inputMode="numeric" maxLength={4} autoComplete="off" /></label>
+          <label className="as-check"><input type="checkbox" checked={onCalendar} onChange={(e) => setOnCalendar(e.target.checked)} aria-describedby="fm-cal-help" /> Show this birthday on my Calendar</label>
+          <p className="muted small" id="fm-cal-help">Your own Calendar and Today only. It does not share the birthday with anyone or anything else. If you already keep your own Birthday event for this person, Ledger shows just one of the two when it can tell they are the same.</p>
         </fieldset>
 
         <fieldset className="fm-sub">

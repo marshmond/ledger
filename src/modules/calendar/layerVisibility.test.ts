@@ -8,7 +8,7 @@ import { ASSETS_ID, BILLS_ID, FINANCE_ID, PERSONAL_ID, PROJECTS_ID, SERVICES_ID,
 import { ensureCalendarSeed } from './data';
 
 const SEVEN = [PERSONAL_ID, FINANCE_ID, TASKS_ID, PROJECTS_ID, ASSETS_ID, SERVICES_ID, BILLS_ID];
-const NEW_LAYER = 9_000_000_000_000_108;
+const NEW_LAYER = 9_000_000_000_000_999; // a made-up layer for the tests; never a real built-in id (Family took ..._108 in F2)
 /** What a screen would store and read back after a reload. */
 const reload = (v: Visibility) => parseVisibility(serializeVisibility(v));
 const shown = (v: Visibility, avail = SEVEN) => visibleIds(v, avail);

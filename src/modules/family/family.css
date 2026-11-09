@@ -37,3 +37,11 @@
   .fm-two { grid-template-columns: 1fr; }
   .fm-actions .btn, .fm .btn { min-height: 44px; }
 }
+
+/* Family dates (F2). */
+.fm-mini { min-height: 36px; padding: 0 var(--sp-3); }
+.fm-date-row { justify-content: space-between; flex-wrap: wrap; }
+.fm-date-actions { flex-wrap: wrap; gap: var(--sp-2); }
+@media (max-width: 480px) {
+  .fm-mini { min-height: 44px; }
+}

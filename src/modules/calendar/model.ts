@@ -18,6 +18,8 @@ export const ASSETS_ID = 9_000_000_000_000_105;
 export const SERVICES_ID = 9_000_000_000_000_106;
 /** Bills & Subscriptions expected bills and contract dates (B2). Verified unused before it was taken. */
 export const BILLS_ID = 9_000_000_000_000_107;
+/** Family birthdays and important dates (F2). Verified unused before it was taken (the one earlier mention was a made-up id in a test, now changed). */
+export const FAMILY_ID = 9_000_000_000_000_108;
 
 /** `local`: events stored here. `derived`: worked out by a module's due provider (read-only). `subscribed`: reserved for external .ics feeds later. */
 export type SourceType = 'local' | 'derived' | 'subscribed';

@@ -7,7 +7,7 @@ import {
   createEvent, ensureCalendarSeed, loadEvents, loadLayers, newEventData, removeOccurrence, restoreEventData, saveEdit, snapshotEvent,
   createCalendar, deleteCalendar, markOccurrenceDone,
 } from './data';
-import { ASSETS_ID, BILLS_ID, blankFields, FINANCE_ID, PERSONAL_ID, PROJECTS_ID, SERVICES_ID, TASKS_ID, type EventFields } from './model';
+import { ASSETS_ID, BILLS_ID, blankFields, FAMILY_ID, FINANCE_ID, PERSONAL_ID, PROJECTS_ID, SERVICES_ID, TASKS_ID, type EventFields } from './model';
 import { geometry, occurrencesOf, statusOf, type Occurrence } from './occurrences';
 import { describeRule, generateDates, nthWeekdayDate, normalizeRule, type Recurrence } from './recurrence';
 import { editAll, editOccurrence, skipOccurrence, splitFollowing, type SeriesExtras } from './series';
@@ -217,13 +217,13 @@ describe('editing a repeating event', () => {
 });
 
 describe('calendars (layers)', () => {
-  it('seeds Personal, Finance, Tasks, Projects, Home & Assets, Household Services and Bills & Subscriptions once, even when run twice at the same time', async () => {
+  it('seeds Personal, Finance, Tasks, Projects, Home & Assets, Household Services, Bills & Subscriptions and Family once, even when run twice at the same time', async () => {
     const d = fresh();
     await Promise.all([ensureCalendarSeed(d), ensureCalendarSeed(d)]);
     await ensureCalendarSeed(d);
     const layers = await loadLayers(d);
     expect(layers.map((l) => [l.id, l.name, l.sourceType])).toEqual([
-      [PERSONAL_ID, 'Personal', 'local'], [FINANCE_ID, 'Finance', 'derived'], [TASKS_ID, 'Tasks', 'derived'], [PROJECTS_ID, 'Projects', 'derived'], [ASSETS_ID, 'Home & Assets', 'derived'], [SERVICES_ID, 'Household Services', 'derived'], [BILLS_ID, 'Bills & Subscriptions', 'derived'],
+      [PERSONAL_ID, 'Personal', 'local'], [FINANCE_ID, 'Finance', 'derived'], [TASKS_ID, 'Tasks', 'derived'], [PROJECTS_ID, 'Projects', 'derived'], [ASSETS_ID, 'Home & Assets', 'derived'], [SERVICES_ID, 'Household Services', 'derived'], [BILLS_ID, 'Bills & Subscriptions', 'derived'], [FAMILY_ID, 'Family', 'derived'],
     ].sort((a, b) => String(a[1]).localeCompare(String(b[1]))));
     expect(layers.find((l) => l.id === FINANCE_ID)?.providerId).toBe('ledger');
   });

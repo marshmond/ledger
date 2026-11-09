@@ -15,6 +15,8 @@ export const KIND = 'member';
 export const FAMILY_BASE = '/family';
 /** A member's page, as written inside the module (the module prefix is added by the router). A helper, so no screen writes the address by hand. */
 export const memberRoute = (id: number) => `/m/${id}`;
+/** The Family dates page, as written inside the module. */
+export const DATES_ROUTE = '/dates';
 
 export const ROLES = ['parent', 'child', 'grandparent', 'other'] as const;
 export type Role = (typeof ROLES)[number];
@@ -50,6 +52,8 @@ export interface MemberFields {
   /** One of COLORS, or undefined for neutral. */
   color?: string;
   note?: string;
+  /** F2: false = leave this member's birthday off the owner's Calendar. Stored ONLY when false; absent (or unreadable) = shown. Says nothing about any future shared display. */
+  birthdayOnCalendar?: boolean;
 }
 export type MemberData = MemberFields & { contactId: number };
 
@@ -65,7 +69,7 @@ export interface MemberRecord {
   raw: Record<string, unknown>;
 }
 
-const KNOWN = new Set(['contactId', 'role', 'status', 'birthMonthDay', 'birthYear', 'color', 'note']);
+const KNOWN = new Set(['contactId', 'role', 'status', 'birthMonthDay', 'birthYear', 'color', 'note', 'birthdayOnCalendar']);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isId = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v);
 
@@ -116,6 +120,7 @@ export function cleanFields(f: MemberFields): MemberFields {
     ...(f.birthYear !== undefined ? { birthYear: f.birthYear } : {}),
     ...(f.color ? { color: f.color } : {}),
     ...(note ? { note } : {}),
+    ...(f.birthdayOnCalendar === false ? { birthdayOnCalendar: false } : {}),
   };
 }
 
@@ -149,6 +154,10 @@ export function asMember(r: ModuleRecord, thisYear = new Date().getFullYear()): 
   if (raw.note !== undefined) {
     if (typeof raw.note === 'string') data.note = raw.note.slice(0, NOTE_MAX * 4); // a very long note from another version is shown cut, never stored cut
     else problems.push('The note could not be read.');
+  }
+  if (raw.birthdayOnCalendar !== undefined) {
+    if (typeof raw.birthdayOnCalendar === 'boolean') data.birthdayOnCalendar = raw.birthdayOnCalendar;
+    else problems.push('The Calendar setting could not be read, so the birthday is treated as shown.');
   }
   return { ...base, data, problems };
 }

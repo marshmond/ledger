@@ -94,3 +94,20 @@ export async function setMemberStatus(id: number, status: 'active' | 'past', d: 
     await rows(d).put({ id, module: MODULE, kind: KIND, data: { ...m.raw, status } });
   });
 }
+
+/**
+ * F2: includes or excludes ONE member's birthday on the owner's Calendar. Changes that single field only: everything else on the stored row (a note,
+ * a field this version could not read) is written back exactly, and nothing else is touched. It is the owner's own Calendar only; it is not, and
+ * never implies, permission to show the birthday anywhere else.
+ */
+export async function setBirthdayOnCalendar(id: number, on: boolean, d: FinanceDB = db): Promise<void> {
+  await d.transaction('rw', TABLES(d), async () => {
+    const m = await getMember(id, d);
+    if (!m) throw new Error('That member no longer exists.');
+    if (!m.data) throw new Error('This record could not be read by this version, so it was not changed.');
+    if ((m.data.birthdayOnCalendar !== false) === on) return;
+    const next: Record<string, unknown> = { ...m.raw };
+    if (on) delete next.birthdayOnCalendar; else next.birthdayOnCalendar = false;
+    await rows(d).put({ id, module: MODULE, kind: KIND, data: next });
+  });
+}

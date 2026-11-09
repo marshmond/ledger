@@ -9,7 +9,7 @@ import { allDueProviders } from '../../core/dueProvider';
 import { loadCalendarSettings } from '../../core/calendarSettings';
 import { createStore, isLive, repo } from '../../core/store';
 import {
-  ASSETS_ID, asEvent, asLayer, BILLS_ID, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SERVICES_ID, SWATCHES, TASKS_ID,
+  ASSETS_ID, asEvent, asLayer, BILLS_ID, FAMILY_ID, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SERVICES_ID, SWATCHES, TASKS_ID,
   type CalendarLayer, type EventData, type EventFields, type EventRecord, type LayerData,
 } from './model';
 import { endSeriesBefore, editAll, editOccurrence, setDone, skipOccurrence, splitFollowing, type SeriesExtras } from './series';
@@ -44,6 +44,7 @@ export async function ensureCalendarSeed(d: FinanceDB = db): Promise<void> {
       [ASSETS_ID, { name: 'Home & Assets', color: allDueProviders().find((p) => p.id === 'assets')?.color ?? '#b07a1f', sourceType: 'derived', providerId: 'assets', builtin: true }],
       [SERVICES_ID, { name: 'Household Services', color: allDueProviders().find((p) => p.id === 'services')?.color ?? '#2f7f9a', sourceType: 'derived', providerId: 'services', builtin: true }],
       [BILLS_ID, { name: 'Bills & Subscriptions', color: allDueProviders().find((p) => p.id === 'bills')?.color ?? '#b94a7c', sourceType: 'derived', providerId: 'bills', builtin: true }],
+      [FAMILY_ID, { name: 'Family', color: allDueProviders().find((p) => p.id === 'family')?.color ?? '#c4398a', sourceType: 'derived', providerId: 'family', builtin: true }],
     ];
     for (const [id, data] of builtins) {
       if (!have.has(id)) await d.moduleRecords.add({ id, module: MODULE, kind: 'calendar', data: { ...data }, createdAt: now, updatedAt: now, deletedAt: null });

@@ -26,10 +26,10 @@ describe('registration', () => {
     registerModules(); registerModules();
     expect(allModules().filter((m) => m.id === 'family')).toHaveLength(1);
   });
-  it('F1 contributes nothing else: no Calendar layer, Today card, search source, Add-box destination or Finance reference', () => {
+  it('F2 contributes exactly one thing, the due provider: no Today card, search source, Add-box destination or Finance reference', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(mod.contributes).toBeUndefined();
-    expect(allDueProviders().map((p) => p.id)).not.toContain('family');
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider']);
+    expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
     expect(allSearchSources().length).toBe(allModules().filter((m) => m.contributes?.searchSource).length);
     expect(allQuickAdds().filter((q) => /family|fam/i.test(q.id) || /^fam/.test(q.prefix))).toEqual([]);
@@ -51,7 +51,7 @@ describe('boundaries', () => {
   });
   it('the Family files write only through moduleRecords and the one distinct-contact helper; Tasks, Calendar and Projects are never written', () => {
     const writers = family.filter(({ text }) => /\.(add|put|bulkAdd|bulkPut|update|delete|clear)\(/.test(text)).map((x) => x.f);
-    expect(writers.sort()).toEqual(['src/modules/family/data.ts']);
+    expect(writers.sort()).toEqual(['src/modules/family/data.ts', 'src/modules/family/dateData.ts']); // both write moduleRecords only
     const data = family.find((x) => x.f.endsWith('/data.ts'))!.text;
     expect(data).not.toMatch(/tasks\/data|calendar\/data|projects\/data|findOrCreateContact|updateContactDetails/);
   });

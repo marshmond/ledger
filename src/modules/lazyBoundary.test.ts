@@ -94,7 +94,7 @@ describe('every module is registered, with its background contributions, without
   });
 
   it('Calendar due providers, so Today and the Calendar show every module\'s dated items on the first draw', () => {
-    expect(allDueProviders().map((p) => p.id).sort()).toEqual(['assets', 'bills', 'ledger', 'projects', 'services', 'tasks']);
+    expect(allDueProviders().map((p) => p.id).sort()).toEqual(['assets', 'bills', 'family', 'ledger', 'projects', 'services', 'tasks']);
   });
 
   it('Finance\'s reference readers, so deleting a payment checks Bills, Services, Assets and Projects before any of them is opened', () => {

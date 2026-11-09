@@ -11,11 +11,21 @@
  *   - the covering item is never the one hidden: a Finance Scheduled marker may be the owner's only route to approving a payment, so it always stays;
  *   - an item that is itself covered never covers another, and only an OPEN covering item counts.
  * Today applies it to everything (Today does not read layer visibility); the Calendar applies it after its visibility filter.
+ *
+ * F2 (Family birthdays): the covering item may also be a STORED Calendar event occurrence (a Birthday event the owner made for the same Contact). Such an
+ * occurrence is named by `storedItemKey(eventId, occurrenceKey)` (the key the Calendar already gives it), and counts as covering while it is in the list and
+ * not marked done. Nothing else about the rule changes: a stored event is never the covered item, and it is never hidden.
  */
-interface Coordinated { source?: { id: string; status: string; coveredBy?: string } }
+interface Coordinated { key?: string; done?: boolean; occ?: unknown; source?: { id: string; status: string; coveredBy?: string } }
+
+/** The list key the Calendar gives one occurrence of a STORED event. One definition, so the Calendar and a provider naming it in `coveredBy` cannot drift apart. */
+export const storedItemKey = (eventId: number, occurrenceKey: string) => `e:${eventId}:${occurrenceKey}`;
 
 export function dropCovered<T extends Coordinated>(items: T[]): T[] {
   const covering = new Set<string>();
-  for (const i of items) if (i.source && i.source.status === 'open' && !i.source.coveredBy) covering.add(i.source.id);
+  for (const i of items) {
+    if (i.source) { if (i.source.status === 'open' && !i.source.coveredBy) covering.add(i.source.id); }
+    else if (i.occ && i.key && !i.done) covering.add(i.key);
+  }
   return items.filter((i) => !(i.source?.coveredBy && covering.has(i.source.coveredBy)));
 }

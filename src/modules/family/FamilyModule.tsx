@@ -3,6 +3,7 @@ import { Route, Routes, useParams } from 'react-router-dom';
 import { ModuleBase } from '../../core/router';
 import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
+import DatesPage from './DatesPage';
 import MemberPage from './MemberPage';
 import OverviewPage from './OverviewPage';
 import { FAMILY_BASE } from './model';
@@ -20,6 +21,7 @@ export default function FamilyModule() {
             <Routes>
               <Route index element={<OverviewPage />} />
               <Route path="m/:id" element={<Member />} />
+              <Route path="dates" element={<DatesPage />} />
               <Route path="*" element={<OverviewPage />} />
             </Routes>
           </Main>

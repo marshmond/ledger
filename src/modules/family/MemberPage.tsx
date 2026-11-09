@@ -6,7 +6,7 @@ import ConfirmDialog from '../../shell/ConfirmDialog';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import MemberForm, { contactDetail } from './MemberForm';
-import { getMember, loadMembers, setMemberStatus } from './data';
+import { getMember, loadMembers, setBirthdayOnCalendar, setMemberStatus } from './data';
 import { colorName, duplicateGroups, memberRoute, monthDayText, ROLE_LABEL, STATUS_LABEL } from './model';
 import { readContactReferences, referenceLines } from './references';
 
@@ -100,6 +100,21 @@ export default function MemberPage({ id }: { id: number }) {
           <div><dt>Role</dt><dd>{ROLE_LABEL[d.role]}</dd></div>
           <div><dt>Status</dt><dd>{STATUS_LABEL[d.status]}</dd></div>
           <div><dt>Birthday</dt><dd>{bday || <span className="muted">Not set</span>}</dd></div>
+          <div>
+            <dt>On my Calendar</dt>
+            <dd>
+              {!d.birthMonthDay ? <span className="muted">No birthday set</span>
+                : d.status !== 'active' ? <span className="muted">Not shown (past member)</span>
+                : (
+                  <>
+                    {d.birthdayOnCalendar === false ? 'Off' : 'On'}{' '}
+                    <button type="button" className="btn fm-mini" aria-label={d.birthdayOnCalendar === false ? "Turn on birthday on my Calendar" : "Turn off birthday on my Calendar"} onClick={async () => { await setBirthdayOnCalendar(rec.id, d.birthdayOnCalendar === false); toast(d.birthdayOnCalendar === false ? 'Birthday is on your Calendar' : 'Birthday removed from your Calendar'); }}>
+                      {d.birthdayOnCalendar === false ? 'Turn on' : 'Turn off'}
+                    </button>
+                  </>
+                )}
+            </dd>
+          </div>
           <div><dt>Birth year</dt><dd>{d.birthYear ?? <span className="muted">Not set</span>}</dd></div>
           <div><dt>Display colour</dt><dd>{d.color ? <><span className="fm-dot" style={{ background: d.color }} aria-hidden="true" /> {colorName(d.color)}</> : <span className="muted">None</span>}</dd></div>
         </dl>

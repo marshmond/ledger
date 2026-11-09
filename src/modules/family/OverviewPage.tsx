@@ -6,7 +6,7 @@ import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import MemberForm from './MemberForm';
 import { loadMembers } from './data';
-import { colorName, duplicateGroups, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
+import { colorName, DATES_ROUTE, duplicateGroups, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
 
 /** The Family overview: household members as simple cards, past members and unreadable records kept apart, and any possible duplicates flagged. */
 export default function OverviewPage() {
@@ -20,7 +20,7 @@ export default function OverviewPage() {
     <PageHeader
       title="Family"
       description="The people in your household. Each one is linked to a contact, so tasks and events that name that contact belong to them."
-      actions={<button type="button" className="btn primary" onClick={() => setAdding(true)}>Add member</button>}
+      actions={<span className="row"><Link to={DATES_ROUTE} className="btn">Family dates</Link><button type="button" className="btn primary" onClick={() => setAdding(true)}>Add member</button></span>}
     />
   );
   const form = adding && (

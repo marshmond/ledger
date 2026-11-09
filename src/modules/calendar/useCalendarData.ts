@@ -14,6 +14,7 @@ import { loadEvents, loadLayers } from './data';
 import { msAt, parseHM } from './time';
 import { PERSONAL_ID, type CalendarLayer, type EventRecord } from './model';
 import { occurrencesOf, statusOf, type Occurrence } from './occurrences';
+import { storedItemKey } from './markerCoordination';
 import { loadHideAmounts } from '../../core/hideAmounts';
 import {
   ALL_ON, deselectAll, isLayerVisible, parseVisibility, selectAll, serializeVisibility, toggleLayer, VISIBILITY_KEY, visibleCount, type Visibility,
@@ -116,7 +117,7 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
       for (const o of occurrencesOf(ev, evFrom, to)) {
         const st = statusOf(o, now);
         items.push({
-          key: `e:${o.eventId}:${o.key}`, title: o.title || '(no title)', layerId: layer.id, layerName: layer.name, color: layer.color,
+          key: storedItemKey(o.eventId, o.key), title: o.title || '(no title)', layerId: layer.id, layerName: layer.name, color: layer.color,
           derived: false, allDay: o.allDay, firstDay: o.firstDay, lastDay: o.lastDay, startMs: o.startMs, endMs: o.endMs,
           priority: o.priority, location: o.location, done: o.done, overdue: st.overdue, soon: st.soon, recurring: o.recurring, occ: o,
           project: projectOf(readProjectId(o.event.data)),
