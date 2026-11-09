@@ -4,6 +4,17 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-11-09 (newest): NAVIGATION N1 (GROUPED, FLAT MODULE SELECTOR) APPROVED BY CHATGPT AND RELEASED: COMMITTED AND PUSHED as `feat(navigation): N1 grouped module selector` (read the SHA from git log and the Pages result from the Actions tab; not recorded here to avoid a second commit). Real-device and screen-reader acceptance still outstanding.
+
+Report: `docs/NAVIGATION-N1-REPORT-2026-11-09.md`. Gate: `main` = `origin/main` = `eafae83` (C1), Pages run #84 success, baseline re-run 3,960 tests in 223 files. Now **3,972 tests in 224 files** (+12), tsc, build and diff check clean; browser pass at 320, 375, short landscape, dark theme and keyboard.
+
+- [x] **N1:** the module dropdown shows Today (no heading), Productivity (Calendar, Tasks, Projects), Household (Home & Assets, Household Services, Bills & Subscriptions, Family, Contacts & Relationships), Finances (Ledger, Household Finances); still one flat list, no submenus. Grouping is a mapping by module id in `src/core/moduleGroups.ts` (no registry change); unlisted modules go under "Other". Routes, ids, names, icons and lazy loading unchanged. Disclosure semantics kept (no ARIA menu); groups are `role="group"` with labels that are not links.
+- **Judgment calls (please review):** (1) mapping file instead of a `ModuleDef` field; (2) Today has no heading; (3) the active row is also semi-bold; (4) one C1 guard test was updated for the new markup.
+- **Noted, not fixed:** `family-f2-provider.test.ts` failed once in full runs (searches output for the text `555`, which time-based ids can contain); it passes on rerun.
+- [ ] **Deferred maintenance:** Replace the intermittent Family F2 provider test's broad serialized-text `555` check with a targeted assertion against the intended sensitive field. NOT done.
+- **Final verification:** 3,972 tests in 224 files all passing on the release candidate; focused browser check passed; no line-ending churn.
+- **NOT built:** C2, C3, F4, Command Station. C2 is the next planned phase.
+
 ## STATUS 2026-11-09 (newest): CONTACTS & RELATIONSHIPS C1 APPROVED AND RELEASED (final browser verification 20 of 20, report section 15); COMMITTED AND PUSHED WITH THE C0 PLAN (SHA and Pages result: see git history and the Actions tab); NOT REAL-DEVICE TESTED. ContactPicker name matching stays deferred to C2.
 
 Report: `docs/CONTACTS-RELATIONSHIPS-C1-REPORT-2026-11-09.md`. Gate: `main` = `origin/main` = `0469af6`, Pages run #83 success. **3,960 passing tests in 223 files** (+81 in 7 new files on the released 3,879 in 216), `npx tsc --noEmit`, `npm run build` and `git diff --check` clean. Owner decisions D1 to D4 approved: existing four fields only; warn and tick on same name, never merge; no deletion or archive; usage counts only.

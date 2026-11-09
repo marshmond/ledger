@@ -623,6 +623,12 @@ details.pick label.chk:hover { background: var(--hover); }
 .modmenu { position: absolute; left: 0; top: calc(100% + 4px); min-width: 180px; display: flex; flex-direction: column; padding: 4px; background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); max-height: calc(100vh - 72px); max-height: calc(100dvh - 72px); overflow-y: auto; overscroll-behavior: contain; }
 .modmenu a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; color: var(--fg); text-decoration: none; }
 .modmenu a:hover, .modmenu a.active { background: var(--hover, rgba(127, 127, 127, 0.14)); }
+.modmenu a.active { font-weight: 600; }
+.modgroup { display: flex; flex-direction: column; }
+.modgroup + .modgroup { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.modgroup-top a { font-weight: 600; }
+.modgroup-label { padding: 6px 10px 2px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted, var(--fg)); opacity: 0.75; cursor: default; user-select: none; overflow-wrap: anywhere; }
+.modmenu a { overflow-wrap: anywhere; }
 .modspacer { flex: 1; }
 .modsearch { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
 .modsearch:hover:not(:disabled) { color: var(--fg); background: var(--hover, rgba(127, 127, 127, 0.14)); }

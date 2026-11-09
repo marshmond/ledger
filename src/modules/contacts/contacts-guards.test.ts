@@ -94,9 +94,9 @@ describe('module list overflow (the eleventh module)', () => {
     expect(rule.indexOf('100vh')).toBeLessThan(rule.indexOf('100dvh'));
     expect(rule).toMatch(/overflow-y:\s*auto/);
   });
-  it('nothing else about the list changed: still one flat list of links in registration order, no nested menu', () => {
+  it('still one flat list of links (grouped by N1, see moduleGroups.test.tsx), no nested menu', () => {
     const bar = readFileSync('src/core/ModuleBar.tsx', 'utf8');
-    expect(bar).toMatch(/mods\.map\(\(m\) =>/);
+    expect(bar).toMatch(/groupModules\(mods\)\.map\(/);
     expect(bar).not.toMatch(/role="menu"|aria-haspopup/);
     expect(css).toMatch(/\.modmenu a \{ display: flex/);
   });

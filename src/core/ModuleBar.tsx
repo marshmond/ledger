@@ -3,7 +3,31 @@ import { Link, useLocation } from 'react-router-dom';
 import SyncChip from './SyncChip';
 import QuickAdd from '../shell/QuickAdd';
 import { openSearch } from './globalEvents';
-import { allModules, getModule, lastModuleId } from './registry';
+import { allModules, getModule, lastModuleId, type ModuleDef } from './registry';
+import { groupModules } from './moduleGroups';
+
+/** The grouped, flat list of module links (no nesting). Exported so the open list can be tested without a browser. */
+export function ModuleList({ mods, currentId }: { mods: readonly ModuleDef[]; currentId?: string }) {
+  return (
+    <>
+      {groupModules(mods).map((g) => {
+        const links = g.modules.map((m) => (
+          <Link key={m.id} to={`/${m.id}`} aria-current={m.id === currentId ? 'page' : undefined} className={m.id === currentId ? 'active' : ''}>
+            <span className="modicon" aria-hidden="true">{m.icon}</span>{m.name}
+          </Link>
+        ));
+        // Today stands alone at the top with no heading; every other group is a labelled set of ordinary links (not a menu).
+        if (!g.label) return <div key={g.key} className="modgroup modgroup-top">{links}</div>;
+        return (
+          <div key={g.key} className="modgroup" role="group" aria-labelledby={`modgroup-${g.key}`}>
+            <div className="modgroup-label" id={`modgroup-${g.key}`}>{g.label}</div>
+            {links}
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 /**
  * The thin bar across the top of every screen: which module you are in (with a switcher), and the shared Settings.
@@ -46,11 +70,7 @@ export default function ModuleBar() {
         </button>
         {open && (
           <div className="modmenu" id="module-list">
-            {mods.map((m) => (
-              <Link key={m.id} to={`/${m.id}`} aria-current={m.id === current?.id ? 'page' : undefined} className={m.id === current?.id ? 'active' : ''}>
-                <span className="modicon" aria-hidden="true">{m.icon}</span>{m.name}
-              </Link>
-            ))}
+            <ModuleList mods={mods} currentId={current?.id} />
           </div>
         )}
       </div>
