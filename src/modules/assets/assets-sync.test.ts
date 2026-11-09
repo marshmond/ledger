@@ -56,7 +56,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
     await deleteAssetPermanently(x, A.d);
     await B.engine.sync(); await A.engine.sync(); await B.engine.sync();
     await everywhere([A, B], async (d) => expect(await getAsset(x, d)).toBeUndefined());
-  }, 60000);
+  });
 
   it('b. a NEWER edit against the stale copy, pushed first, does not either', async () => {
     const { A, B, x } = await seeded();
@@ -65,7 +65,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
     await updateAsset(x, { ...(await getAsset(x, B.d))!.data, name: 'Edited later on B' }, B.d);
     await B.engine.sync(); await A.engine.sync(); await B.engine.sync();
     await everywhere([A, B], async (d) => { expect(await getAsset(x, d)).toBeUndefined(); expect((await raw(d, x)).deletedAt).toBeGreaterThan(0); });
-  }, 60000);
+  });
 
   it('c. repeated syncs from both devices keep it deleted', async () => {
     const { A, B, x } = await seeded();
@@ -76,7 +76,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
     await everywhere([A, B], async (d) => expect(await getAsset(x, d)).toBeUndefined());
     await full(A, B, 2);
     await everywhere([A, B], async (d) => expect(await getAsset(x, d)).toBeUndefined());
-  }, 90000);
+  });
 
   it('d. a child made on the stale device keeps the asset alive, and nothing is lost', async () => {
     const { A, B, x } = await seeded();
@@ -88,7 +88,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
       expect((await getAsset(x, d))?.data.name).toBe('Mistake');
       expect((await getAsset(child, d))?.data.parentId).toBe(x);
     });
-  }, 90000);
+  });
 
   it('e. a service or warranty record made on the stale device keeps the asset alive', async () => {
     for (const kind of ['service', 'warranty']) {
@@ -99,7 +99,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
       await full(A, B, 2);
       await everywhere([A, B], async (d) => { expect(await getAsset(x, d), kind).toBeDefined(); expect(await raw(d, rec)).toBeDefined(); });
     }
-  }, 120000);
+  });
 
   it('f. a parent / child / grandchild chain gives the same answer whichever device syncs first', async () => {
     for (const order of ['A first', 'B first']) {
@@ -116,7 +116,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
         for (const id of [top, mid, low, added]) expect(await getAsset(id, d), `${order} ${id}`).toBeDefined();
       });
     }
-  }, 180000);
+  });
 
   it('g. archive and restore are still last-writer-wins across devices', async () => {
     const { A, B, other } = await seeded();
@@ -125,7 +125,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
     await updateAsset(other, { ...(await getAsset(other, B.d))!.data, notes: 'newer on B' }, B.d);
     await full(A, B, 2);
     await everywhere([A, B], async (d) => expect((await getAsset(other, d))?.data).toMatchObject({ archived: false, notes: 'newer on B' }));
-  }, 90000);
+  });
 
   it('h. an ordinary removal (Add-box Undo style) is NOT protected: a newer edit elsewhere wins', async () => {
     const { A, B, other } = await seeded();
@@ -134,7 +134,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
     await updateAsset(other, { ...(await getAsset(other, B.d))!.data, notes: 'kept' }, B.d);
     await full(A, B, 2);
     await everywhere([A, B], async (d) => expect(await getAsset(other, d)).toBeDefined());
-  }, 90000);
+  });
 
   it('i. an intentional backup restore still wins over the deletion', async () => {
     const { A, B, x } = await seeded();
@@ -144,7 +144,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
     await touchAll(B.d); // what a restore does when sync is on
     await full(A, B, 2);
     await everywhere([A, B], async (d) => expect(await getAsset(x, d)).toBeDefined());
-  }, 90000);
+  });
 
   it('j. unrelated assets merge exactly as before (later edit wins)', async () => {
     const { A, B, x, other } = await seeded();
@@ -158,7 +158,7 @@ describe('H1: a permanently deleted asset stays deleted across devices (real syn
       expect(await getAsset(x, d)).toBeUndefined();
       expect((await loadAssets(d)).map((a) => a.id)).toEqual([other]);
     });
-  }, 90000);
+  });
 });
 
 describe('H1 prerequisite: readable conflict labels for module records', () => {

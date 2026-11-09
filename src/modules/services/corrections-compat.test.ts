@@ -183,5 +183,5 @@ describe('correction 2 across two devices (real SyncEngine): an older build on o
     }
     const arrs = await loadArrangements(A.d);
     expect(arrs).toHaveLength(1);
-  }, 90000);
+  });
 });

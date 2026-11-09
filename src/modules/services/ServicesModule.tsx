@@ -7,9 +7,9 @@ import ArrangementPage from './ArrangementPage';
 import OverviewPage from './OverviewPage';
 import ProviderPage from './ProviderPage';
 import VisitPage from './VisitPage';
-import './services.css';
 
-export const SERVICES_BASE = '/services';
+import { SERVICES_BASE } from '../bases';
+export { SERVICES_BASE };
 
 const Arrangement = () => { const n = Number(useParams().id); return Number.isFinite(n) ? <ArrangementPage id={n} /> : <OverviewPage />; };
 const Visit = () => { const n = Number(useParams().id); return Number.isFinite(n) ? <VisitPage id={n} /> : <OverviewPage />; };

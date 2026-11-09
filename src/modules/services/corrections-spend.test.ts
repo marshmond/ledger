@@ -174,5 +174,5 @@ describe('correction 1 across two devices (real SyncEngine)', () => {
       expect(s.totalCents).toBe(15000);
       expect(s.byClass).toEqual({ completed: 0, fees: 0, other: 0, shared: 15000 });
     }
-  }, 90000);
+  });
 });

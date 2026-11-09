@@ -9,7 +9,6 @@ import ReviewPage from './ReviewPage';
 import UpcomingPage from './UpcomingPage';
 import OverviewPage from './OverviewPage';
 import { BILLS_BASE } from './paths';
-import './bills.css';
 
 const Obligation = () => { const n = Number(useParams().id); return Number.isFinite(n) ? <ObligationPage id={n} /> : <OverviewPage />; };
 

@@ -1,4 +1,5 @@
 import { registerModule } from '../core/registry';
+import './moduleStyles';
 import { calendarModule } from './calendar';
 import { ledgerModule } from './ledger';
 import { assetsModule } from './assets';

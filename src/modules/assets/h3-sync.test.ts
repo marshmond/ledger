@@ -72,7 +72,7 @@ describe('H3 references and project links across two devices (real sync engine a
       expect((await getService(s, d))!.data.txnRefs).toEqual([ref]);
       expect((await spendOn(d, x)).totalCents).toBe(45000);
     });
-  }, 60000);
+  });
 
   it('b. a transaction deleted on one device leaves the history intact and flags the reference on both', async () => {
     const { A, B, t, x } = await seeded();
@@ -87,7 +87,7 @@ describe('H3 references and project links across two devices (real sync engine a
       expect(r.totalCents).toBe(0);
       expect(r.review).toHaveLength(1);
     });
-  }, 60000);
+  });
 
   it('c. a project link made on one device appears on the other, and removing it keeps both records everywhere', async () => {
     const { A, B, house, p } = await seeded();
@@ -102,7 +102,7 @@ describe('H3 references and project links across two devices (real sync engine a
       expect(await getAsset(house, d)).toBeDefined();
       expect(await getProject(p, d)).toBeDefined();
     });
-  }, 60000);
+  });
 
   it('d. a project deleted for good on one device unlinks everywhere and leaves the asset', async () => {
     const { A, B, house, p } = await seeded();
@@ -115,7 +115,7 @@ describe('H3 references and project links across two devices (real sync engine a
       expect(await assetsOfProject(p, d)).toEqual([]);
       expect(await getAsset(house, d)).toBeDefined();
     });
-  }, 60000);
+  });
 
   it('e. concurrent edits to the asset on one device and a service record on the other both survive', async () => {
     const { A, B, t, x } = await seeded();
@@ -130,7 +130,7 @@ describe('H3 references and project links across two devices (real sync engine a
       expect((await getService(s, d))!.data.txnRefs).toHaveLength(1);
       expect((await spendOn(d, x)).totalCents).toBe(45000);
     });
-  }, 60000);
+  });
 
   it('f. a permanent deletion on one device (which removes its project link) does not destroy history made on a stale device, and the project survives', async () => {
     const { A, B, x, p } = await seeded();
@@ -145,5 +145,5 @@ describe('H3 references and project links across two devices (real sync engine a
       expect(await getService(sid, d)).toBeDefined();
       expect(await getProject(p, d)).toBeDefined();
     });
-  }, 60000);
+  });
 });

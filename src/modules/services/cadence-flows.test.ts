@@ -50,7 +50,7 @@ describe('S3-A every 2 weeks (existing weekly rule, interval 2)', () => {
     }
     expect((await open(d, r.id))[0].data.dueDate).toBe(want[26]);
     expect(await loadVisits(d)).toHaveLength(26);
-  }, 120000);
+  });
   it('a visit moved across a week boundary (Friday to Sunday) never changes the parity of later visits', async () => {
     const d = fresh();
     const r = await add(d, biweekly());
@@ -102,7 +102,7 @@ describe('S3-A twice a month: the Task, the markers and the lifecycle', () => {
     expect((await open(d, r.id))[0].data.dueDate).toBe(want[24]);
     expect(await loadVisits(d)).toHaveLength(24);
     expect(want.slice(0, 4)).toEqual(['2026-11-15', '2026-11-30', '2026-12-15', '2026-12-31']);
-  }, 120000);
+  });
   it('early and late completion: early does not repeat the same date; late skips what was missed', async () => {
     const d = fresh();
     const r = await add(d, semiCad());
@@ -337,7 +337,7 @@ describe('S3-A twice a month: two devices (real SyncEngine) and backup', () => {
       expect(await open(x.d, r.id)).toHaveLength(2);
       expect((await health(x.d, r.id)).state).toBe('duplicate-open');
     }
-  }, 90000);
+  });
   it('A reschedules while B completes: nothing is lost, both devices agree, and the schedule is not changed', async () => {
     const { A, B, r } = await seeded();
     const t = (await open(A.d, r.id))[0];
@@ -350,7 +350,7 @@ describe('S3-A twice a month: two devices (real SyncEngine) and backup', () => {
     expect(va).toHaveLength(1);
     expect((await getArrangement(r.id, A.d))!.data.cadence).toEqual((await getArrangement(r.id, B.d))!.data.cadence);
     expect((await getArrangement(r.id, A.d))!.data.cadence?.semi).toEqual(SEMI);
-  }, 90000);
+  });
   it('both devices change the cadence: the later write wins on both, whole record, and the result is a valid schedule', async () => {
     const { A, B, r } = await seeded();
     const setSemi = async (x: Dev, semi: Semimonthly, anchor: string) => {
@@ -365,7 +365,7 @@ describe('S3-A twice a month: two devices (real SyncEngine) and backup', () => {
     expect(ca).toEqual(cb);
     expect(ca?.semi).toEqual({ a: day(10), b: day(25) });
     expect(cadenceBetween(ca!, '2026-11-01', '2026-12-31')).toEqual(['2026-11-25', '2026-12-10', '2026-12-25']);
-  }, 90000);
+  });
   it('backup and restore keep both day-rules, the Task marker, the visit and unknown fields; restoring twice changes nothing', async () => {
     const { A, r } = await seeded();
     const id = (await open(A.d, r.id))[0].id;
@@ -384,7 +384,7 @@ describe('S3-A twice a month: two devices (real SyncEngine) and backup', () => {
     expect(markersOf(o[0]).occurrence).toBe('2026-11-30');
     expect(await loadVisits(C)).toHaveLength(1);
     expect((await health(C, r.id)).state).toBe('ok');
-  }, 90000);
+  });
   it('an older arrangement (no twice-monthly field) is read and scheduled exactly as before after a restore', async () => {
     const A = fresh();
     const monthly: Cadence = { mode: 'fixed', rule: { freq: 'monthly', interval: 1, monthly: 'date', end: never }, anchorDate: '2026-11-15' };

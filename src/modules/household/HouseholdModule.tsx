@@ -5,7 +5,6 @@ import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
 import OverviewPage from './OverviewPage';
 import { HOUSEHOLD_BASE } from './model';
-import './household.css';
 
 /** Household finances: one read-only page at /household. It reads Bills, Household Services and Home & Assets and writes nothing anywhere. */
 export default function HouseholdModule() {

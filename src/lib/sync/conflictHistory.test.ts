@@ -76,7 +76,7 @@ describe('SY-01 every overwritten edit stays recoverable, whatever the number', 
         expect((c?.lost as { name?: string }).name).toBe(`B edit of ${id}`);
         expect((await B.d.contacts.get(id))?.name).toBe(`A edit of ${id}`);
       }
-    }, 120000);
+    });
   }
 
   it('REGRESSION of the S0 finding: 80 clashes were detected and only 50 were retained; now 80 of 80', async () => {
@@ -85,7 +85,7 @@ describe('SY-01 every overwritten edit stays recoverable, whatever the number', 
     const out = await B.engine.sync();
     expect(out.conflicts.length).toBe(80);
     expect((await B.engine.conflicts()).length).toBe(80);
-  }, 60000);
+  });
 
   it('when the OTHER device\'s version is the one overwritten (this device wins), all of those are kept too', async () => {
     const { A, B, ids } = await clash(70, 'B-wins');
@@ -96,7 +96,7 @@ describe('SY-01 every overwritten edit stays recoverable, whatever the number', 
     expect(kept.every((c) => c.kept === 'this device')).toBe(true);
     expect((kept.find((c) => c.id === String(ids[0]))?.lost as { name?: string }).name).toBe(`A edit of ${ids[0]}`);
     expect((await B.d.contacts.get(ids[0]))?.name).toBe(`B edit of ${ids[0]}`); // the later edit still wins, exactly as before
-  }, 60000);
+  });
 });
 
 describe('SY-01 across several syncs, reviews and restarts', () => {
@@ -119,7 +119,7 @@ describe('SY-01 across several syncs, reviews and restarts', () => {
     expect(all).toHaveLength(110);
     expect(all.filter((c) => ids.map(String).includes(c.id))).toHaveLength(80); // the first 80 are all still there
     expect(all.slice(0, 30).every((c) => more.map(String).includes(c.id))).toBe(true); // newest first
-  }, 120000);
+  });
 
   it('putting back one version removes only that entry; the rest stay, and the restored edit reaches the other device', async () => {
     const { A, B, ids } = await clash(60, 'A-wins');
@@ -135,7 +135,7 @@ describe('SY-01 across several syncs, reviews and restarts', () => {
     await A.engine.sync();
     expect((await A.d.contacts.get(ids[7]))?.name).toBe(`B edit of ${ids[7]}`); // an ordinary new edit: it wins and travels
     expect((await A.d.contacts.get(ids[8]))?.name).toBe(`A edit of ${ids[8]}`); // the others are untouched
-  }, 120000);
+  });
 
   it('a recreated engine (app restart) reads the same saved list; the count a screen would show equals what is stored', async () => {
     const { A, B } = await clash(66, 'A-wins');
@@ -145,7 +145,7 @@ describe('SY-01 across several syncs, reviews and restarts', () => {
     const list = await again.conflicts();
     expect(list).toHaveLength(66);
     expect((await readConflicts(dexieMeta(B.metaName))).length).toBe(list.length); // the status chip uses readConflicts
-  }, 60000);
+  });
 
   it('replacing this device from the synced copy and forgetting the sync setup do NOT discard unreviewed overwritten edits', async () => {
     const { A, B } = await clash(55, 'A-wins');
@@ -155,7 +155,7 @@ describe('SY-01 across several syncs, reviews and restarts', () => {
     expect(await B.engine.conflicts()).toHaveLength(55);
     await B.engine.forget();
     expect(await B.engine.conflicts()).toHaveLength(55);
-  }, 60000);
+  });
 });
 
 describe('SY-01 failures never lose or double-count a version', () => {
@@ -181,7 +181,7 @@ describe('SY-01 failures never lose or double-count a version', () => {
     const ok = await B.engine.sync();
     expect(ok.conflicts).toHaveLength(12);
     expect(await B.engine.conflicts()).toHaveLength(12);
-  }, 60000);
+  });
 
   it('the upload fails AFTER this device was overwritten: the overwritten versions are already saved, and the retry does not duplicate them', async () => {
     const { remote, A, B, ids } = await clash(40, 'A-wins');
@@ -195,7 +195,7 @@ describe('SY-01 failures never lose or double-count a version', () => {
     expect(await B.engine.conflicts()).toHaveLength(40); // still exactly 40
     await A.engine.sync();
     expect((await A.d.contacts.toArray()).some((c) => c.name === 'New only on B')).toBe(true);
-  }, 60000);
+  });
 
   it('another device syncs at the same moment (version race): the merge is retried and the same clashes are not saved twice', async () => {
     const { remote, A, B } = await clash(45, 'B-wins'); // B wins, so B must upload
@@ -206,7 +206,7 @@ describe('SY-01 failures never lose or double-count a version', () => {
     const kept = await B.engine.conflicts();
     expect(kept).toHaveLength(45);
     expect(new Set(kept.map(conflictKey)).size).toBe(45);
-  }, 60000);
+  });
 
   it('a wrong passphrase or a damaged remote file changes nothing, and the saved list is intact', async () => {
     const { remote, A, B } = await clash(30, 'A-wins');
@@ -220,7 +220,7 @@ describe('SY-01 failures never lose or double-count a version', () => {
     await expect(B.engine.sync()).rejects.toThrow(/not a Ledger sync file/);
     remote.file = saved;
     expect(await B.engine.conflicts()).toHaveLength(30);
-  }, 60000);
+  });
 });
 
 describe('SY-01 the saved list cannot be shortened by accident', () => {

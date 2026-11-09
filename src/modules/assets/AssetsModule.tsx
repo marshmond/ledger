@@ -6,10 +6,9 @@ import { ToastProvider } from '../../ui/Toast';
 import AssetPage from './AssetPage';
 import AssetsPage from './AssetsPage';
 import OverviewPage from './OverviewPage';
-import './assets.css';
-import './h3.css';
 
-export const ASSETS_BASE = '/assets';
+import { ASSETS_BASE } from '../bases';
+export { ASSETS_BASE };
 
 /** Home & Assets: the list at /assets and one page per asset at /assets/<id>, wrapped the way every module is. */
 export default function AssetsModule() {

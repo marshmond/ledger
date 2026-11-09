@@ -415,5 +415,5 @@ describe('backup and sync', () => {
       const lines = await loadBudgetLines(p, x.d);
       expect(lines.map((l) => [l.data.name, l.data.plannedCents])).toEqual([['Cabinets', 111], ['Flooring and tile', 200]]);
     }
-  }, 60000);
+  });
 });

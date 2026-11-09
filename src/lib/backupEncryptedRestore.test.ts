@@ -138,7 +138,7 @@ describe('encrypted restore safety sequence', () => {
     await expect(prepareEncryptedRestore(await encryptText('not json inside', PASS), PASS)).rejects.toBeInstanceOf(BackupFileError);
     expect(downloads.length).toBe(0);
     expect(await all(target)).toEqual(before);
-  }, 60000);
+  });
 
   it('a failure injected halfway through the database restore rolls back every table', async () => {
     const src = fresh(); await household(src, 'Backup');

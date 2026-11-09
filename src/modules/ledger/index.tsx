@@ -1,6 +1,8 @@
 import type { ModuleDef } from '../../core/registry';
 import { GROUPS } from '../../shell/nav';
-import LedgerModule, { LEDGER_BASE, LEDGER_ROUTES } from './LedgerModule';
+import { LEDGER_BASE } from '../bases';
+import { LEDGER_ROUTE_PATHS } from './routePaths';
+import { lazyModule } from '../../core/lazyModule';
 import { ledgerDueProvider } from './dueProvider';
 import { ledgerRecords } from './records';
 import { ledgerSearchSource } from './searchSource';
@@ -14,9 +16,9 @@ export const ledgerModule: ModuleDef = {
   id: LEDGER_BASE.slice(1),
   name: 'Ledger',
   icon: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>,
-  Component: LedgerModule,
+  Component: lazyModule(() => import('./LedgerModule')),
   hasTabBar: true,
-  routePaths: LEDGER_ROUTES.map(([p]) => p),
+  routePaths: [...LEDGER_ROUTE_PATHS],
   nav: GROUPS.map((g) => ({ id: g.id, label: g.label, to: g.to, items: g.items })),
   // What Ledger offers the other modules: dated things for the Calendar (read-only, computed), and records others can link to.
   // Also: a Calendar event of type Bill can be turned into a Ledger scheduled item (the Calendar draws Ledger's own form).

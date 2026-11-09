@@ -70,7 +70,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
       expect(c.visits.find((v) => v.id === v1)!.data.txnRefs).toHaveLength(1);
       expect(c.s.totalCents).toBe(15000);
     }
-  }, 90000);
+  });
   it('2. A edits the payment while B changes the Finance amount: the live Finance amount wins on both and nothing is lost', async () => {
     const { A, B, t, v1 } = await seeded();
     await setVisitPayment(v1, { source: 'finance', refs: [await ref(A.d, t)], manualCents: null }, null, A.d);
@@ -83,7 +83,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
     await setVisitPayment(v1, { source: 'finance', refs: [await ref(A.d, t)], manualCents: null, confirmSwitch: true }, null, A.d);
     await settle(A, B);
     for (const x of [A, B]) expect((await totals(x.d)).s.totalCents).toBe(16000);
-  }, 90000);
+  });
   it('3. a transaction deleted on B, or its split structure changed, needs review on both devices and counts 0', async () => {
     const { A, B, t, split, v1, v2 } = await seeded();
     await setVisitPayment(v1, { source: 'finance', refs: [await ref(A.d, t)], manualCents: null }, null, A.d);
@@ -98,7 +98,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
       expect(c.s.summary.review).toHaveLength(2);
       expect(c.visits.find((v) => v.id === v1)!.data.txnRefs).toHaveLength(1); // the reference itself is kept for the owner to fix
     }
-  }, 90000);
+  });
   it('4. both devices link the same Finance piece to different visits: both are kept, flagged as shared, counted once', async () => {
     const { A, B, t, v1, v2 } = await seeded();
     await setVisitPayment(v1, { source: 'finance', refs: [await ref(A.d, t)], manualCents: null }, null, A.d);
@@ -110,7 +110,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
       expect(visitPayment(c.visits.find((v) => v.id === v1)!, c.all, c.lookup).sharedWith).toBe(1);
       expect(visitReview(c.visits.find((v) => v.id === v2)!, c.all, c.lookup).map((k) => k.kind)).toContain('shared');
     }
-  }, 90000);
+  });
   it('5. a whole transaction on one device and a part of it on the other: the whole counts, the part is covered, on both', async () => {
     const { A, B, split, v1, v2 } = await seeded();
     await setVisitPayment(v1, { source: 'finance', refs: [await ref(A.d, split)], manualCents: null }, null, A.d);
@@ -121,7 +121,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
       expect(c.s.totalCents).toBe(30000);
       expect(c.s.summary.coveredParts).toHaveLength(1);
     }
-  }, 90000);
+  });
   it('9. a provider is replaced on A while an older B records a payment on a historical visit: the visit keeps the old provider and the payment', async () => {
     const { A, B, r, t, v1 } = await seeded();
     const p = await planLifecycle(r.id, 'replace', TODAY, A.d);
@@ -137,7 +137,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
       expect(servicesSpend(forProvider(c.all, c.all[0].providerKey), c.lookup).totalCents).toBe(15000);
       expect(c.arrangements.find((a) => a.id !== r.id)!.data.txnRefs).toEqual([]); // payments never move to the successor
     }
-  }, 90000);
+  });
   it('unknown fields on a paid visit and an arrangement-level payment survive sync', async () => {
     const { A, B, r, t, v1 } = await seeded();
     await setVisitPayment(v1, { source: 'finance', refs: [await ref(A.d, t)], manualCents: null }, null, A.d);
@@ -147,7 +147,7 @@ describe('S3-B two devices (real SyncEngine)', () => {
     await settle(A, B);
     expect((await B.d.moduleRecords.get(v1))!.data).toMatchObject({ futureField: { keep: 1 }, payment: 'finance' });
     expect((await totals(B.d)).s.totalCents).toBe(35000);
-  }, 90000);
+  });
 });
 
 describe('S3-B backup and restore (real export, checker and restore)', () => {
@@ -177,5 +177,5 @@ describe('S3-B backup and restore (real export, checker and restore)', () => {
     await touchAll(C);
     expect((await totals(C)).s.totalCents).toBe(before.s.totalCents);
     expect(await C.txns.count()).toBe(await A.d.txns.count());
-  }, 90000);
+  });
 });

@@ -69,7 +69,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
       expect((await getAsset(x, d))!.data.notes).toBe('edited on B');
       expect((await getWarranty(w, d))!.data.title).toBe('Manufacturer warranty');
     });
-  }, 90000);
+  });
 
   it('b. a warranty made on a stale device keeps the asset alive that another device deleted permanently', async () => {
     const { A, B, x } = await seeded();
@@ -83,7 +83,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
     });
     expect((await planAssetDeletion(x, A.d)).canDelete).toBe(false);
     expect(await detectOrphans(A.d)).toEqual([]); // nothing is orphaned
-  }, 90000);
+  });
 
   it('c. same when the warranty was made BEFORE the deletion but synced after; and deleting the warranty first lets the deletion hold', async () => {
     const { A, B, x, other } = await seeded();
@@ -98,7 +98,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
     await sleep(15);
     await settle(A, B);
     await everywhere([A, B], async (d) => { expect(await getAsset(x, d)).toBeUndefined(); expect(await getAsset(other, d)).toBeDefined(); });
-  }, 90000);
+  });
 
   it('d. warranties edited on two devices at once keep the later edit; a deletion on one device syncs', async () => {
     const { A, B, x } = await seeded();
@@ -113,7 +113,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
     await deleteWarranty(w, A.d);
     await settle(A, B);
     await everywhere([A, B], async (d) => expect(await loadWarrantiesFor(x, d)).toEqual([]));
-  }, 90000);
+  });
 
   it('e. a replacement made offline on A while B edits an older copy of the old asset: the new asset always survives and no pointer dangles', async () => {
     const { A, B, x } = await seeded();
@@ -136,7 +136,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
     const r2 = await applyRetirement(req(x2, { replacement: { kind: 'new', data: blankAsset({ name: 'Furnace 2', type: 'system' }) } }), A2.d);
     await settle(A2, B2);
     await everywhere([A2, B2], async (d) => { expect((await getAsset(x2, d))!.data).toMatchObject({ status: 'replaced', replacedById: r2.newAssetId }); });
-  }, 90000);
+  });
 
   it('f. two devices replacing the same asset differently: one pointer wins everywhere, both new assets exist, nothing is orphaned or lost', async () => {
     const { A, B, x } = await seeded();
@@ -152,7 +152,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
       expect([ra.newAssetId, rb.newAssetId]).toContain(old.data.replacedById);
       expect(await detectOrphans(d)).toEqual([]);
     });
-  }, 90000);
+  });
 
   it('g. bulk retirement on A and a later rename of one child on B: each record keeps its own last writer; the property stays retired', async () => {
     const { A, B } = devices();
@@ -171,7 +171,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
       expect((await getAsset(dish, d))!.data.name).toBe('Dishwasher (renamed)');
       expect((await getAsset(dish, d))!.data.parentId).toBe(kitchen); // structure never changes
     });
-  }, 90000);
+  });
 
   it('h. an orphan made by an ordinary removal plus a stale device: repair on one device, then sync, resolves it everywhere', async () => {
     const { A, B, x, other } = await seeded();
@@ -192,7 +192,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
       expect((await loadLinkedWork(other, d)).openTasks.map((v) => v.id)).toEqual([t]);
       expect((await getTask(t, d))!.data.title).toBe('Check filter');
     });
-  }, 90000);
+  });
 
   it('i. a record that arrives before its asset (temporarily missing) is reported as "absent", nothing is changed, and sync resolves it', async () => {
     const { A, B, x } = await seeded();
@@ -209,7 +209,7 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
     expect(await detectOrphans(B.d)).toEqual([]);
     expect(await getAsset(x, B.d)).toBeDefined();
     expect((await loadServicesFor(x, B.d)).map((s) => s.id)).toEqual([sid]);
-  }, 90000);
+  });
 
   it('j. backup restore: warranties come back with the restored database, and an intentional restore still revives a deleted asset', async () => {
     const { A, B, x } = await seeded();
@@ -228,5 +228,5 @@ describe('H4 warranties and lifecycle across two devices (real sync engine)', ()
       expect(await getAsset(x, d)).toBeDefined();
       expect((await getWarranty(w, d))!.data.title).toBe('Manufacturer warranty');
     });
-  }, 90000);
+  });
 });

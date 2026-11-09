@@ -1,5 +1,6 @@
 import type { ModuleDef } from '../../core/registry';
-import AssetsModule, { ASSETS_BASE } from './AssetsModule';
+import { ASSETS_BASE } from '../bases';
+import { lazyModule } from '../../core/lazyModule';
 import { assetQuickAdd } from './quickAddDef';
 import { assetsDueProvider } from './dueProvider';
 import { assetRecords } from './records';
@@ -13,7 +14,7 @@ export const assetsModule: ModuleDef = {
   id: ASSETS_BASE.slice(1),
   name: 'Home & Assets',
   icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4.5l8 7M6 10v9.5h12V10M10 19.5v-5h4v5" /></svg>,
-  Component: AssetsModule,
+  Component: lazyModule(() => import('./AssetsModule')),
   routePaths: ['/', '/list'],
   nav: [],
   contributes: { todayCards: ASSETS_TODAY_CARDS, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences },

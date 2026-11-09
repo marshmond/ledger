@@ -193,7 +193,7 @@ describe('two devices', () => {
     await B.engine.sync();
     expect(remote.puts).toBe(puts);
     expect(await remote.getFile().then((f) => decodeSnapshot(f!.bytes, 'a good passphrase').then((s) => Object.keys(s.tables.settings)))).not.toContain('priceApiKey');
-  }, 60000);
+  });
 
   it('when both change the same record, the later edit wins and it is reported', async () => {
     const remote = memoryRemote();
@@ -213,7 +213,7 @@ describe('two devices', () => {
     expect((await B.d.accounts.get(id))!.name).toBe('From desktop');
     expect(await B.engine.conflicts()).toHaveLength(0);
     expect(await A.engine.conflicts()).toHaveLength(1);
-  }, 60000);
+  });
 
   it('retries when another device syncs at the same moment', async () => {
     const remote = memoryRemote();
@@ -237,7 +237,7 @@ describe('two devices', () => {
     await A.engine.sync();
     await B.engine.sync();
     for (const x of [A, B]) expect((await x.d.accounts.toArray()).map((a) => a.name).sort()).toEqual(['FromA', 'FromB', 'One']);
-  }, 90000);
+  });
 
   it('refuses a first upload when a copy exists, and a wrong passphrase on another device', async () => {
     const remote = memoryRemote();
@@ -247,7 +247,7 @@ describe('two devices', () => {
     await expect(device(remote).engine.initialUpload()).rejects.toThrow(/already exists/);
     await expect(device(remote, 'not the passphrase').engine.replaceFromRemote()).rejects.toThrow(/Wrong sync passphrase/);
     await expect(device(remote).engine.sync()).rejects.toThrow(/not set up/);
-  }, 60000);
+  });
 });
 
 describe('GitHub client', () => {

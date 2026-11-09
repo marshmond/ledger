@@ -646,7 +646,7 @@ describe('P4A: outside Projects nothing changes, and the data travels', () => {
       const list = await loadCommitments(p, x.d);
       expect(list.map((c) => [c.data.title, c.data.notes, activeSplit(c)?.map((e) => e.amountCents)])).toEqual([['First', '', [$(100), $(200)]], ['Second', 'edited on B', undefined]]);
     }
-  }, 60000);
+  });
 });
 
 describe('P4A: model helpers', () => {

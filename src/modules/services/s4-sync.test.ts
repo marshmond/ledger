@@ -85,7 +85,7 @@ describe('S4 two devices (real SyncEngine)', () => {
       expect(h.map((q) => q.serviceId)).toEqual([r.serviceId]);
       expect(h[0].service?.data.title).toBe('Furnace inspection'); // the two records are independent: B's edit did not rewrite the Home & Assets entry
     }
-  }, 90000);
+  });
   it('2. both devices record the same visit offline: both records are kept, both links are kept, and the duplicate review fires on both', async () => {
     const { A, B, furnace, v } = await seeded();
     const ra = await saveHandoff({ visitId: v, assetId: furnace, data: svc(furnace, { title: 'From A' }), today: TODAY }, A.d);
@@ -97,7 +97,7 @@ describe('S4 two devices (real SyncEngine)', () => {
       expect(h).toHaveLength(2);
       expect(duplicateHandoffs(h)).toEqual([{ assetId: furnace, serviceIds: [ra.serviceId, rb.serviceId].sort((p, q) => p - q) }]);
     }
-  }, 90000);
+  });
   it('3. A moves the arrangement to the replacement while B edits it: both devices converge on a valid state and the history link stays', async () => {
     const { A, B, furnace, r, v } = await seeded();
     const newer = await createAsset(blankAsset({ name: 'New furnace', type: 'system' }), A.d);
@@ -114,7 +114,7 @@ describe('S4 two devices (real SyncEngine)', () => {
     expect(await visitAssetIds(v, A.d)).toEqual([furnace]);   // history is untouched on both
     expect(await visitAssetIds(v, B.d)).toEqual([furnace]);
     expect((await getArrangement(r.id, A.d))!.data.title).toBe((await getArrangement(r.id, B.d))!.data.title);
-  }, 90000);
+  });
   it('4. B changes a shared link before A\'s Undo: the Undo is refused on A and nothing is restored over B\'s change', async () => {
     const { A, B, furnace, r } = await seeded();
     const newer = await createAsset(blankAsset({ name: 'New furnace', type: 'system' }), A.d);
@@ -128,7 +128,7 @@ describe('S4 two devices (real SyncEngine)', () => {
     expect(isUndoRefused(await applyUndo(moved.undo, A.d).catch((e) => e))).toBe(true);
     expect(await serves(A.d, r.id)).toEqual([newer]);
     expect((await projectLinksOf({ kind: 'arrangement', id: r.id }, A.d)).map((l) => l.projectId)).toEqual([p]);
-  }, 90000);
+  });
   it('5. a Project link added on one device and removed or changed on the other: the devices end up identical, with nothing duplicated', async () => {
     const { A, B, r } = await seeded();
     const p1 = await createProject(blankProject({ name: 'Roof' }), A.d), p2 = await createProject(blankProject({ name: 'Gutters' }), A.d);
@@ -142,7 +142,7 @@ describe('S4 two devices (real SyncEngine)', () => {
     expect(ea).toEqual(eb);
     expect(await linksOf(A.d, 'involves')).toEqual(await linksOf(B.d, 'involves'));
     expect(new Set(await linksOf(A.d, 'involves')).size).toBe((await linksOf(A.d, 'involves')).length);
-  }, 90000);
+  });
   it('6. A edits the renewal dates while B pauses the arrangement: whole-record last-writer-wins gives ONE valid state on both devices (one of the two edits may be superseded)', async () => {
     for (const bLater of [true, false]) {
       const { A, B, r } = await seeded();
@@ -163,7 +163,7 @@ describe('S4 two devices (real SyncEngine)', () => {
       expect(['2027-01-01', '2028-01-01']).toContain(x.renewalDate);
       expect((await servicesDueItems(A.d, { from: '2026-01-01', to: '2029-12-31', today: TODAY, overdueDays: 0 })).length).toBe(2);
     }
-  }, 120000);
+  });
   it('7. A replaces the provider while B (not yet synced) reads the predecessor\'s dates: B still sees them; after sync the dates stay on the ended predecessor and the successor has none', async () => {
     const { A, B, r } = await seeded();
     const res = await applyLifecycle({ action: 'replace', arrangementId: r.id, expect: (await planLifecycle(r.id, 'replace', TODAY, A.d)).expect, today: TODAY, replace: { provider: { name: 'New Heat' } } }, A.d);
@@ -174,7 +174,7 @@ describe('S4 two devices (real SyncEngine)', () => {
       expect((await getArrangement(res.successorId!, x.d))!.data).toMatchObject({ renewalDate: null, noticeByDate: null, predecessorId: r.id });
       expect(await servicesDueItems(x.d, { from: '2026-01-01', to: '2029-12-31', today: TODAY, overdueDays: 0 })).toEqual([]);
     }
-  }, 90000);
+  });
   it('8. one device deletes an asset while the other keeps an arrangement link and logs a visit against it: the deletion holds, history is kept, and the dangling link reads as a missing asset', async () => {
     const { A, B, furnace, r } = await seeded();
     const spare = await createAsset(blankAsset({ name: 'Spare heater', type: 'appliance' }), A.d);
@@ -192,7 +192,7 @@ describe('S4 two devices (real SyncEngine)', () => {
       expect(views.find((q) => q.id === furnace)?.missing).toBe(false);
       expect(views.filter((q) => q.missing).every((q) => q.id === spare)).toBe(true);
     }
-  }, 90000);
+  });
   it('9. a Finance transaction referenced on both sides changes on the other device: both modules use the new live amount, each counts it once, and the two are not added', async () => {
     const { A, B, furnace, v } = await seeded();
     const t = await addTxn(A.d, -15000);
@@ -209,7 +209,7 @@ describe('S4 two devices (real SyncEngine)', () => {
       expect(servicesSpend(sr, lookup).totalCents).toBe(16000);
       expect(spend(ar, lookup).totalCents).toBe(16000);
     }
-  }, 90000);
+  });
 });
 
 describe('S4 backup and restore (real G1 export, checker and restore into a separate database)', () => {
@@ -252,5 +252,5 @@ describe('S4 backup and restore (real G1 export, checker and restore into a sepa
     expect((await loadServices(dst))).toHaveLength(1);
     await touchAll(dst); // a second look changes no relationship
     expect((await d.links.toArray()).filter((l) => l.deletedAt == null).length).toBe((await dst.links.toArray()).filter((l) => l.deletedAt == null).length);
-  }, 60000);
+  });
 });

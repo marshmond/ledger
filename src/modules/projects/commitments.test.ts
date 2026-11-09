@@ -490,5 +490,5 @@ describe('backup, restore and sync keep commitments', () => {
       const list = await loadCommitments(p, x.d);
       expect(list.map((c) => [c.data.title, c.data.amountCents, c.data.status])).toEqual([['First, revised', $(111), 'accepted'], ['Second', $(200), 'cancelled']]);
     }
-  }, 60000);
+  });
 });

@@ -167,5 +167,5 @@ describe('correction 4 across two devices (real SyncEngine)', () => {
     expect(b.items).toEqual(a.items);
     expect(datesOf(a, r1.id)).toEqual(['2026-11-20', '2026-12-04']); // the moved visit (8 Nov) is already behind 10 Nov
     expect(datesOf(a, r2.id)).toEqual(['2026-11-30']);
-  }, 90000);
+  });
 });

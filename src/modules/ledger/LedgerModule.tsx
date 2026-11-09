@@ -70,7 +70,8 @@ export const LEDGER_ROUTES: [string, ReactElement][] = [
   ['/guide', <GuidePage />],
   ['/taxpackage', <TaxPackagePage />],
 ];
-export const LEDGER_BASE = '/ledger';
+import { LEDGER_BASE } from '../bases';
+export { LEDGER_BASE };
 
 /** Ledger's whole experience: its own sidebar and tab bar (Shell) around its pages. */
 export default function LedgerModule() {

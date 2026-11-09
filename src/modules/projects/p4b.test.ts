@@ -280,7 +280,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
     await deleteProjectPermanently(p, A.d);
     await B.engine.sync(); await A.engine.sync(); await B.engine.sync();
     await everywhere([A, B], async (d) => { expect(await getProject(p, d)).toBeUndefined(); expect(await loadBudgetLines(p, d)).toEqual([]); void line; });
-  }, 60000);
+  });
 
   it('2. a NEWER edit made against the stale copy, even synced first, does not bring it back', async () => {
     const { A, B, p } = await seeded();
@@ -295,7 +295,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
       expect(await getProject(p, d)).toBeUndefined();
       expect((await raw(d, p)).deletedAt).toBeGreaterThan(0);
     });
-  }, 60000);
+  });
 
   it('3. repeated syncs from both devices keep it deleted', async () => {
     const { A, B, p } = await seeded();
@@ -306,7 +306,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
     await everywhere([A, B], async (d) => expect(await getProject(p, d)).toBeUndefined());
     await full(A, B, 2);
     await everywhere([A, B], async (d) => expect(await getProject(p, d)).toBeUndefined());
-  }, 90000);
+  });
 
   it('4. budget lines never come back or end up orphaned, including a line made or edited on the stale device', async () => {
     const { A, B, p, line } = await seeded();
@@ -321,7 +321,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
       expect((await raw(d, line)).deletedAt).toBeGreaterThan(0);
       expect((await raw(d, fresh2)).deletedAt).toBeGreaterThan(0);
     });
-  }, 90000);
+  });
 
   it('5. linked tasks, milestones and events stay intact and unlinked; a stale pointer is shown as "(project removed)"', async () => {
     const { A, B, p, task, ev } = await seeded();
@@ -340,7 +340,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
     // A task edited later on the stale device still carries the old pointer; nothing is lost and it reads as removed
     const t2 = await createProjectTask(await mk(B.d, 'Elsewhere'), { title: 'Other' }, B.d);
     expect(t2).toBeGreaterThan(0);
-  }, 90000);
+  });
 
   it('6. a new task made on a stale device for the deleted project does not resurrect it, and is kept', async () => {
     const { A, B, p } = await seeded();
@@ -351,7 +351,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
       expect(await getProject(p, d)).toBeUndefined();
       expect((await getTask(late, d))?.data.title).toBe('Added on B');
     });
-  }, 90000);
+  });
 
   it('7. Archive and Restore still work across devices', async () => {
     const { A, B, p } = await seeded();
@@ -362,7 +362,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
     await restoreProject(p, B.d);
     await full(A, B, 1);
     await everywhere([A, B], async (d) => expect((await getProject(p, d))!.data.archived).toBe(false));
-  }, 90000);
+  });
 
   it('8. unrelated records keep last-writer-wins, and so does an ordinary (undo-style) project removal', async () => {
     const { A, B, task, p } = await seeded();
@@ -380,7 +380,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
     await full(A, B, 2);
     await everywhere([A, B], async (d) => expect(await getProject(other, d)).toBeDefined()); // the later edit won, as before
     expect(p).toBeGreaterThan(0);
-  }, 90000);
+  });
 
   it('9. an intentional backup restore still wins over the deletion, as documented', async () => {
     const { A, B, p, line } = await seeded();
@@ -396,7 +396,7 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
       expect(await getProject(p, d)).toBeDefined();
       expect((await loadBudgetLines(p, d)).map((l) => l.id)).toEqual([line]);
     });
-  }, 90000);
+  });
 
   it('money keeps a project alive: a transaction or commitment made on the stale device means the project and its lines are NOT deleted, and nothing financial is lost', async () => {
     const { A, B, p, line } = await seeded();
@@ -413,5 +413,5 @@ describe('P4B: a permanent deletion holds across devices (real sync engine and m
     });
     // and the owner can now deal with it properly: the plan says what blocks the deletion
     expect((await planProjectDeletion(p, A.d)).canDelete).toBe(false);
-  }, 90000);
+  });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { getModule } from '../core/registry';
 import { MAIN_ID } from './Main';
+import { LOADING_ATTR } from './ModuleLoader';
 import { focusMain, focusWasLost, headingTitle, pageTitle } from './routeFocus';
 
 /**
@@ -38,7 +39,10 @@ export function RouteAnnouncer({ pathname }: { pathname: string }) {
     first.current = false;
     // A short wait lets the new page draw and read its data, so the heading exists. A page that is still loading its record gets one more try.
     let timer: ReturnType<typeof setTimeout>;
+    let waitedForScreens = 0;
     const settle = (attempt: number) => {
+      // A module's screens may still be on their way (they load on demand): wait for them, for up to ten seconds, before reading the heading.
+      if (document.querySelector(`[${LOADING_ATTR}]`) && waitedForScreens++ < 40) { timer = setTimeout(() => settle(attempt), 250); return; }
       const h1 = headingTitle(document.querySelector<HTMLElement>(`#${MAIN_ID} h1, main h1`));
       if (!h1 && attempt === 0) { timer = setTimeout(() => settle(1), 700); return; }
       const mod = getModule(pathname.split('/')[1])?.name;

@@ -5,9 +5,9 @@ import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
 import ProjectPage from './ProjectPage';
 import ProjectsPage from './ProjectsPage';
-import './projects.css';
 
-export const PROJECTS_BASE = '/projects';
+import { PROJECTS_BASE } from '../bases';
+export { PROJECTS_BASE };
 
 /** The Projects module: the list at /projects and one page per project at /projects/<id>, wrapped the way every module is. */
 export default function ProjectsModule() {

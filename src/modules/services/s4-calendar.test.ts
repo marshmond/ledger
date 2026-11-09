@@ -302,5 +302,5 @@ describe('S4 correction 1: two devices (real SyncEngine)', () => {
       expect(g).toHaveLength(26);
     }
     expect(await dates(B.d)).toEqual(await dates(A.d));
-  }, 90000);
+  });
 });

@@ -52,7 +52,7 @@ describe('skipping a pointless download', () => {
     expect(remote.gets).toBe(gets);
     expect(remote.heads).toBeGreaterThan(0);
     expect(await A.engine.lastSyncedAt()).toBeGreaterThan(0);
-  }, 60000);
+  });
 
   it('a run without allowSkip (the Sync now button) is always a full run', async () => {
     const { remote, A } = await twoDevices();
@@ -60,7 +60,7 @@ describe('skipping a pointless download', () => {
     const r = await A.engine.sync();
     expect(r.skipped).toBeUndefined();
     expect(remote.gets).toBe(gets + 1);
-  }, 60000);
+  });
 
   it('a change made on this device is sent', async () => {
     const { remote, A, acct } = await twoDevices();
@@ -70,7 +70,7 @@ describe('skipping a pointless download', () => {
     expect(r.skipped).toBeUndefined();
     expect(r.pushed).toBe(true);
     expect(remote.puts).toBe(puts + 1);
-  }, 60000);
+  });
 
   it('a deletion on this device is sent', async () => {
     const { remote, A } = await twoDevices();
@@ -80,7 +80,7 @@ describe('skipping a pointless download', () => {
     expect(r.skipped).toBeUndefined();
     expect(r.pushed).toBe(true);
     expect(remote.puts).toBeGreaterThan(1);
-  }, 60000);
+  });
 
   it('a change made on the other device is picked up', async () => {
     const { A, B, acct } = await twoDevices();
@@ -90,7 +90,7 @@ describe('skipping a pointless download', () => {
     expect(r.skipped).toBeUndefined();
     expect(r.pulled).toBe(1);
     expect((await A.d.txns.toArray()).map((t) => t.payee).sort()).toEqual(['Bus', 'Coffee']);
-  }, 60000);
+  });
 
   it('a device-only setting changing does not cause a skip to be wrong or a send', async () => {
     const { remote, A } = await twoDevices();
@@ -99,7 +99,7 @@ describe('skipping a pointless download', () => {
     const r = await A.engine.sync({ allowSkip: true });
     expect(r.skipped).toBe(true);
     expect(remote.puts).toBe(puts);
-  }, 60000);
+  });
 
   it('a remote without a cheap check always runs fully', async () => {
     const remote = remoteWithHead() as RemoteStore & { gets: number };
@@ -111,7 +111,7 @@ describe('skipping a pointless download', () => {
     const r = await A.engine.sync({ allowSkip: true });
     expect(r.skipped).toBeUndefined();
     expect(remote.gets).toBe(gets + 1);
-  }, 60000);
+  });
 });
 
 describe('size and activity figures', () => {
@@ -126,5 +126,5 @@ describe('size and activity figures', () => {
     expect(s.uploads30d).toBe(s.uploadsToday);
     expect(s.lastUploadAt).toBeGreaterThan(0);
     expect((await A.engine.stats(Date.now() + 40 * 86400000)).uploads30d).toBe(0);
-  }, 60000);
+  });
 });

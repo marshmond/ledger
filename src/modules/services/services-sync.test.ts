@@ -69,7 +69,7 @@ describe('Household Services across two devices (real sync engine)', () => {
       expect(await linkedAssetIds(r.id, d)).toEqual([house]);
       expect(await d.contacts.count()).toBe(1);
     });
-  }, 90000);
+  });
   it('b. cancelling the arrangement on A while B edits its notes converges: the later write wins whole-record, the task and links are untouched', async () => {
     const { A, B, r } = await seeded();
     await lc(A.d, r.id, 'end', 'stop');
@@ -80,7 +80,7 @@ describe('Household Services across two devices (real sync engine)', () => {
     const seen = await Promise.all([A, B].map(async (x) => JSON.stringify((await getArrangement(r.id, x.d))!.data)));
     expect(seen[0]).toBe(seen[1]); // converged
     await everywhere([A, B], async (d) => { expect(await loadArrangements(d)).toHaveLength(1); expect(await open(d, r.id)).toHaveLength(1); });
-  }, 90000);
+  });
   it('c. both devices Resume offline: after sync BOTH visit tasks are kept and flagged as duplicates; nothing is deleted automatically', async () => {
     const { A, B, r } = await seeded();
     await lc(A.d, r.id, 'pause', 'remove');
@@ -99,7 +99,7 @@ describe('Household Services across two devices (real sync engine)', () => {
     });
     // the extra task is only removed by an explicit choice, never by sync
     expect((await loadTasks(A.d)).filter((t) => t.data.status !== 'done')).toHaveLength(2);
-  }, 90000);
+  });
   it('d. the task is edited on A while B pauses: both survive (separate records)', async () => {
     const { A, B, r } = await seeded();
     const t = (await open(A.d, r.id))[0];
@@ -111,7 +111,7 @@ describe('Household Services across two devices (real sync engine)', () => {
       expect((await getArrangement(r.id, d))!.data.status).toBe('paused');
       expect((await open(d, r.id))[0].data.notes).toBe('bring ladder');
     });
-  }, 90000);
+  });
   it('e. backup and restore bring arrangements, links, task and markers back on a fresh device', async () => {
     const { A, r, house } = await seeded();
     const text = JSON.stringify(await exportAll(A.d));
@@ -126,5 +126,5 @@ describe('Household Services across two devices (real sync engine)', () => {
     // an intentional restore then sync-stamp does not duplicate anything
     await touchAll(C);
     expect(await loadArrangements(C)).toHaveLength(1);
-  }, 90000);
+  });
 });

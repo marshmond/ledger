@@ -79,7 +79,7 @@ describe('visits across two devices (real sync engine)', () => {
       expect(o.map((t) => t.data.dueDate)).toEqual(['2026-11-20']);
       expect(scheduleHealth((await getArrangement(r.id, d))!, await tasksOfArrangement(r.id, d)).state).toBe('ok');
     });
-  }, 90000);
+  });
   it('b. BOTH devices log the same Task offline: both visits survive, are flagged, and nothing is merged or deleted', async () => {
     const { A, B, r } = await seeded();
     const a = await log(A.d, r.id, r.taskId!);
@@ -101,7 +101,7 @@ describe('visits across two devices (real sync engine)', () => {
     // a second press on the device that already logged it is still refused
     await expect(log(A.d, r.id, r.taskId!)).rejects.toThrow(/already logged/);
     expect(await loadVisits(A.d)).toHaveLength(2);
-  }, 90000);
+  });
   it('c. A cancels a visit while B completes the same occurrence: both records survive and are flagged, neither is chosen automatically', async () => {
     const { A, B, r } = await seeded();
     await log(A.d, r.id, r.taskId!, { status: 'cancelled', cancelledBy: 'provider', chargedCents: 4000, chargeKind: 'cancellationFee' });
@@ -115,7 +115,7 @@ describe('visits across two devices (real sync engine)', () => {
       // the cancelled one is never service, whatever the other says
       expect(visitStats(visits.filter((v) => v.data.status === 'cancelled')).lastServiced).toBeNull();
     });
-  }, 90000);
+  });
   it('d. B reschedules the Task while A logs it: the visit survives; the later write reopens the Task and Done is refused as already logged', async () => {
     const { A, B, r } = await seeded();
     await log(A.d, r.id, r.taskId!);
@@ -131,7 +131,7 @@ describe('visits across two devices (real sync engine)', () => {
       expect((await planLogVisit(r.id, r.taskId!, input(), TODAY, d)).problem).toMatch(/already logged/);
       expect((await open(d, r.id)).length).toBeGreaterThanOrEqual(2); // the reopened Task and the next one A made
     });
-  }, 90000);
+  });
   it('e. the provider is replaced on A while an older B logs a historical visit: the visit keeps the ORIGINAL provider and arrangement', async () => {
     const { A, B, r } = await seeded();
     const plan = await planLifecycle(r.id, 'replace', TODAY, A.d);
@@ -145,7 +145,7 @@ describe('visits across two devices (real sync engine)', () => {
       expect((await getArrangement(r.id, d))!.data.status).toBe('ended');
       expect((await getArrangement(res.successorId!, d))!.data.providerNameSnapshot).toBe('Bright Maids');
     });
-  }, 90000);
+  });
   it('f. the Task is deleted on A while B logs it: the visit survives on both devices', async () => {
     const { A, B, r } = await seeded();
     await removeTasks([r.taskId!], A.d);
@@ -153,7 +153,7 @@ describe('visits across two devices (real sync engine)', () => {
     await log(B.d, r.id, r.taskId!);
     await settle(A, B);
     await everywhere([A, B], async (d) => { expect(await loadVisits(d)).toHaveLength(1); });
-  }, 90000);
+  });
   it('g. a Task finished on A (outside Services) shows on B as finished, not yet logged; logging it on B converges', async () => {
     const { A, B, r } = await seeded();
     const { completeTask } = await import('../tasks/data');
@@ -169,7 +169,7 @@ describe('visits across two devices (real sync engine)', () => {
       expect(unloggedVisits([(await getArrangement(r.id, d))!], new Map([[r.id, await tasksOfArrangement(r.id, d)]]), await loadVisits(d))).toHaveLength(0);
       expect(scheduleHealth((await getArrangement(r.id, d))!, await tasksOfArrangement(r.id, d)).state).toBe('ok');
     });
-  }, 90000);
+  });
   it('h. both devices Resume offline (S1 behaviour still holds with visits present): two open Tasks are kept and flagged', async () => {
     const { A, B, r } = await seeded();
     await log(A.d, r.id, r.taskId!);
@@ -188,7 +188,7 @@ describe('visits across two devices (real sync engine)', () => {
       expect(await loadVisits(d)).toHaveLength(1);
     });
     expect((await loadTasks(A.d)).filter((t) => t.data.status !== 'done')).toHaveLength(2);
-  }, 90000);
+  });
   it('i. backup and restore bring visits back with statuses, snapshots, links, charge, markers and unknown fields', async () => {
     const { A, r, house } = await seeded();
     const done = await log(A.d, r.id, r.taskId!, { notes: 'Bring supplies', chargedCents: 12000, chargeKind: 'service' });
@@ -207,5 +207,5 @@ describe('visits across two devices (real sync engine)', () => {
     expect(scheduleHealth((await getArrangement(r.id, C))!, await tasksOfArrangement(r.id, C)).state).toBe('ok');
     await touchAll(C);
     expect(await loadVisits(C)).toHaveLength(2);
-  }, 90000);
+  });
 });

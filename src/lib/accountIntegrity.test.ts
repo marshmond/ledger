@@ -259,7 +259,7 @@ describe('DI-01 two devices (real SyncEngine): a deletion on one, a Scheduled op
     }
     // what the guard CANNOT undo: the one transaction B posted before it knew; it is visible and kept, not silently removed
     expect(await A.d.txns.get(first)).toMatchObject({ payee: 'Added on B', accountId: checking });
-  }, 60000);
+  });
 
   it('B schedules a rule on an account that A then tries to delete after syncing: A is blocked', async () => {
     const remote = memoryRemote();
@@ -273,5 +273,5 @@ describe('DI-01 two devices (real SyncEngine): a deletion on one, a Scheduled op
     await A.engine.sync();
     expect((await deleteAccountWithTransactions(A.d, checking)).ok).toBe(false);
     expect(await A.d.accounts.get(checking)).toBeDefined();
-  }, 60000);
+  });
 });

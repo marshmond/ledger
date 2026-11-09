@@ -109,6 +109,32 @@ Registered by Bills, Household Services, Home & Assets, Projects (the tag sits o
 
 `searchSource` note (ST-S2, NV-01): Household finances contributes a **page-only** search source (no records, no figures), the same pattern as Today.
 
+## Loading a module's screens on demand (ST-S4, PF-01)
+
+A module is two things, and only one of them waits until the module is opened.
+
+| Part | When it loads | Where it lives |
+|---|---|---|
+| **Registration**: `ModuleDef` and everything in `contributes` (Today cards, search source, Add-box destinations, Calendar due provider, record source, `createFromEvent`, `txnReferences`), the address list `routePaths`, the icon and name | with the first download, always | `src/modules/<id>/index.tsx` and the files it imports |
+| **Screens**: the module's `<X>Module.tsx` and every page under it | the first time the module (or an address inside it) is opened | a separate file per module, fetched by `import()` |
+
+Why: Today, search, the Add box, the Calendar and Finance's delete check all need a module's contributions before anyone opens it, so those can never wait. Only the screens can. The registry contract is unchanged: `ModuleDef.Component` is still an ordinary `ComponentType`.
+
+**To add a module:**
+1. Put the address prefix in `src/modules/bases.ts` (or keep it in a small file the registration may import), never in the `<X>Module.tsx` file.
+2. In `index.tsx`: `Component: lazyModule(() => import('./XModule'))` (`src/core/lazyModule.ts`). Never `import XModule from './XModule'` there, or anywhere the first download reaches; `src/modules/lazyBoundary.test.ts` walks the static imports from `main.tsx` and fails if a lazy module's screens (or Settings) come back in.
+3. `routePaths` must not be derived from the page components (Ledger keeps its list in `ledger/routePaths.ts`, and a test pins that it equals the routes its screens serve).
+4. Put the module's stylesheet in `src/modules/moduleStyles.ts` (the order there is the cascade order). Styles are NOT split: the whole sheet is 19 KB compressed and Today's cards use classes from several modules.
+5. Nothing in a module's screens may register anything at import time (today only `registerModules()` in `App.tsx` registers); the screens file can be loaded late or not at all.
+
+**While a module's screens load.** `App.tsx` wraps each module in `ModuleLoadBoundary` (`src/shell/ModuleLoader.tsx`). The page area is an empty `main` landmark with a marker (`data-module-loading`); "Loading <name>…" is said only if the wait passes 150 ms. The route announcer waits for the marker to go (up to ten seconds) before reading the heading, so the page title and the spoken page name are the real ones. If the file cannot be fetched (offline and not saved, or an update removed it) the module shows "<name> did not load" with **Try again** and **Reload Ledger**; the top bar, search and Add box keep working, and nothing stored changes. A real bug in a screen is not caught: it fails exactly as it did before.
+
+**Why not `React.lazy`/`Suspense`.** React keeps a revealed loading state for about 0.3 s, which made opening a saved module take 0.3 s instead of a few milliseconds. `lazyModule` has its own small state instead, asks for the file once however it is started, shows the screens in the first pass once the file is here, and forgets a failure so Try again really asks again.
+
+**Start-up preload.** `main.tsx` starts downloading the module named in the address (or the landing module from Settings > General) while the database opens, and the first draw waits for it for at most 400 ms (`preloadForAddress` in `App.tsx`).
+
+**Offline.** The service worker (`public/sw.js`) saves every built script and style at install, so a module opens offline even if it was never opened before going offline. The build writes the file list and a build fingerprint into `dist/sw.js` (`serviceWorkerBuild` in `vite.config.ts`, `src/swBuild.ts`); nothing is typed by hand. Each build has its own cache (`ledger-<build>`); the build before it is kept for tabs that are still open, and older ones are removed. Only caches this app made are touched. See `docs/LEDGER-STABILIZATION-ST-S4-REPORT-2026-11-08.md`.
+
 ## The shell around them (also Part A)
 
 - **Search and the Add button belong to the whole app.** `src/shell/GlobalFrame.tsx` owns the search dialog and its shortcuts

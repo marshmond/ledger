@@ -387,7 +387,7 @@ describe('Findings 3 and 4 across two devices (real sync engine) and backup', ()
       expect((await loadVisits(x.d))[0].data.notes).toBe('edited on B');
       expect((await openTasks(x.d, r.id)).length).toBe(1);
     }
-  }, 90000);
+  });
   it('A logs a visit, B changes the next Task, they sync: A\'s Undo is refused and the Task keeps B\'s change', async () => {
     const { A, B, r } = await seeded();
     const res = await log(A.d, r.id, r.taskId!);
@@ -400,7 +400,7 @@ describe('Findings 3 and 4 across two devices (real sync engine) and backup', ()
     await expect(applyUndo(res.undo, A.d)).rejects.toThrow(UNDO_REFUSED);
     expect(await snapshot(A.d)).toBe(snap);
     expect((await openTasks(A.d, r.id))[0].data.notes).toBe('changed on B');
-  }, 90000);
+  });
   it('an unsupported status survives sync and backup restore byte for byte', async () => {
     const { A, B } = devices();
     await A.d.moduleRecords.add({ id: 77, module: 'services', kind: 'visit', createdAt: 1, updatedAt: 5, deletedAt: null, data: { title: 'Odd', date: '2026-11-01', status: 'rescheduled-by-a-future-version', cancelledBy: 'provider', futureField: { a: [1, 2] } } } as never);
@@ -412,7 +412,7 @@ describe('Findings 3 and 4 across two devices (real sync engine) and backup', ()
     await importAll(C, checkBackupText(JSON.stringify(await exportAll(A.d))).file);
     expect(await raw(C)).toBe(await raw(A.d));
     expect((await loadVisits(C))[0].data.status).toBe('unsupported');
-  }, 90000);
+  });
   it('a hand-linked Task and an operation id round-trip through backup', async () => {
     const d = fresh();
     const r = await add(d, { cadence: null });
@@ -424,5 +424,5 @@ describe('Findings 3 and 4 across two devices (real sync engine) and backup', ()
     expect(((await loadVisits(C)).find((v) => v.data.title === 'Tap')!.data as unknown as Record<string, unknown>).operationId).toBe('op-backup');
     const again = await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Tap' }), today: TODAY, operationId: 'op-backup' }, C);
     expect(again.repeated).toBe(true);
-  }, 90000);
+  });
 });

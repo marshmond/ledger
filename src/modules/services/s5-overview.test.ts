@@ -292,7 +292,7 @@ describe('S5 backup and restore keep what the household total needs', () => {
     expect(back.spend.claims.map((c) => `${c.recordId}|${c.status}|${c.cents}`)).toEqual(orig.spend.claims.map((c) => `${c.recordId}|${c.status}|${c.cents}`));
     expect(back.attention.map((x) => x.id)).toEqual(orig.attention.map((x) => x.id));
     expect((await loadServices(dst)).length).toBe(2);
-  }, 60000);
+  });
 });
 
 const remoteStore = () => {
@@ -337,7 +337,7 @@ describe('S5 two devices (real SyncEngine): the household total agrees and count
       expect(ov.spend.claims.filter((c) => c.status === 'included')).toHaveLength(1);
       expect(ov.attention.filter((e) => e.kind === 'duplicate-handoff')).toHaveLength(1);
     }
-  }, 90000);
+  });
 
   it('one device links the payment in Services while the other links the SAME Finance transaction in Home & Assets: after syncing, each module counts it once and the household counts it once', async () => {
     const { A, B } = devices();
@@ -358,7 +358,7 @@ describe('S5 two devices (real SyncEngine): the household total agrees and count
       expect(ov.spend.totalCents).toBe(12000);
       expect([ov.spend.servicesCents, ov.spend.homeCents, ov.spend.linkedInBothCents]).toEqual([12000, 12000, 12000]);
     }
-  }, 90000);
+  });
 });
 
 describe('S5-D cross-module journey: Services, Tasks, Calendar, Contacts, Home & Assets and Projects together', () => {
@@ -399,5 +399,5 @@ describe('S5-D cross-module journey: Services, Tasks, Calendar, Contacts, Home &
     expect(old[0].data.repeat ?? null).toBeNull();
     // the project's own record is unchanged by any of it
     expect((await d.moduleRecords.get(proj))!.data).toMatchObject({ name: 'Basement remodel' });
-  }, 60000);
+  });
 });

@@ -65,7 +65,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
       expect((await getService(s1, d))!.data.notes).toBe('edited on B');
       expect(await getService(s2, d)).toBeUndefined();
     });
-  }, 60000);
+  });
 
   it('b. a service record made on a stale device keeps the asset alive that another device deleted permanently', async () => {
     const { A, B, x } = await seeded();
@@ -79,7 +79,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
     });
     // and the owner now sees the asset is blocked from deletion
     expect((await planAssetDeletion(x, A.d)).canDelete).toBe(false);
-  }, 60000);
+  });
 
   it('c. same, when the service record was made BEFORE the deletion but synced after', async () => {
     const { A, B, x } = await seeded();
@@ -88,7 +88,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
     await deleteAssetPermanently(x, A.d);
     await B.engine.sync(); await A.engine.sync(); await B.engine.sync(); await A.engine.sync();
     await everywhere([A, B], async (d) => { expect(await getAsset(x, d)).toBeDefined(); expect(await getService(sid, d)).toBeDefined(); });
-  }, 60000);
+  });
 
   it('d. with no history anywhere, the permanent deletion still holds (H1 rule unchanged)', async () => {
     const { A, B, x, other } = await seeded();
@@ -97,7 +97,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
     await sleep(15);
     await B.engine.sync(); await A.engine.sync(); await B.engine.sync();
     await everywhere([A, B], async (d) => { expect(await getAsset(x, d)).toBeUndefined(); expect(await getAsset(other, d)).toBeDefined(); });
-  }, 60000);
+  });
 
   it('e. a task deleted or renamed on another device leaves the saved record and its snapshot readable', async () => {
     const { A, B, x } = await seeded();
@@ -110,7 +110,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
     await everywhere([A, B], async (d) => {
       expect((await getService(serviceId, d))!.data).toMatchObject({ taskTitleSnapshot: 'Service furnace', title: 'Serviced', taskId: t });
     });
-  }, 60000);
+  });
 
   it('f. two devices saving the same completed task offline: both records survive (nothing silently lost) and the task is no longer "unsaved"', async () => {
     const { A, B, x } = await seeded();
@@ -133,7 +133,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
       expect((await planAssetDeletion(x, d)).canDelete).toBe(false); // protection stays while either record is live
       expect((await getTask(t, d))!.data.status).toBe('done');
     });
-  }, 60000);
+  });
 
   it('f2. deleting the erroneous duplicate on one device clears the warning everywhere; the other record and the task are untouched', async () => {
     const { A, B, x } = await seeded();
@@ -152,7 +152,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
       expect(duplicateTaskGroups(all)).toHaveLength(0);
       expect((await getTask(t, d))!.data.status).toBe('done');
     });
-  }, 60000);
+  });
 
   it('f3. two separate jobs with the same title and date but no shared task are NOT flagged', async () => {
     const { A, B, x } = await seeded();
@@ -160,7 +160,7 @@ describe('H2: service history across two devices (real sync engine and merge)', 
     await createService(svc(x, 'Same title'), B.d, TODAY);
     await settle(A, B);
     await everywhere([A, B], async (d) => { expect(await loadServices(d)).toHaveLength(2); expect(duplicateTaskGroups(await loadServices(d))).toHaveLength(0); });
-  }, 60000);
+  });
 
   it('g. a failed deletion attempt on a device with history changes nothing, there or after sync', async () => {
     const { A, B, x } = await seeded();
@@ -169,5 +169,5 @@ describe('H2: service history across two devices (real sync engine and merge)', 
     await expect(deleteAssetPermanently(x, B.d)).rejects.toThrow(/cannot be deleted/);
     await settle(A, B);
     await everywhere([A, B], async (d) => { expect(await getAsset(x, d)).toBeDefined(); expect(await getService(sid, d)).toBeDefined(); });
-  }, 60000);
+  });
 });

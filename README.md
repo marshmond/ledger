@@ -135,7 +135,7 @@ The app is a static site, so GitHub Pages can host it for free, and your phone c
   encrypted backup on one and restore it on the other (Backup tab). A restore replaces everything on that device.
 - **Back up regularly.** Clearing browser data or uninstalling the browser deletes the data. The Accounts tab reminds you when your
   last backup is more than 30 days old. Keep your backup passphrase somewhere safe; it cannot be recovered.
-- **Offline use** works after the first load.
+- **Offline use** works after the first load. Ledger opens faster because each module's screens load the first time you open it, but it saves every screen on the device when it installs or updates, so every module still opens with no connection. If a part ever cannot load (for example a tab left open through two updates), it says so and offers **Try again** and **Reload Ledger**; nothing you saved is affected.
 - **Anyone can open the published address**, but they would see an empty app: the data is only in your own browser. Lock your phone.
 
 ## Every January: update the tax tables

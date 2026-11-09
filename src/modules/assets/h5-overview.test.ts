@@ -423,5 +423,5 @@ describe('H5 overview performance (invented dataset)', () => {
     expect(o.spending.household.totalCents).toBe(o.spending.household.financeCents + o.spending.household.manualCents);
     expect(ms).toBeLessThan(5000); // generous: this is a regression tripwire, not a benchmark
     console.log(`H5 overview, 301 assets / 400 tasks / 300 services / 100 warranties: ${Math.round(ms)} ms`);
-  }, 120000);
+  });
 });

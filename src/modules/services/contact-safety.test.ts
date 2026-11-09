@@ -164,7 +164,7 @@ describe('S2.1 follow-up: references arriving through two-device sync', () => {
       expect((await x.d.moduleRecords.toArray()).filter((r) => r.module === 'services' && r.deletedAt == null)).toHaveLength(0); // the arrangement itself was undone
       expect((await x.d.moduleRecords.toArray()).filter((r) => (r.module === 'assets' || r.module === 'projects') && r.deletedAt == null)).toHaveLength(2);
     }
-  }, 90000);
+  });
   it('B edits the new contact; after sync A\'s Quick Add Undo is refused and nothing changes on A', async () => {
     const { A, B } = devices();
     await A.d.contacts.add({ name: 'Seed', deletedAt: null } as never);
@@ -178,7 +178,7 @@ describe('S2.1 follow-up: references arriving through two-device sync', () => {
     const snap = await snapshot(A.d);
     await expect(applyUndo(q.undo, A.d, { dropCreatedContact: true })).rejects.toThrow(UNDO_REFUSED);
     expect(await snapshot(A.d)).toBe(snap);
-  }, 90000);
+  });
   it('with nothing attached anywhere, the Undo removes the contact and the removal syncs', async () => {
     const { A, B } = devices();
     await A.d.contacts.add({ name: 'Seed', deletedAt: null } as never);
@@ -190,5 +190,5 @@ describe('S2.1 follow-up: references arriving through two-device sync', () => {
     await sleep(15);
     await settle(A, B);
     for (const x of [A, B]) expect(await live(x.d)).not.toContain(q.contactId);
-  }, 90000);
+  });
 });

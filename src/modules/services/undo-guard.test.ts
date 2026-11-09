@@ -341,7 +341,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await settle(A, B);
     await bothRefuse(A, B, ran.undo);
     for (const x of [A, B]) { const a = (await getArrangement(r.id, x.d))!; expect(a.data.notes).toBe('B was here'); expect(a.data.status).toBe('paused'); }
-  }, 90000);
+  });
   it('2. A resumes, B changes the task: refused', async () => {
     const { A, B, r } = await seeded();
     await lifecycle(A.d, r.id, 'pause', { taskChoice: 'keep' });
@@ -353,7 +353,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await settle(A, B);
     await bothRefuse(A, B, ran.undo);
     expect((await getTask(r.taskId!, A.d))!.data.notes).toBe('B moved the plan');
-  }, 90000);
+  });
   it('3. A ends the arrangement, B modifies a linked task: refused', async () => {
     const { A, B, r } = await seeded();
     const ran = await lifecycle(A.d, r.id, 'end', { taskChoice: 'keep', endReason: 'cancelled' });
@@ -363,7 +363,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await settle(A, B);
     await bothRefuse(A, B, ran.undo);
     expect((await getArrangement(r.id, A.d))!.data.status).toBe('ended');
-  }, 90000);
+  });
   it('4. A replaces the provider, B edits the successor: refused, both records preserved', async () => {
     const { A, B, r } = await seeded();
     const x = await lifecycle(A.d, r.id, 'replace', { replace: { provider: { name: 'Fresh Cuts Ltd' } } });
@@ -376,7 +376,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
       expect((await getArrangement(x.successorId!, d))!.data.notes).toBe('B refined the successor');
       expect((await getArrangement(r.id, d))!.data.status).toBe('ended');
     }
-  }, 90000);
+  });
   it('5. A changes the cadence, B reschedules the current task: refused', async () => {
     const { A, B, r } = await seeded();
     const plan = await planScheduleChange(r.id, monthly, null, TODAY, A.d);
@@ -387,7 +387,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await settle(A, B);
     await bothRefuse(A, B, ran.undo);
     expect((await getTask(r.taskId!, A.d))!.data.dueDate).toBe('2026-12-31');
-  }, 90000);
+  });
   it('6. A repairs the schedule, B modifies the repaired task: refused', async () => {
     const { A, B, r } = await seeded();
     await editTask(A.d, r.taskId!, { dueDate: '2026-11-10' });
@@ -397,7 +397,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await editTask(B.d, r.taskId!, { notes: 'B touched the repaired task' });
     await settle(A, B);
     await bothRefuse(A, B, ran.undo);
-  }, 90000);
+  });
   it('7. B adds a shared link to a record A\'s action touched: refused, the link stays', async () => {
     const { A, B, r } = await seeded();
     const ran = await lifecycle(A.d, r.id, 'pause', { taskChoice: 'remove' });
@@ -407,7 +407,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await settle(A, B);
     await bothRefuse(A, B, ran.undo);
     for (const x of [A, B]) expect((await createStore(x.d).shared.links.linkedTo({ module: 'tasks', id: r.taskId! })).some((l) => l.toId === 'project:7')).toBe(true);
-  }, 90000);
+  });
   it('9. an unrelated change on B does not block A\'s Undo, and the Undo then reaches B', async () => {
     const { A, B, r } = await seeded();
     const ran = await lifecycle(A.d, r.id, 'pause', { taskChoice: 'remove' });
@@ -420,7 +420,7 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await sleep(15);
     await settle(A, B);
     for (const x of [A, B]) { expect((await getArrangement(r.id, x.d))!.data.status).toBe('active'); expect((await getTask(r.taskId!, x.d))!.data.status).toBe('todo'); }
-  }, 90000);
+  });
   it('10. with no change in between, A\'s Undo succeeds after both devices have synced', async () => {
     const { A, B, r } = await seeded();
     const x = await lifecycle(A.d, r.id, 'replace', { replace: { provider: { name: 'Fresh Cuts Ltd' } } });
@@ -429,5 +429,5 @@ describe('S2.1: two real devices (SyncEngine): a lifecycle Undo is refused after
     await sleep(15);
     await settle(A, B);
     for (const d of [A.d, B.d]) { expect(await getArrangement(x.successorId!, d)).toBeUndefined(); expect((await getArrangement(r.id, d))!.data.status).toBe('active'); }
-  }, 90000);
+  });
 });
