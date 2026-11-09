@@ -47,7 +47,7 @@ export interface CalItem {
   project?: { id: number; label: string };
 }
 
-function readVisibility(): Visibility {
+export function readVisibility(): Visibility {
   try { return parseVisibility(localStorage.getItem(VISIBILITY_KEY)); } catch { return ALL_ON; }
 }
 

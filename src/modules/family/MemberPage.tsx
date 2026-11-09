@@ -5,6 +5,9 @@ import { store } from '../../core/store';
 import ConfirmDialog from '../../shell/ConfirmDialog';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
+import { useToday } from '../../ui/useToday';
+import { ImportantContactsSection } from './ImportantContacts';
+import { MemberDatesSection, ProjectsSection, ScheduleSection, TodoSection } from './MemberSections';
 import MemberForm, { contactDetail } from './MemberForm';
 import { getMember, loadMembers, setBirthdayOnCalendar, setMemberStatus } from './data';
 import { colorName, duplicateGroups, memberRoute, monthDayText, ROLE_LABEL, STATUS_LABEL } from './model';
@@ -31,6 +34,7 @@ export default function MemberPage({ id }: { id: number }) {
     const mem = await getMember(id);
     return mem?.data ? readContactReferences(mem.data.contactId, undefined, id) : null;
   }, [id]);
+  const today = useToday();
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState<'past' | 'active' | null>(null);
   const toast = useToast();
@@ -65,6 +69,10 @@ export default function MemberPage({ id }: { id: number }) {
   const dupGroup = duplicateGroups(all).find((g) => g.some((x) => x.id === rec.id));
   const lines = refs ? referenceLines(refs) : [];
   const bday = monthDayText(d.birthMonthDay);
+  const nameByContact = new Map(contacts.filter((c) => c.id !== undefined).map((c) => [c.id as number, c.name]));
+  const nameOfContact = (cid: number) => nameByContact.get(cid) ?? 'A contact that no longer exists';
+  /** The OTHER active household members' Contacts: only these are named as "Also for" on a row. */
+  const otherContacts = new Set(all.filter((x) => x.id !== rec.id && x.data?.status === 'active' && x.data.contactId !== d.contactId).map((x) => x.data!.contactId));
 
   return (
     <div className="fm">
@@ -119,6 +127,12 @@ export default function MemberPage({ id }: { id: number }) {
           <div><dt>Display colour</dt><dd>{d.color ? <><span className="fm-dot" style={{ background: d.color }} aria-hidden="true" /> {colorName(d.color)}</> : <span className="muted">None</span>}</dd></div>
         </dl>
       </section>
+
+      <ScheduleSection contactId={d.contactId} today={today} nameOfContact={nameOfContact} />
+      <TodoSection contactId={d.contactId} today={today} nameOfContact={nameOfContact} otherContacts={otherContacts} />
+      <ProjectsSection contactId={d.contactId} />
+      <ImportantContactsSection memberId={rec.id} ownContactId={d.contactId} memberName={name} />
+      <MemberDatesSection memberId={rec.id} />
 
       <section className="card" aria-labelledby="fm-contact">
         <div className="card-head"><h2 className="card-title" id="fm-contact">Linked contact</h2></div>

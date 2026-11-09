@@ -45,3 +45,19 @@
 @media (max-width: 480px) {
   .fm-mini { min-height: 44px; }
 }
+
+/* Family member sections (F3): schedule, to do, projects, important contacts. Colour is never the only cue: every row also names its calendar or status in text. */
+.fm-items { margin: 0; padding: 0; display: flex; flex-direction: column; }
+.fm-item { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); min-height: 44px; min-width: 0; overflow-wrap: anywhere; }
+.fm-items > .fm-item:last-child { border-bottom: none; }
+.fm-bar { flex: 0 0 auto; align-self: stretch; width: 4px; border-radius: 2px; min-height: 36px; }
+.fm-item-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; gap: 2px; }
+.fm-item-title { font-weight: 600; overflow-wrap: anywhere; }
+.fm-late { color: var(--neg-text); }
+.fm-ic-row { justify-content: space-between; flex-wrap: wrap; }
+.fm-ic-row .fm-date-actions { flex: 0 0 auto; }
+.fm .card-head { flex-wrap: wrap; gap: var(--sp-2); }
+@media (max-width: 480px) {
+  .fm-item-title { display: inline-flex; align-items: center; min-height: 44px; }
+  .fm-ic-row .fm-date-actions { width: 100%; }
+}

@@ -51,7 +51,7 @@ describe('boundaries', () => {
   });
   it('the Family files write only through moduleRecords and the one distinct-contact helper; Tasks, Calendar and Projects are never written', () => {
     const writers = family.filter(({ text }) => /\.(add|put|bulkAdd|bulkPut|update|delete|clear)\(/.test(text)).map((x) => x.f);
-    expect(writers.sort()).toEqual(['src/modules/family/data.ts', 'src/modules/family/dateData.ts']); // both write moduleRecords only
+    expect(writers.sort()).toEqual(['src/modules/family/data.ts', 'src/modules/family/dateData.ts', 'src/modules/family/importantContactData.ts']); // all write moduleRecords only (data.ts and importantContactData.ts may also add the one distinct Contact the person asked for)
     const data = family.find((x) => x.f.endsWith('/data.ts'))!.text;
     expect(data).not.toMatch(/tasks\/data|calendar\/data|projects\/data|findOrCreateContact|updateContactDetails/);
   });
