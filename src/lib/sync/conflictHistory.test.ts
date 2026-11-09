@@ -162,7 +162,7 @@ describe('SY-01 failures never lose or double-count a version', () => {
   it('the list cannot be saved: the sync STOPS before anything is overwritten, and a retry with storage working records everything', async () => {
     const remote = memoryRemote();
     let failSave = true;
-    const wrap = (m: MetaStore): MetaStore => ({ get: m.get.bind(m), set: async (k, v) => { if (failSave && k === 'conflicts') throw new Error('storage full'); return m.set(k, v); } });
+    const wrap = (m: MetaStore): MetaStore => ({ get: m.get.bind(m), set: async (k, v) => { if (failSave && k === 'conflicts') throw new Error('storage full'); return m.set(k, v); }, update: async (k, f) => { if (failSave && k === 'conflicts') throw new Error('storage full'); return m.update(k, f); } });
     const A = device(remote);
     const B = device(remote, { wrap });
     const ids = (await A.d.contacts.bulkAdd(Array.from({ length: 12 }, (_, i) => ({ name: `P${i}` })) as never, { allKeys: true })) as number[];

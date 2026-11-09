@@ -9,8 +9,10 @@
  *    seen again on a retry), newest first.
  *  - `removeConflict` and `clearConflicts` read the CURRENT list and remove only what they were asked to, so a screen that was drawn
  *    before a sync finished can never write an old copy of the list back over newer entries.
- *  - All changes are queued one after another, so two changes in this tab cannot interleave. (Two browser tabs on one device could
- *    still race; that is not new, and a lost removal only brings back an entry, never loses one.)
+ *  - Every change reads the CURRENT list and saves the result in ONE IndexedDB read-write transaction (`MetaStore.update`). The browser lets only one
+ *    such transaction use the store at a time, across every tab and window of this browser, so two tabs that save at the same moment
+ *    cannot overwrite each other's list (ST-S5.1, ST5-F2; before, the queue was per tab and one tab's additions were lost in 24 of 25 simulated runs).
+ *    If the save fails the stored list is left exactly as it was, and the sync that wanted to add to it stops before changing anything.
  *
  * Whether a limit on displayed rows is needed is a screen matter (SyncPage shows the first rows and a "Show all" button). It is never a storage limit.
  */
@@ -28,22 +30,18 @@ export function conflictKey(c: Conflict): string {
   return `${c.table}|${c.id}|${c.kept}|${at}`;
 }
 
-let queue: Promise<unknown> = Promise.resolve();
-function serial<T>(job: () => Promise<T>): Promise<T> {
-  const run = queue.then(job, job);
-  queue = run.catch(() => undefined);
-  return run;
-}
-
 export async function readConflicts(meta: MetaStore): Promise<Conflict[]> {
   const list = await meta.get<Conflict[]>(CONFLICTS_KEY);
   return Array.isArray(list) ? list : [];
 }
 
+const asList = (x: Conflict[] | undefined): Conflict[] => (Array.isArray(x) ? x : []);
+
 /** Adds new overwritten versions (newest first) to those already kept. Returns how many were actually new. Throws if the list cannot be saved. */
-export function addConflicts(meta: MetaStore, fresh: Conflict[]): Promise<number> {
-  return serial(async () => {
-    const have = await readConflicts(meta);
+export async function addConflicts(meta: MetaStore, fresh: Conflict[]): Promise<number> {
+  let added = 0;
+  await meta.update<Conflict[]>(CONFLICTS_KEY, (cur) => {
+    const have = asList(cur);
     const seen = new Set(have.map(conflictKey));
     const add: Conflict[] = [];
     for (const c of fresh) {
@@ -52,38 +50,35 @@ export function addConflicts(meta: MetaStore, fresh: Conflict[]): Promise<number
       seen.add(k);
       add.push(c);
     }
-    if (add.length) await meta.set(CONFLICTS_KEY, [...add, ...have]);
-    return add.length;
+    added = add.length;
+    return add.length ? [...add, ...have] : cur;
   });
+  return added;
 }
 
-/** Removes one entry (after it was put back or dismissed). Reads the current list, so newer entries are never lost. */
-export function removeConflict(meta: MetaStore, key: string): Promise<void> {
-  return serial(async () => {
-    const have = await readConflicts(meta);
-    const rest = have.filter((c) => conflictKey(c) !== key);
-    if (rest.length !== have.length) await meta.set(CONFLICTS_KEY, rest);
-  });
+/** Removes one entry (after it was put back or dismissed). Works on the current list inside the save, so newer entries are never lost. */
+export async function removeConflict(meta: MetaStore, key: string): Promise<void> {
+  await removeConflicts(meta, [key]);
 }
 
 /** Removes every entry. Only for the owner's deliberate "clear this list". */
-export function clearConflicts(meta: MetaStore): Promise<void> {
-  return serial(async () => {
-    await meta.set(CONFLICTS_KEY, []);
-  });
+export async function clearConflicts(meta: MetaStore): Promise<void> {
+  await meta.update<Conflict[]>(CONFLICTS_KEY, () => []);
 }
 
 /**
  * Removes exactly the entries whose keys are given, in ONE step, and returns how many were removed. This is what the Sync page's "clear this list"
  * question uses: the keys are the versions the owner was looking at when they confirmed, so a version that a sync added a moment later is never
- * removed without being seen. Reads the current list first, like `removeConflict`.
+ * removed without being seen. The current list is read inside the same all-or-nothing save, like every other change here.
  */
-export function removeConflicts(meta: MetaStore, keys: string[]): Promise<number> {
-  return serial(async () => {
+export async function removeConflicts(meta: MetaStore, keys: string[]): Promise<number> {
+  let removed = 0;
+  await meta.update<Conflict[]>(CONFLICTS_KEY, (cur) => {
     const drop = new Set(keys);
-    const have = await readConflicts(meta);
+    const have = asList(cur);
     const rest = have.filter((c) => !drop.has(conflictKey(c)));
-    if (rest.length !== have.length) await meta.set(CONFLICTS_KEY, rest);
-    return have.length - rest.length;
+    removed = have.length - rest.length;
+    return removed ? rest : cur;
   });
+  return removed;
 }

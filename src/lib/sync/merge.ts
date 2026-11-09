@@ -82,8 +82,14 @@ export function idsOf(s: Snapshot): BaseIds {
   return Object.fromEntries(Object.entries(s.tables).map(([t, rows]) => [t, Object.keys(rows)]));
 }
 
-export function mergeSnapshots(a: { local: Snapshot; remote: Snapshot; base: BaseIds; lastSync: number; now: number }): MergeResult {
+/**
+ * `known`: the names of the tables THIS build of the app has. A table in the other copy that is not listed (it was added by a newer version)
+ * is carried through untouched: its records and deletion marks are written back exactly as they arrived, nothing is added, changed or marked
+ * deleted, and nothing is written here (ST-S5.1, ST5-F1). Without `known` every table is merged (used by the pure merge tests).
+ */
+export function mergeSnapshots(a: { local: Snapshot; remote: Snapshot; base: BaseIds; lastSync: number; now: number; known?: Iterable<string> }): MergeResult {
   const { local, remote, base, lastSync, now } = a;
+  const known = a.known ? new Set(a.known) : undefined;
   const names = new Set([...Object.keys(local.tables), ...Object.keys(remote.tables), ...Object.keys(remote.tombstones), ...Object.keys(base)]);
   const merged = emptySnapshot();
   const put: Record<string, Rec[]> = {};
@@ -92,6 +98,12 @@ export function mergeSnapshots(a: { local: Snapshot; remote: Snapshot; base: Bas
   let remoteChanged = false;
 
   for (const t of names) {
+    if (known && !known.has(t)) {
+      // Opaque pass-through. `base` is ignored on purpose: a table this device cannot see must never look "deleted here".
+      if (remote.tables[t] !== undefined) merged.tables[t] = remote.tables[t];
+      if (remote.tombstones[t] !== undefined) merged.tombstones[t] = remote.tombstones[t];
+      continue;
+    }
     const L = local.tables[t] ?? {};
     const R = remote.tables[t] ?? {};
     const tomb: Record<string, number> = {};

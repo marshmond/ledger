@@ -126,14 +126,14 @@ const STATUS_WORDS: Record<ClaimStatus, string> = {
 const STATUS_ORDER: ClaimStatus[] = ['included', 'merged', 'covered', 'excluded'];
 const CLAIM_ROWS = 40;
 
-function ClaimList({ claims }: { claims: Claim[] }) {
+export function ClaimList({ claims }: { claims: Claim[] }) {
   const { money, text } = useMoney();
   const groups = STATUS_ORDER.map((s) => ({ s, rows: claims.filter((c) => c.status === s) })).filter((g) => g.rows.length);
   return (
     <>
       {groups.map(({ s, rows }) => (
         <div key={s}>
-          <h4 className="sv-h3">{STATUS_WORDS[s]} ({rows.length})</h4>
+          <h3 className="sv-h3">{STATUS_WORDS[s]} ({rows.length})</h3>
           <ul className="plain sv-items small">
             {rows.slice(0, CLAIM_ROWS).map((c, i) => (
               <li key={`${c.recordId}|${c.key ?? 'typed'}|${i}`}>

@@ -33,7 +33,7 @@
 .sv-health.attn { border-color: var(--warn, #9a6700); }
 .sv-health .row { gap: var(--sp-2); }
 .sv-lines { margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
-.sv-h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-base); }
+.sv-h3 { margin: var(--sp-2) 0 0; font-size: var(--fs-base); font-weight: bold; } /* was an h4 (bold); now an h3 so no heading level is skipped (ST5-F3), same look */
 .sv-notes { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; }
 .sv-form { display: flex; flex-direction: column; gap: var(--sp-3); }
 .sv-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }

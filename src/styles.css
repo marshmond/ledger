@@ -723,6 +723,8 @@ details.pick label.chk:hover { background: var(--hover); }
   .syncchip { padding: 2px var(--sp-2); }
   /* Standalone links inside cards, tables and alerts. Links inside a sentence keep their natural height (WCAG 2.5.8 allows that). */
   .card-link, .alert-act, .td-title { display: inline-flex; align-items: center; min-height: 44px; }
+  /* A one-word link such as "All" on Ledger Home was 20 px wide (ST5-F4); the text stays at the right edge, only the tappable area grows. */
+  .card-link { min-width: 44px; justify-content: flex-end; }
   table a, a.list-row { display: inline-block; padding-block: 5px; }
   /* A link inside a sentence is allowed to be small (WCAG 2.5.8), but a few pixels of invisible padding above and below make it far easier to hit and never move the text. */
   main a:not(.btn):not(.list-row):not(.card-link):not(.alert-act) { padding-block: 4px; }

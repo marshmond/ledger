@@ -39,6 +39,11 @@ export async function decodeSnapshot(bytes: Uint8Array, pass: string): Promise<S
     throw new Error('Wrong sync passphrase, or the synced file is damaged.');
   }
   const parsed = JSON.parse(new TextDecoder().decode(await through(zipped, new DecompressionStream('gzip'))));
+  // ST-S5.1: a file this build cannot interpret safely is refused here, before anything on this device or on the remote is touched.
+  const plain = (x: unknown) => x === undefined || (typeof x === 'object' && x !== null && !Array.isArray(x));
+  if (!plain(parsed) || parsed === null || (parsed.app !== undefined && parsed.app !== 'ledger-sync') || (parsed.v !== undefined && parsed.v !== 1) || !plain(parsed.tables) || !plain(parsed.tombstones)) {
+    throw new Error('This synced file was made by a newer or different version of Ledger. Update Ledger on this device first; nothing was changed.');
+  }
   return { tables: parsed.tables ?? {}, tombstones: parsed.tombstones ?? {} };
 }
 

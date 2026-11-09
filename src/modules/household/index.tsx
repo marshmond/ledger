@@ -10,7 +10,7 @@ import { householdSearchSource } from './searchSource';
  */
 export const householdModule: ModuleDef = {
   id: HOUSEHOLD_BASE.slice(1),
-  name: 'Household finances',
+  name: 'Household Finances',
   icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6" /></svg>,
   Component: lazyModule(() => import('./HouseholdModule')),
   routePaths: ['/'],

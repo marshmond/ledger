@@ -27,6 +27,12 @@ export class RemoteConflict extends Error {}
 export interface MetaStore {
   get<T>(key: string): Promise<T | undefined>;
   set(key: string, value: unknown): Promise<void>;
+  /**
+   * Reads, changes and saves one value as ONE all-or-nothing step that no other tab or window can slip into (ST-S5.1, ST5-F2).
+   * `change` runs synchronously on the value as it is right now and returns the new value, or the same value back to save nothing.
+   * If `change` throws or the save fails, the stored value is left exactly as it was.
+   */
+  update<T>(key: string, change: (current: T | undefined) => T | undefined): Promise<void>;
 }
 
 export function dexieMeta(name = 'ledger-sync-meta'): MetaStore {
@@ -36,6 +42,14 @@ export function dexieMeta(name = 'ledger-sync-meta'): MetaStore {
   return {
     get: async <T,>(key: string) => (await kv.get(key))?.value as T | undefined,
     set: async (key, value) => void (await kv.put({ key, value })),
+    // One IndexedDB read-write transaction: the browser lets only one such transaction use this store at a time, across every tab.
+    update: async <T,>(key: string, change: (current: T | undefined) => T | undefined) => {
+      await m.transaction('rw', kv, async () => {
+        const current = (await kv.get(key))?.value as T | undefined;
+        const next = change(current);
+        if (next !== current) await kv.put({ key, value: next });
+      });
+    },
   };
 }
 
@@ -43,6 +57,8 @@ export function dexieMeta(name = 'ledger-sync-meta'): MetaStore {
 const LOCAL_ONLY_SETTINGS = new Set(['priceApiKey']);
 const count = (s: Snapshot) => Object.values(s.tables).reduce((n, rows) => n + Object.keys(rows).length, 0);
 const keyField = (table: string) => (table === 'settings' ? 'key' : 'id');
+/** The ids this device remembers after a sync: only tables this build has (a newer build's tables are never remembered, see merge.ts). */
+const knownIds = (s: Snapshot, known: Set<string>): BaseIds => Object.fromEntries(Object.entries(idsOf(s)).filter(([t]) => known.has(t)));
 const toKey = (table: string, id: string): string | number => (table === 'settings' ? id : Number(id));
 
 export async function snapshotOf(d: FinanceDB): Promise<Snapshot> {
@@ -95,6 +111,10 @@ export async function syncStats(meta: MetaStore, now = Date.now()): Promise<Sync
 export class SyncEngine {
   constructor(private d: FinanceDB, private meta: MetaStore, private remote: RemoteStore, private pass: string) {}
 
+  private knownTables() {
+    return new Set(this.d.tables.map((t) => t.name));
+  }
+
   async isSetUp() {
     return (await this.meta.get<BaseIds>('base')) !== undefined;
   }
@@ -145,7 +165,7 @@ export class SyncEngine {
       }
       if (keep) await this.d.settings.put(keep);
     });
-    await this.meta.set('base', idsOf(remote));
+    await this.meta.set('base', knownIds(remote, this.knownTables()));
     await this.meta.set('remoteSha', file.sha);
     await this.meta.set('fileBytes', file.bytes.length);
     await this.meta.set('recordCount', count(remote));
@@ -189,7 +209,7 @@ export class SyncEngine {
       const local = await snapshotOf(this.d);
       const file = await this.remote.getFile();
       const remote = file ? await decodeSnapshot(file.bytes, this.pass) : emptySnapshot();
-      const m = mergeSnapshots({ local, remote, base, lastSync, now });
+      const m = mergeSnapshots({ local, remote, base, lastSync, now, known: this.knownTables() });
       // ST-S1 (SY-01): save every overwritten version BEFORE anything is overwritten. This device's copy is replaced by applyLocal below and the
       // other device's copy by the upload, so if the list cannot be saved the sync stops here with nothing changed anywhere, and if the upload
       // fails afterwards the overwritten versions are already safe. A retry that sees the same clash does not add it twice.
@@ -211,7 +231,7 @@ export class SyncEngine {
           throw e;
         }
       }
-      await this.meta.set('base', idsOf(m.merged));
+      await this.meta.set('base', knownIds(m.merged, this.knownTables()));
       if (sha) await this.meta.set('remoteSha', sha);
       if (bytes !== undefined) await this.meta.set('fileBytes', bytes);
       await this.meta.set('recordCount', count(m.merged));
