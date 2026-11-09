@@ -67,18 +67,49 @@ export async function createDistinctContact(d: FinanceDB, input: ContactInput): 
     createStore(d).shared.contacts.put({ name: tidy(input.name), ...(extra.phone ? { phone: extra.phone } : {}), ...(extra.email ? { email: extra.email } : {}), ...(extra.relationship ? { relationship: extra.relationship } : {}) }));
 }
 
-/** Changes a contact's details. An empty phone, email or relationship removes it. Fields this code does not know are kept. */
-export async function updateContactDetails(d: FinanceDB, id: number, input: ContactInput): Promise<void> {
+/** Thrown when a save was based on an older version of the contact than the one stored now (another tab or a sync changed it). Nothing was written. */
+export class StaleContactError extends Error {
+  constructor() {
+    super('This contact changed while you were editing. Nothing was saved. Reload the current details and try again.');
+    this.name = 'StaleContactError';
+  }
+}
+
+export interface UpdateContactOptions {
+  /**
+   * The version the form was opened on (the Contact as it was loaded). When given, the save is refused (StaleContactError) if the stored Contact
+   * differs from it in updatedAt OR in any of the four details (so even a change made in the same millisecond is noticed). The check and the write
+   * are one transaction, so nothing can slip in between. Omitted = the older behaviour (no check), which Projects and Services still use.
+   */
+  expected?: Pick<Contact, 'updatedAt' | 'name' | 'phone' | 'email' | 'relationship'>;
+}
+
+/**
+ * Changes a contact's details. An empty phone, email or relationship removes it. Fields this code does not know are kept (including `notes`).
+ * A save that changes nothing writes nothing (no new `updatedAt`, so it cannot overwrite another device's edit in sync). Returns whether it wrote.
+ */
+export async function updateContactDetails(d: FinanceDB, id: number, input: ContactInput, opts: UpdateContactOptions = {}): Promise<{ changed: boolean }> {
   const problem = validateContact(input);
   if (problem) throw new Error(problem);
-  await d.transaction('rw', d.contacts, async () => {
+  return d.transaction('rw', d.contacts, async () => {
     const existing = await d.contacts.get(id);
     if (!existing || !isLive(existing)) throw new Error('That contact no longer exists.');
-    const next: Contact = { ...existing, name: tidy(input.name), updatedAt: Date.now() };
+    if (opts.expected && (existing.updatedAt !== opts.expected.updatedAt || (['name', 'phone', 'email', 'relationship'] as const).some((k) => (existing[k] ?? '') !== (opts.expected![k] ?? '')))) throw new StaleContactError();
+    const next: Contact = { ...existing, name: tidy(input.name) };
     for (const k of ['phone', 'email', 'relationship'] as const) {
       const v = tidy(input[k]);
       if (v) next[k] = v; else delete next[k];
     }
+    const same = (['name', 'phone', 'email', 'relationship'] as const).every((k) => (existing[k] ?? '') === (next[k] ?? ''));
+    if (same) return { changed: false };
+    next.updatedAt = Date.now(); // (the change-tracking hook stamps it again on write)
     await d.contacts.put(next);
+    return { changed: true };
   });
+}
+
+/** Live contacts that share a name with `typed` (ignoring case, accents and spacing), optionally leaving one out (the contact being edited). Never fuzzy. */
+export function sameNameMatches<T extends { id?: number; name: string; deletedAt?: number | null }>(contacts: readonly T[], typed: string, exceptId?: number): T[] {
+  const k = nameKey(typed);
+  return k ? contacts.filter((c) => isLive(c) && c.id !== exceptId && nameKey(c.name) === k) : [];
 }

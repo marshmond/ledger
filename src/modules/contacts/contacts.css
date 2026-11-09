@@ -1,0 +1,30 @@
+/* Contacts & Relationships (C1). Uses the app's colour variables so light and dark both work. */
+.ct-main { padding-bottom: var(--sp-6, 48px); max-width: min(900px, 100%); }
+.ct-tools { display: grid; grid-template-columns: 1fr 220px; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.ct-tools .f { min-width: 0; }
+.ct-list { margin: 0; padding: 0; }
+.ct-row { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); min-height: 44px; overflow-wrap: anywhere; }
+.ct-list > .ct-row:last-child { border-bottom: none; }
+.ct-name { font-weight: 600; display: inline-flex; align-items: center; min-height: 32px; align-self: flex-start; }
+.ct-rel { color: var(--fg); }
+.ct-same { color: var(--warn, #9a6700); }
+.ct-warn { border: 1px solid var(--warn, #9a6700); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); min-width: 0; }
+.ct-warn > strong { color: var(--warn, #9a6700); }
+.ct-match { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) 0; flex-wrap: wrap; overflow-wrap: anywhere; }
+.ct-note { background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0; }
+.ct-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-3); }
+.ct-facts > div { min-width: 0; }
+.ct-facts dt { font-size: var(--fs-xs); color: var(--muted); }
+.ct-facts dd { margin: 0; overflow-wrap: anywhere; }
+.ct-usage { margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.ct-form { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ct-form .as-check { display: inline-flex; align-items: flex-start; gap: var(--sp-2); min-height: 40px; }
+.ct-actions { justify-content: flex-end; gap: var(--sp-2); }
+@media (max-width: 600px) {
+  .ct-tools { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .ct-name, .ct-back { min-height: 44px; }
+  .ct-back { display: inline-flex; align-items: center; }
+  .ct-actions .btn, .ct .btn { min-height: 44px; }
+}

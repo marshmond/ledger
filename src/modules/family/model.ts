@@ -18,9 +18,10 @@ export const memberRoute = (id: number) => `/m/${id}`;
 /** The Family dates page, as written inside the module. */
 export const DATES_ROUTE = '/dates';
 
-export const ROLES = ['parent', 'child', 'grandparent', 'other'] as const;
+/** C1 adds `spouse`. A record from before still reads (nothing changes role by itself); an older build shows a `spouse` record as "needs review" until updated. */
+export const ROLES = ['parent', 'spouse', 'child', 'grandparent', 'other'] as const;
 export type Role = (typeof ROLES)[number];
-export const ROLE_LABEL: Record<Role, string> = { parent: 'Parent', child: 'Child', grandparent: 'Grandparent', other: 'Other' };
+export const ROLE_LABEL: Record<Role, string> = { parent: 'Parent', spouse: 'Spouse', child: 'Child', grandparent: 'Grandparent', other: 'Other' };
 
 export const STATUSES = ['active', 'past'] as const;
 export type Status = (typeof STATUSES)[number];
@@ -54,6 +55,11 @@ export interface MemberFields {
   note?: string;
   /** F2: false = leave this member's birthday off the owner's Calendar. Stored ONLY when false; absent (or unreadable) = shown. Says nothing about any future shared display. */
   birthdayOnCalendar?: boolean;
+  /**
+   * C1: "This is me", the owner's own profile. Stored ONLY when true (absent = not me). A preference inside one household app: it is not a login, a
+   * permission or an account, and it grants no access to anything. Only an ACTIVE member can be me (see `effectiveMe`).
+   */
+  isMe?: boolean;
 }
 export type MemberData = MemberFields & { contactId: number };
 
@@ -69,7 +75,7 @@ export interface MemberRecord {
   raw: Record<string, unknown>;
 }
 
-const KNOWN = new Set(['contactId', 'role', 'status', 'birthMonthDay', 'birthYear', 'color', 'note', 'birthdayOnCalendar']);
+const KNOWN = new Set(['contactId', 'role', 'status', 'birthMonthDay', 'birthYear', 'color', 'note', 'birthdayOnCalendar', 'isMe']);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isId = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v);
 
@@ -121,6 +127,7 @@ export function cleanFields(f: MemberFields): MemberFields {
     ...(f.color ? { color: f.color } : {}),
     ...(note ? { note } : {}),
     ...(f.birthdayOnCalendar === false ? { birthdayOnCalendar: false } : {}),
+    ...(f.isMe === true && f.status === 'active' ? { isMe: true } : {}),
   };
 }
 
@@ -159,6 +166,10 @@ export function asMember(r: ModuleRecord, thisYear = new Date().getFullYear()): 
     if (typeof raw.birthdayOnCalendar === 'boolean') data.birthdayOnCalendar = raw.birthdayOnCalendar;
     else problems.push('The Calendar setting could not be read, so the birthday is treated as shown.');
   }
+  if (raw.isMe !== undefined) {
+    if (typeof raw.isMe === 'boolean') { if (raw.isMe) data.isMe = true; }
+    else problems.push('The "This is me" setting could not be read, so it is treated as off.');
+  }
   return { ...base, data, problems };
 }
 
@@ -190,4 +201,22 @@ export function memberSummary(name: string, d: Pick<MemberData, 'role' | 'status
 export function sameNameContacts<T extends { name: string }>(contacts: readonly T[], typed: string, key: (s: string) => string): T[] {
   const k = key(typed);
   return k ? contacts.filter((c) => key(c.name) === k) : [];
+}
+
+/**
+ * C1: who is "me"? PURE. Only an ACTIVE, readable member marked `isMe` counts (a past member can never be me, even if an older build left the mark).
+ * Each device keeps its own local rule (setting one clears the others in one transaction), but two devices can each mark a DIFFERENT member while
+ * offline and both marks then survive sync. Rule: exactly one marked active member = that member is me; two or more = a CONFLICT and NOBODY is treated
+ * as me until the owner chooses (Ledger never guesses who the owner is, and reading never rewrites anything). None marked = no one.
+ */
+export interface MeState {
+  /** The one effective "me", or null when nobody is marked or the marks conflict. */
+  me: MemberRecord | null;
+  /** Every active member that carries the mark when there is more than one, oldest first; empty otherwise. */
+  conflict: MemberRecord[];
+}
+export function effectiveMe(members: readonly MemberRecord[]): MeState {
+  const marked = members.filter((m) => m.data?.status === 'active' && m.data.isMe === true).sort((a, b) => a.id - b.id);
+  if (marked.length === 1) return { me: marked[0], conflict: [] };
+  return { me: null, conflict: marked.length > 1 ? marked : [] };
 }

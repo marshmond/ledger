@@ -9,8 +9,8 @@ import { useToday } from '../../ui/useToday';
 import { ImportantContactsSection } from './ImportantContacts';
 import { MemberDatesSection, ProjectsSection, ScheduleSection, TodoSection } from './MemberSections';
 import MemberForm, { contactDetail } from './MemberForm';
-import { getMember, loadMembers, setBirthdayOnCalendar, setMemberStatus } from './data';
-import { colorName, duplicateGroups, memberRoute, monthDayText, ROLE_LABEL, STATUS_LABEL } from './model';
+import { getMember, loadMembers, setBirthdayOnCalendar, setMe, setMemberStatus } from './data';
+import { colorName, duplicateGroups, effectiveMe, memberRoute, monthDayText, ROLE_LABEL, STATUS_LABEL } from './model';
 import { readContactReferences, referenceLines } from './references';
 
 /** The private note: not in the page at all until Show is pressed, and hidden again when you leave. Never part of a label or a message. */
@@ -68,8 +68,13 @@ export default function MemberPage({ id }: { id: number }) {
   const name = contact?.name ?? 'Contact no longer exists';
   const dupGroup = duplicateGroups(all).find((g) => g.some((x) => x.id === rec.id));
   const lines = refs ? referenceLines(refs) : [];
+  const meState = effectiveMe(all);
+  const isMe = meState.me?.id === rec.id;
+  const inMeConflict = meState.conflict.some((x) => x.id === rec.id);
+  const nameOfMember = (m: { data: { contactId: number } | null }) => (m.data ? nameByContactId.get(m.data.contactId) ?? 'Contact no longer exists' : 'Unreadable record');
   const bday = monthDayText(d.birthMonthDay);
   const nameByContact = new Map(contacts.filter((c) => c.id !== undefined).map((c) => [c.id as number, c.name]));
+  const nameByContactId = nameByContact;
   const nameOfContact = (cid: number) => nameByContact.get(cid) ?? 'A contact that no longer exists';
   /** The OTHER active household members' Contacts: only these are named as "Also for" on a row. */
   const otherContacts = new Set(all.filter((x) => x.id !== rec.id && x.data?.status === 'active' && x.data.contactId !== d.contactId).map((x) => x.data!.contactId));
@@ -78,7 +83,7 @@ export default function MemberPage({ id }: { id: number }) {
     <div className="fm">
       <PageHeader
         title={name}
-        description={`${ROLE_LABEL[d.role]} · ${STATUS_LABEL[d.status]}`}
+        description={`${ROLE_LABEL[d.role]} · ${STATUS_LABEL[d.status]}${isMe ? ' · This is you' : ''}`}
         actions={
           <span className="row">
             <button type="button" className="btn" onClick={() => setEditing(true)}>Edit</button>
@@ -98,6 +103,13 @@ export default function MemberPage({ id }: { id: number }) {
           <ul className="plain">{dupGroup.filter((x) => x.id !== rec.id).map((x) => <li key={x.id}><Link to={memberRoute(x.id)}>The other record, added {new Date(x.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Link></li>)}</ul>
         </div>
       )}
+      {inMeConflict && (
+        <div className="fm-warn" role="alert">
+          <strong>More than one member is marked “This is me”</strong>
+          <p className="small">This can happen when two devices each chose someone while offline. Nothing was changed or deleted, and for now nobody is treated as you. Choose who you are:</p>
+          <ul className="plain">{meState.conflict.map((x) => <li key={x.id} className="row"><span>{nameOfMember(x)}</span><button type="button" className="btn" aria-label={`${nameOfMember(x)} is me`} onClick={async () => { await setMe(x.id); toast(`${nameOfMember(x)} is marked as you`); }}>This one is me</button></li>)}</ul>
+        </div>
+      )}
       {rec.problems.length > 0 && (
         <div className="fm-warn" role="status"><strong>Part of this record could not be read</strong><ul className="plain">{rec.problems.map((p) => <li key={p}>{p}</li>)}</ul><p className="small">The stored value is untouched until you save that field again.</p></div>
       )}
@@ -107,6 +119,19 @@ export default function MemberPage({ id }: { id: number }) {
         <dl className="fm-facts">
           <div><dt>Role</dt><dd>{ROLE_LABEL[d.role]}</dd></div>
           <div><dt>Status</dt><dd>{STATUS_LABEL[d.status]}</dd></div>
+          <div>
+            <dt>This is me</dt>
+            <dd>
+              {d.status !== 'active' ? <span className="muted">Only a member in the household can be you</span> : (
+                <>
+                  {isMe ? 'Yes, this is your profile' : inMeConflict ? 'Not decided (see above)' : <span className="muted">No</span>}{' '}
+                  {isMe
+                    ? <button type="button" className="btn fm-mini" aria-label={`Clear: ${name} is not me`} onClick={async () => { await setMe(null); toast('No one is marked as you'); }}>Clear</button>
+                    : <button type="button" className="btn fm-mini" aria-label={`Mark ${name} as me`} onClick={async () => { await setMe(rec.id); toast(`${name} is marked as you`); }}>This is me</button>}
+                </>
+              )}
+            </dd>
+          </div>
           <div><dt>Birthday</dt><dd>{bday || <span className="muted">Not set</span>}</dd></div>
           <div>
             <dt>On my Calendar</dt>

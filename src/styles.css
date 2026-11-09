@@ -620,7 +620,7 @@ details.pick label.chk:hover { background: var(--hover); }
 .modbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
 .modicon { display: inline-flex; width: 16px; height: 16px; }
 .modicon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.modmenu { position: absolute; left: 0; top: calc(100% + 4px); min-width: 180px; display: flex; flex-direction: column; padding: 4px; background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); }
+.modmenu { position: absolute; left: 0; top: calc(100% + 4px); min-width: 180px; display: flex; flex-direction: column; padding: 4px; background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); max-height: calc(100vh - 72px); max-height: calc(100dvh - 72px); overflow-y: auto; overscroll-behavior: contain; }
 .modmenu a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; color: var(--fg); text-decoration: none; }
 .modmenu a:hover, .modmenu a.active { background: var(--hover, rgba(127, 127, 127, 0.14)); }
 .modspacer { flex: 1; }

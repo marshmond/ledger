@@ -73,7 +73,8 @@ export async function updateMember(id: number, fields: MemberFields, d: FinanceD
       const others = (await liveMembersOf(m.data.contactId, d)).filter((o) => o.id !== id && o.data?.status === 'active');
       if (others.length) throw new Error('Another active member already points at the same contact. Mark one of them as past first.');
     }
-    await rows(d).put({ id, module: MODULE, kind: KIND, data: toStored(m.raw, m.data.contactId, fields) });
+    // "This is me" is not part of the edit form: it is kept as it is (and dropped if the member is being made past).
+    await rows(d).put({ id, module: MODULE, kind: KIND, data: toStored(m.raw, m.data.contactId, { ...fields, ...(m.data.isMe ? { isMe: true } : {}) }) });
   });
 }
 
@@ -91,7 +92,10 @@ export async function setMemberStatus(id: number, status: 'active' | 'past', d: 
       const others = (await liveMembersOf(m.data.contactId, d)).filter((o) => o.id !== id && o.data?.status === 'active');
       if (others.length) throw new Error('Another active member already points at the same contact. Mark one of them as past first.');
     }
-    await rows(d).put({ id, module: MODULE, kind: KIND, data: { ...m.raw, status } });
+    // Any change of status ends a "This is me" mark: a past member cannot be me, and a returning member does not silently become me again.
+    const next: Record<string, unknown> = { ...m.raw, status };
+    delete next.isMe;
+    await rows(d).put({ id, module: MODULE, kind: KIND, data: next });
   });
 }
 
@@ -109,5 +113,40 @@ export async function setBirthdayOnCalendar(id: number, on: boolean, d: FinanceD
     const next: Record<string, unknown> = { ...m.raw };
     if (on) delete next.birthdayOnCalendar; else next.birthdayOnCalendar = false;
     await rows(d).put({ id, module: MODULE, kind: KIND, data: next });
+  });
+}
+
+/**
+ * C1: marks ONE active member as "me" (the id), or clears the mark (null). One transaction: the members are read again inside it, every other
+ * readable member's mark is removed and the chosen member's mark is set, so this device never holds two. A member that is already in the wanted
+ * state is not written. Unreadable rows are never rewritten. No Contact, Task, event or Finance record is touched.
+ * Across devices the same rule cannot be guaranteed (two offline devices can each mark someone different): see effectiveMe in model.ts, which treats that
+ * as a conflict for the owner to resolve by choosing again here.
+ */
+export async function setMe(id: number | null, d: FinanceDB = db): Promise<{ written: number }> {
+  return d.transaction('rw', TABLES(d), async () => {
+    const all = await loadMembers(d);
+    if (id !== null) {
+      const target = all.find((m) => m.id === id);
+      if (!target) throw new Error('That member no longer exists.');
+      if (!target.data) throw new Error('This record could not be read by this version, so it was not changed.');
+      if (target.data.status !== 'active') throw new Error('Only a member who is in the household can be marked as you.');
+    }
+    let written = 0;
+    for (const m of all) {
+      if (!m.data) continue; // an unreadable row is left exactly as it is
+      const marked = m.raw.isMe === true;
+      if (m.id === id) {
+        if (marked) continue;
+        await rows(d).put({ id: m.id, module: MODULE, kind: KIND, data: { ...m.raw, isMe: true } });
+        written++;
+      } else if (m.raw.isMe !== undefined) {
+        const next: Record<string, unknown> = { ...m.raw };
+        delete next.isMe;
+        await rows(d).put({ id: m.id, module: MODULE, kind: KIND, data: next });
+        written++;
+      }
+    }
+    return { written };
   });
 }

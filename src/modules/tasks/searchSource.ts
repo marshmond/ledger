@@ -51,7 +51,7 @@ export function searchTasksData(
   }
   for (const c of contacts.map((x) => ({ x, s: score(query, x.name) })).filter((y) => y.s > 0).sort((a, b) => b.s - a.s).slice(0, caps.contacts)) {
     const n = openCount((t) => t.data.contactIds.includes(c.x.id));
-    out.push({ id: `contact:${c.x.id}`, title: c.x.name, subtitle: `${n} open ${n === 1 ? 'task' : 'tasks'}`, kind: 'Contact', score: c.s - 2, path: `/tasks?v=all&contact=${c.x.id}` });
+    out.push({ id: `contact:${c.x.id}`, title: c.x.name, subtitle: `${n} open ${n === 1 ? 'task' : 'tasks'}`, kind: 'Tasks for contact', score: c.s - 2, path: `/tasks?v=all&contact=${c.x.id}` });
   }
   return out;
 }

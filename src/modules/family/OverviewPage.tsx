@@ -6,7 +6,7 @@ import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import MemberForm from './MemberForm';
 import { loadMembers } from './data';
-import { colorName, DATES_ROUTE, duplicateGroups, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
+import { colorName, DATES_ROUTE, duplicateGroups, effectiveMe, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
 
 /** The Family overview: household members as simple cards, past members and unreadable records kept apart, and any possible duplicates flagged. */
 export default function OverviewPage() {
@@ -34,6 +34,7 @@ export default function OverviewPage() {
   const past = readable.filter((m) => m.data!.status === 'past').sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
   const review = members.filter((m) => !m.data);
   const dups = duplicateGroups(members);
+  const meState = effectiveMe(members);
 
   const card = (m: MemberRecord) => {
     const d = m.data!;
@@ -43,7 +44,7 @@ export default function OverviewPage() {
         <span className="fm-dot" style={d.color ? { background: d.color } : undefined} aria-hidden="true" />
         <div className="fm-card-text">
           <Link to={memberRoute(m.id)} className="fm-name">{nameOf(m)}</Link>
-          <span className="muted small">{ROLE_LABEL[d.role]}{d.color ? ` · ${colorName(d.color)}` : ''}{bday ? ` · Birthday ${bday}` : ''}{m.problems.length ? ' · needs a look' : ''}</span>
+          <span className="muted small">{ROLE_LABEL[d.role]}{meState.me?.id === m.id ? ' · This is you' : ''}{d.color ? ` · ${colorName(d.color)}` : ''}{bday ? ` · Birthday ${bday}` : ''}{m.problems.length ? ' · needs a look' : ''}</span>
         </div>
       </li>
     );
@@ -52,6 +53,13 @@ export default function OverviewPage() {
   return (
     <div className="fm">
       {head}
+      {meState.conflict.length > 0 && (
+        <div className="fm-warn" role="alert">
+          <strong>More than one member is marked “This is me”</strong>
+          <p className="small">This can happen when two devices each chose someone while offline. Nothing was changed or deleted, and for now nobody is treated as you. Open the member who is you and press “This is me”.</p>
+          <ul className="plain">{meState.conflict.map((m) => <li key={m.id}><Link to={memberRoute(m.id)}>{nameOf(m)}</Link></li>)}</ul>
+        </div>
+      )}
       {dups.map((g) => (
         <div key={g[0].data!.contactId} className="fm-warn" role="alert">
           <strong>Possible duplicate member</strong>

@@ -43,7 +43,7 @@ describe('searching tasks', () => {
     const out = searchTasksData('reno', t, [{ id: 5, name: 'renovation' }], []);
     expect(out[0]).toMatchObject({ kind: 'Tag', title: '#renovation', subtitle: '1 open task', path: '/tasks?v=all&tag=5' });
     const c = searchTasksData('maria', t, [], [{ id: 9, name: 'Maria Test' }]);
-    expect(c[0]).toMatchObject({ kind: 'Contact', title: 'Maria Test', path: '/tasks?v=all&contact=9' });
+    expect(c[0]).toMatchObject({ kind: 'Tasks for contact', title: 'Maria Test', path: '/tasks?v=all&contact=9' });
   });
   it('caps each kind of hit and ignores an empty query', () => {
     const many = Array.from({ length: 30 }, (_, i) => task(i + 1, { title: `Buy milk ${i}` }));
