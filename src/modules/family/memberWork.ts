@@ -30,7 +30,7 @@ export function memberTasks(all: readonly TaskRecord[], contactId: number, today
 }
 
 /** The live Tasks, read one row at a time with Tasks' own parser (`asTask`): a row it cannot parse is skipped instead of stopping the page. Nothing is written. */
-async function readTasks(d: FinanceDB): Promise<TaskRecord[]> {
+export async function readTasks(d: FinanceDB): Promise<TaskRecord[]> {
   const out: TaskRecord[] = [];
   for (const r of await d.moduleRecords.where('[module+kind]').equals([TASKS_MODULE, 'task']).toArray()) {
     if (!isLive(r)) continue;

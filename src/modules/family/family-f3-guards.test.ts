@@ -68,7 +68,8 @@ describe('registration and boundaries are unchanged', () => {
   });
   it('the new screens are reached only from the lazily loaded member page, never from the registration', () => {
     const users = family.filter(({ text }) => /from '\.\/(MemberSections|ImportantContacts|memberSchedule|memberWork|importantContactData)'/.test(code(text))).map((x) => x.f).sort();
-    expect(users).toEqual(['src/modules/family/ImportantContacts.tsx', 'src/modules/family/MemberPage.tsx', 'src/modules/family/MemberSections.tsx']);
+    // F4 adds the household overview (also lazily loaded, through OverviewPage), which reuses the same read-only readers.
+    expect(users).toEqual(['src/modules/family/HouseholdSections.tsx', 'src/modules/family/ImportantContacts.tsx', 'src/modules/family/MemberPage.tsx', 'src/modules/family/MemberSections.tsx', 'src/modules/family/householdOverview.ts']);
     const idx = code(one('index.tsx')) + code(one('dueProvider.ts'));
     expect(idx).not.toMatch(/MemberSections|ImportantContacts|memberSchedule|memberWork|importantContact/);
   });

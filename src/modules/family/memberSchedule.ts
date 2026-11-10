@@ -15,7 +15,7 @@ import { loadLayers } from '../calendar/data';
 import { isLayerVisible, type Visibility } from '../calendar/layerVisibility';
 import { storedItemKey } from '../calendar/markerCoordination';
 import { asEvent, MODULE as CALENDAR_MODULE, type CalendarLayer, type EventRecord } from '../calendar/model';
-import { occurrencesOf } from '../calendar/occurrences';
+import { occurrencesOf, type Occurrence } from '../calendar/occurrences';
 import { dayLabel, timeLabel } from '../calendar/time';
 import { loadMembers } from './data';
 import type { MemberRecord } from './model';
@@ -56,8 +56,17 @@ export interface MemberSchedule {
   hiddenCount: number;
 }
 
+/** One Calendar occurrence as a row. Shared by the member page and the household overview (F4), so both read an event in exactly the same way. */
+export function scheduleItemOf(o: Occurrence, cal: CalendarLayer | undefined, also: ScheduleItem['also']): ScheduleItem {
+  return {
+    key: `${o.eventId}:${o.key}`, eventId: o.eventId, occKey: o.key, title: o.title, allDay: o.allDay, firstDay: o.firstDay, lastDay: o.lastDay, startMs: o.startMs, endMs: o.endMs,
+    location: o.location, recurring: o.recurring, done: o.done, trackDone: o.trackDone, calendarId: o.calendarId,
+    calendarName: cal?.name ?? 'Calendar', color: cal?.color ?? FALLBACK_COLOR, openKey: storedItemKey(o.eventId, o.key), also,
+  };
+}
+
 /** The oldest ACTIVE, readable member for each Contact (a duplicate record for one person is one person). */
-function activeByContact(members: readonly MemberRecord[]): Map<number, MemberRecord> {
+export function activeByContact(members: readonly MemberRecord[]): Map<number, MemberRecord> {
   const out = new Map<number, MemberRecord>();
   for (const m of [...members].sort((a, b) => a.id - b.id)) if (m.data?.status === 'active' && !out.has(m.data.contactId)) out.set(m.data.contactId, m);
   return out;
@@ -88,11 +97,7 @@ export function buildMemberSchedule(input: {
       if (seen[key]) continue;
       seen[key] = true;
       if (!shown) { hiddenCount++; continue; }
-      items.push({
-        key, eventId: o.eventId, occKey: o.key, title: o.title, allDay: o.allDay, firstDay: o.firstDay, lastDay: o.lastDay, startMs: o.startMs, endMs: o.endMs,
-        location: o.location, recurring: o.recurring, done: o.done, trackDone: o.trackDone, calendarId: o.calendarId,
-        calendarName: cal?.name ?? 'Calendar', color: cal?.color ?? FALLBACK_COLOR, openKey: storedItemKey(o.eventId, o.key), also,
-      });
+      items.push(scheduleItemOf(o, cal, also));
     }
   }
   items.sort((a, b) => a.startMs - b.startMs || a.title.localeCompare(b.title) || a.eventId - b.eventId || a.occKey.localeCompare(b.occKey));
@@ -103,7 +108,7 @@ export function buildMemberSchedule(input: {
  * The live Calendar events, read one row at a time with the Calendar's own parser (`asEvent`): a row that cannot be parsed (a null or foreign value
  * written by another version) is skipped instead of stopping the whole page. Same index as the Calendar's `loadEvents`; nothing is written.
  */
-async function readEvents(d: FinanceDB): Promise<EventRecord[]> {
+export async function readEvents(d: FinanceDB): Promise<EventRecord[]> {
   const out: EventRecord[] = [];
   for (const r of await d.moduleRecords.where('[module+kind]').equals([CALENDAR_MODULE, 'event']).toArray()) {
     if (!isLive(r)) continue;

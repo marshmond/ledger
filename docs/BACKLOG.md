@@ -4,7 +4,37 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-09 (newest): CONTACTS & RELATIONSHIPS C2 (CROSS-MODULE REFERENCES, SAFE CONTACT SELECTION, GUARDED REMOVAL) APPROVED BY CHATGPT AND RELEASED: COMMITTED AND PUSHED as `feat(contacts): C2 cross-module references and safe selection` (read the SHA from git log and the Pages result from the Actions tab; not recorded here to avoid a second commit). Final verification in report section 15: 4,071 tests in 229 files. Real-device and screen-reader acceptance still outstanding.
+## STATUS 2026-11-09 (newest): FAMILY MANAGEMENT F4 (HOUSEHOLD OVERVIEW, UPCOMING ACTIVITIES, RESPONSIBILITIES, IMPORTANT DATES) APPROVED BY CHATGPT AND RELEASED: COMMITTED AND PUSHED as `feat(family): F4 household overview and coordination` (read the SHA from git log and the Pages result from the Actions tab; not recorded here to avoid a second commit). Final verification in report section 18: 4,137 tests in 232 files (4,135 as built, +2). NOT REAL-DEVICE TESTED.
+
+(The text below was written when F4 was first built; its "uncommitted" wording and 4,135 count are superseded. Accepted: read-only; activities 7 days; dates about 30 days; identity de-duplication; page-state filter; Calendar visibility for activities only, Family dates always visible; "associated with" wording; no Today card; Search and Quick Add deferred to F5. Maintenance items below unchanged: Contact creation safety, mobile Task editor, Contact directory performance.)
+
+Report: `docs/FAMILY-MANAGEMENT-F4-REPORT-2026-11-09.md`. **4,135 tests in 232 files** (+64 tests in 3 new files on the documented released 4,071 in 229 of C2; `tsc`, `npm run build` and `git diff --check` clean). Gate: C2 `f636d16` equals `origin/main`, Pages run #86 success, tree clean.
+
+**What was built** (all on the existing `#/family` page; read-only; no new table, migration, sync or backup change, no Finance access):
+- [x] **Activities, next 7 days:** Calendar events naming an active household member (by Contact id), one row per occurrence listing every member, Calendar recurrence/skip/move rules, switched-off calendars counted not listed, links open the Calendar occurrence.
+- [x] **Responsibilities:** open Tasks naming an active member, one row per Task, overdue first then dated then undated, worded "Associated with", links open the Task, no completion.
+- [x] **Birthdays and dates, next 30 days:** F2's own list with the person each is about; leap day per F2.
+- [x] **Optional "Show" filter** (Everyone default, page state only, narrows all three sections identically).
+- [x] **Today:** no new card needed (the Family due provider already feeds Today).
+
+**Judgment calls (please review)** (full list in report section 13):
+1. Windows: activities today + 6 days, dates today + 30 days inclusive.
+2. Hidden calendars follow F3 (counted per occurrence, not listed).
+3. A stored Birthday event on the same day as the Family birthday is shown once, as the date row (the Calendar does the opposite).
+4. Birthdays switched off the Calendar stay listed and say so.
+5. The Family layer's Calendar visibility is not applied to dates.
+6. Past members: no birthday; their date records stay until archived (F2).
+7. Filter is page state; household-wide dates hidden under a person filter.
+8. Overdue Tasks first by partition; then Tasks' own order.
+9. Six rows by default, "Show all" capped at 50.
+10. Event location omitted from overview rows.
+11. F3 readers edited by exports and one extraction only; one F3 guard expectation updated.
+
+**NOT built:** Search, Quick Add, a Today card, the F0 "Needs attention" counts, overview "Important contacts" and "Initiatives" blocks, the `audience` parameter, completion from the overview, F5, C3, Command Station. **F5 remains the next Family phase (not started, not authorized).**
+
+(The C2 entry below is the previous newest status.)
+
+## STATUS 2026-11-09 (previous): CONTACTS & RELATIONSHIPS C2 (CROSS-MODULE REFERENCES, SAFE CONTACT SELECTION, GUARDED REMOVAL) APPROVED BY CHATGPT AND RELEASED: COMMITTED AND PUSHED as `feat(contacts): C2 cross-module references and safe selection` (read the SHA from git log and the Pages result from the Actions tab; not recorded here to avoid a second commit). Final verification in report section 15: 4,071 tests in 229 files. Real-device and screen-reader acceptance still outstanding.
 
 (The paragraphs below were written when C2 was first built; their "uncommitted" wording and 4,065 count are superseded.)
 

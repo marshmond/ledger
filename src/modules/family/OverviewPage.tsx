@@ -4,15 +4,26 @@ import { Link, useNavigate } from '../../core/router';
 import { store } from '../../core/store';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
+import { useToday } from '../../ui/useToday';
+import { readVisibility } from '../calendar/useCalendarData';
+import { ActivitiesSection, DatesSection, ResponsibilitiesSection } from './HouseholdSections';
 import MemberForm from './MemberForm';
 import { loadMembers } from './data';
+import { forPerson, readHouseholdOverview } from './householdOverview';
 import { colorName, DATES_ROUTE, duplicateGroups, effectiveMe, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
 
-/** The Family overview: household members as simple cards, past members and unreadable records kept apart, and any possible duplicates flagged. */
+/**
+ * The Family overview (F4): the household members as simple cards, then a READ-ONLY summary of the household's next 7 days of Calendar activities,
+ * the open Tasks that name a member, and the next 30 days of birthdays and important dates. Past members and unreadable records are kept apart and
+ * any possible duplicates are flagged. Nothing on this page changes a Calendar event, Task or Contact; every row opens the screen that owns it.
+ */
 export default function OverviewPage() {
   const members = useLiveQuery(() => loadMembers(), []);
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []);
+  const today = useToday();
+  const overview = useLiveQuery(() => readHouseholdOverview(today, readVisibility()), [today]);
   const [adding, setAdding] = useState(false);
+  const [who, setWho] = useState<number | null>(null);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -35,6 +46,9 @@ export default function OverviewPage() {
   const review = members.filter((m) => !m.data);
   const dups = duplicateGroups(members);
   const meState = effectiveMe(members);
+  // The optional person filter lasts for this visit only (nothing is stored or synced). A person who is no longer in the household resets it to Everyone.
+  const picked = overview?.people.find((p) => p.memberId === who) ?? null;
+  const view = overview ? forPerson(overview, picked ? picked.memberId : null) : null;
 
   const card = (m: MemberRecord) => {
     const d = m.data!;
@@ -78,6 +92,24 @@ export default function OverviewPage() {
             <div className="card-head"><h2 className="card-title" id="fm-active">In the household</h2><span className="muted small">{active.length}</span></div>
             {active.length ? <ul className="plain fm-list">{active.map(card)}</ul> : <p className="muted">Nobody is marked as in the household.</p>}
           </section>
+          {overview && view && overview.people.length > 0 && (
+            <>
+              {overview.people.length > 1 && (
+                <div className="fm-filter">
+                  <label htmlFor="fm-who" className="fm-filter-label">Show</label>
+                  <select id="fm-who" value={picked ? String(picked.memberId) : ''} onChange={(e) => setWho(e.target.value ? Number(e.target.value) : null)} aria-describedby="fm-who-help">
+                    <option value="">Everyone</option>
+                    {overview.people.map((p) => <option key={p.memberId} value={p.memberId}>{p.name}</option>)}
+                  </select>
+                  <span className="muted small" id="fm-who-help">Narrows the three sections below. Nothing is saved.</span>
+                </div>
+              )}
+              <ActivitiesSection items={view.activities.items} hiddenCount={view.activities.hidden.length} today={today} who={picked?.name ?? null} />
+              <ResponsibilitiesSection items={view.tasks.items} who={picked?.name ?? null} />
+              <DatesSection items={view.dates} today={today} who={picked?.name ?? null} />
+            </>
+          )}
+          {overview && overview.people.length === 0 && overview.dates.length > 0 && <DatesSection items={overview.dates} today={today} who={null} />}
           {past.length > 0 && (
             <section className="card" aria-labelledby="fm-past">
               <div className="card-head"><h2 className="card-title" id="fm-past">Past members</h2><span className="muted small">{past.length}</span></div>

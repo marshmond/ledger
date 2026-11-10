@@ -61,3 +61,16 @@
   .fm-item-title { display: inline-flex; align-items: center; min-height: 44px; }
   .fm-ic-row .fm-date-actions { width: 100%; }
 }
+
+/* Family overview (F4): people on a row, and the optional "Show" filter. Colour is never the only cue: every dot sits beside the person's name. */
+.fm-people { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-3); }
+.fm-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-weight: 600; overflow-wrap: anywhere; }
+.fm-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
+.fm-filter-label { font-weight: 600; }
+.fm-filter select { min-height: 40px; max-width: 100%; }
+@media (max-width: 480px) {
+  .fm-chip { min-height: 44px; }
+  .fm-filter select { min-height: 44px; }
+}
+.fm-foot { display: inline-flex; align-items: center; }
+@media (max-width: 480px) { .fm-foot { min-height: 44px; } }
