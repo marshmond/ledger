@@ -220,3 +220,18 @@ export function effectiveMe(members: readonly MemberRecord[]): MeState {
   if (marked.length === 1) return { me: marked[0], conflict: [] };
   return { me: null, conflict: marked.length > 1 ? marked : [] };
 }
+
+/**
+ * U1: a short label that tells members apart when they share a name, built only from what the member already has on screen elsewhere (role, colour NAME,
+ * and when the record was added). No ids, free text, birth years or contact details. Order: role, colour, added date.
+ */
+export function memberHint(m: MemberRecord): string {
+  const parts: string[] = [];
+  if (m.data) {
+    parts.push(ROLE_LABEL[m.data.role]);
+    const c = colorName(m.data.color);
+    if (c) parts.push(c);
+  }
+  parts.push(`added ${new Date(m.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`);
+  return parts.join(', ');
+}

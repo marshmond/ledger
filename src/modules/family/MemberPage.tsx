@@ -10,7 +10,7 @@ import { ImportantContactsSection } from './ImportantContacts';
 import { MemberDatesSection, ProjectsSection, ScheduleSection, TodoSection } from './MemberSections';
 import MemberForm, { contactDetail } from './MemberForm';
 import { getMember, loadMembers, setBirthdayOnCalendar, setMe, setMemberStatus } from './data';
-import { colorName, duplicateGroups, effectiveMe, memberRoute, monthDayText, ROLE_LABEL, STATUS_LABEL } from './model';
+import { colorName, duplicateGroups, effectiveMe, memberHint, memberRoute, monthDayText, ROLE_LABEL, STATUS_LABEL } from './model';
 import { readContactReferences, referenceLines } from './references';
 
 /** The private note: not in the page at all until Show is pressed, and hidden again when you leave. Never part of a label or a message. */
@@ -107,7 +107,7 @@ export default function MemberPage({ id }: { id: number }) {
         <div className="fm-warn" role="alert">
           <strong>More than one member is marked “This is me”</strong>
           <p className="small">This can happen when two devices each chose someone while offline. Nothing was changed or deleted, and for now nobody is treated as you. Choose who you are:</p>
-          <ul className="plain">{meState.conflict.map((x) => <li key={x.id} className="row"><span>{nameOfMember(x)}</span><button type="button" className="btn" aria-label={`${nameOfMember(x)} is me`} onClick={async () => { await setMe(x.id); toast(`${nameOfMember(x)} is marked as you`); }}>This one is me</button></li>)}</ul>
+          <ul className="plain">{meState.conflict.map((x) => <li key={x.id} className="row"><span>{nameOfMember(x)} ({memberHint(x)})</span><button type="button" className="btn fm-touch" aria-label={`${nameOfMember(x)} (${memberHint(x)}) is me`} onClick={async () => { await setMe(x.id); toast(`${nameOfMember(x)} is marked as you`); }}>This one is me</button></li>)}</ul>
         </div>
       )}
       {rec.problems.length > 0 && (

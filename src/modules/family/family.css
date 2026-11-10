@@ -74,3 +74,6 @@
 }
 .fm-foot { display: inline-flex; align-items: center; }
 @media (max-width: 480px) { .fm-foot { min-height: 44px; } }
+/* U1: touch targets for the "This is me" conflict controls (links on the overview, buttons on a member page), at least 44px tall on every width. */
+.fm-touch { display: inline-flex; align-items: center; min-height: 44px; }
+.fm-warn li.row { flex-wrap: wrap; gap: var(--sp-2); }

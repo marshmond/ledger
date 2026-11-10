@@ -4,7 +4,17 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-09 (newest): FAMILY MANAGEMENT F5 (GLOBAL SEARCH, QUICK ADD AND FINAL FAMILY INTEGRATION) APPROVED BY CHATGPT; RELEASE VERIFICATION PASSED (report section 16); COMMITTED AND PUSHED as `feat(family): F5 search quick add and final integration` (read the SHA from git log and the Pages result from the Actions tab). Family Management F1 to F5 are complete, subject to a green F5 Pages run. The "uncommitted" wording below is superseded. OWNER DECISIONS: C3 (traditional CRM) is deferred indefinitely; no interaction logging or last-contacted tracking is planned. NEXT: targeted UI and Contact-identity cleanup (Household Finances title capitalization; name-based Contact creation in Home & Assets, Bills, Projects and Household Services; Task editor overflow at 320 px; small Me-conflict touch targets on phones; other recorded usability issues), then separate product design and visual identity work. NOT REAL-DEVICE OR SCREEN-READER TESTED.
+## STATUS 2026-11-09 (newest): U1 TARGETED UI CLEANUP BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting independent review
+
+Report: `docs/UI-CLEANUP-U1-REPORT-2026-11-09.md`. Gate: `main` = `origin/main` = `3fca9f2` (F5), Pages run #88 success. Baseline 4,207 tests / 235 files (not re-run; targeted run of Family, Tasks and Household: 557 tests pass; `tsc`, `npm run build`, `git diff --check` clean).
+- [x] "Household Finances" heading capitalized (heading only).
+- [x] Task editor fits at 320 and 375 px (Due date/time row and date grid could not shrink; scoped CSS).
+- [x] Family "This is me" conflict controls 44px, distinct accessible names.
+- [x] Same-name members told apart by role, colour name and added date (no new field).
+Judgment calls (please review): (1) conflict labels now include role/colour/added date; (2) overview cards add "added" date only when names collide; (3) full suite deliberately not run.
+NOT built: nickname/label field (needs a data field), Contact creation identity cleanup (next phase, U2 Contact Creation Identity Safety), then Ledger UI design discovery. Limitation kept: truly indistinguishable same-name members (same role, no colour, same day) still look alike; no underlying behaviour changed; C3 stays deferred.
+
+## STATUS 2026-11-09 (previous): FAMILY MANAGEMENT F5 (GLOBAL SEARCH, QUICK ADD AND FINAL FAMILY INTEGRATION) APPROVED BY CHATGPT; RELEASE VERIFICATION PASSED (report section 16); COMMITTED AND PUSHED as `feat(family): F5 search quick add and final integration` (read the SHA from git log and the Pages result from the Actions tab). Family Management F1 to F5 are complete, subject to a green F5 Pages run. The "uncommitted" wording below is superseded. OWNER DECISIONS: C3 (traditional CRM) is deferred indefinitely; no interaction logging or last-contacted tracking is planned. NEXT: targeted UI and Contact-identity cleanup (Household Finances title capitalization; name-based Contact creation in Home & Assets, Bills, Projects and Household Services; Task editor overflow at 320 px; small Me-conflict touch targets on phones; other recorded usability issues), then separate product design and visual identity work. NOT REAL-DEVICE OR SCREEN-READER TESTED.
 
 Report: `docs/FAMILY-MANAGEMENT-F5-REPORT-2026-11-09.md`. **4,207 tests in 235 files** (+70 tests in 3 new files on the re-run released 4,137 in 232 of F4; `tsc`, `npm run build` and `git diff --check` clean). Gate: F4 `8365402` equals `origin/main`, Pages run #87 success (waited for it), tree clean.
 

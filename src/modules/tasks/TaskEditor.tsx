@@ -100,9 +100,9 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
             </select>
           </label>
         </div>
-        <div className="cal-when">
+        <div className="cal-when tk-when">
           <label className="f">Due
-            <span className="row nowrap">
+            <span className="row nowrap tk-due">
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
               {dueDate && <input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} aria-label="Due time" />}
             </span>

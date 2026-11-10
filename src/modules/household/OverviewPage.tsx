@@ -20,7 +20,7 @@ export default function OverviewPage() {
     catch (e) { return { ok: false as const, error: e instanceof Error ? e.message : 'Something went wrong while reading.' }; }
   }, [period, today, hide, again]);
 
-  const head = <PageHeader title="Household finances" description="What is coming up, what you have committed to, and what has actually been recorded, kept apart and never double-counted." />;
+  const head = <PageHeader title="Household Finances" description="What is coming up, what you have committed to, and what has actually been recorded, kept apart and never double-counted." />;
   if (!res) return <div className="hh">{head}<p className="hh-skel" role="status">Loading… no totals are shown until everything has been read.</p></div>;
   if (!res.ok) {
     return (

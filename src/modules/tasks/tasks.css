@@ -68,3 +68,8 @@
 
 /* Project name on a task row: same quiet weight as the list name. */
 .tk-proj { color: var(--accent-text); }
+
+/* U1: the Due row (date + time) must be allowed to shrink inside the Task editor on a narrow phone; the Calendar rule of the same kind is scoped to .cal-main and does not reach the dialog. */
+.tk-due { flex-wrap: nowrap; min-width: 0; }
+.tk-due input { min-width: 0; flex: 1 1 auto; }
+.tk-when > .f { min-width: 0; }
