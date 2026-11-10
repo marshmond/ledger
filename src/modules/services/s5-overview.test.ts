@@ -23,6 +23,7 @@ import { attentionCounts, loadSnapshot } from './views';
 import { logStandaloneVisit } from './visits';
 import { setContractDates } from './contractData';
 import { attentionLines } from './todayCards';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** S5 Overview reader, with real Dexie, real Tasks, real backup and the real SyncEngine. Invented data only. 2026-11-06 is a Friday. */
 let n = 0;
@@ -30,8 +31,8 @@ const fresh = () => { const d = new FinanceDB(`test-s5ov-${n++}`); installTracki
 const TODAY = '2026-11-06';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const biweekly: Cadence = { mode: 'fixed', rule: { freq: 'weekly', interval: 2, end: { type: 'never' } }, anchorDate: TODAY };
-const add = (d: FinanceDB, over: Partial<ReturnType<typeof blankArrangement>> = {}, provider: object = { name: "Rosa's Cleaning" }, assetIds: number[] = []) =>
-  createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: biweekly, ...over }), provider, assetIds, today: TODAY }, d);
+const add = async (d: FinanceDB, over: Partial<ReturnType<typeof blankArrangement>> = {}, provider?: object, assetIds: number[] = []) =>
+  createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: biweekly, ...over }), provider: provider ?? await providerNamed(d, "Rosa's Cleaning"), assetIds, today: TODAY }, d);
 const addTxn = (d: FinanceDB, amountCents: number, over: Partial<Txn> = {}) => d.txns.add({ accountId: 1, date: '2026-11-02', amountCents, payee: 'Pat Heating', memo: '', status: 'cleared', categoryId: 5, ...over } as Txn) as Promise<number>;
 const logDone = async (d: FinanceDB, arrangementId: number | null, date = '2026-11-03', title = 'Furnace inspection') =>
   (await logStandaloneVisit({ arrangementId, input: { status: 'completed', cancelledBy: null, date, title, chargedCents: null, chargeKind: null }, today: TODAY }, d)).visitId;
@@ -320,7 +321,7 @@ describe('S5 two devices (real SyncEngine): the household total agrees and count
   it('both devices record the same typed visit offline: two Home & Assets records exist, the total counts the job once on BOTH devices, and the duplicate is flagged on both', async () => {
     const { A, B } = devices();
     const asset = await createAsset(blankAsset({ name: 'Furnace', type: 'system' }), A.d);
-    const arr = await createArrangement({ data: blankArrangement({ title: 'Furnace plan', cadence: null }), provider: { name: 'Pat Heating' }, assetIds: [asset], today: TODAY }, A.d);
+    const arr = await createArrangement({ data: blankArrangement({ title: 'Furnace plan', cadence: null }), provider: await providerNamed(A.d, 'Pat Heating'), assetIds: [asset], today: TODAY }, A.d);
     const v = await logDone(A.d, arr.id);
     await setVisitPayment(v, { source: 'manual', refs: [], manualCents: 8000 }, null, A.d);
     await A.engine.initialUpload();
@@ -342,7 +343,7 @@ describe('S5 two devices (real SyncEngine): the household total agrees and count
   it('one device links the payment in Services while the other links the SAME Finance transaction in Home & Assets: after syncing, each module counts it once and the household counts it once', async () => {
     const { A, B } = devices();
     const asset = await createAsset(blankAsset({ name: 'Oven', type: 'appliance' }), A.d);
-    const arr = await createArrangement({ data: blankArrangement({ title: 'Oven service', cadence: null }), provider: { name: 'Hearth Co' }, assetIds: [asset], today: TODAY }, A.d);
+    const arr = await createArrangement({ data: blankArrangement({ title: 'Oven service', cadence: null }), provider: await providerNamed(A.d, 'Hearth Co'), assetIds: [asset], today: TODAY }, A.d);
     const v = await logDone(A.d, arr.id);
     const tx = await addTxn(A.d, -12000);
     await A.engine.initialUpload();

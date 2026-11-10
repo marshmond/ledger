@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { findOrCreateContact, validateContact } from '../../core/contacts';
+import { contactChoiceLabel, sharedNameIds } from '../../core/contactChoice';
+import { NewContactNow } from '../../ui/ContactChoice';
 import { dayLabel } from '../../core/time';
-import { db } from '../../db';
 import { store } from '../../core/store';
 import Modal from '../../shell/Modal';
 import { formatCents, todayISO } from '../../lib/money';
@@ -68,9 +68,6 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
   const [saved, setSaved] = useState<{ serviceId: number } | null>(null);
   const hideAmounts = loadHideAmounts();
   const [ack, setAck] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -84,16 +81,12 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
     if (on) { setChoice('manual'); setCostText((handoff.manualCents / 100).toFixed(2)); } else if (choice === 'manual') setCostText('');
   }
 
-  async function addContact() {
-    const problem = validateContact({ name: newName, phone: newPhone, email: newEmail });
-    if (problem) return setError(problem);
-    try {
-      const { id, created } = await findOrCreateContact(db, { name: newName, phone: newPhone, email: newEmail });
-      setProvider(id);
-      toast(created ? `Added ${newName.trim()} to your contacts` : `${newName.trim()} was already in your contacts, so that contact was used`);
-      setNewName(''); setNewPhone(''); setNewEmail(''); setError('');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not add the contact.'); }
-  }
+  // U2: the provider is chosen from the menu BY ID, or created on purpose in the box below (a taken name is shown first and needs a tick). Never matched by name.
+  const sharedNames = sharedNameIds(contacts);
+  const chooseProvider = (id: number, created: boolean, name: string) => {
+    setProvider(id);
+    toast(created ? `Created the new contact ${name} and chose them` : 'Chose the existing contact');
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -184,11 +177,11 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
           <p className="as-note small" role="note">Started from the project "{prefill.projectName}". Nothing is saved until you press Save. The project's payments stay on the project and are not copied here; add a cost only if you want one counted on this asset.</p>
         )}
         <div className="as-two">
-          <label className="f">Done by <span className="muted">(optional)</span>
+          <label className="f cc-fill-label">Done by <span className="muted">(optional)</span>
             <select value={provider ?? ''} onChange={(e) => setProvider(e.target.value === '' ? null : Number(e.target.value))}>
               <option value="">Nobody chosen</option>
               {provider !== null && !known && <option value={provider}>(contact removed)</option>}
-              {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {contacts.map((c) => <option key={c.id} value={c.id}>{contactChoiceLabel(c, contacts, sharedNames)}</option>)}
             </select>
           </label>
         </div>
@@ -200,17 +193,7 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
             <p style={{ margin: '4px 0 0' }}>Not copied unless you tick this. The visit and this record would then each hold an amount for the same real payment. They are linked, so Ledger can recognize the pair, but each module's own total will count its own amount. Do not tick it if the payment is, or will be, linked to Finance.</p>
           </div>
         )}
-        <details className="as-sec">
-          <summary>Add someone new as the provider</summary>
-          <div className="as-new-contact">
-            <div className="as-two">
-              <input aria-label="New provider name" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-              <input aria-label="New provider phone" placeholder="Phone (optional)" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} inputMode="tel" />
-            </div>
-            <input aria-label="New provider email" placeholder="Email (optional)" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} inputMode="email" />
-            <button type="button" className="btn" onClick={() => void addContact()} disabled={!newName.trim()}>Add and choose</button>
-          </div>
-        </details>
+        <NewContactNow idp="as-service" label="Or create a new contact as the provider" onChosen={chooseProvider} />
         <label className="f">Notes <span className="muted">(optional)</span>
           <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={5000} placeholder="What was found, parts used, what to watch for" />
         </label>

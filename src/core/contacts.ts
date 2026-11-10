@@ -34,6 +34,10 @@ export function validateContact(input: ContactInput): string | null {
 /**
  * Finds the live contact with this name, or makes one. A contact that already exists is never overwritten: only details it does not
  * have yet (phone, email, relationship) are filled in. Done in one transaction, so two quick calls cannot make two.
+ *
+ * @deprecated (U2) Reusing a Contact because a name matches can attach a record to the wrong person. NO application code calls this any more; every
+ * interactive path chooses an existing Contact by id or creates a new one on purpose through `resolveContactChoice` (core/contactIdentity.ts). It stays only
+ * so older tests and any compatibility reader keep working. Do not use it in new code (a test pins that no application file does).
  */
 export async function findOrCreateContact(d: FinanceDB, input: ContactInput): Promise<{ id: number; created: boolean }> {
   const problem = validateContact(input);

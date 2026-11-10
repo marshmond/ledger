@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { findOrCreateContact, validateContact } from '../../core/contacts';
+import { contactChoiceLabel, sharedNameIds } from '../../core/contactChoice';
+import { NewContactNow } from '../../ui/ContactChoice';
 import { store } from '../../core/store';
 import Modal from '../../shell/Modal';
 import { formatCents } from '../../lib/money';
@@ -45,9 +46,6 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
   const [cs, setCs] = useState(base.contacts);
   const [specs, setSpecs] = useState(base.specs);
   const [refs, setRefs] = useState(base.refs);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [dropOk, setDropOk] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -64,16 +62,12 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
   });
   const warnings = assetWarnings({ purchaseDate: purchaseDate || null, installDate: installDate || null });
 
-  async function addNewContact() {
-    const problem = validateContact({ name: newName, phone: newPhone, email: newEmail });
-    if (problem) return setError(problem);
-    try {
-      const { id, created } = await findOrCreateContact(db, { name: newName, phone: newPhone, email: newEmail });
-      if (!cs.some((c) => c.contactId === id)) setCs([...cs, { contactId: id, role: '' }]);
-      toast(created ? `Added ${newName.trim()} to your contacts` : `${newName.trim()} was already in your contacts, so that contact was used`);
-      setNewName(''); setNewPhone(''); setNewEmail(''); setError('');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not add the contact.'); }
-  }
+  // U2: a contact is chosen from the menu BY ID, or created on purpose in the box below (a taken name is shown first and needs a tick). Never matched by name.
+  const sharedNames = sharedNameIds(contacts);
+  const chooseContact = (id: number, created: boolean, name: string) => {
+    if (!cs.some((c) => c.contactId === id)) setCs([...cs, { contactId: id, role: '' }]);
+    toast(created ? `Created the new contact ${name}` : 'Added the existing contact');
+  };
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -163,9 +157,9 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
           <p className="muted small">The people and companies behind it: who installed it, who services it, who to call for the warranty. They are your shared contacts.</p>
           {cs.map((c, i) => (
             <div key={i} className="as-line">
-              <select aria-label="Contact" value={c.contactId} onChange={(e) => setCs(cs.map((x, j) => (j === i ? { ...x, contactId: Number(e.target.value) } : x)))}>
+              <select className="cc-fill" aria-label="Contact" value={c.contactId} onChange={(e) => setCs(cs.map((x, j) => (j === i ? { ...x, contactId: Number(e.target.value) } : x)))}>
                 {contacts.some((k) => k.id === c.contactId) ? null : <option value={c.contactId}>(contact removed)</option>}
-                {contacts.map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+                {contacts.map((k) => <option key={k.id} value={k.id}>{contactChoiceLabel(k, contacts, sharedNames)}</option>)}
               </select>
               <input aria-label="Role" list="as-roles" placeholder="Role, e.g. installer" value={c.role} maxLength={40} onChange={(e) => setCs(cs.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))} />
               <button type="button" className="link" onClick={() => setCs(cs.filter((_, j) => j !== i))}>Remove</button>
@@ -173,20 +167,13 @@ export default function AssetForm({ asset, parentId, onClose, onSaved }: { asset
           ))}
           <datalist id="as-roles">{CONTACT_ROLE_HINTS.map((r) => <option key={r} value={r} />)}</datalist>
           {contacts.length > 0 && (
-            <select aria-label="Add an existing contact" value="" onChange={(e) => { if (e.target.value) setCs([...cs, { contactId: Number(e.target.value), role: '' }]); }}>
+            <select className="cc-fill" aria-label="Add an existing contact" value="" onChange={(e) => { if (e.target.value) setCs([...cs, { contactId: Number(e.target.value), role: '' }]); }}>
               <option value="">Add an existing contact…</option>
-              {contacts.filter((k) => !cs.some((c) => c.contactId === k.id)).map((k) => <option key={k.id} value={k.id}>{k.name}</option>)}
+              {contacts.filter((k) => !cs.some((c) => c.contactId === k.id)).map((k) => <option key={k.id} value={k.id}>{contactChoiceLabel(k, contacts, sharedNames)}</option>)}
             </select>
           )}
-          <div className="as-new-contact">
-            <strong className="small">Or add someone new</strong>
-            <div className="as-two">
-              <input aria-label="New contact name" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-              <input aria-label="New contact phone" placeholder="Phone (optional)" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} inputMode="tel" />
-            </div>
-            <input aria-label="New contact email" placeholder="Email (optional)" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} inputMode="email" />
-            <button type="button" className="btn" onClick={() => void addNewContact()} disabled={!newName.trim()}>Add contact</button>
-          </div>
+          <NewContactNow idp="as-contact" label="Or create a new contact" onChosen={chooseContact} />
+          <p className="muted small">A new contact is created as soon as you confirm it, even if you then cancel this form.</p>
         </details>
 
         <details className="as-sec">

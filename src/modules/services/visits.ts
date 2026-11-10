@@ -11,6 +11,7 @@
  *
  * Nothing here touches Finance. The amount charged is information only.
  */
+import { hasContactChoice } from '../../core/contactIdentity';
 import { db, type FinanceDB } from '../../db';
 import type { Link } from '../../core/entities';
 import { localISO } from '../../core/time';
@@ -270,8 +271,13 @@ export function logVisitFromTask(req: LogRequest, d: FinanceDB = db): Promise<Lo
 export interface StandaloneRequest {
   /** An existing arrangement (even an ended one), or null for a one-off job. */
   arrangementId?: number | null;
-  /** The provider, for a one-off job. For an arrangement, its own provider is used. */
+  /** The provider, for a one-off job: an existing Contact by id, or a NEW one made on purpose (never found by name). For an arrangement, its own provider is used. */
   provider?: ProviderInput | null;
+  /**
+   * U2: a provider NAME only, saved as the visit's provider-name snapshot with NO Contact linked. For a path where the owner has had no chance to choose a
+   * Contact (Quick Add). Used only when `provider` is not given. The owner can still use the visit without a Contact; nothing is created or matched.
+   */
+  providerNameOnly?: string;
   input: VisitInput;
   assetIds?: number[];
   today: string;
@@ -306,9 +312,12 @@ export function logStandaloneVisit(req: StandaloneRequest, d: FinanceDB = db): P
       arrangementId = a.id; providerId = a.data.providerContactId; providerName = a.data.providerNameSnapshot; defaultTitle = a.data.title;
       assetIds = assetIds ?? (await linkedAssetIds(a.id, d));
     } else {
-      if (!req.provider || (req.provider.contactId == null && !tidy(req.provider.name ?? ''))) throw new Error('Choose or enter the provider. Nothing was changed.');
-      const p = await resolveProvider(req.provider, d);
-      providerId = p.id; providerName = p.name; contactCreated = p.created;
+      if (hasContactChoice(req.provider)) {
+        const p = await resolveProvider(req.provider, d);
+        providerId = p.id; providerName = p.name; contactCreated = p.created;
+      } else if (tidy(req.providerNameOnly ?? '')) {
+        providerName = tidy(req.providerNameOnly ?? ''); // a name for the record, not a Contact
+      } else throw new Error('Choose or enter the provider. Nothing was changed.');
     }
     const data = normalizeVisit(blankVisit({
       arrangementId, providerContactId: providerId, providerNameSnapshot: providerName, title: req.input.title?.trim() || defaultTitle, status: req.input.status,
@@ -318,6 +327,7 @@ export function logStandaloneVisit(req: StandaloneRequest, d: FinanceDB = db): P
     const problem = validateVisit(data, req.today);
     if (problem) throw new Error(`${problem} Nothing was changed.`);
     const similar = existing.find((v) => v.data.taskId === null && v.data.arrangementId === arrangementId && v.data.providerContactId === providerId
+      && (providerId !== null || v.data.providerNameSnapshot.toLowerCase() === providerName.toLowerCase())
       && v.data.date === data.date && v.data.status === data.status && v.data.title.toLowerCase() === data.title.toLowerCase());
     const rec = new Recorder();
     const visitId = await rows(d).put({ module: MODULE, kind: VISIT_KIND, data: { ...storable(data), ...(req.operationId ? { operationId: req.operationId } : {}) } });

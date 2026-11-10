@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { updateContactDetails, validateContact } from '../../core/contacts';
+import { updateContactDetails } from '../../core/contacts';
+import { contactChoiceLabel, sharedNameIds } from '../../core/contactChoice';
 import type { Contact } from '../../core/entities';
 import { store } from '../../core/store';
 import { db } from '../../db';
 import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
+import { NewContactBox } from '../../ui/ContactChoice';
 import { addNewVendor, addVendor, commitmentsWithVendor, projectsUsingContact, removeVendor } from './data';
 
 /**
- * The people and businesses involved in a project. They are the shared contacts: adding someone who already exists (same name) reuses
- * that contact, and the same contact can be on several projects. Editing a contact here changes it everywhere it is used.
+ * The people and businesses involved in a project. They are the shared contacts: an existing contact is chosen from the menu (by id), a new one is created on
+ * purpose (a name that is already taken is shown first and needs a tick; nothing is reused or merged by name), and the same contact can be on several projects.
+ * Editing a contact here changes it everywhere it is used.
  */
 export default function Vendors({ projectId, vendorIds }: { projectId: number; vendorIds: number[] }) {
   const toast = useToast();
@@ -19,11 +22,9 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
   const vendors = vendorIds.map((id) => byId.get(id));
   const free = contacts.filter((c) => !vendorIds.includes(c.id as number)).sort((a, b) => a.name.localeCompare(b.name));
 
+  const shared = sharedNameIds(contacts);
   const [pick, setPick] = useState('');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Contact | null>(null);
 
@@ -32,16 +33,6 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
   }
 
   const addExisting = () => run(async () => { await addVendor(projectId, Number(pick)); setPick(''); });
-  const addNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    void run(async () => {
-      const problem = validateContact({ name, phone, email });
-      if (problem) throw new Error(problem);
-      const r = await addNewVendor(projectId, { name, relationship: role, phone, email });
-      toast(r.created ? `Added ${name.trim()}` : `${name.trim()} was already in your contacts, so that contact was used`);
-      setName(''); setRole(''); setPhone(''); setEmail('');
-    });
-  };
 
   return (
     <section className="card pj-card" aria-labelledby="pj-vendors-h">
@@ -90,20 +81,20 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
         <div className="pj-add">
           <select value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Add an existing contact">
             <option value="">Add someone from your contacts…</option>
-            {free.map((c) => <option key={c.id} value={c.id}>{c.name}{c.relationship ? ` (${c.relationship})` : ''}</option>)}
+            {free.map((c) => <option key={c.id} value={c.id}>{contactChoiceLabel(c, contacts, shared)}</option>)}
           </select>
           <button className="btn" disabled={!pick} onClick={() => void addExisting()}>Add</button>
         </div>
       )}
 
-      <form className="pj-newvendor" onSubmit={addNew}>
-        <strong className="small">New vendor</strong>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name or business" aria-label="Vendor name" maxLength={120} />
-        <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="What they do (plumber, tile…)" aria-label="What they do" />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" aria-label="Phone" inputMode="tel" />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" aria-label="Email" inputMode="email" />
-        <button className="btn" type="submit">Add vendor</button>
-      </form>
+      {creating ? (
+        <NewContactBox idp="pj-newvendor" showRelationship submitLabel="Create new contact"
+          onReady={async (c) => { await addNewVendor(projectId, c); toast(`Added ${(c.name ?? "").trim()} as a new contact and vendor`); setCreating(false); }}
+          onUseExisting={(id) => void run(async () => { await addVendor(projectId, id); setCreating(false); })}
+          onCancel={() => setCreating(false)} />
+      ) : (
+        <button type="button" className="btn pj-newvendor-btn" onClick={() => setCreating(true)}>Create a new vendor contact</button>
+      )}
       {error && <div className="error" role="alert">{error}</div>}
     </section>
   );

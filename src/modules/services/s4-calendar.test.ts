@@ -14,6 +14,7 @@ import { cadenceBetween, blankArrangement, type Cadence } from './model';
 import { HORIZON_MONTHS, horizonEnd, plannedVisitDates } from './plannedVisits';
 import { logStandaloneVisit } from './visits';
 import { setContractDates } from './contractData';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Invented data only. 2026-11-06 is a Friday. Real Dexie, real Tasks, real backup and SyncEngine. */
 let n = 0;
@@ -23,8 +24,8 @@ const TODAY = '2026-11-06';
 const biweekly: Cadence = { mode: 'fixed', rule: { freq: 'weekly', interval: 2, end: { type: 'never' } }, anchorDate: TODAY };
 const weekly = (anchor: string): Cadence => ({ mode: 'fixed', rule: { freq: 'weekly', interval: 1, end: { type: 'never' } }, anchorDate: anchor });
 const semi = (anchor: string, a: object, b: object): Cadence => ({ mode: 'fixed', anchorDate: anchor, rule: { freq: 'monthly', interval: 1, monthly: 'date', end: { type: 'never' } }, semi: { a, b } as never });
-const add = (d: FinanceDB, cadence: Cadence | null, over: Partial<ReturnType<typeof blankArrangement>> = {}) =>
-  createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence, ...over }), provider: { name: "Rosa's Cleaning" }, today: TODAY }, d);
+const add = async (d: FinanceDB, cadence: Cadence | null, over: Partial<ReturnType<typeof blankArrangement>> = {}) =>
+  createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence, ...over }), provider: await providerNamed(d, "Rosa's Cleaning"), today: TODAY }, d);
 const q = (today: string, from = today, to = addDays(today, 800)) => ({ from, to, today, overdueDays: 0 });
 const visits = async (d: FinanceDB, today = TODAY, from?: string, to?: string) => (await servicesDueItems(d, q(today, from, to))).filter((i) => i.id.startsWith('services:visit-'));
 const dates = async (d: FinanceDB, today = TODAY, from?: string, to?: string) => (await visits(d, today, from, to)).map((i) => i.date);

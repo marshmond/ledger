@@ -1,12 +1,12 @@
 /**
  * Reading and writing obligations (B1). Writes go through the shared store's `repo` (id, createdAt, updatedAt, soft delete). This module
- * writes ONLY its own `bills` records (and, when asked, a provider Contact through the existing `findOrCreateContact`). It never writes
+ * writes ONLY its own `bills` records (and, when the owner asks, a NEW provider Contact through `resolveContactChoice`, never by matching a name). It never writes
  * Finance, Calendar, Projects, Home & Assets or Household Services. B2: when the owner has turned reminders on for a bill, saving it keeps the
  * bill's Tasks in step through the existing Tasks API (see `tasks.ts`); it creates no event.
  */
 import { db, type FinanceDB } from '../../db';
 import type { ModuleRecord } from '../../core/entities';
-import { findOrCreateContact, validEmail } from '../../core/contacts';
+import { hasContactChoice, resolveContactChoice, type ContactChoice, type ResolvedContact } from '../../core/contactIdentity';
 import { createStore, isLive, repo } from '../../core/store';
 import { addDays, addMonths } from '../../lib/dates';
 import {
@@ -16,7 +16,6 @@ import {
 import { expectedDates, planScheduleChange, type Schedule } from './schedule';
 import { cycleRecordsOf, ensureBillTasksIn, financeLookupFor, inBillsTx, loadBillTasks, markersOf, planBillTasks, planningPeriods } from './tasks';
 import { Recorder, type Undo } from './undo';
-import { tidy } from './util';
 import { lifecycleRecordsOf, loadLifecycleRecords, withLifecycle } from './lifecycleRead';
 
 export const rows = (d: FinanceDB) => repo<ModuleRecord>(d.moduleRecords);
@@ -44,23 +43,17 @@ export async function writeObligation(id: number | undefined, data: ObligationDa
 
 // ---- providers (shared Contacts) ----
 
-export interface ProviderInput { contactId?: number | null; name?: string; phone?: string; email?: string; relationship?: string }
-export interface ResolvedProvider { id: number; name: string; created: boolean }
+/**
+ * U2: a provider is EITHER an existing Contact (`contactId`, chosen by the owner) OR a new one created on purpose (`name` and the optional details).
+ * A name is never used to look an existing Contact up. If a live Contact already has that name, `resolveProvider` throws `SameNameContactError` (nothing
+ * written) unless `confirmedDifferent` says the owner has seen the matches and wants a separate Contact.
+ */
+export type ProviderInput = ContactChoice;
+export type ResolvedProvider = ResolvedContact;
 
-/** Finds the chosen contact, or finds/creates one by name (never a second contact for the same name). Runs inside the caller's transaction. */
-export async function resolveProvider(input: ProviderInput, d: FinanceDB): Promise<ResolvedProvider> {
-  if (input.contactId != null) {
-    const c = await d.contacts.get(input.contactId);
-    if (!c || !isLive(c)) throw new Error('That contact no longer exists.');
-    return { id: c.id as number, name: c.name, created: false };
-  }
-  const name = tidy(input.name ?? '');
-  if (!name) throw new Error('Enter the provider\'s name.');
-  if (input.email && tidy(input.email) && !validEmail(tidy(input.email))) throw new Error('That email address does not look right.');
-  const { id, created } = await findOrCreateContact(d, { name, phone: input.phone, email: input.email, relationship: input.relationship });
-  return { id, name: (await d.contacts.get(id))?.name ?? name, created };
-}
-const hasProvider = (p: ProviderInput | null | undefined): p is ProviderInput => !!p && (p.contactId != null || !!tidy(p.name ?? ''));
+/** Resolves the owner's provider choice to a Contact id (see `resolveContactChoice`). Runs inside the caller's transaction. */
+export const resolveProvider = (input: ProviderInput, d: FinanceDB): Promise<ResolvedProvider> => resolveContactChoice(d, input);
+const hasProvider = hasContactChoice;
 
 // ---- creating ----
 

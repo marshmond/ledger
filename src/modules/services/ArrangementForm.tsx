@@ -8,12 +8,12 @@ import { store } from '../../core/store';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import { loadAssets, publicLabel } from '../assets/data';
 import { runUndo } from './undo';
-import { createArrangement, updateArrangement, type ProviderInput } from './data';
+import { createArrangement, updateArrangement } from './data';
+import { SameNameContactError } from '../../core/contactIdentity';
+import { ContactField, NO_PICK, pickToChoice, type ContactPick } from '../../ui/ContactChoice';
 import {
   BASIS_LABEL, blankArrangement, EXPECTED_BASES, notesWarning, type ArrangementRecord, type DocRef, type ExpectedBasis,
 } from './model';
-
-const NEW = '__new';
 
 /**
  * Add or edit an arrangement. Only the provider and what they do are needed; everything else is under "More details". When editing, the
@@ -28,10 +28,8 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
   const today = todayISO();
 
   const [title, setTitle] = useState(d.title);
-  const [choice, setChoice] = useState<string>(d.providerContactId !== null ? String(d.providerContactId) : '');
-  const [newName, setNewName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  // U2: an existing Contact chosen by id, or a NEW one made on purpose. A typed name never selects a Contact.
+  const [pick, setPick] = useState<ContactPick>(NO_PICK);
   const [startDate, setStartDate] = useState(d.startDate ?? '');
   const [draft, setDraft] = useState(() => draftOf(null, today));
   const [time, setTime] = useState('');
@@ -46,8 +44,6 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
 
   const hasProvider = d.providerContactId !== null;
   const providerName = hasProvider ? contacts.find((c) => c.id === d.providerContactId)?.name ?? d.providerNameSnapshot : '';
-  const typed = newName.trim().toLowerCase();
-  const sameAsExisting = !!typed && contacts.some((c) => c.name.trim().toLowerCase() === typed);
   const warn = notesWarning(notes);
 
   async function save() {
@@ -59,8 +55,7 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
       if (cents === null || cents < 0) return setError('The cost estimate is not a valid amount.');
       expected = { basis, cents };
     }
-    const provider: ProviderInput | null = choice === NEW ? { name: newName, phone, email } : choice ? { contactId: Number(choice) } : null;
-    if (choice === NEW && !newName.trim()) return setError('Enter the provider\'s name, or pick "No provider yet".');
+    const provider = pickToChoice(pick);
     setBusy(true);
     try {
       if (arrangement) {
@@ -71,13 +66,13 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
         const bad = draftProblem(draft);
         if (bad) throw new Error(bad);
         const cadence = cadenceOfDraft(draft);
-        const r = await createArrangement({ data: blankArrangement({ title, startDate: startDate || null, cadence, visitTime: cadence && time ? time : null, expected, refs, notes }), provider: provider?.contactId != null || provider?.name ? provider : null, assetIds, scheduleFirstVisit: makeTask, today });
+        const r = await createArrangement({ data: blankArrangement({ title, startDate: startDate || null, cadence, visitTime: cadence && time ? time : null, expected, refs, notes }), provider, assetIds, scheduleFirstVisit: makeTask, today });
         toast(r.taskId ? 'Added, with its first visit in Tasks' : 'Added', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(r.id);
       }
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Nothing was changed.');
+      setError(e instanceof SameNameContactError ? `${e.message} Press Change on the new contact to review the matches.` : e instanceof Error ? e.message : 'Could not save. Nothing was changed.');
       setBusy(false);
     }
   }
@@ -95,23 +90,9 @@ export default function ArrangementForm({ arrangement, assetIds: startAssets = [
           <p className="sv-note">Provider: <strong>{providerName}</strong>. To change who does this, use <em>Replace provider</em> on the arrangement page. That keeps the history with the original provider.</p>
         ) : (
           <>
-            <label className="f">Provider
-              <select value={choice} onChange={(e) => setChoice(e.target.value)}>
-                <option value="">No provider yet</option>
-                {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                <option value={NEW}>A new provider…</option>
-              </select>
-            </label>
-            {choice === NEW && (
-              <div className="sv-sub">
-                <label className="f">Provider name<input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={120} /></label>
-                {sameAsExisting && <p className="sv-note small">A contact with this name already exists, so it will be used. No second contact is made.</p>}
-                <div className="sv-two">
-                  <label className="f">Phone (optional)<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="off" /></label>
-                  <label className="f">Email (optional)<input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="off" /></label>
-                </div>
-                <p className="muted small">Saved in your shared Contacts, and shown only on the provider page.</p>
-              </div>
+            <ContactField idp="sv-provider" label="Provider" contacts={contacts} value={pick} onChange={setPick} noneLabel="No provider yet" newLabel="Create a new provider contact instead" />
+            {d.providerNameSnapshot && !pick.contactId && !pick.newContact && (
+              <p className="muted small">Provider name kept as words only: “{d.providerNameSnapshot}”. It is not linked to a contact. Pick one above, or create a new one, to link it. Ledger never links a contact just because a name matches.</p>
             )}
           </>
         )}

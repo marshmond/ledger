@@ -1,3 +1,4 @@
+import { providerNamed } from '../../core/contactTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { installTracking } from '../../lib/sync/track';
@@ -27,7 +28,7 @@ const addTxn = async (d: FinanceDB, amountCents: number, over: Partial<Txn> = {}
   d.txns.add({ accountId: 1, date: '2026-11-01', amountCents, payee: 'Pat Pools', memo: '', status: 'cleared', categoryId: 5, ...over } as Txn);
 const live = async (d: FinanceDB, id: number) => (await d.txns.get(id))!;
 const ref = async (d: FinanceDB, id: number, split?: number) => makeTxnRef(await live(d, id), split);
-const arr = async (d: FinanceDB, over = {}, name = 'Pat Pools') => (await createArrangement({ data: blankArrangement({ title: 'Pool service', cadence: null, ...over }), provider: { name }, today: TODAY }, d)).id;
+const arr = async (d: FinanceDB, over = {}, name = 'Pat Pools') => (await createArrangement({ data: blankArrangement({ title: 'Pool service', cadence: null, ...over }), provider: await providerNamed(d, name), today: TODAY }, d)).id;
 async function visit(d: FinanceDB, arrangementId: number | null, over: Partial<VisitInput> = {}, name = 'Pat Pools') {
   const input: VisitInput = { status: 'completed', cancelledBy: null, date: '2026-11-01', title: 'Pool service', chargedCents: null, chargeKind: null, ...over };
   return (await logStandaloneVisit({ arrangementId, provider: arrangementId === null ? { name } : null, input, today: TODAY }, d)).visitId;

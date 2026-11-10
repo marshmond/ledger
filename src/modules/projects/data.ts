@@ -5,7 +5,7 @@
  */
 import { db, type FinanceDB } from '../../db';
 import type { ModuleRecord } from '../../core/entities';
-import { findOrCreateContact, type ContactInput } from '../../core/contacts';
+import { hasContactChoice, resolveContactChoice, type ContactChoice } from '../../core/contactIdentity';
 import { isLive, repo } from '../../core/store';
 import {
   asBudgetLine, asProject, MODULE, sortLines, type BudgetLineRecord, type ProjectData, type ProjectRecord, type ProjectStatus,
@@ -71,11 +71,17 @@ export const addVendor = (projectId: number, contactId: number, d: FinanceDB = d
 export const removeVendor = (projectId: number, contactId: number, d: FinanceDB = db) =>
   change(projectId, (p) => ({ ...p, vendorContactIds: p.vendorContactIds.filter((x) => x !== contactId) }), d);
 
-/** Finds or makes the contact (an existing contact with the same name is reused, not duplicated) and puts it on the project. */
-export async function addNewVendor(projectId: number, input: ContactInput, d: FinanceDB = db): Promise<{ contactId: number; created: boolean }> {
-  const { id, created } = await findOrCreateContact(d, input);
-  await addVendor(projectId, id, d);
-  return { contactId: id, created };
+/**
+ * U2: makes a NEW contact on purpose and puts it on the project, in one transaction (a failure leaves no contact behind). A name that a live contact already
+ * has is NOT reused: `SameNameContactError` is thrown (nothing written) unless `confirmedDifferent` says the owner has seen the matches and wants a separate one.
+ * To use an existing contact, the owner picks it by id (`addVendor`).
+ */
+export async function addNewVendor(projectId: number, input: ContactChoice, d: FinanceDB = db): Promise<{ contactId: number; created: boolean }> {
+  return d.transaction('rw', d.contacts, d.moduleRecords, async () => {
+    const { id, created } = await resolveContactChoice(d, { ...input, contactId: null }); // always a NEW contact: an id here would mean "use existing", which is addVendor
+    await addVendor(projectId, id, d);
+    return { contactId: id, created };
+  });
 }
 
 /** The projects a contact is on. */
@@ -175,6 +181,11 @@ export interface CommitmentFields {
   parentId: number | null;
   budgetLineId: number | null;
   vendorContactId: number | null;
+  /**
+   * U2: a NEW vendor contact to create on purpose, in the SAME transaction as the commitment (so a failure leaves no stray contact). Used only when
+   * `vendorContactId` is null. A name a live contact already has is refused (`SameNameContactError`) unless `confirmedDifferent` is set. Never looks a contact up by name.
+   */
+  newVendor?: ContactChoice | null;
   acceptedDate: string | null;
   notes: string;
   /** The split across budget lines. undefined = leave what is stored; null = remove the split; a list = replace it (must add up to the amount). */
@@ -183,7 +194,8 @@ export interface CommitmentFields {
 
 const amountText = (cents: number) => (cents / 100).toFixed(2);
 
-async function checkFields(projectId: number, f: CommitmentFields, editingId: number | undefined, d: FinanceDB) {
+/** `keepVendorId`: the vendor the commitment already has. Saving other fields never fails because that Contact was removed since; the stored id is kept, and only a CHANGE to another removed Contact is refused. */
+async function checkFields(projectId: number, f: CommitmentFields, editingId: number | undefined, d: FinanceDB, keepVendorId: number | null = null) {
   if (!(await getProject(projectId, d))) throw new Error('That project no longer exists.');
   const lines = await loadBudgetLines(projectId, d);
   const all = await loadCommitments(projectId, d);
@@ -199,7 +211,7 @@ async function checkFields(projectId: number, f: CommitmentFields, editingId: nu
     });
     if (problem2) throw new Error(problem2);
   }
-  if (f.vendorContactId !== null) {
+  if (f.vendorContactId !== null && f.vendorContactId !== keepVendorId) {
     const c = await d.contacts.get(f.vendorContactId);
     if (!c || !isLive(c)) throw new Error('That vendor is not in your contacts any more.');
   }
@@ -214,9 +226,17 @@ async function ensureProjectVendor(projectId: number, contactId: number | null, 
   return true;
 }
 
+/** U2: when the owner asked for a NEW vendor, makes it now (inside the caller's transaction) and returns the fields pointing at its id. */
+async function withNewVendor(f: CommitmentFields, d: FinanceDB): Promise<{ f: CommitmentFields; contactCreated: boolean }> {
+  if (f.vendorContactId !== null || !hasContactChoice(f.newVendor)) return { f, contactCreated: false };
+  const r = await resolveContactChoice(d, f.newVendor);
+  return { f: { ...f, vendorContactId: r.id }, contactCreated: r.created };
+}
+
 /** Adds a quote, an accepted agreement or a change order. Throws the plain-words problem if it does not hold together. */
-export async function createCommitment(projectId: number, f: CommitmentFields, d: FinanceDB = db): Promise<{ id: number; vendorAdded: boolean }> {
+export async function createCommitment(projectId: number, fields: CommitmentFields, d: FinanceDB = db): Promise<{ id: number; vendorAdded: boolean; contactCreated: boolean }> {
   return d.transaction('rw', d.moduleRecords, d.contacts, async () => {
+    const { f, contactCreated } = await withNewVendor(fields, d);
     await checkFields(projectId, f, undefined, d);
     const data: CommitmentData = {
       projectId, budgetLineId: f.budgetLineId, vendorContactId: f.vendorContactId, title: f.title.trim(), status: f.status,
@@ -225,16 +245,17 @@ export async function createCommitment(projectId: number, f: CommitmentFields, d
       ...(f.allocations ? { allocations: f.allocations.map((e) => ({ budgetLineId: e.budgetLineId, amountCents: e.amountCents })) } : {}),
     };
     const id = await rows(d).put({ module: MODULE, kind: 'commitment', data: { ...data } });
-    return { id, vendorAdded: await ensureProjectVendor(projectId, f.vendorContactId, d) };
+    return { id, vendorAdded: await ensureProjectVendor(projectId, f.vendorContactId, d), contactCreated };
   });
 }
 
 /** Saves changes to a commitment. Fields this code does not know travel with the record and are kept. */
-export async function saveCommitment(id: number, f: CommitmentFields, d: FinanceDB = db): Promise<{ vendorAdded: boolean }> {
+export async function saveCommitment(id: number, fields: CommitmentFields, d: FinanceDB = db): Promise<{ vendorAdded: boolean; contactCreated: boolean }> {
   return d.transaction('rw', d.moduleRecords, d.contacts, async () => {
     const c = await getCommitment(id, d);
     if (!c) throw new Error('That commitment no longer exists.');
-    await checkFields(c.data.projectId, f, id, d);
+    const { f, contactCreated } = await withNewVendor(fields, d);
+    await checkFields(c.data.projectId, f, id, d, c.data.vendorContactId);
     const data: CommitmentData = {
       ...c.data, budgetLineId: f.budgetLineId, vendorContactId: f.vendorContactId, title: f.title.trim(), status: f.status,
       amountCents: Math.round(f.amountCents), parentId: f.parentId, notes: f.notes,
@@ -243,7 +264,7 @@ export async function saveCommitment(id: number, f: CommitmentFields, d: Finance
     if (f.allocations === null) delete data.allocations;
     else if (f.allocations) data.allocations = f.allocations.map((e) => ({ budgetLineId: e.budgetLineId, amountCents: e.amountCents }));
     await rows(d).put({ id, module: MODULE, kind: 'commitment', data: { ...data } });
-    return { vendorAdded: await ensureProjectVendor(c.data.projectId, f.vendorContactId, d) };
+    return { vendorAdded: await ensureProjectVendor(c.data.projectId, f.vendorContactId, d), contactCreated };
   });
 }
 

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { findOrCreateContact, validateContact } from '../../core/contacts';
-import { db } from '../../db';
+import { contactChoiceLabel, sharedNameIds } from '../../core/contactChoice';
 import { store } from '../../core/store';
+import { NewContactNow } from '../../ui/ContactChoice';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
 import type { AssetRecord, AssetRef } from './model';
@@ -32,25 +32,18 @@ export default function WarrantyForm({ asset, warranty, fromImplicit, lastWithOl
   const [coverage, setCoverage] = useState(base.coverageNotes);
   const [claim, setClaim] = useState(base.claimInfo);
   const [refs, setRefs] = useState<AssetRef[]>(base.refs);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [clearOld, setClearOld] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const known = provider !== null && contacts.some((c) => c.id === provider);
 
-  async function addContact() {
-    const problem = validateContact({ name: newName, phone: newPhone, email: newEmail });
-    if (problem) return setError(problem);
-    try {
-      const { id, created } = await findOrCreateContact(db, { name: newName, phone: newPhone, email: newEmail });
-      setProvider(id);
-      toast(created ? `Added ${newName.trim()} to your contacts` : `${newName.trim()} was already in your contacts, so that contact was used`);
-      setNewName(''); setNewPhone(''); setNewEmail(''); setError('');
-    } catch (e) { setError(e instanceof Error ? e.message : 'Could not add the contact.'); }
-  }
+  // U2: the provider is chosen from the menu BY ID, or created on purpose in the box below (a taken name is shown first and needs a tick). Never matched by name.
+  const sharedNames = sharedNameIds(contacts);
+  const chooseProvider = (id: number, created: boolean, name: string) => {
+    setProvider(id);
+    toast(created ? `Created the new contact ${name} and chose them` : 'Chose the existing contact');
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,24 +83,14 @@ export default function WarrantyForm({ asset, warranty, fromImplicit, lastWithOl
           <label className="f">Starts <span className="muted">(optional)</span><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label>
           <label className="f">Ends <span className="muted">(optional)</span><input type="date" value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} /></label>
         </div>
-        <label className="f">Provided by <span className="muted">(optional)</span>
+        <label className="f cc-fill-label">Provided by <span className="muted">(optional)</span>
           <select value={provider ?? ''} onChange={(e) => setProvider(e.target.value === '' ? null : Number(e.target.value))}>
             <option value="">Nobody chosen</option>
             {provider !== null && !known && <option value={provider}>(contact removed)</option>}
-            {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {contacts.map((c) => <option key={c.id} value={c.id}>{contactChoiceLabel(c, contacts, sharedNames)}</option>)}
           </select>
         </label>
-        <details className="as-sec">
-          <summary>Add someone new as the provider</summary>
-          <div className="as-new-contact">
-            <div className="as-two">
-              <input aria-label="New provider name" placeholder="Name" value={newName} onChange={(e) => setNewName(e.target.value)} />
-              <input aria-label="New provider phone" placeholder="Phone (optional)" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} inputMode="tel" />
-            </div>
-            <input aria-label="New provider email" placeholder="Email (optional)" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} inputMode="email" />
-            <button type="button" className="btn" onClick={() => void addContact()} disabled={!newName.trim()}>Add and choose</button>
-          </div>
-        </details>
+        <NewContactNow idp="as-warranty" label="Or create a new contact as the provider" onChosen={chooseProvider} />
         <label className="f">What it covers <span className="muted">(optional)</span>
           <textarea rows={3} value={coverage} onChange={(e) => setCoverage(e.target.value)} maxLength={2000} placeholder="Parts and labour, motor only, ..." />
         </label>

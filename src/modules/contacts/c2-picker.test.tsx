@@ -222,16 +222,13 @@ describe('guards on the code', () => {
     expect(hits.sort()).toEqual(['src/modules/calendar/EventEditor.tsx', 'src/modules/tasks/TaskEditor.tsx', 'src/ui/pickers.tsx']);
   });
 
-  it('the remaining name-matching creation paths are exactly the documented ones (not changed in C2)', async () => {
+  it('U2: no application file calls the name-matching findOrCreateContact any more (only its deprecated definition remains)', async () => {
     const fs = await import('node:fs');
     const path = await import('node:path');
     const hits: string[] = [];
     const walk = (dir: string) => { for (const f of fs.readdirSync(dir, { withFileTypes: true })) { const p = path.join(dir, f.name); if (f.isDirectory()) walk(p); else if (/\.tsx?$/.test(f.name) && !/\.test\./.test(f.name) && /\bfindOrCreateContact\b/.test(fs.readFileSync(p, 'utf8'))) hits.push(p.replace(/\\/g, '/')); } };
     walk('src');
-    expect(hits.sort()).toEqual([
-      'src/core/contacts.ts', 'src/modules/assets/AssetForm.tsx', 'src/modules/assets/ServiceForm.tsx', 'src/modules/assets/WarrantyForm.tsx',
-      'src/modules/bills/data.ts', 'src/modules/bills/discoveryData.ts', 'src/modules/projects/CommitmentForm.tsx', 'src/modules/projects/data.ts', 'src/modules/services/data.ts',
-    ]);
+    expect(hits.sort()).toEqual(['src/core/contacts.ts']);
   });
 });
 

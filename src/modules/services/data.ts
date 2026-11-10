@@ -2,18 +2,19 @@
  * Reading and writing arrangements, and the ONE function that creates a "next visit" Task (`ensureNextVisitTask`).
  * Writes go through the shared store's `repo` (id, createdAt, updatedAt, soft delete). This module writes arrangements, its own shared links
  * (task -> arrangement `about`, arrangement -> asset `serves`) and Tasks through the ordinary Tasks functions. It never writes to Home & Assets,
- * Finance, Projects or Contacts' structure (a provider is made or found with the existing `findOrCreateContact`).
+ * Finance, Projects or Contacts' structure (a provider is an existing Contact chosen by id, or a NEW one made on purpose through `resolveContactChoice`; a name never selects a Contact).
  */
 import { db, type FinanceDB } from '../../db';
 import type { Link, ModuleRecord } from '../../core/entities';
-import { findOrCreateContact, validEmail, nameKey } from '../../core/contacts';
+import { nameKey } from '../../core/contacts';
+import { hasContactChoice, resolveContactChoice, type ContactChoice, type ResolvedContact } from '../../core/contactIdentity';
 import { createStore, isLive, repo } from '../../core/store';
 import { addDays } from '../../lib/dates';
 import { createTask, getTask, saveTask } from '../tasks/data';
 import { asTask, blankTask, type TaskRecord } from '../tasks/model';
 import { parseAssetRef } from '../assets/model';
 import {
-  arrangementRef, asArrangement, ASSET_LINK, KIND, MODULE, nextCadenceDate, normalizeArrangement, parseArrangementRef, toStored, TASK_LINK, tidy,
+  arrangementRef, asArrangement, ASSET_LINK, KIND, MODULE, nextCadenceDate, normalizeArrangement, parseArrangementRef, toStored, TASK_LINK,
   validateArrangement, type ArrangementData, type ArrangementRecord,
 } from './model';
 import { Recorder, type Undo } from './undo';
@@ -89,24 +90,18 @@ export async function syncAssetLinks(arrId: number, want: number[], d: FinanceDB
 
 // ---- providers (shared Contacts) ----
 
-export interface ProviderInput { contactId?: number | null; name?: string; phone?: string; email?: string; relationship?: string }
-export interface ResolvedProvider { id: number; name: string; created: boolean }
+/**
+ * U2: a provider is EITHER an existing Contact (`contactId`, chosen by the owner) OR a new one created on purpose (`name` and the optional details).
+ * A name is never used to look an existing Contact up. If a live Contact already has that name, `resolveProvider` throws `SameNameContactError` (nothing
+ * written) unless `confirmedDifferent` says the owner has seen the matches and wants a separate Contact.
+ */
+export type ProviderInput = ContactChoice;
+export type ResolvedProvider = ResolvedContact;
 
-/** Finds the chosen contact, or finds/creates one by name (never a second contact for the same name). Runs inside the caller's transaction. */
-export async function resolveProvider(input: ProviderInput, d: FinanceDB): Promise<ResolvedProvider> {
-  if (input.contactId != null) {
-    const c = await d.contacts.get(input.contactId);
-    if (!c || !isLive(c)) throw new Error('That contact no longer exists.');
-    return { id: c.id as number, name: c.name, created: false };
-  }
-  const name = tidy(input.name ?? '');
-  if (!name) throw new Error('Enter the provider\'s name.');
-  if (input.email && tidy(input.email) && !validEmail(tidy(input.email))) throw new Error('That email address does not look right.');
-  const { id, created } = await findOrCreateContact(d, { name, phone: input.phone, email: input.email, relationship: input.relationship });
-  return { id, name: (await d.contacts.get(id))?.name ?? name, created };
-}
+/** Resolves the owner's provider choice to a Contact id (see `resolveContactChoice`). Runs inside the caller's transaction. */
+export const resolveProvider = (input: ProviderInput, d: FinanceDB): Promise<ResolvedProvider> => resolveContactChoice(d, input);
 
-/** Does a live contact with this name already exist? (For the form's "existing contact" hint.) */
+/** Names compare ignoring case, accents and spacing. Only for showing a hint; it never decides which Contact a record uses. */
 export const sameName = nameKey;
 
 // ---- the one function that makes a "next visit" Task ----
@@ -186,7 +181,7 @@ export function createArrangement(input: NewArrangement, d: FinanceDB = db): Pro
   return d.transaction('rw', ...tables(d), async () => {
     let data = input.data;
     let contact: ResolvedProvider | null = null;
-    if (input.provider && (input.provider.contactId != null || tidy(input.provider.name ?? ''))) {
+    if (hasContactChoice(input.provider)) {
       contact = await resolveProvider(input.provider, d);
       data = { ...data, providerContactId: contact.id, providerNameSnapshot: contact.name };
     }
@@ -219,7 +214,7 @@ export function updateArrangement(id: number, edit: ArrangementEdit, expectUpdat
     if (!a) throw new Error('That arrangement no longer exists. Nothing was changed.');
     if (expectUpdatedAt !== null && a.updatedAt !== expectUpdatedAt) throw new Error('This arrangement was changed (maybe on another device) since you opened it. Close this, look again and redo your change. Nothing was changed.');
     let data: ArrangementData = { ...a.data, title: edit.title, startDate: edit.startDate, extraContactIds: edit.extraContactIds, expected: edit.expected, refs: edit.refs, notes: edit.notes };
-    if (a.data.providerContactId === null && edit.assignProvider && (edit.assignProvider.contactId != null || tidy(edit.assignProvider.name ?? ''))) {
+    if (a.data.providerContactId === null && hasContactChoice(edit.assignProvider)) {
       const p = await resolveProvider(edit.assignProvider, d);
       data = { ...data, providerContactId: p.id, providerNameSnapshot: p.name };
     }

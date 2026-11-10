@@ -16,13 +16,14 @@ import { attentionCounts, loadSnapshot } from './views';
 import { applyUndo, isUndoRefused } from './undo';
 import { servicesModule } from './index';
 import { loadVisits, logStandaloneVisit } from './visits';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Invented data only. 2026-11-06 is a Friday. */
 let n = 0;
 const fresh = () => { const d = new FinanceDB(`test-s4c-${n++}`); installTracking(d); return d; };
 const TODAY = '2026-11-06';
-const add = (d: FinanceDB, over: Partial<ReturnType<typeof blankArrangement>> = {}, provider = "Rosa's Cleaning") =>
-  createArrangement({ data: blankArrangement({ title: 'House cleaning', ...over }), provider: { name: provider }, today: TODAY }, d);
+const add = async (d: FinanceDB, over: Partial<ReturnType<typeof blankArrangement>> = {}, provider = "Rosa's Cleaning") =>
+  createArrangement({ data: blankArrangement({ title: 'House cleaning', ...over }), provider: await providerNamed(d, provider), today: TODAY }, d);
 const items = (d: FinanceDB, from = '2026-01-01', to = '2027-12-31', today = TODAY) => servicesDueItems(d, { from, to, today, overdueDays: 0 });
 
 describe('S4-C1 contract dates: model and validation', () => {

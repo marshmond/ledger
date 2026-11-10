@@ -16,14 +16,15 @@ import {
   DEFAULT_UPCOMING_DAYS, filterUpcomingByProvider, loadUpcomingDays, parseUpcomingDays, saveUpcomingDays, UPCOMING_KEY, UPCOMING_ROWS, UPCOMING_WINDOWS, visibleUpcoming, type UpcomingDays,
 } from './upcomingWindow';
 import type { UpcomingRow } from './servicesOverview';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** B3.0A: the Upcoming window (7, 14, 30, 90; default 30). Real Dexie, invented data. 2026-11-06 is a Friday. */
 let n = 0;
 const fresh = () => { const d = new FinanceDB(`test-b30a-${n++}`); installTracking(d); return d; };
 const TODAY = '2026-11-06';
 const weekly = (anchorDate: string): Cadence => ({ mode: 'fixed', rule: { freq: 'weekly', interval: 1, end: { type: 'never' } }, anchorDate });
-const add = (d: FinanceDB, title: string, anchor: string, provider = 'Rosa Cleaning') =>
-  createArrangement({ data: blankArrangement({ title, cadence: weekly(anchor) }), provider: { name: provider }, assetIds: [], today: TODAY }, d);
+const add = async (d: FinanceDB, title: string, anchor: string, provider = 'Rosa Cleaning') =>
+  createArrangement({ data: blankArrangement({ title, cadence: weekly(anchor) }), provider: await providerNamed(d, provider), assetIds: [], today: TODAY }, d);
 const load = (d: FinanceDB, days?: UpcomingDays) => loadServicesOverview('all', TODAY, d, undefined, days);
 const datesOf = (rows: UpcomingRow[], arrangementId: number) => rows.filter((r) => r.arrangementId === arrangementId).map((r) => r.date);
 const snapshot = async (d: FinanceDB) => JSON.stringify([await d.moduleRecords.toArray(), await d.links.toArray(), await d.txns.toArray(), await d.settings.toArray()]);

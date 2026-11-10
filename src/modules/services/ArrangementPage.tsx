@@ -63,7 +63,7 @@ export default function ArrangementPage({ id }: { id: number }) {
           <h1>{d.title}</h1>
           <p className="sv-chips">
             <span className={`sv-chip s-${d.status}`}>{STATUS_LABEL[d.status]}{d.status === 'ended' && d.endReason ? `: ${END_REASON_LABEL[d.endReason].toLowerCase()}` : ''}</span>
-            {d.providerContactId !== null ? <Link to={providerRoute(d.providerContactId)}>{row.contactGone ? `${d.providerNameSnapshot} (contact removed)` : d.providerNameSnapshot}</Link> : <span className="muted">No provider yet</span>}
+            {d.providerContactId !== null ? <Link to={providerRoute(d.providerContactId)}>{row.contactGone ? `${d.providerNameSnapshot} (contact removed)` : d.providerNameSnapshot}</Link> : <span className="muted">{d.providerNameSnapshot ? `${d.providerNameSnapshot} (name only, no contact linked)` : 'No provider yet'}</span>}
           </p>
         </div>
         <div className="sv-head-actions">

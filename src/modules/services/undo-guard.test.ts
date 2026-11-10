@@ -14,6 +14,7 @@ import { applyUndo, contactIsReferenced, fingerprint, UNDO_REFUSED, UNDO_UNVERIF
 import { arrangementRef, blankArrangement, type Cadence } from './model';
 import { openOf, withMarkers } from './schedule';
 import { loadVisits, logStandaloneVisit } from './visits';
+import { providerNamed } from '../../core/contactTestkit';
 
 /**
  * S2.1: every lifecycle Undo is guarded by the state the action left (whole rows and link membership, not only `updatedAt`).
@@ -25,7 +26,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const TODAY = '2026-11-06';
 const biweekly: Cadence = { mode: 'fixed', rule: { freq: 'weekly', interval: 2, end: { type: 'never' } }, anchorDate: TODAY };
 const monthly: Cadence = { mode: 'fixed', rule: { freq: 'monthly', interval: 1, end: { type: 'never' } }, anchorDate: TODAY };
-const add = (d: FinanceDB, over = {}) => createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly, ...over }), provider: { name: 'Green Thumb Co' }, today: TODAY }, d);
+const add = async (d: FinanceDB, over = {}) => createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly, ...over }), provider: await providerNamed(d, 'Green Thumb Co'), today: TODAY }, d);
 const snapshot = async (d: FinanceDB) => JSON.stringify([await d.moduleRecords.toArray(), await d.links.toArray(), await d.contacts.toArray()]);
 const openOfArr = async (d: FinanceDB, id: number) => openOf(await tasksOfArrangement(id, d));
 
@@ -131,7 +132,7 @@ describe('S2.1: Replace provider keeps work added to the successor, and never re
   it('a Task or asset link added to the successor afterwards stops the Undo and survives', async () => {
     const d = fresh();
     const house = await createAsset(blankAsset({ name: 'Back garden', type: 'property' }), d);
-    const r = await createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly }), provider: { name: 'Green Thumb Co' }, assetIds: [house], today: TODAY }, d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly }), provider: await providerNamed(d, 'Green Thumb Co'), assetIds: [house], today: TODAY }, d);
     const x = await lifecycle(d, r.id, 'replace', { replace: { provider: { name: 'Fresh Cuts Ltd' } } });
     const extra = await createTask(blankTask({ title: 'Buy mulch for the new gardeners' }), [arrangementRef(x.successorId!)], d);
     const snap = await snapshot(d);
@@ -145,7 +146,7 @@ describe('S2.1: Replace provider keeps work added to the successor, and never re
   it('the replacement contact is never removed by Undo, and a successful Undo removes only the links it made', async () => {
     const d = fresh();
     const house = await createAsset(blankAsset({ name: 'Back garden', type: 'property' }), d);
-    const r = await createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly }), provider: { name: 'Green Thumb Co' }, assetIds: [house], today: TODAY }, d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly }), provider: await providerNamed(d, 'Green Thumb Co'), assetIds: [house], today: TODAY }, d);
     const otherLink = await createStore(d).shared.links.add({ module: 'tasks', id: 5 }, { module: 'assets', id: `asset:${house}` }, 'about');
     const x = await lifecycle(d, r.id, 'replace', { replace: { provider: { name: 'Fresh Cuts Ltd' } } });
     expect(x.contactCreated).toBe(true);
@@ -267,7 +268,7 @@ describe('S2.1: a write that fails half way through Undo rolls everything back',
   it('Replace provider: the second write fails, nothing at all is changed, and Undo then works', async () => {
     const d = fresh();
     const house = await createAsset(blankAsset({ name: 'Back garden', type: 'property' }), d);
-    const r = await createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly }), provider: { name: 'Green Thumb Co' }, assetIds: [house], today: TODAY }, d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'Lawn care', cadence: biweekly }), provider: await providerNamed(d, 'Green Thumb Co'), assetIds: [house], today: TODAY }, d);
     const x = await lifecycle(d, r.id, 'replace', { replace: { provider: { name: 'Fresh Cuts Ltd' } } });
     const snap = await snapshot(d);
     const real = d.moduleRecords.put.bind(d.moduleRecords);

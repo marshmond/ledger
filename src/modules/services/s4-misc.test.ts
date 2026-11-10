@@ -15,6 +15,7 @@ import { handoffEligibility } from './handoff';
 import { duplicateGroups } from './visitModel';
 import { attentionLines } from './todayCards';
 import { attentionCounts, loadSnapshot } from './views';
+import { providerNamed } from '../../core/contactTestkit';
 
 let n = 0;
 const fresh = () => { const d = new FinanceDB(`test-s4m-${n++}`); installTracking(d); return d; };
@@ -39,7 +40,7 @@ describe('S4 privacy and small safeguards', () => {
   it('a Move to replacement refreshes the arrangement\'s updated time, so an edit form opened earlier (which would quietly re-link the old asset) is refused', async () => {
     const d = fresh();
     const oldA = await createAsset(blankAsset({ name: 'Old furnace', type: 'system' }), d), newA = await createAsset(blankAsset({ name: 'New furnace', type: 'system' }), d);
-    const r = await createArrangement({ data: blankArrangement({ title: 'Plan' }), provider: { name: 'Pat' }, assetIds: [oldA], today: TODAY }, d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'Plan' }), provider: await providerNamed(d, 'Pat'), assetIds: [oldA], today: TODAY }, d);
     await setAssetStatus(oldA, { status: 'replaced', statusDate: '2026-10-01', statusNote: '', replacedById: newA }, d);
     const opened = (await getArrangement(r.id, d))!.updatedAt;
     await new Promise((x) => setTimeout(x, 5));
@@ -48,7 +49,7 @@ describe('S4 privacy and small safeguards', () => {
   });
   it('Today and the eligibility check read the same visit outcome words: skipped and cancelled never qualify, unsupported never qualifies', async () => {
     const d = fresh();
-    const mk = async (status: 'completed' | 'skipped' | 'cancelled') => (await logStandaloneVisit({ provider: { name: 'Pat' }, input: { status, cancelledBy: status === 'cancelled' ? 'provider' : null, date: '2026-11-03', title: `V ${status}`, chargedCents: null, chargeKind: null }, today: TODAY }, d)).visitId;
+    const mk = async (status: 'completed' | 'skipped' | 'cancelled') => (await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: { status, cancelledBy: status === 'cancelled' ? 'provider' : null, date: '2026-11-03', title: `V ${status}`, chargedCents: null, chargeKind: null }, today: TODAY }, d)).visitId;
     await mk('completed'); await mk('skipped'); await mk('cancelled');
     const visits = await loadVisits(d);
     expect(Object.fromEntries(visits.map((v) => [v.data.status, handoffEligibility(v).ok]))).toEqual({ completed: true, skipped: false, cancelled: false });

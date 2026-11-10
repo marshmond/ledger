@@ -15,6 +15,7 @@ import {
 } from './changes';
 import { arrangementRef, asArrangement, blankArrangement, cadenceText, normalizeArrangement, validateArrangement, type Cadence } from './model';
 import { markersOf, scheduleHealth } from './schedule';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Invented data only. Each test gets its own database. 2026-11-06 is a Friday. */
 let n = 0;
@@ -24,8 +25,8 @@ const everyOtherFri = (anchor = '2026-11-06'): Cadence => ({ mode: 'fixed', rule
 const weeklyFri = (anchor = '2026-11-06'): Cadence => ({ mode: 'fixed', rule: { freq: 'weekly', interval: 1, end: { type: 'never' } }, anchorDate: anchor });
 const monthly = (anchor = '2026-11-10'): Cadence => ({ mode: 'fixed', rule: { freq: 'monthly', interval: 1, monthly: 'date', end: { type: 'never' } }, anchorDate: anchor });
 const draft = (over = {}) => blankArrangement({ title: 'House cleaning', ...over });
-const add = (d: FinanceDB, over = {}, extra: Partial<Parameters<typeof createArrangement>[0]> = {}) =>
-  createArrangement({ data: draft(over), provider: { name: "Rosa's Cleaning" }, today: TODAY, ...extra }, d);
+const add = async (d: FinanceDB, over = {}, extra: Partial<Parameters<typeof createArrangement>[0]> = {}) =>
+  createArrangement({ data: draft(over), provider: await providerNamed(d, "Rosa's Cleaning"), today: TODAY, ...extra }, d);
 const tasksOf = (d: FinanceDB, id: number) => tasksOfArrangement(id, d);
 const openOf = async (d: FinanceDB, id: number) => (await tasksOf(d, id)).filter((t) => t.data.status !== 'done');
 const lc = async (d: FinanceDB, id: number, req: Partial<LifecycleRequest> & Pick<LifecycleRequest, 'action'>) => {
@@ -77,17 +78,21 @@ describe('arrangement model', () => {
 });
 
 describe('creating an arrangement and its one visit Task', () => {
-  it('uses the existing contact by name (any case): never a second provider', async () => {
+  it("U2: a name never selects a provider: the existing one is used only by id; a typed same name (any case) is refused with nothing written; a confirmed different one is separate", async () => {
     const d = fresh();
-    const a = await add(d);
+    const a = await createArrangement({ data: draft(), provider: { name: "Rosa's Cleaning" }, today: TODAY }, d);
     expect(a.contactCreated).toBe(true);
-    const b = await createArrangement({ data: draft({ title: 'Window cleaning' }), provider: { name: "  ROSA'S   cleaning " }, today: TODAY }, d);
-    expect(b.contactCreated).toBe(false);
-    expect(b.contactId).toBe(a.contactId);
+    await expect(createArrangement({ data: draft({ title: 'Window cleaning' }), provider: { name: "  ROSA'S   cleaning " }, today: TODAY }, d)).rejects.toThrow(/already exists/);
     expect(await d.contacts.count()).toBe(1);
+    expect(await loadArrangements(d)).toHaveLength(1); // the refused save wrote nothing
     const c = await createArrangement({ data: draft({ title: 'Gutters' }), provider: { contactId: a.contactId }, today: TODAY }, d);
     expect(c.contactId).toBe(a.contactId);
+    expect(c.contactCreated).toBe(false);
     expect(await d.contacts.count()).toBe(1);
+    const other = await createArrangement({ data: draft({ title: 'Lawn' }), provider: { name: "Rosa's Cleaning", confirmedDifferent: true }, today: TODAY }, d);
+    expect(other.contactCreated).toBe(true);
+    expect(other.contactId).not.toBe(a.contactId);
+    expect(await d.contacts.count()).toBe(2);
   });
   it('allows no provider yet', async () => {
     const d = fresh();
@@ -150,7 +155,8 @@ describe('creating an arrangement and its one visit Task', () => {
   it('a failed write leaves nothing: no arrangement, task or contact', async () => {
     const d = fresh();
     const spy = vi.spyOn(d.links, 'add').mockRejectedValueOnce(new Error('disk full'));
-    await expect(add(d, { cadence: weeklyFri() })).rejects.toThrow(/disk full/);
+    // a NEW provider contact is made in the same transaction, so a failure later in the save takes it back too
+    await expect(createArrangement({ data: draft({ cadence: weeklyFri() }), provider: { name: "Rosa's Cleaning" }, today: TODAY }, d)).rejects.toThrow(/disk full/);
     spy.mockRestore();
     expect(await d.moduleRecords.count()).toBe(0);
     expect(await d.contacts.count()).toBe(0);

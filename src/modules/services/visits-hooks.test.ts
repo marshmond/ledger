@@ -17,6 +17,7 @@ import { attentionLines } from './todayCards';
 import { attentionCounts, buildOverview, buildProvider, loadSnapshot, visitRows } from './views';
 import { visitStats } from './visitModel';
 import { applyLifecycle, planLifecycle } from './changes';
+import { providerNamed } from '../../core/contactTestkit';
 
 let n = 0;
 const fresh = () => { const d = new FinanceDB(`test-visit-hooks-${n++}`); installTracking(d); return d; };
@@ -108,8 +109,8 @@ describe('history views', () => {
     const { r } = await seeded(d);
     const plan = await planLifecycle(r.id, 'replace', TODAY, d);
     await applyLifecycle({ action: 'replace', arrangementId: r.id, expect: plan.expect, today: TODAY, replace: { provider: { name: 'Bright Maids' } }, taskChoice: 'remove' }, d);
-    await logStandaloneVisit({ provider: { name: "Rosa's Cleaning" }, input: input({ title: 'Window clean', date: '2026-10-20' }), today: TODAY }, d);
-    await logStandaloneVisit({ provider: { name: "Rosa's Cleaning" }, input: input({ title: 'Cancelled clean', date: '2026-11-30', status: 'cancelled', cancelledBy: 'provider', chargedCents: 3000, chargeKind: 'cancellationFee' }), today: TODAY }, d);
+    await logStandaloneVisit({ provider: await providerNamed(d, "Rosa's Cleaning"), input: input({ title: 'Window clean', date: '2026-10-20' }), today: TODAY }, d);
+    await logStandaloneVisit({ provider: await providerNamed(d, "Rosa's Cleaning"), input: input({ title: 'Cancelled clean', date: '2026-11-30', status: 'cancelled', cancelledBy: 'provider', chargedCents: 3000, chargeKind: 'cancellationFee' }), today: TODAY }, d);
     const snap = await loadSnapshot(d);
     const rosa = snap.contacts.find((c) => c.name === "Rosa's Cleaning")!;
     const bright = snap.contacts.find((c) => c.name === 'Bright Maids')!;
@@ -121,7 +122,7 @@ describe('history views', () => {
   it('a removed contact, a removed arrangement and a one-off all still show in history', async () => {
     const d = fresh();
     const { r } = await seeded(d);
-    await logStandaloneVisit({ provider: { name: 'Pat the Plumber' }, input: input({ title: 'Drain repair', date: '2026-11-01' }), today: TODAY }, d);
+    await logStandaloneVisit({ provider: await providerNamed(d, 'Pat the Plumber'), input: input({ title: 'Drain repair', date: '2026-11-01' }), today: TODAY }, d);
     await d.contacts.clear();
     await d.moduleRecords.update(r.id, { deletedAt: Date.now() });
     const snap = await loadSnapshot(d);
@@ -154,7 +155,7 @@ describe('Quick Add: hs visit', () => {
     expect(p.data.cadence).not.toBeNull();
     expect(serviceQuickAdd.parse!('visit mowed the lawn with Pat', { plain: true })!.fields.some((f) => f.label === 'One-off visit')).toBe(false);
   });
-  it('previews first (no money in the summary), saves a visit only on Add, and Undo removes it and a contact made just for it', async () => {
+  it('previews first (no money in the summary), saves a visit only on Add (provider name kept as words, NO Contact made or linked), and Undo removes it', async () => {
     const preview = serviceQuickAdd.parse!('visit Drain repair with Pat the Plumber 2026-11-01 $120')!;
     expect(preview.summary).toBe('One-off visit: Drain repair with Pat the Plumber. No arrangement or task is created');
     expect(preview.fields.map((f) => f.label)).toEqual(['One-off visit', 'Provider', 'Date', 'Charged']);
@@ -165,7 +166,8 @@ describe('Quick Add: hs visit', () => {
     expect(v.data).toMatchObject({ title: 'Drain repair', providerNameSnapshot: 'Pat the Plumber', date: '2026-11-01', chargedCents: 12000, chargeKind: 'service', arrangementId: null, taskId: null });
     expect((await loadTasks(db)).length).toBe(before.t);
     expect(await db.moduleRecords.where('[module+kind]').equals(['services', 'arrangement']).count()).toBe(before.a);
-    expect(await db.contacts.filter((c) => c.deletedAt == null).count()).toBe(before.c + 1);
+    expect(v.data.providerContactId).toBeNull(); // U2: Quick Add never invents a Contact identity from a typed name
+    expect(await db.contacts.filter((c) => c.deletedAt == null).count()).toBe(before.c);
     await undo();
     expect((await loadVisits(db)).length).toBe(before.v);
     expect(await db.contacts.filter((c) => c.deletedAt == null).count()).toBe(before.c);

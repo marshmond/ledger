@@ -15,6 +15,7 @@ import { asVisit, duplicateGroups, statusWords, validateVisit, visitStats } from
 import { loadVisits, logStandaloneVisit, logVisitFromTask, nextAfterVisit, planLogVisit, updateVisit, visitAssetIds, type VisitEdit, type VisitInput } from './visits';
 import { attentionCounts, buildOverview, loadSnapshot } from './views';
 import { attentionLines } from './todayCards';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Pre-commit correction pass: tests added AFTER the S2 report, one section per finding. Invented data only. 2026-11-06 is a Friday. */
 let n = 0;
@@ -24,7 +25,7 @@ const TODAY = '2026-11-06';
 const fixedBiweekly: Cadence = { mode: 'fixed', rule: { freq: 'weekly', interval: 2, end: { type: 'never' } }, anchorDate: TODAY };
 const afterQuarterly = (anchor = TODAY): Cadence => ({ mode: 'after', rule: { freq: 'monthly', interval: 3, end: { type: 'never' } }, anchorDate: anchor });
 const afterMonths = (interval: number): Cadence => ({ mode: 'after', rule: { freq: 'monthly', interval, end: { type: 'never' } }, anchorDate: TODAY });
-const add = (d: FinanceDB, over = {}) => createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: fixedBiweekly, ...over }), provider: { name: "Rosa's Cleaning" }, today: TODAY }, d);
+const add = async (d: FinanceDB, over = {}) => createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: fixedBiweekly, ...over }), provider: await providerNamed(d, "Rosa's Cleaning"), today: TODAY }, d);
 const input = (over: Partial<VisitInput> = {}): VisitInput => ({ status: 'completed', cancelledBy: null, date: TODAY, notes: '', chargedCents: null, chargeKind: null, ...over });
 const openTasks = async (d: FinanceDB, id: number) => (await tasksOfArrangement(id, d)).filter((t) => t.data.status !== 'done');
 const snapshot = async (d: FinanceDB) => JSON.stringify([await d.moduleRecords.toArray(), await d.links.toArray(), await d.contacts.toArray()]);
@@ -124,8 +125,9 @@ describe('Finding 2: one-off visits are idempotent per operation, not per descri
   });
   it('two SEPARATE entries with identical details are both saved, with a warning, and both flagged as look-alikes', async () => {
     const d = fresh();
-    const a = await logStandaloneVisit(req({ operationId: 'op-a' }), d);
-    const b = await logStandaloneVisit(req({ operationId: 'op-b' }), d);
+    const plumber = await providerNamed(d, 'Pat the Plumber'); // one Contact, chosen by id, for both entries
+    const a = await logStandaloneVisit(req({ provider: plumber, operationId: 'op-a' }), d);
+    const b = await logStandaloneVisit(req({ provider: plumber, operationId: 'op-b' }), d);
     expect(a.similarVisitId).toBeNull();
     expect(b).toMatchObject({ repeated: false, similarVisitId: a.visitId });
     expect(await loadVisits(d)).toHaveLength(2);
@@ -139,12 +141,13 @@ describe('Finding 2: one-off visits are idempotent per operation, not per descri
   });
   it('legitimate same-day visits with different details, an entry without an operation id, and a different provider are not warned about', async () => {
     const d = fresh();
-    await logStandaloneVisit(req({ operationId: 'op-1' }), d);
-    const other = await logStandaloneVisit(req({ operationId: 'op-2', input: input({ title: 'Boiler check', date: TODAY }) }), d);
+    const plumber = await providerNamed(d, 'Pat the Plumber');
+    await logStandaloneVisit(req({ provider: plumber, operationId: 'op-1' }), d);
+    const other = await logStandaloneVisit(req({ provider: plumber, operationId: 'op-2', input: input({ title: 'Boiler check', date: TODAY }) }), d);
     expect(other.similarVisitId).toBeNull();
-    const noId = await logStandaloneVisit(req({ input: input({ title: 'Drain repair', date: '2026-11-05' }) }), d);
+    const noId = await logStandaloneVisit(req({ provider: plumber, input: input({ title: 'Drain repair', date: '2026-11-05' }) }), d);
     expect(noId.similarVisitId).toBeNull();
-    const diff = await logStandaloneVisit(req({ operationId: 'op-3', provider: { name: 'Sam the Plumber' } }), d);
+    const diff = await logStandaloneVisit(req({ operationId: 'op-3', provider: await providerNamed(d, 'Sam the Plumber') }), d);
     expect(diff.similarVisitId).toBeNull();
     expect(await loadVisits(d)).toHaveLength(4);
   });
@@ -255,7 +258,7 @@ describe('Finding 4: Undo refuses when what it would reverse has changed', () =>
       expect((await openTasks(d, r.id)).length).toBe(1);
       void before;
     }
-    const one = await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Tap' }), today: TODAY, operationId: 'u1' }, d);
+    const one = await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: input({ title: 'Tap' }), today: TODAY, operationId: 'u1' }, d);
     await applyUndo(one.undo, d);
     expect(await loadVisits(d)).toHaveLength(0);
     await completeTask(r.taskId!, TODAY, d);
@@ -300,7 +303,7 @@ describe('Finding 4: Undo refuses when what it would reverse has changed', () =>
   it('refuses when a later operation changed the visit\'s links (asset links are edited through the visit record)', async () => {
     const d = fresh();
     const house = await createAsset(blankAsset({ name: 'Main house', type: 'property' }), d);
-    const r = await createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: fixedBiweekly }), provider: { name: "Rosa's Cleaning" }, assetIds: [house], today: TODAY }, d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: fixedBiweekly }), provider: await providerNamed(d, "Rosa's Cleaning"), assetIds: [house], today: TODAY }, d);
     const res = await log(d, r.id, r.taskId!);
     await sleep(5);
     const v = (await loadVisits(d))[0];
@@ -310,7 +313,7 @@ describe('Finding 4: Undo refuses when what it would reverse has changed', () =>
   });
   it('refuses to reverse a one-off visit that was edited, and a late log whose Task copy was changed', async () => {
     const d = fresh();
-    const one = await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Tap' }), today: TODAY, operationId: 'u2' }, d);
+    const one = await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: input({ title: 'Tap' }), today: TODAY, operationId: 'u2' }, d);
     await sleep(5);
     const v = (await loadVisits(d))[0];
     await updateVisit(one.visitId, edit(v, { title: 'Tap fixed' }), TODAY, null, d);
@@ -327,7 +330,7 @@ describe('Finding 4: Undo refuses when what it would reverse has changed', () =>
     const d = fresh();
     const r = await add(d);
     const a = await log(d, r.id, r.taskId!);
-    const other = await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Tap' }), today: TODAY, operationId: 'u3' }, d);
+    const other = await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: input({ title: 'Tap' }), today: TODAY, operationId: 'u3' }, d);
     await sleep(5);
     const v = (await loadVisits(d)).find((x) => x.id === other.visitId)!;
     await updateVisit(other.visitId, edit(v, { notes: 'unrelated edit' }), TODAY, null, d);
@@ -367,7 +370,7 @@ describe('Findings 3 and 4 across two devices (real sync engine) and backup', ()
   const settle = async (A: Dev, B: Dev) => { for (let i = 0; i < 2; i++) { await A.engine.sync(); await B.engine.sync(); } await A.engine.sync(); };
   async function seeded() {
     const { A, B } = devices();
-    const r = await createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: fixedBiweekly }), provider: { name: "Rosa's Cleaning" }, today: TODAY }, A.d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: fixedBiweekly }), provider: await providerNamed(A.d, "Rosa's Cleaning"), today: TODAY }, A.d);
     await A.engine.initialUpload();
     await B.engine.replaceFromRemote();
     return { A, B, r };
@@ -418,11 +421,11 @@ describe('Findings 3 and 4 across two devices (real sync engine) and backup', ()
     const r = await add(d, { cadence: null });
     const t = await createTask(blankTask({ title: 'Linked by hand', dueDate: TODAY }), [arrangementRef(r.id)], d);
     await log(d, r.id, t);
-    await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Tap' }), today: TODAY, operationId: 'op-backup' }, d);
+    await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: input({ title: 'Tap' }), today: TODAY, operationId: 'op-backup' }, d);
     const C = fresh();
     await importAll(C, checkBackupText(JSON.stringify(await exportAll(d))).file);
     expect(((await loadVisits(C)).find((v) => v.data.title === 'Tap')!.data as unknown as Record<string, unknown>).operationId).toBe('op-backup');
-    const again = await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Tap' }), today: TODAY, operationId: 'op-backup' }, C);
+    const again = await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: input({ title: 'Tap' }), today: TODAY, operationId: 'op-backup' }, C);
     expect(again.repeated).toBe(true);
   });
 });

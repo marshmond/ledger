@@ -14,6 +14,7 @@ import { acknowledgeRuleConflict, keepRuleOn, linkRule, loadLinkedRules, loadRul
 import { ruleLinkConflicts } from './scheduledLink';
 import { applyUndo, isUndoRefused } from './undo';
 import { lookupOfMap } from '../../lib/txnLookup';
+import { providerNamed } from '../../core/contactTestkit';
 
 /**
  * B3.1 with a real database (fake-indexeddb): rejection facts, read-only suggestions, and the Finance Scheduled link. Invented data only.
@@ -23,8 +24,8 @@ const TODAY = '2026-11-20';
 const SLOT = 'm2026-11';
 const OLD = '2026-01-01';
 
-const mk = (d: FinanceDB, over: Partial<ObligationData> = {}) =>
-  createObligation({ data: ob({ title: 'Example Power Co', providerNameSnapshot: 'Example Power Co', amountKind: 'fixed', prices: [{ from: OLD, cents: 12000, label: '' }], schedule: monthly(18, '2026-01'), trackingSince: OLD, ...over }, TODAY), provider: { name: 'Example Power Co' }, today: TODAY }, d);
+const mk = async (d: FinanceDB, over: Partial<ObligationData> = {}) =>
+  createObligation({ data: ob({ title: 'Example Power Co', providerNameSnapshot: 'Example Power Co', amountKind: 'fixed', prices: [{ from: OLD, cents: 12000, label: '' }], schedule: monthly(18, '2026-01'), trackingSince: OLD, ...over }, TODAY), provider: await providerNamed(d, 'Example Power Co'), today: TODAY }, d);
 
 const account = async (d: FinanceDB) => (await d.accounts.add({ name: 'Test checking', kind: 'checking', openingBalanceCents: 0, openingDate: '2026-01-01' } as never)) as number;
 const addTxn = async (d: FinanceDB, amountCents: number, over: Partial<Txn> = {}): Promise<Txn> => {

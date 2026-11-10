@@ -12,6 +12,7 @@ import { createArrangement } from './data';
 import { logStandaloneVisit } from './visits';
 import { blankArrangement, cadenceText, isDate, normalizeArrangement, tidy, validateArrangement, type ArrangementData } from './model';
 
+/** `providerExists` is display only (a Contact with that name exists); it never links anything. */
 export interface ServiceQuick { data: ArrangementData; providerName: string; providerExists: boolean; firstDate: string | null }
 
 /**
@@ -67,10 +68,17 @@ export function parseOneOffQuick(text: string, today: string, contacts: string[]
 
 let known: string[] = [];
 
+/** The preview line for a provider typed into Quick Add. `exists` only says a Contact with that name is in your contacts; it is NOT linked (U2). */
+const providerNote = (name: string, exists: boolean) => `${name} (saved as a name only, no contact linked${exists ? '; a contact with this name exists, link the right one afterwards' : ''})`;
+
 /** Shows a refusal where a toast is not available (Quick Add's Undo runs outside the toast system). */
 const say = (text: string) => { if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(text); };
 
-/** The Add box's Household Services destination. Shows what was understood; nothing is saved until Add is pressed. A contact made just for a Quick Add is removed again on Undo only if untouched and nothing refers to it. */
+/**
+ * The Add box's Household Services destination. Shows what was understood; nothing is saved until Add is pressed.
+ * U2: Quick Add NEVER creates, finds or links a Contact. The owner has no chance here to pick one or to confirm a same-name Contact, so the provider name is
+ * kept only as the record's provider-name snapshot (words, not an identity). The owner can link the right Contact afterwards on the arrangement or visit page.
+ */
 export const serviceQuickAdd: QuickAddDef = {
   id: 'household-service',
   label: 'Household service',
@@ -85,7 +93,7 @@ export const serviceQuickAdd: QuickAddDef = {
     if (one) {
       const fields = [
         { label: 'One-off visit', value: one.title || 'Missing' },
-        { label: 'Provider', value: one.providerName ? `${one.providerName} (${one.providerExists ? 'existing contact' : 'new contact'})` : 'Missing' },
+        { label: 'Provider', value: one.providerName ? providerNote(one.providerName, one.providerExists) : 'Missing' },
         { label: 'Date', value: dayLabel(one.date, { weekday: 'short', year: true }) },
         ...(one.chargedCents !== null ? [{ label: 'Charged', value: `${formatCents(one.chargedCents)} (information only, not a payment)` }] : []),
         ...(one.problem ? [{ label: 'Problem', value: one.problem }] : []),
@@ -97,7 +105,7 @@ export const serviceQuickAdd: QuickAddDef = {
     const c = p.data.cadence;
     const fields = [
       { label: 'Service', value: p.data.title },
-      { label: 'Provider', value: p.providerName ? `${p.providerName} (${p.providerExists ? 'existing contact' : 'new contact'})` : 'None yet' },
+      { label: 'Provider', value: p.providerName ? providerNote(p.providerName, p.providerExists) : 'None yet' },
       { label: 'How often', value: cadenceText(c) },
       ...(p.firstDate ? [{ label: 'First visit', value: `${dayLabel(p.firstDate, { weekday: 'short', year: true })}${p.data.visitTime ? ` at ${p.data.visitTime}` : ''}` }] : []),
     ];
@@ -109,7 +117,7 @@ export const serviceQuickAdd: QuickAddDef = {
       const o = pl.one;
       if (o.problem) throw new Error(o.problem);
       const v = await logStandaloneVisit({
-        provider: { name: o.providerName }, today: todayISO(), operationId: pl.operationId,
+        providerNameOnly: o.providerName, today: todayISO(), operationId: pl.operationId,
         input: { title: o.title, status: 'completed', cancelledBy: null, date: o.date, chargedCents: o.chargedCents, chargeKind: o.chargedCents === null ? null : 'service' },
       });
       if (v.repeated) return undefined;
@@ -117,7 +125,7 @@ export const serviceQuickAdd: QuickAddDef = {
       return async () => { await runUndo(v.undo, say, db, { dropCreatedContact: true }); };
     }
     const p = pl;
-    const r = await createArrangement({ data: p.data, provider: p.providerName ? { name: p.providerName } : null, today: todayISO() });
+    const r = await createArrangement({ data: p.data, provider: null, today: todayISO() }); // the name stays in data.providerNameSnapshot; no Contact is made or linked
     return async () => { await runUndo(r.undo, say, db, { dropCreatedContact: true }); };
   },
 };

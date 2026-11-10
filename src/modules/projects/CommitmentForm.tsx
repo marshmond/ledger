@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { findOrCreateContact } from '../../core/contacts';
+import { SameNameContactError } from '../../core/contactIdentity';
 import { store } from '../../core/store';
-import { db } from '../../db';
+import { ContactField, pickOf, type ContactPick } from '../../ui/ContactChoice';
 import { formatCents, parseAmountToCents, todayISO } from '../../lib/money';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
@@ -12,8 +12,6 @@ import { createCommitment, saveCommitment } from './data';
 import type { BudgetLineRecord } from './model';
 
 export interface CommitmentDraft { title?: string; amount?: string; parentId?: number | null; status?: CommitmentStatus; note?: string }
-
-const NEW_VENDOR = 'new';
 
 interface Part { line: string; amt: string }
 const partsFrom = (list: AllocationEntry[]): Part[] => list.map((e) => ({ line: e.budgetLineId === null ? '' : String(e.budgetLineId), amt: (e.amountCents / 100).toFixed(2) }));
@@ -53,8 +51,8 @@ export default function CommitmentForm({ projectId, vendorIds, lines, all, commi
   const [status, setStatus] = useState<CommitmentStatus>(d?.status ?? draft?.status ?? (isChange ? 'accepted' : 'quoted'));
   const [acceptedDate, setAcceptedDate] = useState(d?.acceptedDate ?? todayISO());
   const [lineId, setLineId] = useState(d?.budgetLineId === null || d?.budgetLineId === undefined ? '' : String(d.budgetLineId));
-  const [vendor, setVendor] = useState(d?.vendorContactId === null || d?.vendorContactId === undefined ? '' : String(d.vendorContactId));
-  const [newVendor, setNewVendor] = useState('');
+  // U2: the vendor is an existing Contact chosen by id, or a NEW one made on purpose (created in the same step as the commitment). A name never selects a Contact.
+  const [vendor, setVendor] = useState<ContactPick>(pickOf(d?.vendorContactId ?? null));
   const [notes, setNotes] = useState(d?.notes ?? '');
   // The split across budget lines. A stored split that no longer adds up is shown as stored so it can be fixed.
   const storedList = commitment ? commitment.data.allocations : undefined;
@@ -66,8 +64,6 @@ export default function CommitmentForm({ projectId, vendorIds, lines, all, commi
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const onProject = contacts.filter((c) => vendorIds.includes(c.id as number)).sort((a, b) => a.name.localeCompare(b.name));
-  const others = contacts.filter((c) => !vendorIds.includes(c.id as number)).sort((a, b) => a.name.localeCompare(b.name));
   const cents = parseAmountToCents(amount);
   // A new change order on a split agreement opens with the agreement's proportions; it only follows the amount until the owner edits a part.
   const suggested = !commitment && isChange && parent && cents !== null && cents !== 0 ? suggestChangeSplit(parent, cents) : undefined;
@@ -87,7 +83,7 @@ export default function CommitmentForm({ projectId, vendorIds, lines, all, commi
     const problem = validateCommitment(
       { title, amount, status, parentId, budgetLineId: lineId ? Number(lineId) : null, acceptedDate: status === 'accepted' ? acceptedDate : '' },
       { lineIds: lines.map((l) => l.id), all, editingId: commitment?.id },
-    ) ?? (vendor === NEW_VENDOR && !newVendor.trim() ? 'Enter the vendor name, or choose none.' : null);
+    );
     if (problem) return setError(problem);
     let allocations: AllocationEntry[] | null | undefined;
     if (splitOn) {
@@ -102,17 +98,15 @@ export default function CommitmentForm({ projectId, vendorIds, lines, all, commi
     } else if (storedList) allocations = null;
     setBusy(true);
     try {
-      let vendorContactId = vendor && vendor !== NEW_VENDOR ? Number(vendor) : null;
-      if (vendor === NEW_VENDOR) vendorContactId = (await findOrCreateContact(db, { name: newVendor })).id;
       const fields = {
         title, amountCents: cents ?? 0, status, parentId, budgetLineId: isChange ? d?.budgetLineId ?? null : lineId ? Number(lineId) : null,
-        vendorContactId, acceptedDate: status === 'accepted' ? acceptedDate : null, notes, allocations,
+        vendorContactId: vendor.newContact ? null : vendor.contactId, newVendor: vendor.newContact, acceptedDate: status === 'accepted' ? acceptedDate : null, notes, allocations,
       };
       const r = commitment ? await saveCommitment(commitment.id, fields) : await createCommitment(projectId, fields);
-      toast(`${commitment ? 'Saved' : isChange ? 'Change order added' : status === 'accepted' ? 'Agreement added' : 'Quote added'}${r.vendorAdded ? '. The vendor was added to this project too' : ''}`);
+      toast(`${commitment ? 'Saved' : isChange ? 'Change order added' : status === 'accepted' ? 'Agreement added' : 'Quote added'}${r.contactCreated ? '. The new contact was created' : ''}${r.vendorAdded ? '. The vendor was added to this project too' : ''}`);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save.');
+      setError(err instanceof SameNameContactError ? `${err.message} Press Change on the new contact to review the matches.` : err instanceof Error ? err.message : 'Could not save.');
       setBusy(false);
     }
   }
@@ -185,16 +179,8 @@ export default function CommitmentForm({ projectId, vendorIds, lines, all, commi
             {isChange && !splitOn && parentSplit && <p className="muted small">If you do not split a change order, its amount shows under "No budget line" with a warning.</p>}
           </fieldset>
         )}
-        <label className="f">Vendor
-          <select value={vendor} onChange={(e) => setVendor(e.target.value)}>
-            <option value="">None</option>
-            {onProject.length > 0 && <optgroup label="On this project">{onProject.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>}
-            {others.length > 0 && <optgroup label="Other contacts">{others.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</optgroup>}
-            <option value={NEW_VENDOR}>New vendor…</option>
-          </select>
-        </label>
-        {vendor === NEW_VENDOR && <label className="f">New vendor name<input value={newVendor} onChange={(e) => setNewVendor(e.target.value)} maxLength={120} placeholder="Name or business" /></label>}
-        {vendor && vendor !== NEW_VENDOR && !vendorIds.includes(Number(vendor)) && <p className="muted small">This contact will also be added to the project's vendors (no second copy is made).</p>}
+        <ContactField idp="pj-vendor" label="Vendor" contacts={contacts} value={vendor} onChange={setVendor} noneLabel="None" newLabel="Create a new vendor contact instead" showRelationship />
+        {(vendor.newContact || (vendor.contactId !== null && !vendorIds.includes(vendor.contactId))) && <p className="muted small">This contact will also be added to the project's vendors (no second copy is made).</p>}
         <label className="f">Notes<textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} /></label>
         {error && <div className="error" role="alert">{error}</div>}
         <div className="row pj-actions">

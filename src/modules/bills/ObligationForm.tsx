@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import Modal from '../../shell/Modal';
 import ScheduleFields from './ScheduleFields';
@@ -7,7 +7,9 @@ import { db } from '../../db';
 import { store } from '../../core/store';
 import { parseAmountToCents } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
-import { createObligation, editObligation, type ProviderInput } from './data';
+import { createObligation, editObligation } from './data';
+import { SameNameContactError } from '../../core/contactIdentity';
+import { ContactField, pickChanged, pickOf, pickToChoice, type ContactPick } from '../../ui/ContactChoice';
 import { newOp } from './cycleData';
 import { createFromSeed } from './discoveryData';
 import type { FormSeed } from './formSeed';
@@ -18,7 +20,6 @@ import {
   type AmountKind, type BillType, type DocRef, type How, type Need, type ObligationRecord,
 } from './model';
 
-const NEW = '__new';
 const sameSchedule = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 /**
@@ -39,13 +40,10 @@ export default function ObligationForm({ obligation, seed, onClose, onSaved }: {
   const [typeTouched, setTypeTouched] = useState(editing || !!seed);
   const [need, setNeed] = useState<Need>(editing ? d.need : defaultNeed(d.type));
   const [needTouched, setNeedTouched] = useState(editing);
-  const [choice, setChoice] = useState<string>(seed ? NEW : d.providerContactId !== null ? String(d.providerContactId) : '');
-  const [choiceTouched, setChoiceTouched] = useState(false);
-  const [newName, setNewName] = useState(seed?.providerName ?? '');
+  // U2: the provider is an existing Contact chosen by id, or a NEW one made on purpose. A name (even a Finance payee name) never selects a Contact.
+  const [pick, setPick] = useState<ContactPick>(pickOf(d.providerContactId));
   const [rememberPayee, setRememberPayee] = useState(!!seed?.payeeHint);
   const [linkRuleToo, setLinkRuleToo] = useState(!!seed?.ruleId);
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
   const [amountKind, setAmountKind] = useState<AmountKind>(editing || seed ? d.amountKind : 'fixed');
   const first = firstAmountCents(d);
   const [amount, setAmount] = useState(first === null ? '' : (first / 100).toFixed(2));
@@ -64,15 +62,6 @@ export default function ObligationForm({ obligation, seed, onClose, onSaved }: {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // a seeded provider that is already one of your Contacts is used, so no second Contact is made
-  useEffect(() => {
-    if (!seed || choiceTouched) return;
-    const m = contacts.find((c) => c.name.trim().toLowerCase() === seed.providerName.trim().toLowerCase());
-    if (m) setChoice(String(m.id));
-  }, [contacts, seed, choiceTouched]);
-
-  const typed = newName.trim().toLowerCase();
-  const sameAsExisting = !!typed && contacts.some((c) => c.name.trim().toLowerCase() === typed);
   const warn = notesWarning(notes);
   const schedule = scheduleOfDraft(draft);
   const scheduleChanged = editing && !sameSchedule(schedule, d.schedule);
@@ -95,21 +84,20 @@ export default function ObligationForm({ obligation, seed, onClose, onSaved }: {
     if (amountKind === 'fixed' && cents === null) return setError('Enter the amount, or choose "It varies" or "I do not know".');
     const bad = draftProblem(draft);
     if (bad) return setError(bad);
-    if (choice === NEW && !newName.trim()) return setError('Enter the provider\'s name, or pick "No provider".');
-    const provider: ProviderInput | null = choice === NEW ? { name: newName, phone, email } : choice ? { contactId: Number(choice) } : null;
+    const provider = pickToChoice(pick);
     const payment = { how, fundingAccountId: accountId ? Number(accountId) : null };
     setBusy(true);
     try {
       if (obligation) {
         const r = await editObligation(obligation.id, {
-          title, type, need, provider: choice === (d.providerContactId !== null ? String(d.providerContactId) : '') ? undefined : provider, amountKind, amountCents: cents, trackingSince: tracking, schedule, scheduleFrom: scheduleChanged ? scheduleFrom || null : null,
+          title, type, need, provider: pickChanged(pick, d.providerContactId) ? provider : undefined, amountKind, amountCents: cents, trackingSince: tracking, schedule, scheduleFrom: scheduleChanged ? scheduleFrom || null : null,
           payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote }, refs, notes, reminders: { payTask, leadDays: d.reminders?.leadDays ?? 3 },
         }, obligation.updatedAt, today);
         toast('Saved', () => runUndo(r.undo, toast).then(() => undefined));
         onSaved?.(obligation.id);
       } else {
         const prices = amountKind !== 'unknown' && cents !== null ? [{ from: tracking, cents, label: '' }] : [];
-        const data = blankObligation({ title, type, need, amountKind, prices, schedule, trackingSince: tracking, payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote.trim(), since: reviewOn ? today : null }, refs, notes, reminders: { payTask, leadDays: 3 }, payeeHints: seed?.payeeHint && rememberPayee ? [seed.payeeHint] : [] }, today);
+        const data = blankObligation({ title, type, need, amountKind, prices, schedule, trackingSince: tracking, payment, paidThroughLoan, review: { on: reviewOn, note: reviewNote.trim(), since: reviewOn ? today : null }, refs, notes, reminders: { payTask, leadDays: 3 }, payeeHints: seed?.payeeHint && rememberPayee ? [seed.payeeHint] : [], ...(!provider && seed ? { providerNameSnapshot: seed.providerName.trim() } : {}) }, today);
         const r = seed
           ? await createFromSeed({ data, provider, today, from: seed.from ? { ...seed.from, op } : null, ruleId: seed.ruleId && linkRuleToo ? seed.ruleId : null })
           : await createObligation({ data, provider, today });
@@ -118,7 +106,7 @@ export default function ObligationForm({ obligation, seed, onClose, onSaved }: {
       }
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Nothing was changed.');
+      setError(e instanceof SameNameContactError ? `${e.message} Press Change on the new contact to review the matches.` : e instanceof Error ? e.message : 'Could not save. Nothing was changed.');
       setBusy(false);
     }
   }
@@ -166,23 +154,9 @@ export default function ObligationForm({ obligation, seed, onClose, onSaved }: {
           <p className="muted small">The Task is only a reminder. Finishing it never records a payment, and no Task is made for future months in advance.</p>
         </fieldset>
 
-        <label className="f">Provider
-          <select value={choice} onChange={(e) => { setChoice(e.target.value); setChoiceTouched(true); }} aria-label="Provider">
-            <option value="">No provider</option>
-            {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            <option value={NEW}>A new provider…</option>
-          </select>
-        </label>
-        {choice === NEW && (
-          <div className="bl-sub">
-            <label className="f">Provider name<input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={120} /></label>
-            {sameAsExisting && <p className="bl-note small">A contact with this name already exists, so it will be used. No second contact is made.</p>}
-            <div className="bl-two">
-              <label className="f">Phone (optional)<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="off" /></label>
-              <label className="f">Email (optional)<input value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="off" /></label>
-            </div>
-            <p className="muted small">Saved in your shared Contacts.</p>
-          </div>
+        <ContactField idp="bl-provider" label="Provider" contacts={contacts} value={pick} onChange={setPick} noneLabel="No provider" newLabel="Create a new provider contact instead" initialNewName={seed?.providerName ?? ''} />
+        {d.providerContactId === null && (d.providerNameSnapshot || (seed && seed.providerName)) && !pick.contactId && !pick.newContact && (
+          <p className="muted small">Provider name kept as words only: “{d.providerNameSnapshot || seed?.providerName}”. It is not linked to a contact. Pick one above, or create a new one, to link it. Ledger never links a contact just because a name matches.</p>
         )}
 
         {seed && !editing && (seed.payeeHint || seed.ruleId) && (

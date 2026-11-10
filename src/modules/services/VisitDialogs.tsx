@@ -9,8 +9,9 @@ import { runUndo, type Undo } from './undo';
 import { CANCELLED_BY, CHARGE_KIND_LABEL, CHARGE_KINDS, type CancelledBy, type ChargeKind, type VisitRecord, type VisitStatus } from './visitModel';
 import { logStandaloneVisit, logVisitFromTask, planLogVisit, updateVisit, visitAssetIds, type LogExpect, type LogPlan, type VisitInput } from './visits';
 import { notesWarning, type DocRef } from './model';
+import { SameNameContactError } from '../../core/contactIdentity';
+import { ContactField, NO_PICK, pickToChoice, type ContactPick } from '../../ui/ContactChoice';
 
-const NEW = '__new';
 const TITLE: Record<VisitStatus, string> = { completed: 'Done, log it', skipped: 'Skip this visit', cancelled: 'Cancel this visit' };
 const GO: Record<VisitStatus, string> = { completed: 'Log it', skipped: 'Skip this visit', cancelled: 'Cancel this visit' };
 const DONE: Record<VisitStatus, string> = { completed: 'Visit logged', skipped: 'Visit skipped', cancelled: 'Visit cancelled' };
@@ -149,8 +150,7 @@ export function OneOffDialog({ arrangementId, providerName, defaultTitle, onClos
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
   const assets = useLiveQuery(() => loadAssets(), []) ?? [];
   const forArrangement = arrangementId !== undefined;
-  const [pick, setPick] = useState('');
-  const [newName, setNewName] = useState('');
+  const [pick, setPick] = useState<ContactPick>(NO_PICK); // U2: an existing Contact by id, or a NEW one made on purpose
   const [title, setTitle] = useState(defaultTitle ?? '');
   const [status, setStatus] = useState<VisitStatus>('completed');
   const [by, setBy] = useState<CancelledBy | ''>('');
@@ -172,22 +172,22 @@ export function OneOffDialog({ arrangementId, providerName, defaultTitle, onClos
     e.preventDefault();
     if (pressed.current) return;
     if (cents === undefined) return setError('The amount charged is not an amount. Leave it blank if you do not know it.');
-    if (!forArrangement && !pick) return setError('Pick the provider, or choose "A new provider" and type the name.');
-    if (!forArrangement && pick === NEW && !newName.trim()) return setError('Enter the provider\'s name.');
+    const provider = forArrangement ? null : pickToChoice(pick);
+    if (!forArrangement && !provider) return setError('Pick the provider, or create a new contact for them.');
     if (status === 'cancelled' && !by) return setError('Say who cancelled it.');
     const refs: DocRef[] = docLabel.trim() || docUrl.trim() ? [{ label: docLabel.trim() || 'Document', ...(docUrl.trim() ? { url: docUrl.trim() } : {}) }] : [];
     pressed.current = true; setBusy(true); setError('');
     try {
       const res = await logStandaloneVisit({
         arrangementId: forArrangement ? arrangementId : null,
-        provider: forArrangement ? null : pick === NEW ? { name: newName } : { contactId: Number(pick) },
+        provider,
         input: { title, status, cancelledBy: status === 'cancelled' && by ? by : null, date, notes, chargedCents: cents ?? null, chargeKind: cents == null ? null : kind, refs },
         assetIds: assetId ? [Number(assetId)] : forArrangement ? undefined : [], today, operationId: opId.current,
       });
       toast(res.repeated ? 'Already saved (that was a repeated press).' : res.similarVisitId !== null ? 'Visit logged. A similar visit was already logged for that day. Both are kept; check they are not the same one.' : forArrangement ? 'Visit logged' : 'One-off visit logged', res.repeated ? undefined : undoer(toast, res.undo));
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save it.');
+      setError(err instanceof SameNameContactError ? `${err.message} Press Change on the new contact to review the matches.` : err instanceof Error ? err.message : 'Could not save it.');
       pressed.current = false; setBusy(false);
     }
   }
@@ -200,14 +200,7 @@ export function OneOffDialog({ arrangementId, providerName, defaultTitle, onClos
           <p><strong>Provider:</strong> {providerName || 'None yet'}</p>
         ) : (
           <>
-            <label className="f">Provider
-              <select value={pick} onChange={(e) => setPick(e.target.value)} autoFocus>
-                <option value="">Pick…</option>
-                {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                <option value={NEW}>A new provider…</option>
-              </select>
-            </label>
-            {pick === NEW && <label className="f">Provider name<input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={120} /></label>}
+            <ContactField idp="sv-oneoff" label="Provider" contacts={contacts} value={pick} onChange={setPick} noneLabel="Pick…" newLabel="Create a new provider contact instead" />
           </>
         )}
         <label className="f">What was done<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Replaced the outdoor tap" maxLength={120} /></label>

@@ -178,12 +178,15 @@ describe('B3.1 "Create a bill from this suggestion": explicit, atomic, and carry
     expect((await loadDecisions(d))).toHaveLength(1);
   });
 
-  it('an existing provider Contact is reused, never doubled', async () => {
+  it('U2: an existing provider Contact is used only when the owner chooses it by id; the same name typed again is refused and creates nothing', async () => {
     const d = fresh();
     await seedMonthly(d, 'Streamly Premium', 1549, 12, M4);
     const { seed } = await seedFor(d);
-    await createFromSeed({ data: dataOf(seed), provider: { name: 'streamly premium' }, today: TODAY }, d);
-    await createFromSeed({ data: { ...dataOf(seed), title: 'Streamly again' }, provider: { name: 'Streamly Premium' }, today: TODAY }, d);
+    const first = await createFromSeed({ data: dataOf(seed), provider: { name: 'streamly premium' }, today: TODAY }, d);
+    await expect(createFromSeed({ data: { ...dataOf(seed), title: 'Streamly again' }, provider: { name: 'Streamly Premium' }, today: TODAY }, d)).rejects.toThrow(/already exists/);
+    expect((await loadObligations(d)).map((o) => o.data.title)).toEqual(['Streamly Premium']); // the refused save wrote nothing
+    const second = await createFromSeed({ data: { ...dataOf(seed), title: 'Streamly again' }, provider: { contactId: first.contactId! }, today: TODAY }, d);
+    expect(second.contactId).toBe(first.contactId);
     expect((await d.contacts.toArray()).filter((x) => !x.deletedAt)).toHaveLength(1);
   });
 
@@ -233,7 +236,7 @@ describe('B3.1 "Create a bill from this suggestion": explicit, atomic, and carry
     await applyUndo(out.undo, d);
     expect((await loadObligations(d)).length).toBe(0);
     expect((await loadDiscovery(TODAY, d)).suggestions).toHaveLength(1);
-    const again = await createFromSeed({ data: dataOf(seed), provider: { name: 'Streamly Premium' }, today: TODAY, from: { key: c.key, snap: snapOf(c), op: newOp() } }, d);
+    const again = await createFromSeed({ data: dataOf(seed), provider: { contactId: out.contactId! }, today: TODAY, from: { key: c.key, snap: snapOf(c), op: newOp() } }, d); // the kept Contact, chosen by id
     const row = (await d.moduleRecords.get(again.id))!;
     await d.moduleRecords.update(again.id, { data: { ...(row.data as object), notes: 'edited' } });
     let refused = false;

@@ -1,3 +1,4 @@
+import { providerNamed } from '../../core/contactTestkit';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { dexieMeta, RemoteConflict, SyncEngine, type RemoteFile, type RemoteStore } from '../../lib/sync/engine';
@@ -17,7 +18,7 @@ const fresh = () => { const d = new FinanceDB(`test-corr1-${n++}`); installTrack
 const TODAY = '2026-11-06';
 const addTxn = (d: FinanceDB, amountCents: number, over: Partial<Txn> = {}) => d.txns.add({ accountId: 1, date: '2026-11-01', amountCents, payee: 'Pat Pools', memo: '', status: 'cleared', categoryId: 5, ...over } as Txn) as Promise<number>;
 const ref = async (d: FinanceDB, id: number, split?: number) => makeTxnRef((await d.txns.get(id))!, split);
-const arr = async (d: FinanceDB, title = 'Pool service', name = 'Pat Pools') => (await createArrangement({ data: blankArrangement({ title }), provider: { name }, today: TODAY }, d)).id;
+const arr = async (d: FinanceDB, title = 'Pool service', name = 'Pat Pools') => (await createArrangement({ data: blankArrangement({ title }), provider: await providerNamed(d, name), today: TODAY }, d)).id;
 async function visit(d: FinanceDB, arrangementId: number, over: Partial<VisitInput> = {}) {
   const input: VisitInput = { status: 'completed', cancelledBy: null, date: '2026-10-05', title: 'Pool service', chargedCents: null, chargeKind: null, ...over };
   return (await logStandaloneVisit({ arrangementId, input, today: TODAY }, d)).visitId;

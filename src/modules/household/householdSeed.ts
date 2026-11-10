@@ -15,6 +15,7 @@ import { monthly, ob } from '../bills/billsTestkit';
 import { createArrangement } from '../services/data';
 import { blankArrangement } from '../services/model';
 import { biweekly } from './householdTestkit';
+import { providerNamed } from '../../core/contactTestkit';
 
 export const TODAY = '2026-11-08';
 
@@ -37,13 +38,13 @@ export async function seed(d: FinanceDB): Promise<Seed> {
   const add = async (date: string, amountCents: number, payee: string) => (await d.txns.get((await d.txns.add({ accountId: acct, date, amountCents, payee, memo: '', status: 'cleared', categoryId: null })) as number))!;
   const T1 = await add('2026-10-15', -15000, 'Sparkle Cleaning Co'), T2 = await add('2026-10-15', -1549, 'Streamly'), T3 = await add('2026-09-15', -1549, 'Streamly');
   const T4 = await add('2026-10-20', -6200, 'Example Power'), T5 = await add('2026-09-12', -34000, 'Evergreen Furnace'), T6 = await add('2026-09-20', 3000, 'Evergreen Furnace refund');
-  const mk = async (over: Parameters<typeof ob>[0], provider: string) => (await createObligation({ data: ob({ need: 'flexible', trackingSince: '2026-01-01', ...over }, TODAY), provider: { name: provider }, today: TODAY }, d)).id;
+  const mk = async (over: Parameters<typeof ob>[0], provider: string) => (await createObligation({ data: ob({ need: 'flexible', trackingSince: '2026-01-01', ...over }, TODAY), provider: await providerNamed(d, provider), today: TODAY }, d)).id;
   const streamly = await mk({ title: 'Streamly', type: 'subscription', prices: [{ from: '2026-01-01', cents: 1549, label: '' }], schedule: monthly(15, '2026-01') }, 'Streamly Inc');
   const power = await mk({ title: 'Example Power', type: 'utility', amountKind: 'variable', prices: [{ from: '2026-01-01', cents: 7000, label: '' }], schedule: monthly(20, '2026-01') }, 'Example Power Co');
   const sparkle = await mk({ title: 'Sparkle Cleaning', type: 'other', trackingSince: '2026-09-01', prices: [{ from: '2026-09-01', cents: 15000, label: '' }], schedule: monthly(15, '2026-09') }, 'Sparkle Cleaning Co');
   const link = (oid: number, slot: string, t: Txn) => recordFact({ obligationId: oid, slot, body: { fact: 'payment-link', ref: makeTxnRef(t) }, op: newOp(), today: TODAY }, d);
   await link(streamly, 'm2026-09', T3); await link(streamly, 'm2026-10', T2); await link(power, 'm2026-10', T4); await link(sparkle, 'm2026-10', T1);
-  const clean = (await createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: biweekly, expected: { basis: 'perVisit', cents: 7500 }, txnRefs: [makeTxnRef(T1)] }), provider: { name: 'Sparkle Cleaning Co' }, scheduleFirstVisit: true, today: TODAY }, d)).id;
+  const clean = (await createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: biweekly, expected: { basis: 'perVisit', cents: 7500 }, txnRefs: [makeTxnRef(T1)] }), provider: await providerNamed(d, 'Sparkle Cleaning Co'), scheduleFirstVisit: true, today: TODAY }, d)).id;
   const pv = await previewServiceLink(sparkle, clean, 'linked', d);
   await applyServiceLink(sparkle, clean, 'linked', pv.token, TODAY, d);
   const home = await createAsset(blankAsset({ name: 'Family home', type: 'property' }), d);

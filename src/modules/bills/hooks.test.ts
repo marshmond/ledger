@@ -113,7 +113,7 @@ describe('B1: Quick Add understands plain lines and refuses unclear ones in word
     expect(q.data.title).toBe('Streamly 15.49 monthly');
     expect(q.data.schedule).toBeNull();
   });
-  it('the preview states it is expected dates only; Add saves it and Undo removes it, keeping the Contact', async () => {
+  it('the preview states it is expected dates only; Add saves it (provider name as words only, NO Contact made or linked) and Undo removes it', async () => {
     const preview = billQuickAdd.parse!('Quickadd Cable 79.99 monthly 3rd manual with Quickadd Cable Co', {})!;
     expect(preview.summary).toMatch(/Expected dates only/);
     expect(preview.fields.some((f) => f.label === 'Problem')).toBe(false);
@@ -121,9 +121,11 @@ describe('B1: Quick Add understands plain lines and refuses unclear ones in word
     const rows = (await db.moduleRecords.toArray()).filter((r) => r.module === 'bills');
     expect(rows).toHaveLength(1);
     expect(asObligation(rows[0]).data.payment.how).toBe('manual');
+    expect(asObligation(rows[0]).data).toMatchObject({ providerContactId: null, providerNameSnapshot: 'Quickadd Cable Co' }); // U2: the name is kept as words; no Contact identity is invented
+    expect(await db.contacts.count()).toBe(0);
     await undo!();
     expect(await getObligation(rows[0].id as number, db)).toBeUndefined();
-    expect((await db.contacts.toArray()).filter((c) => c.name === 'Quickadd Cable Co')).toHaveLength(1);
+    expect(await db.contacts.count()).toBe(0);
     await db.moduleRecords.clear(); await db.contacts.clear();
   });
 });

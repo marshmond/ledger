@@ -21,6 +21,7 @@ import { buildPrefill, duplicateHandoffs, handoffDivergence, handoffEligibility,
 import { loadAssets } from '../assets/data';
 import { loadVisits, logStandaloneVisit } from './visits';
 import { loadAssetServices } from './assetLinks';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Invented data only. Real Dexie, real shared links, real backup code. */
 let n = 0;
@@ -32,7 +33,7 @@ const asset = (d: FinanceDB, name = 'Furnace') => createAsset(blankAsset({ name,
 async function visit(d: FinanceDB, over: { arrangementId?: number | null; assetIds?: number[]; status?: 'completed' | 'skipped' | 'cancelled'; charged?: number; notes?: string; title?: string; refs?: { label: string; url?: string }[] } = {}) {
   const status = over.status ?? 'completed';
   return (await logStandaloneVisit({
-    arrangementId: over.arrangementId ?? null, provider: over.arrangementId ? undefined : { name: 'Pat Heating' }, assetIds: over.assetIds,
+    arrangementId: over.arrangementId ?? null, provider: over.arrangementId ? undefined : await providerNamed(d, 'Pat Heating'), assetIds: over.assetIds,
     input: {
       status, cancelledBy: status === 'cancelled' ? 'provider' : null, date: '2026-11-03', title: over.title ?? 'Annual furnace inspection', notes: over.notes ?? '',
       chargedCents: over.charged ?? null, chargeKind: over.charged ? (status === 'cancelled' ? 'cancellationFee' : 'service') : null, refs: over.refs,
@@ -312,7 +313,7 @@ describe('S4-A3 financial rules of the handoff', () => {
   it('the asset page reverse view lists the arrangement and never shows it as maintenance that happened', async () => {
     const d = fresh();
     const a = await asset(d);
-    const r = await createArrangement({ data: blankArrangement({ title: 'Furnace plan' }), provider: { name: 'Pat Heating' }, assetIds: [a], today: TODAY }, d);
+    const r = await createArrangement({ data: blankArrangement({ title: 'Furnace plan' }), provider: await providerNamed(d, 'Pat Heating'), assetIds: [a], today: TODAY }, d);
     const view = await loadAssetServices(a, d);
     expect(view.rows.map((x) => [x.arrangementId, x.status, x.providerName])).toEqual([[r.id, 'active', 'Pat Heating']]);
     expect(await loadServices(d)).toHaveLength(0);

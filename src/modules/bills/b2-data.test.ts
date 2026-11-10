@@ -16,12 +16,13 @@ import { MODULE, type ObligationData } from './model';
 import { applyUndo, isUndoRefused } from './undo';
 import { creditF, dueOn, financeSnapshot, fresh, inv, monthly, ob, paidFull, paidOut, skipF, sleep } from './billsTestkit';
 import type { FactBody } from './cycleModel';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Real Dexie (fake-indexeddb). Invented data only. 2026-11-07 is a Saturday. */
 const TODAY = '2026-11-07';
 const REM = { payTask: true, leadDays: 3 };
 const mk = async (d: FinanceDB, over: Partial<ObligationData> = {}, reminders: ObligationData['reminders'] = REM) =>
-  createObligation({ data: ob({ title: 'Example Power Co', amountKind: 'variable', prices: [{ from: TODAY, cents: 9000, label: '' }], schedule: monthly(18, '2026-11'), reminders, ...over }, TODAY), provider: { name: 'Example Power Co' }, today: TODAY }, d);
+  createObligation({ data: ob({ title: 'Example Power Co', amountKind: 'variable', prices: [{ from: TODAY, cents: 9000, label: '' }], schedule: monthly(18, '2026-11'), reminders, ...over }, TODAY), provider: await providerNamed(d, 'Example Power Co'), today: TODAY }, d);
 const rec = (d: FinanceDB, id: number, slot: string, body: FactBody, extra: { op?: string; finishTaskId?: number | null; today?: string } = {}) =>
   recordFact({ obligationId: id, slot, body, op: extra.op ?? newOp(), today: extra.today ?? TODAY, finishTaskId: extra.finishTaskId }, d);
 const all = async (d: FinanceDB) => JSON.stringify([await d.moduleRecords.toArray(), await d.links.toArray(), await d.contacts.toArray()]);

@@ -17,6 +17,7 @@ import { tidy } from './util';
 export interface BillQuick {
   data: ObligationData;
   providerName: string;
+  /** Display only: a Contact with that name exists. It never links anything. */
   providerExists: boolean;
   /** Set when the line could not be understood or is not valid; the preview shows it and Add is refused. */
   problem: string | null;
@@ -132,7 +133,11 @@ const amountWords = (d: ObligationData, hide: boolean) => {
   return d.amountKind === 'variable' ? (money ? `varies, about ${money}` : 'amount varies') : d.amountKind === 'fixed' && money ? money : 'amount not known';
 };
 
-/** The Add box's Bills & Subscriptions destination. Shows what was understood; nothing is saved until Add is pressed. A Contact made for a Quick Add is never deleted by Undo. */
+/**
+ * The Add box's Bills & Subscriptions destination. Shows what was understood; nothing is saved until Add is pressed.
+ * U2: Quick Add never creates, finds or links a Contact (there is no moment to choose one or to confirm a same-name Contact). The provider name is kept only as the bill's
+ * provider-name snapshot; the owner can link the right Contact afterwards in Edit.
+ */
 export const billQuickAdd: QuickAddDef = {
   id: 'bills-obligation',
   label: 'Bill or subscription',
@@ -155,7 +160,7 @@ export const billQuickAdd: QuickAddDef = {
       { label: 'How often', value: describeSchedule(d.schedule) },
       ...(next.length ? [{ label: 'Next dates', value: next.map((e) => dayLabel(e.nominal, { weekday: 'short', year: true })).join(', ') }] : []),
       { label: 'Paid', value: d.payment.how === 'auto' ? 'Automatically' : d.payment.how === 'manual' ? 'By hand' : 'Not stated' },
-      ...(p.providerName ? [{ label: 'Provider', value: `${p.providerName} (${p.providerExists ? 'existing contact' : 'new contact'})` }] : []),
+      ...(p.providerName ? [{ label: 'Provider', value: `${p.providerName} (saved as a name only, no contact linked${p.providerExists ? '; a contact with this name exists, link the right one afterwards' : ''})` }] : []),
       ...(p.problem ? [{ label: 'Problem', value: p.problem }] : []),
     ];
     return { summary: `${d.title || '?'}, ${amountWords(d, hide)}, ${describeSchedule(d.schedule).toLowerCase()}. Expected dates only: nothing is paid or created in Finance`, fields, payload: { p, operationId: `qa-${Date.now().toString(36)}-${++opCounter}` } };
@@ -163,7 +168,8 @@ export const billQuickAdd: QuickAddDef = {
   async commit(preview) {
     const { p } = preview.payload as { p: BillQuick; operationId: string };
     if (p.problem) throw new Error(p.problem);
-    const r = await createObligation({ data: p.data, provider: p.providerName ? { name: p.providerName } : null });
+    // U2: Quick Add never creates, finds or links a Contact; the provider name stays in data.providerNameSnapshot (words, not an identity)
+    const r = await createObligation({ data: p.data, provider: null });
     return async () => { await runUndo(r.undo, say, db); };
   },
 };

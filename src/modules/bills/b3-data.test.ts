@@ -17,6 +17,7 @@ import { MODULE, type ObligationData } from './model';
 import { SAME_PIECE, SWITCH_NEEDED, TYPED_WHILE_LINKED } from './paymentLinks';
 import type { FactBody } from './cycleModel';
 import { lookupOfMap, loadTxnMap } from '../../lib/txnLookup';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** B3 with a real database (fake-indexeddb). Invented data only. 2026-11-07 is a Saturday; the November bill is the 18th. */
 const TODAY = '2026-11-07';
@@ -24,7 +25,7 @@ const SLOT = 'm2026-11';
 const REM = { payTask: true, leadDays: 3 };
 
 const mk = async (d: FinanceDB, over: Partial<ObligationData> = {}, reminders: ObligationData['reminders'] = null) =>
-  createObligation({ data: ob({ title: 'Example Power Co', amountKind: 'fixed', prices: [{ from: TODAY, cents: 12000, label: '' }], schedule: monthly(18, '2026-11'), reminders, ...over }, TODAY), provider: { name: 'Example Power Co' }, today: TODAY }, d);
+  createObligation({ data: ob({ title: 'Example Power Co', amountKind: 'fixed', prices: [{ from: TODAY, cents: 12000, label: '' }], schedule: monthly(18, '2026-11'), reminders, ...over }, TODAY), provider: await providerNamed(d, 'Example Power Co'), today: TODAY }, d);
 
 let acct = 0;
 const account = async (d: FinanceDB) => (acct = (await d.accounts.add({ name: 'Test checking', kind: 'checking', openingBalanceCents: 0, openingDate: '2026-01-01' } as never)) as number);

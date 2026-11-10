@@ -11,7 +11,7 @@
  * No transaction id, no payee list, no per-payment amount.
  *
  * Finance is only READ, in bulk, through the shared read-only loader, before any write transaction opens. Every write is one transaction with a guarded
- * Undo, and writes only Bills records (plus the shared provider Contact, through the existing `findOrCreateContact`).
+ * Undo, and writes only Bills records (plus a NEW provider Contact when the owner asked for one, through `resolveContactChoice`).
  */
 import { db, type FinanceDB } from '../../db';
 import type { ModuleRecord } from '../../core/entities';

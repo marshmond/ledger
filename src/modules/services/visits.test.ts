@@ -16,6 +16,7 @@ import {
 import {
   asVisit, blankVisit, chargeWords, duplicateGroups, normalizeVisit, statusWords, validateVisit, visitStats, type VisitRecord,
 } from './visitModel';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Invented data only. Each test gets its own database. 2026-11-06 is a Friday. */
 let n = 0;
@@ -24,8 +25,8 @@ const TODAY = '2026-11-06';
 const biweekly = (anchor = '2026-11-06'): Cadence => ({ mode: 'fixed', rule: { freq: 'weekly', interval: 2, end: { type: 'never' } }, anchorDate: anchor });
 const weekly = (anchor = '2026-11-06'): Cadence => ({ mode: 'fixed', rule: { freq: 'weekly', interval: 1, end: { type: 'never' } }, anchorDate: anchor });
 const quarterlyAfter = (anchor = '2026-11-06'): Cadence => ({ mode: 'after', rule: { freq: 'monthly', interval: 3, end: { type: 'never' } }, anchorDate: anchor });
-const add = (d: FinanceDB, over = {}, extra: Partial<Parameters<typeof createArrangement>[0]> = {}) =>
-  createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: biweekly(), ...over }), provider: { name: "Rosa's Cleaning" }, today: TODAY, ...extra }, d);
+const add = async (d: FinanceDB, over = {}, extra: Partial<Parameters<typeof createArrangement>[0]> = {}) =>
+  createArrangement({ data: blankArrangement({ title: 'House cleaning', cadence: biweekly(), ...over }), provider: await providerNamed(d, "Rosa's Cleaning"), today: TODAY, ...extra }, d);
 const openTasks = async (d: FinanceDB, id: number) => (await tasksOfArrangement(id, d)).filter((t) => t.data.status !== 'done');
 const input = (over: Partial<VisitInput> = {}): VisitInput => ({ status: 'completed', cancelledBy: null, date: TODAY, notes: '', chargedCents: null, chargeKind: null, ...over });
 const snapshot = async (d: FinanceDB) => JSON.stringify([await d.moduleRecords.toArray(), await d.links.toArray(), await d.contacts.toArray()]);
@@ -513,7 +514,7 @@ describe('one-off visits and late entries', () => {
     await add(d); // makes the "Rosa's Cleaning" contact
     const tasksBefore = (await loadTasks(d)).length;
     const arrBefore = await d.moduleRecords.where('[module+kind]').equals(['services', 'arrangement']).count();
-    const res = await logStandaloneVisit({ provider: { name: "  rosa's cleaning " }, input: input({ title: 'Fixed the outlet', date: '2026-11-03' }), today: TODAY }, d);
+    const res = await logStandaloneVisit({ provider: await providerNamed(d, "  rosa's cleaning "), input: input({ title: 'Fixed the outlet', date: '2026-11-03' }), today: TODAY }, d);
     expect(res.contactCreated).toBe(false);
     expect(await d.contacts.count()).toBe(1);
     const [v] = await loadVisits(d);
@@ -653,7 +654,7 @@ describe('Finance and other modules are untouched', () => {
     await log(d, r.id, r.taskId!, { chargedCents: 9900, chargeKind: 'service' });
     const t = (await openTasks(d, r.id))[0];
     await log(d, r.id, t.id, { status: 'cancelled', cancelledBy: 'provider', chargedCents: 2500, chargeKind: 'cancellationFee', date: TODAY });
-    await logStandaloneVisit({ provider: { name: 'Pat' }, input: input({ title: 'Repair', chargedCents: 1000, chargeKind: 'other' }), today: TODAY }, d);
+    await logStandaloneVisit({ provider: await providerNamed(d, 'Pat'), input: input({ title: 'Repair', chargedCents: 1000, chargeKind: 'other' }), today: TODAY }, d);
     expect(tables.length).toBeGreaterThan(0);
     expect(JSON.stringify(await Promise.all(tables.map((tb) => d.table(tb).toArray())))).toBe(before);
     const stored = JSON.stringify(await d.moduleRecords.where('[module+kind]').equals(['services', 'visit']).toArray());

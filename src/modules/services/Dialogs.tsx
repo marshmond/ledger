@@ -14,8 +14,9 @@ import {
 import { runUndo } from './undo';
 import { cadenceText, END_REASON_LABEL, END_REASONS, validateArrangement, normalizeArrangement, type ArrangementRecord, type Cadence, type EndReason } from './model';
 import { arrangementRoute } from './paths';
+import { SameNameContactError } from '../../core/contactIdentity';
+import { ContactField, NO_PICK, pickToChoice, type ContactPick } from '../../ui/ContactChoice';
 
-const NEW = '__new';
 const TITLE: Record<LifecycleAction, string> = { pause: 'Pause this arrangement', resume: 'Resume this arrangement', end: 'End this arrangement', replace: 'Replace the provider' };
 const GO: Record<LifecycleAction, string> = { pause: 'Pause', resume: 'Resume', end: 'End it', replace: 'Replace provider' };
 const DONE: Record<LifecycleAction, string> = { pause: 'Paused', resume: 'Resumed', end: 'Ended', replace: 'Provider replaced' };
@@ -37,8 +38,7 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
   const [align, setAlign] = useState(true);
   const [reason, setReason] = useState<EndReason>('cancelled');
   const [endDate, setEndDate] = useState(today);
-  const [pick, setPick] = useState('');
-  const [newName, setNewName] = useState('');
+  const [pick, setPick] = useState<ContactPick>(NO_PICK); // U2: an existing Contact by id, or a NEW one made on purpose
   const [first, setFirst] = useState('');
   const [copyNotes, setCopyNotes] = useState(false);
   const [copyDates, setCopyDates] = useState(false);
@@ -47,26 +47,26 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
 
   useEffect(() => { void planLifecycle(arrangementId, action, today).then((p) => { setPlan(p); setChoice(p.defaultChoice); setAlign(p.reusedDiffers); }).catch((e) => setError(e instanceof Error ? e.message : 'Could not read the arrangement.')); }, [arrangementId, action, today]);
 
-  const newProviderName = pick === NEW ? newName.trim() : contacts.find((c) => String(c.id) === pick)?.name ?? '';
+  const newProviderName = pick.newContact ? (pick.newContact.name ?? '').trim() : contacts.find((c) => c.id === pick.contactId)?.name ?? '';
   const lines = useMemo(() => (plan ? describeLifecycle(plan, { taskChoice: choice, alignReused: align, endReason: action === 'end' ? reason : undefined, endDate: action === 'end' || action === 'replace' ? endDate : undefined, providerName: newProviderName, copyNotes, copyContractDates: copyDates }) : []), [plan, choice, align, reason, endDate, action, newProviderName, copyNotes, copyDates]);
   const hasTasks = (plan?.tasks.length ?? 0) > 0;
   const needsTaskChoice = hasTasks && (action === 'pause' || action === 'end' || action === 'replace');
 
   async function go() {
     if (!plan || busy) return;
-    if (action === 'replace' && !pick) return setError('Pick the new provider.');
-    if (action === 'replace' && pick === NEW && !newName.trim()) return setError('Enter the new provider\'s name.');
+    const provider = pickToChoice(pick);
+    if (action === 'replace' && !provider) return setError('Pick the new provider, or create a new contact for them.');
     setBusy(true); setError('');
     try {
       const res = await applyLifecycle({
         action, arrangementId, expect: plan.expect, today, taskChoice: choice, alignReused: align, endReason: reason, endDate: action === 'end' || action === 'replace' ? endDate : undefined,
-        replace: action === 'replace' ? { provider: pick === NEW ? { name: newName } : { contactId: Number(pick) }, firstDate: first || null, copyNotes, copyContractDates: copyDates } : undefined,
+        replace: action === 'replace' && provider ? { provider, firstDate: first || null, copyNotes, copyContractDates: copyDates } : undefined,
       });
       toast(DONE[action], () => runUndo(res.undo, toast).then(() => undefined));
       onClose();
       if (res.successorId) nav(arrangementRoute(res.successorId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not do that. Nothing was changed.');
+      setError(e instanceof SameNameContactError ? `${e.message} Press Change on the new contact to review the matches.` : e instanceof Error ? e.message : 'Could not do that. Nothing was changed.');
       setBusy(false);
     }
   }
@@ -86,14 +86,9 @@ export function LifecycleDialog({ arrangementId, action, onClose }: { arrangemen
             )}
             {action === 'replace' && (
               <>
-                <label className="f">New provider
-                  <select value={pick} onChange={(e) => setPick(e.target.value)}>
-                    <option value="">Pick…</option>
-                    {contacts.filter((c) => c.id !== plan.arrangement.data.providerContactId).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    <option value={NEW}>A new provider…</option>
-                  </select>
-                </label>
-                {pick === NEW && <label className="f">New provider name<input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={120} /></label>}
+                <ContactField idp="sv-replace" label="New provider" contacts={contacts} value={pick} onChange={setPick} noneLabel="Pick…" newLabel="Create a new provider contact instead"
+                  exclude={plan.arrangement.data.providerContactId !== null ? [plan.arrangement.data.providerContactId] : []} />
+                <p className="muted small">Pick an existing contact, or create a new one. Ledger never chooses a contact because a name matches.</p>
                 <div className="sv-two">
                   <label className="f">Old arrangement ends on<input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>
                   {plan.arrangement.data.cadence && <label className="f">First visit date (optional)<input type="date" value={first} onChange={(e) => setFirst(e.target.value)} /></label>}

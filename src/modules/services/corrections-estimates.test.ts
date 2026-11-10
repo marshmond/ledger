@@ -9,6 +9,7 @@ import { expectedWindow, scheduleStateOf, type ScheduleState } from './expectedC
 import { blankArrangement, type Cadence } from './model';
 import { payRecords, servicesSpend } from './servicesSpend';
 import { loadVisits, logVisitFromTask, planLogVisit } from './visits';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Pre-commit correction, finding 4: estimates follow the REAL next visit and the standing arrangement. Invented data. 2026-11-06 is a Friday. */
 let n = 0;
@@ -17,8 +18,8 @@ const never = { type: 'never' } as const;
 const weekly: Cadence = { mode: 'fixed', rule: { freq: 'weekly', interval: 1, byWeekday: [5], end: never }, anchorDate: '2026-11-06' };
 const biweekly: Cadence = { mode: 'fixed', rule: { freq: 'weekly', interval: 2, byWeekday: [5], end: never }, anchorDate: '2026-11-06' };
 const semi = (anchor: string): Cadence => ({ mode: 'fixed', anchorDate: anchor, rule: { freq: 'monthly', interval: 1, monthly: 'date', end: never }, semi: { a: { kind: 'day', day: 15, adjust: 'none' }, b: { kind: 'lastBusinessDay' } } });
-const add = (d: FinanceDB, cadence: Cadence, today: string, cents = 10000) =>
-  createArrangement({ data: blankArrangement({ title: 'Pool service', cadence, expected: { basis: 'perVisit', cents } }), provider: { name: 'Pat Pools' }, today }, d);
+const add = async (d: FinanceDB, cadence: Cadence, today: string, cents = 10000) =>
+  createArrangement({ data: blankArrangement({ title: 'Pool service', cadence, expected: { basis: 'perVisit', cents } }), provider: await providerNamed(d, 'Pat Pools'), today }, d);
 const open = async (d: FinanceDB, id: number) => (await tasksOfArrangement(id, d)).filter((t) => t.data.status !== 'done')[0];
 const move = async (d: FinanceDB, id: number, dueDate: string) => { const t = await open(d, id); await saveTask(t.id, { ...t.data, dueDate }, d); };
 async function estimate(d: FinanceDB, today: string, days: number) {

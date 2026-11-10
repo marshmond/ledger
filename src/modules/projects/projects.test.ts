@@ -206,16 +206,21 @@ describe('vendors are shared contacts', () => {
     expect(await createStore(d).shared.contacts.get(contactId)).toMatchObject({ name: 'Acme Plumbing', relationship: 'plumber', phone: '555-0100', email: 'office@example.com' });
   });
 
-  it('the same name is never created twice; existing details are not overwritten, missing ones are filled', async () => {
+  it('U2: a typed name never reuses a vendor: it is refused with nothing written; the existing one is added by id; a confirmed different one is a separate contact', async () => {
     const d = fresh();
     const p = await createProject(blankProject({ name: 'K' }), d);
     const first = await addNewVendor(p, { name: 'Acme Plumbing', phone: '555-0100' }, d);
-    const again = await addNewVendor(p, { name: '  acme   plumbing ', phone: '555-9999', email: 'a@example.com' }, d);
-    expect(again.created).toBe(false);
-    expect(again.contactId).toBe(first.contactId);
+    const before = JSON.stringify(await createStore(d).shared.contacts.get(first.contactId));
+    await expect(addNewVendor(p, { name: '  acme   plumbing ', phone: '555-9999', email: 'a@example.com' }, d)).rejects.toThrow(/already exists/);
     expect(await d.contacts.count()).toBe(1);
-    expect(await createStore(d).shared.contacts.get(first.contactId)).toMatchObject({ phone: '555-0100', email: 'a@example.com' });
-    expect((await getProject(p, d))!.data.vendorContactIds).toEqual([first.contactId]); // not listed twice
+    expect(JSON.stringify(await createStore(d).shared.contacts.get(first.contactId))).toBe(before); // the existing contact is not edited or filled in
+    await addVendor(p, first.contactId, d); // choosing the existing contact by id adds nothing twice
+    expect((await getProject(p, d))!.data.vendorContactIds).toEqual([first.contactId]);
+    const other = await addNewVendor(p, { name: 'Acme Plumbing', email: 'other@example.com', confirmedDifferent: true }, d);
+    expect(other.created).toBe(true);
+    expect(other.contactId).not.toBe(first.contactId);
+    expect(await d.contacts.count()).toBe(2);
+    expect((await getProject(p, d))!.data.vendorContactIds).toEqual([first.contactId, other.contactId]);
   });
 
   it('an existing contact (a family member with no phone or email) works as before and can be added as a vendor', async () => {

@@ -63,7 +63,7 @@ export default function ObligationPage({ id }: { id: number }) {
             <StatusChip d={d} /> <TypeChip d={d} /> <NeedChip d={d} />
             {lcFlag && <span className={`bl-chip lc-${lcFlag.tone}`} data-testid="lc-chip">{lcFlag.label}</span>}
             {d.review.on && <span className="bl-chip">On your review list</span>}
-            {d.providerNameSnapshot ? <span>{d.providerNameSnapshot}{contactGone ? ' (contact removed)' : ''}</span> : <span className="muted">No provider</span>}
+            {d.providerNameSnapshot ? <span>{d.providerNameSnapshot}{contactGone ? ' (contact removed)' : d.providerContactId === null ? ' (name only, no contact linked)' : ''}</span> : <span className="muted">No provider</span>}
           </p>
         </div>
         <div className="bl-head-actions">

@@ -1,0 +1,24 @@
+/* Contacts U2: the shared "use an existing contact / create a new one" choice. Wraps at phone width; touch targets reach 44px on narrow screens. */
+.cc-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); min-width: 0; }
+.cc-box { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); min-width: 0; border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); }
+.cc-box .f, .cc-box input { min-width: 0; max-width: 100%; }
+.cc-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.cc-same { border: 1px solid var(--warn); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); min-width: 0; overflow-wrap: anywhere; }
+.cc-same p, .cc-box p { margin: 0; }
+.cc-match { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); min-width: 0; }
+.cc-match > span { min-width: 0; overflow-wrap: anywhere; }
+.cc-check { display: inline-flex; align-items: flex-start; gap: var(--sp-2); min-height: 40px; }
+.cc-actions { flex-wrap: wrap; gap: var(--sp-2); }
+.cc-error { color: var(--neg-text); }
+.cc-pending { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); min-width: 0; overflow-wrap: anywhere; }
+.cc-pending-actions { display: inline-flex; gap: var(--sp-3); }
+.cc-new-link { justify-self: start; }
+/* A menu of Contacts can have long entries (details are needed to tell same-name Contacts apart): it fills its row and never widens the form. */
+.cc-sel, .cc-fill-label { min-width: 0; max-width: 100%; }
+.cc-sel select, select.cc-fill, .cc-fill-label select { width: 100%; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+@media (max-width: 480px) {
+  .cc-two { grid-template-columns: minmax(0, 1fr); }
+  .cc-box .btn, .cc-same .btn, .cc-new-link, .cc-pending .link { min-height: 44px; }
+  .cc-check { min-height: 44px; align-items: center; }
+  .cc-check input { width: 24px; height: 24px; flex: none; }
+}

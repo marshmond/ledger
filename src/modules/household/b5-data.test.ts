@@ -14,6 +14,7 @@ import { blankArrangement } from '../services/model';
 import { loadHouseholdOverview, todayCounts } from './overview';
 import { loadRelatedBills } from './relatedBill';
 import { TODAY, digest, seed } from './householdSeed';
+import { providerNamed } from '../../core/contactTestkit';
 
 /**
  * B5 on REAL databases (fake IndexedDB): the loader, the read-only promise, bulk reads, scale, damaged data, fault injection, the Related bill reader, and the real
@@ -161,7 +162,7 @@ describe('B5 Related bill on a Household Services arrangement (read only)', () =
   it('a link is never made from a similar name: an arrangement and a bill with the same provider and title but no link show nothing', async () => {
     const { A } = devices();
     const s = await seed(A.d);
-    const other = (await createArrangement({ data: blankArrangement({ title: 'Sparkle Cleaning' }), provider: { name: 'Sparkle Cleaning Co' }, today: TODAY }, A.d)).id;
+    const other = (await createArrangement({ data: blankArrangement({ title: 'Sparkle Cleaning' }), provider: await providerNamed(A.d, 'Sparkle Cleaning Co'), today: TODAY }, A.d)).id;
     expect(await loadRelatedBills(other, A.d, TODAY)).toEqual([]);
     expect(s.bill.sparkle).toBeGreaterThan(0);
   });

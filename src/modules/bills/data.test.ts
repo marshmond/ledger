@@ -1,3 +1,4 @@
+import type { ContactChoice } from '../../core/contactIdentity';
 import { describe, expect, it } from 'vitest';
 import { FinanceDB } from '../../db';
 import { createStore } from '../../core/store';
@@ -15,7 +16,7 @@ import { financeSnapshot, fresh, monthly, ob, sleep } from './billsTestkit';
 
 /** Real Dexie. Invented data only. 2026-11-07 is a Saturday. */
 const TODAY = '2026-11-07';
-const add = (d: FinanceDB, over: Partial<ObligationData> = {}, provider: { name: string } | null = { name: 'Example Power Co' }) => createObligation({ data: ob(over, TODAY), provider }, d);
+const add = (d: FinanceDB, over: Partial<ObligationData> = {}, provider: ContactChoice | null = { name: 'Example Power Co' }) => createObligation({ data: ob(over, TODAY), provider }, d);
 const edit = (cur: ObligationData): ObligationEdit => ({
   title: cur.title, type: cur.type, need: cur.need, amountKind: cur.amountKind, amountCents: cur.prices[0]?.cents ?? null, trackingSince: cur.trackingSince, schedule: cur.schedule,
   payment: cur.payment, paidThroughLoan: cur.paidThroughLoan, review: { on: cur.review.on, note: cur.review.note }, refs: cur.refs, notes: cur.notes,
@@ -38,13 +39,22 @@ describe('B1: creating, reading and the shared provider Contact', () => {
     expect((await d.contacts.toArray())).toHaveLength(1);
     expect((await d.moduleRecords.toArray()).filter((x) => x.module !== MODULE)).toHaveLength(0);
   });
-  it('a second bill from the same provider reuses the Contact (never a duplicate), also when typed differently', async () => {
+  it('U2: a second bill from the same provider uses the Contact the owner CHOSE BY ID; a typed name never selects it (refused, nothing written), and a separate one needs the confirmation', async () => {
     const d = fresh();
     const a = await add(d);
-    const b = await add(d, { title: 'Second meter' }, { name: '  example   POWER co ' });
+    const b = await add(d, { title: 'Second meter' }, { contactId: a.contactId });
     expect(b.contactCreated).toBe(false);
     expect(b.contactId).toBe(a.contactId);
     expect(await d.contacts.count()).toBe(1);
+    // the same name typed again (any case or spacing) is NOT silently reused
+    await expect(add(d, { title: 'Third meter' }, { name: '  example   POWER co ' })).rejects.toThrow(/already exists/);
+    expect(await d.contacts.count()).toBe(1);
+    expect((await loadObligations(d)).map((o) => o.data.title)).not.toContain('Third meter');
+    // confirmed as someone different: a SEPARATE Contact, the first one untouched
+    const c = await add(d, { title: 'Fourth meter' }, { name: 'Example Power Co', confirmedDifferent: true });
+    expect(c.contactCreated).toBe(true);
+    expect(c.contactId).not.toBe(a.contactId);
+    expect((await d.contacts.toArray()).map((x) => x.name)).toEqual(['Example Power Co', 'Example Power Co']);
   });
   it('picking an existing Contact by id works; a missing one is refused in words and nothing is written', async () => {
     const d = fresh();
@@ -82,7 +92,7 @@ describe('B1: creating, reading and the shared provider Contact', () => {
   });
   it('resolveProvider rejects bad input in words', async () => {
     const d = fresh();
-    await expect(d.transaction('rw', [d.moduleRecords, d.links, d.contacts], () => resolveProvider({ name: '  ' }, d))).rejects.toThrow(/provider/);
+    await expect(d.transaction('rw', [d.moduleRecords, d.links, d.contacts], () => resolveProvider({ name: '  ' }, d))).rejects.toThrow(/name/);
     await expect(d.transaction('rw', [d.moduleRecords, d.links, d.contacts], () => resolveProvider({ name: 'X', email: 'nope' }, d))).rejects.toThrow(/email/);
   });
 });

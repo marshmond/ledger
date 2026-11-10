@@ -18,14 +18,15 @@ import { explicitProjectIds, linkProject, projectLinksOf, servicesOfProject, unl
 import { applyUndo, isUndoRefused } from './undo';
 import { assetViews, loadSnapshot } from './views';
 import { loadVisits, logStandaloneVisit, visitAssetIds } from './visits';
+import { providerNamed } from '../../core/contactTestkit';
 
 /** Invented data only. Real Dexie, real shared links. */
 let n = 0;
 const fresh = () => { const d = new FinanceDB(`test-s4a-${n++}`); installTracking(d); return d; };
 const TODAY = '2026-11-06';
 const asset = (d: FinanceDB, name: string, over = {}) => createAsset(blankAsset({ name, type: 'system', ...over }), d);
-const arr = (d: FinanceDB, assetIds: number[], title = 'Furnace plan', provider = 'Pat Heating', data = {}) =>
-  createArrangement({ data: blankArrangement({ title, ...data }), provider: { name: provider }, assetIds, today: TODAY }, d);
+const arr = async (d: FinanceDB, assetIds: number[], title = 'Furnace plan', provider = 'Pat Heating', data = {}) =>
+  createArrangement({ data: blankArrangement({ title, ...data }), provider: await providerNamed(d, provider), assetIds, today: TODAY }, d);
 const visitOf = async (d: FinanceDB, arrangementId: number | null, assetIds?: number[]) =>
   (await logStandaloneVisit({ arrangementId, provider: arrangementId ? undefined : { name: 'Pat Heating' }, assetIds, input: { status: 'completed', cancelledBy: null, date: '2026-11-03', title: 'Inspection', chargedCents: null, chargeKind: null }, today: TODAY }, d)).visitId;
 const replaced = async (d: FinanceDB, oldId: number, newId: number | null) => setAssetStatus(oldId, { status: 'replaced', statusDate: '2026-10-01', statusNote: '', replacedById: newId }, d);
