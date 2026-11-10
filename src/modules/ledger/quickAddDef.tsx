@@ -14,5 +14,6 @@ function TransactionForm({ onDone }: { onDone: () => void }) {
 /** What the Add box can create in Ledger. A transaction is a form; a scheduled payment opens Ledger's own Scheduled screen (it is not typed in). */
 export const LEDGER_QUICK_ADDS: QuickAddDef[] = [
   { id: 'transaction', label: 'Transaction', prefix: '$', aliases: ['txn', 'transaction', 'expense'], Form: TransactionForm },
-  { id: 'scheduled', label: 'Scheduled payment', prefix: 'b', aliases: ['bill', 'scheduled'], open: ({ navigate }) => navigate('/ledger/scheduled') },
+  { id: 'scheduled', label: 'Scheduled payment', prefix: 'b', aliases: ['bill', 'scheduled'], open: ({ navigate }) => navigate('/ledger/scheduled'),
+    openCopy: { what: 'a scheduled payment', where: 'It is set up on Ledger’s own Scheduled screen.', button: 'Open the Scheduled screen' } },
 ];

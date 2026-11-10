@@ -10,6 +10,8 @@ import { ActivitiesSection, DatesSection, ResponsibilitiesSection } from './Hous
 import MemberForm from './MemberForm';
 import { loadMembers } from './data';
 import { forPerson, readHouseholdOverview } from './householdOverview';
+import { ADD_MEMBER } from './quickAddDef';
+import { useAddIntent } from './useAddIntent';
 import { colorName, DATES_ROUTE, duplicateGroups, effectiveMe, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
 
 /**
@@ -26,6 +28,7 @@ export default function OverviewPage() {
   const [who, setWho] = useState<number | null>(null);
   const toast = useToast();
   const navigate = useNavigate();
+  useAddIntent(ADD_MEMBER, () => setAdding(true)); // F5: the Add box's "Family member" opens this same form
 
   const head = (
     <PageHeader

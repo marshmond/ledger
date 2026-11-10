@@ -26,13 +26,13 @@ describe('registration', () => {
     registerModules(); registerModules();
     expect(allModules().filter((m) => m.id === 'family')).toHaveLength(1);
   });
-  it('F2 contributes the due provider and (C2) the read-only contact reader: no Today card, search source, Add-box destination or Finance reference', () => {
+  it('Family contributes the due provider, the read-only contact reader and (F5) a search source and two Add-box destinations: no Today card or Finance reference', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences']);
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences', 'searchSource', 'quickAdd']);
     expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
-    expect(allSearchSources().length).toBe(allModules().filter((m) => m.contributes?.searchSource).length);
-    expect(allQuickAdds().filter((q) => /family|fam/i.test(q.id) || /^fam/.test(q.prefix))).toEqual([]);
+    expect(allSearchSources().filter((s) => s.moduleId === 'family')).toHaveLength(1);
+    expect(allQuickAdds().filter((q) => q.moduleId === 'family').map((q) => q.id)).toEqual(['family-member', 'family-date']);
     expect(allTxnReferenceProviders().map((p) => p.label.toLowerCase())).not.toContain('family');
   });
   it('its stylesheet is loaded with the others', () => {

@@ -153,8 +153,8 @@ function AddBoxInner() {
       )}
       {dest?.open && (
         <div className="ab-formbox">
-          <p className="ab-ask">Will add: <strong>a scheduled payment</strong>. It is set up on Ledger’s own Scheduled screen.</p>
-          <button type="button" className="btn primary" onClick={() => { close(); dest.open!({ navigate: nav }); }}>Open the Scheduled screen</button>
+          <p className="ab-ask">Will add: <strong>{dest.openCopy?.what ?? `a ${dest.label.toLowerCase()}`}</strong>. {dest.openCopy?.where ?? 'It is set up on its own screen.'}</p>
+          <button type="button" className="btn primary" onClick={() => { close(); dest.open!({ navigate: nav }); }}>{dest.openCopy?.button ?? 'Open the form'}</button>
         </div>
       )}
 

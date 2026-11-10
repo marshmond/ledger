@@ -11,6 +11,8 @@ import { loadMembers } from './data';
 import { loadDates, setDateOnCalendar, setDateStatus } from './dateData';
 import { DATE_KIND_LABEL, type DateRecord } from './dateModel';
 import { memberRoute, MONTH_NAMES, monthDayText } from './model';
+import { ADD_DATE } from './quickAddDef';
+import { useAddIntent } from './useAddIntent';
 import { upcomingRows, type UpcomingRow } from './upcoming';
 
 /** "14 May 2027" from a plain date, with no time zone involved. */
@@ -29,6 +31,7 @@ export default function DatesPage() {
   const [form, setForm] = useState<{ record?: DateRecord } | null>(null);
   const [confirm, setConfirm] = useState<DateRecord | null>(null);
   const toast = useToast();
+  useAddIntent(ADD_DATE, () => setForm({})); // F5: the Add box's "Family date" opens this same form
 
   const head = (
     <PageHeader

@@ -71,7 +71,7 @@ describe('the trap itself notices every kind of write (so a quiet result means s
 describe('the readers write nothing, by any route', () => {
   it('registration is complete (the readers below are the real registered ones)', () => {
     expect(allDueProviders().length).toBeGreaterThan(0);
-    expect(allSearchSources().length).toBe(10); // C1: Contacts & Relationships is the tenth search source
+    expect(allSearchSources().length).toBe(11); // C1: Contacts & Relationships is the tenth search source; F5: Family is the eleventh
     expect(allTxnReferenceProviders().length).toBe(5);
   });
 

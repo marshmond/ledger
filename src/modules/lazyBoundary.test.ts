@@ -85,7 +85,7 @@ describe('every module is registered, with its background contributions, without
   });
 
   it('search sources, so search answers before any module is visited', () => {
-    expect(allSearchSources().map((s) => s.moduleId).sort()).toEqual(['assets', 'bills', 'calendar', 'contacts', 'household', 'ledger', 'projects', 'services', 'tasks', 'today']);
+    expect(allSearchSources().map((s) => s.moduleId).sort()).toEqual(['assets', 'bills', 'calendar', 'contacts', 'family', 'household', 'ledger', 'projects', 'services', 'tasks', 'today']);
   });
 
   it('Add-box destinations, so the Add box works before any module is visited', () => {

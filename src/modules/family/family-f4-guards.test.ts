@@ -65,13 +65,13 @@ describe('nothing structural changed', () => {
     expect(db.verno).toBe(15);
     expect(db.tables.map((t) => t.name).filter((n) => /family|household/i.test(n))).toEqual([]);
   });
-  it('registration is unchanged: only the due provider and the contact reader; no Today card, search source or Add-box destination', () => {
+  it('registration: the due provider, the contact reader and (F5) the search source and two Add-box destinations; still no Today card', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences']);
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences', 'searchSource', 'quickAdd']);
     expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
-    expect(allSearchSources().length).toBe(allModules().filter((m) => m.contributes?.searchSource).length);
-    expect(allQuickAdds().filter((q) => /family|fam/i.test(q.id) || /^fam/.test(q.prefix))).toEqual([]);
+    expect(allSearchSources().filter((s) => s.moduleId === 'family')).toHaveLength(1);
+    expect(allQuickAdds().filter((q) => q.moduleId === 'family').map((q) => q.id)).toEqual(['family-member', 'family-date']);
   });
   it('the overview code is reached only from the lazily loaded page, never from the registration or the due provider', () => {
     const users = family.filter(({ text }) => /from '\.\/(householdOverview|HouseholdSections)'/.test(code(text))).map((x) => x.f).sort();

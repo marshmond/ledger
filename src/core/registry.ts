@@ -138,6 +138,11 @@ export interface QuickAddDef {
   Form?: ComponentType<{ onDone: () => void }>;
   /** For a destination that is another screen's own form (a scheduled payment): the box offers a button that calls this. */
   open?(ctx: { navigate: (to: string) => void }): void;
+  /**
+   * Wording for an `open` destination: what is being added ("a scheduled payment"), where it is set up (a sentence), and the button text.
+   * Optional; without it the box says "a <label>" and "Open the form".
+   */
+  openCopy?: { what: string; where: string; button: string };
 }
 
 /** What the Calendar knows about an event, in plain terms, when it offers a handoff. Nothing here is Ledger-specific. */

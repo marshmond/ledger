@@ -4,7 +4,38 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-09 (newest): FAMILY MANAGEMENT F4 (HOUSEHOLD OVERVIEW, UPCOMING ACTIVITIES, RESPONSIBILITIES, IMPORTANT DATES) APPROVED BY CHATGPT AND RELEASED: COMMITTED AND PUSHED as `feat(family): F4 household overview and coordination` (read the SHA from git log and the Pages result from the Actions tab; not recorded here to avoid a second commit). Final verification in report section 18: 4,137 tests in 232 files (4,135 as built, +2). NOT REAL-DEVICE TESTED.
+## STATUS 2026-11-09 (newest): FAMILY MANAGEMENT F5 (GLOBAL SEARCH, QUICK ADD AND FINAL FAMILY INTEGRATION) APPROVED BY CHATGPT; RELEASE VERIFICATION PASSED (report section 16); COMMITTED AND PUSHED as `feat(family): F5 search quick add and final integration` (read the SHA from git log and the Pages result from the Actions tab). Family Management F1 to F5 are complete, subject to a green F5 Pages run. The "uncommitted" wording below is superseded. OWNER DECISIONS: C3 (traditional CRM) is deferred indefinitely; no interaction logging or last-contacted tracking is planned. NEXT: targeted UI and Contact-identity cleanup (Household Finances title capitalization; name-based Contact creation in Home & Assets, Bills, Projects and Household Services; Task editor overflow at 320 px; small Me-conflict touch targets on phones; other recorded usability issues), then separate product design and visual identity work. NOT REAL-DEVICE OR SCREEN-READER TESTED.
+
+Report: `docs/FAMILY-MANAGEMENT-F5-REPORT-2026-11-09.md`. **4,207 tests in 235 files** (+70 tests in 3 new files on the re-run released 4,137 in 232 of F4; `tsc`, `npm run build` and `git diff --check` clean). Gate: F4 `8365402` equals `origin/main`, Pages run #87 success (waited for it), tree clean.
+
+**What was built** (no new table, migration, sync or backup change, no Finance access, no dependency, no Today card):
+- [x] **Global Search, group "Family":** members (past ones labelled), a member's birthday (date-style searches only, so one record is one hit), important dates, and the Family pages; each opens an existing Family route; labelled apart from the Contacts group; Contact phone, email and notes, private notes and birth years are never searched or shown.
+- [x] **Quick Add:** "Family member" (`fam`, `family`) and "Family date" (`fd`, `famdate`) open Family's own existing Add member and Add date forms; the Add box saves nothing for Family, so the same-name Contact confirmation, `createDistinctContact`, Spouse, the opt-in "This is me", Cancel and the F2 date rules are unchanged; no Calendar event, Task or Project is created.
+- [x] **Final integration acceptance** of F1 to F4 with Contacts, Calendar, Tasks, Projects, Search, Quick Add, Today and the selector (tests and a real-browser pass at 320 and 375 px, light and dark for the Add box and Search).
+- [x] **One defect fixed:** the contact list in the existing add-member form overlapped at 375 px (`.fm-opt { flex: none }`).
+- [x] `QuickAddDef.openCopy` (optional words for an `open` destination; Ledger's wording unchanged); `docs/module-hooks.md` updated.
+
+**Judgment calls (please review)** (full list in report section 11):
+1. Two destinations (`fam` member, `fd` date) rather than sub-words.
+2. Forms are opened by an address word (`?add=member`, `?add=date`) that the page consumes once (the Calendar's `new=1` pattern).
+3. No typed text is passed to the form (`fam Robin` does not prefill "Robin"); typed parsing with preview and Undo is deferred.
+4. A birthday hit appears only for date-style words ("sam birthday", "14 may"), so a name search does not list one person twice.
+5. Birthdays are searchable whether or not the member's Calendar switch is on (active members, one per Contact).
+6. A date about a member opens the member; a household-wide date opens Family dates.
+7. Archived dates, unreadable records and members with a missing Contact are not offered.
+8. Past members are findable, ranked lower, labelled "Past member".
+9. The Family and Family dates pages are searchable.
+10. The word "family" is dropped from the record match when other words are present.
+11. One optional registry field (`openCopy`); Ledger's Scheduled payment states its own words.
+12. Five older tests were edited to Family's new registration (three Family guards, the lazy-boundary search list, the read-only-trap count); none was loosened.
+13. The CSS fix was made although it is F1 code, because Quick Add now routes people to that form.
+14. No Today card, no `audience` parameter, no typed `fam date/activity/task` (the F0 items this phase excluded).
+
+**NOT built:** typed Family Quick Add with preview and Undo (`fam date …`, `fam activity …`, `fam task …`), a counts-only Family Today card, a per-member label to tell same-named people apart, Contact creation safety in Assets, Bills, Projects and Services, the mobile Task editor fix, C3, the Command Station, any sharing or tablet surface. Owner-device acceptance (real phone, second device, real sync, offline, screen reader) remains open.
+
+(The F4 entry below is the previous newest status.)
+
+## STATUS 2026-11-09 (previous): FAMILY MANAGEMENT F4 (HOUSEHOLD OVERVIEW, UPCOMING ACTIVITIES, RESPONSIBILITIES, IMPORTANT DATES) APPROVED BY CHATGPT AND RELEASED: COMMITTED AND PUSHED as `feat(family): F4 household overview and coordination` (read the SHA from git log and the Pages result from the Actions tab; not recorded here to avoid a second commit). Final verification in report section 18: 4,137 tests in 232 files (4,135 as built, +2). NOT REAL-DEVICE TESTED.
 
 (The text below was written when F4 was first built; its "uncommitted" wording and 4,135 count are superseded. Accepted: read-only; activities 7 days; dates about 30 days; identity de-duplication; page-state filter; Calendar visibility for activities only, Family dates always visible; "associated with" wording; no Today card; Search and Quick Add deferred to F5. Maintenance items below unchanged: Contact creation safety, mobile Task editor, Contact directory performance.)
 
