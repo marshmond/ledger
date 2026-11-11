@@ -31,7 +31,24 @@ export interface Colors {
   sideActive: string;
 }
 
+/**
+ * D5: a preset may also set two OPTIONAL roles. They are deliberately not part of `Colors` or COLOR_ROLES, so the colour map, saved themes, theme codes,
+ * stored custom palettes and every existing signature keep working untouched.
+ */
+export interface PaletteColors extends Colors {
+  /** The canvas behind everything, when it should differ from `bg` (the ground for inputs and table headings). Absent means `bg`. */
+  page?: string;
+  /** The fill of cards and panels, when it should differ from `card`. Absent means `card`. */
+  surface?: string;
+}
+
 export type ColorKey = keyof Colors;
+
+/** The twelve required colours only (what "My own colors" starts from, so editing "Page background" in the map still changes the whole canvas). */
+export function withoutOptional(c: PaletteColors): Colors {
+  const { page: _page, surface: _surface, ...rest } = c;
+  return rest;
+}
 
 export interface ColorRole {
   key: ColorKey;
@@ -59,11 +76,18 @@ export interface PaletteDef {
   id: PresetId;
   name: string;
   blurb: string;
-  light: Colors;
-  dark: Colors;
+  light: PaletteColors;
+  dark: PaletteColors;
+  /** Shown in Settings > Appearance as "preview" while the screens are still being redesigned for it. Remove the flag to remove the label. */
+  preview?: boolean;
+  /**
+   * Extra CSS variables only this preset sets (light and dark), on top of the twelve colours: tokens that have no palette role, such as the
+   * control border, the navy button, shadows and the font stack. Nothing is stored for them: they are derived from the preset id each time.
+   */
+  extras?: { light: Record<string, string>; dark: Record<string, string> };
 }
 
-export type PresetId = 'teal' | 'navy' | 'forest' | 'slate';
+export type PresetId = 'teal' | 'navy' | 'forest' | 'slate' | 'signature';
 export type PaletteId = 'classic' | PresetId | 'custom';
 
 export const PRESETS: PaletteDef[] = [
@@ -94,6 +118,41 @@ export const PRESETS: PaletteDef[] = [
     blurb: 'Modern, neutral grey-blues with an indigo accent. Crisp and clean.',
     light: { bg: '#FFFFFF', card: '#F5F6F8', fg: '#1A1D24', muted: '#585F6C', line: '#E3E6EB', accent: '#4F46E5', pos: '#15803D', neg: '#B91C1C', warn: '#B45309', sideBg: '#F1F2F5', sideFg: '#1A1D24', sideActive: '#4F46E5' },
     dark: { bg: '#0F1115', card: '#171A21', fg: '#E7E9EE', muted: '#A0A7B4', line: '#272B35', accent: '#8B93FF', pos: '#4ADE80', neg: '#F87171', warn: '#FBBF24', sideBg: '#0B0D11', sideFg: '#E7E9EE', sideActive: '#8B93FF' },
+  },
+  {
+    // D5: Ledger Signature (navy and muted teal on a cool grey canvas). Opt-in; Classic stays the default until a later phase. Values are the D4 proposals,
+    // re-measured in src/palette.test.ts and src/shell/signatureTokens.test.ts. `bg` is the white ground that inputs, buttons and table headings sit on;
+    // the grey canvas is `page`, and cards are `surface`. Until a screen is restyled it simply reads these twelve colours, so it stays legible.
+    id: 'signature',
+    name: 'Ledger Signature',
+    blurb: 'Navy and muted teal on a cool grey canvas, with white cards. The new look, still being rolled out screen by screen.',
+    preview: true,
+    light: { bg: '#FFFFFF', card: '#FFFFFF', fg: '#101B33', muted: '#566379', line: '#DFE5EE', accent: '#267880', pos: '#23694F', neg: '#B0443B', warn: '#8F5D16', sideBg: '#F6F8FB', sideFg: '#101B33', sideActive: '#267880', page: '#EEF1F6', surface: '#FFFFFF' },
+    dark: { bg: '#131D31', card: '#131D31', fg: '#E9EEF7', muted: '#9AA8BF', line: '#26354F', accent: '#6CC0C8', pos: '#72CBA3', neg: '#F2928A', warn: '#E5B865', sideBg: '#0B1220', sideFg: '#E9EEF7', sideActive: '#6CC0C8', page: '#0B1220', surface: '#131D31' },
+    extras: {
+      light: {
+        '--surface-raised': '#FFFFFF', '--surface-soft': '#F6F8FB', '--surface-sunken': '#EEF2F8',
+        '--fg-2': '#37445B', '--control-line': '#7A879F',
+        '--btn-bg': '#0E1A33', '--btn-ink': '#FFFFFF',
+        '--info': '#3B6BA3', '--info-soft': '#E6EEF8',
+        '--shadow-1': '0 1px 2px rgba(14, 26, 51, 0.05)',
+        '--shadow-2': '0 1px 2px rgba(14, 26, 51, 0.04), 0 8px 24px rgba(14, 26, 51, 0.06)',
+        '--shadow-3': '0 2px 6px rgba(14, 26, 51, 0.08), 0 24px 60px rgba(14, 26, 51, 0.18)',
+        '--r-md': '10px', '--fs-md': '1rem',
+        '--font-sans': "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      },
+      dark: {
+        '--surface-raised': '#182339', '--surface-soft': '#182339', '--surface-sunken': '#1E2B46',
+        '--fg-2': '#C3CDDF', '--control-line': '#6F82A3',
+        '--btn-bg': '#277A83', '--btn-ink': '#FFFFFF',
+        '--info': '#8FB0E6', '--info-soft': '#1B2A47',
+        '--shadow-1': '0 1px 2px rgba(0, 0, 0, 0.4)',
+        '--shadow-2': '0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45)',
+        '--shadow-3': '0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.65)',
+        '--r-md': '10px', '--fs-md': '1rem',
+        '--font-sans': "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      },
+    },
   },
 ];
 
@@ -172,11 +231,13 @@ export function contrastNotes(c: Colors): ContrastNote[] {
 
 // ---------- applying ----------
 
-/** CSS variables for a set of colors. */
-export function varsFor(c: Colors): Record<string, string> {
+/** CSS variables for a set of colors. `--page` and `--surface` are always written: they fall back to `bg` and `card` (also when a stored value is not a valid hex), so an older palette looks as it always did. */
+export function varsFor(c: PaletteColors): Record<string, string> {
   return {
     '--bg': c.bg,
     '--card': c.card,
+    '--page': c.page && isHex(c.page) ? c.page : c.bg,
+    '--surface': c.surface && isHex(c.surface) ? c.surface : c.card,
     '--fg': c.fg,
     '--muted': c.muted,
     '--line': c.line,
@@ -193,18 +254,31 @@ export function varsFor(c: Colors): Record<string, string> {
   };
 }
 
-export function colorsOf(choice: PaletteChoice, dark: boolean): Colors | null {
+export function colorsOf(choice: PaletteChoice, dark: boolean): PaletteColors | null {
   if (choice.id === 'classic') return null;
   if (choice.id === 'custom') return choice.custom ? (dark ? choice.custom.dark : choice.custom.light) : null;
   const p = PRESETS.find((x) => x.id === choice.id);
   return p ? (dark ? p.dark : p.light) : null;
 }
 
+/** The extra variables a preset sets on top of its colours (none for Classic, the other presets and custom palettes). */
+export function extrasOf(choice: PaletteChoice, dark: boolean): Record<string, string> {
+  if (choice.id === 'classic' || choice.id === 'custom') return {};
+  const p = PRESETS.find((x) => x.id === choice.id);
+  return p?.extras ? p.extras[dark ? 'dark' : 'light'] : {};
+}
+
+/** Every variable for one mode: the colours, then the preset's extras. Null for Classic. */
+export function varsOf(choice: PaletteChoice, dark: boolean): Record<string, string> | null {
+  const c = colorsOf(choice, dark);
+  return c ? { ...varsFor(c), ...extrasOf(choice, dark) } : null;
+}
+
 /** Both schemes resolved to CSS variables (what index.html reads before first paint). */
 export function resolvedVars(choice: PaletteChoice): { light: Record<string, string>; dark: Record<string, string> } | null {
-  const l = colorsOf(choice, false);
-  const d = colorsOf(choice, true);
-  return l && d ? { light: varsFor(l), dark: varsFor(d) } : null;
+  const l = varsOf(choice, false);
+  const d = varsOf(choice, true);
+  return l && d ? { light: l, dark: d } : null;
 }
 
 export const PALETTE_KEY = 'ledger-palette';
@@ -258,7 +332,8 @@ export function savePalette(choice: PaletteChoice, storage?: StorageLike): void 
   }
 }
 
-const ALL_VARS = Object.keys(varsFor(PRESETS[0].light));
+/** Every variable any palette can set, so switching palettes never leaves one behind. */
+const ALL_VARS = [...new Set([...Object.keys(varsFor(PRESETS[0].light)), ...PRESETS.flatMap((p) => [...Object.keys(p.extras?.light ?? {}), ...Object.keys(p.extras?.dark ?? {})])])];
 
 /** Sets (or clears) the palette's variables on the page for the current light or dark mode, and the phone browser-bar color. */
 export function applyPalette(choice: PaletteChoice, dark: boolean): void {
@@ -268,6 +343,9 @@ export function applyPalette(choice: PaletteChoice, dark: boolean): void {
     for (const k of ALL_VARS) root.style.removeProperty(k);
     return;
   }
-  for (const [k, v] of Object.entries(varsFor(c))) root.style.setProperty(k, v);
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', c.bg));
+  const vars = { ...varsFor(c), ...extrasOf(choice, dark) };
+  // A variable this palette does not set must not keep an earlier palette's value (for example Signature's navy button after switching away).
+  for (const k of ALL_VARS) if (!(k in vars)) root.style.removeProperty(k);
+  for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', vars['--page']));
 }

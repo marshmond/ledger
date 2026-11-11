@@ -2,15 +2,18 @@ import { useState, type CSSProperties } from 'react';
 import { rovingIndex, rovingKeys } from '../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { COLOR_ROLES, PRESETS, CLASSIC, colorsOf, contrastNotes, isHex, loadPalette, savePalette, varsFor, type Colors, type ColorKey, type PaletteChoice, type PaletteId } from '../palette';
+import { COLOR_ROLES, PRESETS, CLASSIC, colorsOf, contrastNotes, isHex, loadPalette, savePalette, varsFor, withoutOptional, type Colors, type ColorKey, type PaletteChoice, type PaletteColors, type PaletteId } from '../palette';
 import { LIMIT_MESSAGE, addTheme, atLimit, checkThemeName, decodeTheme, encodeTheme, newThemeId, parseThemes, removeTheme, renameTheme, sameColors, uniqueName, updateTheme, type SavedTheme } from '../lib/savedThemes';
 import { applyTheme, loadTheme } from '../theme';
 import ThemeToggle from './ThemeToggle';
 
-const NAMES: Record<PaletteId, string> = { classic: 'Classic blue', teal: 'Calm teal', navy: 'Deep navy and gold', forest: 'Forest green and stone', slate: 'Slate and indigo', custom: 'My own colors' };
+const NAMES: Record<PaletteId, string> = { classic: 'Classic blue', teal: 'Calm teal', navy: 'Deep navy and gold', forest: 'Forest green and stone', slate: 'Slate and indigo', signature: 'Ledger Signature', custom: 'My own colors' };
 const BLURB: Record<string, string> = { classic: 'The original look: clean white and blue.', ...Object.fromEntries(PRESETS.map((p) => [p.id, p.blurb])), custom: 'Pick every color yourself, for light and dark.' };
+/** A palette still being rolled out is labelled "preview" (set `preview` on its entry in src/palette.ts; removing the flag removes the label everywhere). */
+const PREVIEW = new Set<PaletteId>(PRESETS.filter((p) => p.preview).map((p) => p.id));
+const label = (id: PaletteId) => (PREVIEW.has(id) ? `${NAMES[id]} (preview)` : NAMES[id]);
 
-const dots = (c: Colors) => [c.bg, c.card, c.accent, c.pos, c.neg, c.sideBg];
+const dots = (c: PaletteColors) => [c.page ?? c.bg, c.surface ?? c.card, c.accent, c.pos, c.neg, c.sideBg];
 
 /** One row of the color map: a name, what it colors, a color picker, and the hex code. */
 function ColorRow({ role, value, onChange }: { role: (typeof COLOR_ROLES)[number]; value: string; onChange: (hex: string) => void }) {
@@ -57,7 +60,9 @@ export default function AppearanceCard() {
     savePalette(c);
     applyTheme(loadTheme()); // re-applies the colors for the mode now in effect
   };
-  const baseColors = (id: PaletteId, dark: boolean): Colors => colorsOf({ id, custom: choice.custom }, dark) ?? CLASSIC[dark ? 'dark' : 'light'];
+  // A palette of your own has the twelve colors in the map. Starting from a preset that also sets a separate canvas and card color (Signature) drops those two,
+  // so "Page background" and "Cards and panels" in the map still change the whole page, as they always have.
+  const baseColors = (id: PaletteId, dark: boolean): Colors => withoutOptional(colorsOf({ id, custom: choice.custom }, dark) ?? CLASSIC[dark ? 'dark' : 'light']);
   const custom = choice.id === 'custom' && choice.custom ? choice.custom : null;
   const current = custom ? custom[editing] : null;
   const notes = current ? contrastNotes(current) : [];
@@ -120,7 +125,7 @@ export default function AppearanceCard() {
           const on = id === 'custom' ? choice.id === 'custom' && !active : choice.id === id;
           return (
             <button key={id} role="radio" aria-checked={on} tabIndex={(on) ? 0 : -1} className={`pal ${on ? 'on' : ''}`} onClick={() => (id === 'custom' ? (custom ? set({ id: 'custom', custom }) : startCustom(base)) : set({ id }))}>
-              <strong>{NAMES[id]}</strong>
+              <strong>{label(id)}</strong>
               <div className="swatches" aria-hidden="true">{dots(sample).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
               <div className="swatches" aria-hidden="true">{dots(sampleDark).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
               <div className="muted">{BLURB[id]}</div>
@@ -181,7 +186,7 @@ export default function AppearanceCard() {
             </div>
             <label className="row">Start over from
               <select value={base} onChange={(e) => { const id = e.target.value as PaletteId; setBase(id); if (confirm(`Replace your colors with ${NAMES[id]}? Your saved themes are not affected.`)) startCustom(id); }}>
-                {(['classic', ...PRESETS.map((p) => p.id)] as PaletteId[]).map((id) => <option key={id} value={id}>{NAMES[id]}</option>)}
+                {(['classic', ...PRESETS.map((p) => p.id)] as PaletteId[]).map((id) => <option key={id} value={id}>{label(id)}</option>)}
               </select>
             </label>
           </div>

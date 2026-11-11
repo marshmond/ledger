@@ -36,8 +36,9 @@ describe('built-in palettes', () => {
       });
     }
   }
-  it('has four presets with unique ids', () => {
-    expect(new Set(PRESETS.map((p) => p.id)).size).toBe(4);
+  it('has five presets (four older ones and Ledger Signature, D5) with unique ids', () => {
+    expect(new Set(PRESETS.map((p) => p.id)).size).toBe(5);
+    expect(PRESETS.map((p) => p.id)).toEqual(['teal', 'navy', 'forest', 'slate', 'signature']);
   });
 });
 

@@ -47,6 +47,64 @@
   --neg-text: color-mix(in srgb, var(--neg) 78%, var(--fg));
   --hover: color-mix(in srgb, var(--fg) 6%, transparent);
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+
+  /* ---------------------------------------------------------------------------------------------------------------------------
+     D5 (Ledger Signature foundation). Everything below is ADDITIVE: nothing in the app reads these yet except the page background
+     (styles.css: body uses --page). Each one is an alias of an existing colour, so every palette that does not set it (Classic, the
+     four older presets, any custom palette or saved theme) looks exactly as it did. The Signature preset (src/palette.ts) is the only
+     thing that gives them different values. Later phases (D6 onward) start using them screen by screen.
+     --------------------------------------------------------------------------------------------------------------------------- */
+
+  /* Surfaces. --page is the canvas behind everything; --surface is a card or panel. Palettes that do not set them use --bg and --card. */
+  --page: var(--bg);
+  --surface: var(--card);
+  --surface-raised: var(--bg);   /* menus, overlays, popovers */
+  --surface-soft: color-mix(in srgb, var(--fg) 4%, var(--surface));    /* search field, tile, inset fill */
+  --surface-sunken: color-mix(in srgb, var(--fg) 8%, var(--surface));  /* segmented-control track, weekend tile */
+
+  /* Text and control borders. */
+  --fg-2: color-mix(in srgb, var(--fg) 78%, var(--muted));   /* secondary text, between --fg and --muted */
+  --control-line: var(--line-strong);                        /* chips, search, segmented controls: needs 3:1 against its surface */
+
+  /* Primary action. Links and the active tab stay --accent; the filled button may differ (navy in Signature). */
+  --btn-bg: var(--accent);
+  --btn-ink: var(--on-accent, #fff);
+
+  /* Informational (neither good nor bad). */
+  --info: var(--accent);
+  --info-soft: var(--accent-soft);
+
+  /* Type. --font-sans is today's system stack (Signature puts Inter first; no font file is shipped or loaded: see docs/LEDGER-SIGNATURE-D5-REPORT.md).
+     --fs-md is NOT defined here on purpose: five module rules already use var(--fs-md, 1.05rem) and three use var(--fs-md, 1rem), so defining it
+     for everyone would shrink or grow those headings. Signature sets it; D6 settles it for all. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --fs-micro: 0.6875rem;   /* 11: the one documented exception to the 12px floor (date-tile weekday/month label) */
+  --fs-title: 2.125rem;    /* 34: page title (30 on a phone) */
+  --fs-title-sm: 1.875rem; /* 30 */
+  --fs-metric: 1.8rem;     /* ~29: a figure in a summary row */
+  --fs-display: 3rem;      /* 48: the one Home net-worth figure. --fs-hero (40) is left alone because .hero already uses it */
+
+  /* Space and shape. --r-md equals the 8px that every existing var(--r-md, 8px) falls back to, so defining it changes nothing; Signature sets 10. */
+  --sp-7: 48px;
+  --r-xs: 6px;
+  --r-md: 8px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+  --control-h-sm: 36px;
+
+  /* Family member identity colours: the eight approved values (src/modules/family/model.ts COLORS, identical to the Calendar swatches).
+     The stored value never changes; a darker-theme variant is chosen by id at display time. Identity only: pair with initials or the colour name. */
+  --mc-blue: #4a7bd0;
+  --mc-green: #2f8f6b;
+  --mc-orange: #c0562f;
+  --mc-purple: #8a5cc7;
+  --mc-pink: #c4398a;
+  --mc-gold: #b8860b;
+  --mc-teal: #2a9fb0;
+  --mc-gray: #6b7280;
+  --mc-ink-mix: 58%;   /* monogram text: this much of the member colour mixed into the text colour (72% failed 4.5:1 for Gold and Teal in D3.4) */
+  --mc-tint-mix: 16%;  /* monogram tile fill: this much of the member colour mixed into the surface */
 }
 
 /* Bigger touch targets on phones and touch screens. */
@@ -54,15 +112,32 @@
   :root { --control-h: 44px; }
 }
 
+/* The dark values are written twice, once for "follow the device" and once for a forced dark choice. src/shell/signatureTokens.test.ts fails if the two blocks ever differ. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
     --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.65);
+    --mc-blue: #7aa2ee;
+    --mc-green: #52c08f;
+    --mc-orange: #e8946a;
+    --mc-purple: #b894e8;
+    --mc-pink: #ee86c0;
+    --mc-gold: #e0b04a;
+    --mc-teal: #5cc3d1;
+    --mc-gray: #a3acbb;
   }
 }
 :root[data-theme="dark"] {
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
   --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.65);
+  --mc-blue: #7aa2ee;
+  --mc-green: #52c08f;
+  --mc-orange: #e8946a;
+  --mc-purple: #b894e8;
+  --mc-pink: #ee86c0;
+  --mc-gold: #e0b04a;
+  --mc-teal: #5cc3d1;
+  --mc-gray: #a3acbb;
 }

@@ -1,0 +1,17 @@
+/*
+ * Shared component styles for Ledger Signature (the planned home of the "ui-" classes: ui-chip, ui-dtile, ui-figure, ui-seg, ui-sheet ...).
+ *
+ * D5 created this file EMPTY on purpose: it is infrastructure only, so later phases have one agreed place and one agreed position in the
+ * cascade. Nothing here styles any existing element, and no existing rule has been moved into it (several tests read styles.css and the
+ * module sheets as text, so existing rules are restyled where they are).
+ *
+ * Cascade position: styles.css imports this file right after src/ui/tokens.css, and an @import's rules come BEFORE the importing sheet's own
+ * rules. So a rule here loses to an equal-specificity rule in styles.css or in a module sheet. That is the right order for brand-new "ui-"
+ * classes (nothing else uses those names), and it means a rule here can never silently override an existing screen. A rule that must beat an
+ * existing one belongs in the existing file, restyled in place.
+ *
+ * Rules for this file (docs/LEDGER-SIGNATURE-D5-REPORT.md, "Rules for D6 onward"):
+ *  - colours only through tokens (var(--surface), var(--control-line) ...), never a new hex;
+ *  - new classes use the "ui-" prefix; module prefixes (cal-, bl-, as-, pj-, sv-, fm-, tk-, hh-, td-, ct-) stay in the module sheets;
+ *  - no priority overrides (the important flag; the app has 11, see docs/UI-COVERAGE.md section 6) and no cascade layers.
+ */
