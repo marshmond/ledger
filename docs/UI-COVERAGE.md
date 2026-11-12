@@ -12,7 +12,9 @@ The goal is **every page, surface, view and dialog in Ledger**, including every 
 `L` light, `D` dark, `375` phone width, `1440` desktop width, `Kbd` keyboard and focus, `Func` functional acceptance (existing tests plus the flow check passed, nothing about behaviour changed).
 A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The visual checklist V1 to V12 and functional checklist F1 to F6 are in the D4 roadmap (section 6).
 
-**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (committed and deployed `13acc04`, Pages run #93) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2). D8 (committed and deployed `8e08fd9`, Pages run #94) replaced Ledger's desktop sidebar by a bar under the header: S-13, S-14 and S-17 read `BLT` (section 1.3); S-15 and S-16 are untouched and stay `NS`. D9 (2026-11-11, approved, committed and pushed; deployment pending verification) added the Family member color picker and the shared member identity pieces (mark, dot, chip): S-21 now includes the pieces and section 1.4 records what was built and seen. No routed page, dialog or workflow row changes status: the Family rows F-01, F-02, DL-09 and W-35 stay `NS`, because only the member form and the identity markers changed, not those whole screens.** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
+**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (committed and deployed `13acc04`, Pages run #93) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2). D8 (committed and deployed `8e08fd9`, Pages run #94) replaced Ledger's desktop sidebar by a bar under the header: S-13, S-14 and S-17 read `BLT` (section 1.3); S-15 and S-16 are untouched and stay `NS`. D9 (2026-11-11, committed and deployed `939f985`, Pages run #95 success) added the Family member color picker and the shared member identity pieces (mark, dot, chip): S-21 now includes the pieces and section 1.4 records what was built and seen. No routed page, dialog or workflow row changes status: the Family rows F-01, F-02, DL-09 and W-35 stay `NS`, because only the member form and the identity markers changed, not those whole screens.** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
+
+**D10 (2026-11-12, built and tested locally, uncommitted) redesigned the Add box (Quick Add): S-05 reads `BLT` with all six marks, and the five Quick Add workflows W-01 to W-05 read `BLT` (section 1.5). S-04 and S-08 keep their `BLT` rows (notes in section 1.5). DL-01 stays `NS` (Search and the confirmation dialog are untouched). No routed page, view or other dialog changed, nothing is `ACC`, and real-device acceptance is not recorded.**
 
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
@@ -38,7 +40,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-02 | Module switcher list (11 modules, 4 groups) | `src/core/moduleGroups.ts` | D7 | BLT | Y | Y | Y | Y | Y | Y |
 | S-03 | Sync status chip and pop-over | `src/core/SyncChip.tsx` | D7 | BLT | Y | Y | Y | . | Y | Y |
 | S-04 | Add button (desktop in-bar, phone round button) | `src/shell/QuickAdd.tsx` | D7, D10 | BLT | Y | Y | Y | Y | Y | Y |
-| S-05 | Add box (Quick Add) | `src/shell/AddBox.tsx` | D10 | NS | . | Y | . | Y | Y | . |
+| S-05 | Add box (Quick Add) | `src/shell/AddBox.tsx`, `AddBoxView.tsx`, `addBoxModel.ts`, `sheetBehavior.ts` | D10 | BLT | Y | Y | Y | Y | Y | Y |
 | S-06 | Search dialog | `src/shell/SearchDialog.tsx` | D6, D20 | NS | . | Y | . | Y | Y | . |
 | S-07 | Task creator dialog | `src/modules/tasks/QuickTask.tsx` | D11 | NS | . | . | . | . | . | . |
 | S-08 | Shared Modal and ConfirmDialog | `src/shell/Modal.tsx` | D6 | BLT | . | Y | . | Y | Y | Y |
@@ -89,7 +91,7 @@ Seen in the Claude app's built-in browser, fictional D1 demo household on its ow
 - **S-17 (theme toggle):** now at the right end of the Ledger bar (still the same component, same Device, Light, Dark cycle and storage; cycle and persistence seen). Still also in Settings > Appearance.
 - **Not checked:** real phones or tablets (touch, 44 px targets measured by style only), screen readers, forced-colours mode, Safari and Firefox, print preview, dark mode at phone width, Classic and navy at phone width.
 
-### 1.4 D9 evidence: Family member color picker and member identity pieces (committed; deployment pending verification; nothing is `ACC`; no Family row is marked redesigned)
+### 1.4 D9 evidence: Family member color picker and member identity pieces (committed and deployed `939f985`, Pages run #95 success, verified at the D10 gate; nothing is `ACC`; no Family row is marked redesigned)
 
 Seen in the Claude app's built-in browser against the fictional D1 demo household (own address, sync off). Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D9-Evidence`). Report: `docs/LEDGER-SIGNATURE-D9-REPORT.md`. **This phase changed the member form and the small identity markers, not whole screens, so every Family row (F-01, F-02, F-03, DL-09, W-35) stays `NS`.** The marks below say what was actually seen.
 
@@ -97,6 +99,16 @@ Seen in the Claude app's built-in browser against the fictional D1 demo househol
 - **Color picker:** eight native radio buttons plus "No color — neutral gray" in one group. 48 px swatches (52 px at 640 px and narrower), four columns, ring in the main text color, check mark, bold name, separate accent focus outline. Contrast measured on all six palettes in light and dark (report section 9; pinned by `family-d9-identity.test.tsx`).
 - **Shared identity pieces (S-21):** `MemberMark`, `MemberDot`, `MemberChip` in `src/ui/MemberIdentity.tsx`, colors from the existing `--mc-*` tokens. Used on the Family overview cards (F-01), the household "People" rows (F-01), and the member page profile (F-02). They are not used in Calendar, Tasks or Today.
 - **Not checked:** real phones, screen readers, forced-colors mode (CSS written, not seen), Safari and Firefox, the sticky bar when a phone keyboard is open, Signature at 320 px in dark, the other presets at phone width, Edit on a phone.
+
+### 1.5 D10 evidence: the Add box (Quick Add) (built, uncommitted; nothing is `ACC`; no module page is marked redesigned)
+
+Seen in the Claude app's built-in browser against the fictional D1 demo household (own address, sync off). Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D10-Evidence`). Report: `docs/LEDGER-SIGNATURE-D10-REPORT.md`. **This phase redesigned the box and its phone sheet, not the pages it can create things for, so no page row and no other dialog row changed.**
+
+- **S-05 Add box:** `L` and `D` Signature at 1440 and 375, `375` (compact and expanded sheet; 320 light; 640x360 sideways), `1440` (and 900), Classic light (looked at). `Kbd`: a real Tab walk (field, Task, Event, Transaction, Project, Asset, Service, Household service, Bill or subscription, Family member, to Cancel; every stop showed a focus ring), Escape, **N**, Enter, and Escape returning focus to the Add button. `Func`: all eleven destinations and both specialised actions exercised (seven typed creations each made exactly one record, Transaction saved through its own Save, three open-a-screen destinations opened the right screen or form), existing prefills, Escape, Cancel and backdrop saving nothing, and the full test suite.
+- **W-01 to W-05:** each was run through the real keyboard and read back from the database (report section 15). They read `BLT` only: a workflow is accepted when its pages and dialogs are accepted, and none of the destination pages has been.
+- **S-04 Add button:** opens the sheet on a phone and focus returns to it on close (seen). Row unchanged.
+- **S-08 Shared Modal:** one opt-in addition: `variant="sheet"` now also follows the visible area when the keyboard opens and locks the page behind it on a phone or touch screen (`src/shell/sheetBehavior.ts`); a plain dialog is unchanged. Row unchanged; its marks were not extended (only the Add box was checked as a sheet).
+- **Not checked:** real phones (the on-screen keyboard, the home-indicator padding, browser toolbars, touch scrolling: UNVERIFIED until the owner checks), screen readers, forced-colors mode (CSS written, not seen), Safari and Firefox, Classic contrast (looked at, not measured), the other four presets, Signature dark at 320 px. The 470 px keyboard run was a scripted resize of the visual viewport, not a real keyboard.
 
 Addresses are written as they appear after `#` in the browser. Ledger pages are under `/ledger`. The guard compares this column with the app's route registrations.
 
@@ -275,11 +287,11 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 
 | ID | Workflow | Phase | Status |
 |---|---|---|---|
-| W-01 | Quick Add: typed shortcut, preview, Add (Task, Event, Project, Asset, Service, Household service, Bill or subscription) | D10 | NS |
-| W-02 | Quick Add: Transaction (Ledger's form with its own Save) | D10 | NS |
-| W-03 | Quick Add: Scheduled payment (opens `/ledger/scheduled`) | D10 | NS |
-| W-04 | Quick Add: Family member, Family date (open Family's own forms via `?add=`) | D10 | NS |
-| W-05 | Quick Add specialised actions: Log a trade, New paycheck scenario | D10 | NS |
+| W-01 | Quick Add: typed shortcut, preview, Add (Task, Event, Project, Asset, Service, Household service, Bill or subscription) | D10 | BLT |
+| W-02 | Quick Add: Transaction (Ledger's form with its own Save) | D10 | BLT |
+| W-03 | Quick Add: Scheduled payment (opens `/ledger/scheduled`) | D10 | BLT |
+| W-04 | Quick Add: Family member, Family date (open Family's own forms via `?add=`) | D10 | BLT |
+| W-05 | Quick Add specialised actions: Log a trade, New paycheck scenario | D10 | BLT |
 | W-06 | Global search (Ctrl/Cmd+K, `/`) and its 7 actions | D6 | NS |
 | W-07 | Add-a-task dialog (from search or `requestTask`) | D11 | NS |
 | W-08 | Module switching, "open where I left off" landing | D7 | NS |

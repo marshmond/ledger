@@ -740,22 +740,142 @@ details.pick label.chk:hover { background: var(--hover); }
 .acct-min .f { flex-direction: row; align-items: center; gap: var(--sp-2); margin: 0; }
 .acct-min input { min-height: 32px; }
 
-/* Add box (Phase 3 Part D): the chooser, the "Will add:" preview and the footer. */
-.ab-chooser { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-3); }
-.ab-chip { display: inline-flex; align-items: center; gap: var(--sp-2); }
-.ab-chip.on { background: var(--accent); color: var(--on-accent, #fff); border-color: var(--accent); }
-.ab-key { font: 600 0.75rem/1 ui-monospace, monospace; padding: 2px 6px; border-radius: var(--r-sm); background: color-mix(in srgb, currentColor 14%, transparent); }
-.ab-form input { width: 100%; }
-.ab-preview { margin: var(--sp-3) 0 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--hover); }
+/* Add box (Phase 3 Part D; laid out again in D10). The command field first, the "Will add:" line, three large cards, the other types in groups, one footer.
+   Colors come from tokens only, so every palette reads well (Signature gets its navy and teal from the tokens). On a phone the dialog is a bottom sheet
+   (Modal variant="sheet"): the groups fold behind an "All types" button, the body scrolls and the footer stays in view. */
+.modal.ab-modal { width: min(720px, 100%); max-height: 88vh; max-height: min(88dvh, 100%); padding: 0; display: flex; flex-direction: column; border-radius: var(--r-xl); }
+.ab-modal .modal-head { flex: none; margin: 0; padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-5); font-weight: 700; letter-spacing: -0.01em; }
+.ab-modal .modal-head button.link { color: var(--fg-2); font-size: var(--fs-lg); min-width: 40px; min-height: 40px; }
+.ab { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+
+/* the command field and the chosen-type token */
+.ab-cmd { flex: none; display: flex; align-items: center; gap: var(--sp-3); margin: 0 var(--sp-5); min-height: 56px; padding: 0 var(--sp-2) 0 var(--sp-4); border: 1.5px solid var(--accent); border-radius: var(--r-lg); background: var(--field-bg); }
+.ab-cmd:focus-within { box-shadow: var(--focus-ring); }
+.ab-cmd-ico { display: inline-flex; flex: none; color: var(--muted); }
+.ab-cmd .ab-input { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; border: 0; background: none; font-size: var(--fs-base); }
+.ab-cmd .ab-input:focus-visible { border-color: transparent; box-shadow: none; }
+.ab-cmd-note { flex: 1 1 auto; min-width: 0; color: var(--muted); font-size: var(--fs-sm); }
+.ab-ret { flex: none; padding-right: var(--sp-2); color: var(--muted); font-size: var(--fs-xs); white-space: nowrap; }
+.ab-tok { flex: none; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 34px; padding: 0 var(--sp-1) 0 var(--sp-3); border: 1px solid var(--accent-line); border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+button.ab-tok-x { min-height: 28px; min-width: 28px; width: 28px; padding: 0; border-color: transparent; border-radius: var(--r-sm); background: none; color: var(--accent-text); }
+button.ab-tok-x:hover:not(:disabled) { background: var(--accent-soft); }
+
+/* the scrolling middle: what will be added, the cards, the groups */
+.ab-body { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--sp-5) var(--sp-2); }
+.ab-hint { margin: var(--sp-3) var(--sp-1) 0; font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
+.ab-hint.ab-ask { color: var(--fg); }
+.ab-preview { margin: var(--sp-3) 0 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-soft); }
 .ab-preview p { margin: 0 0 var(--sp-2); overflow-wrap: anywhere; }
 .ab-fields { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.ab-pill { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-size: 0.85rem; }
-.ab-plain { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: 0.85rem; color: var(--muted, inherit); }
+.ab-pill { padding: 2px 10px; border: 1px solid var(--accent-line); border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-text); font-size: var(--fs-sm); font-weight: 600; }
+.ab-plain { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--muted); }
 .ab-ask { margin: var(--sp-3) 0; }
 .ab-formbox { margin-top: var(--sp-3); }
-.ab-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-4); }
-.ab-foot .grow { flex: 1; }
-.ab-chip.on:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, var(--fg)); color: var(--on-accent, #fff); }
+.ab-body > .error { overflow-wrap: anywhere; }
+.ab-sec { margin: var(--sp-3) var(--sp-1) var(--sp-2); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ab-key { font: 600 var(--fs-xs)/1 ui-monospace, monospace; padding: 2px 6px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--surface); color: var(--muted); }
+
+/* the three large cards */
+.ab-prim { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-3); }
+button.ab-card { position: relative; display: flex; align-items: center; justify-content: flex-start; gap: var(--sp-3); min-height: 68px; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); color: var(--fg); font-weight: 400; text-align: left; }
+button.ab-card:hover:not(:disabled) { border-color: var(--control-line); background: var(--surface); }
+button.ab-card.on, button.ab-card.on:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
+.ab-card-ico { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--r-md); background: var(--surface-sunken); color: var(--fg-2); }
+.ab-card.on .ab-card-ico { background: var(--accent); color: var(--on-accent, var(--btn-ink)); }
+.ab-card-tx { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.ab-card-name { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-base); font-weight: 600; overflow-wrap: anywhere; }
+.ab-card-sub { font-size: var(--fs-sm); color: var(--muted); line-height: 1.25; }
+.ab-tick { display: none; position: absolute; top: var(--sp-2); right: var(--sp-2); color: var(--accent-text); }
+.ab-card.on .ab-tick { display: block; }
+
+/* the other types: "All types" (phone only), then the groups */
+button.ab-more { display: none; width: 100%; min-height: 56px; margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4); gap: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); color: var(--fg); font-weight: 400; text-align: left; }
+.ab-more-tx { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 2px; }
+.ab-more-name { font-size: var(--fs-base); font-weight: 600; }
+.ab-more-sub { font-size: var(--fs-sm); color: var(--muted); line-height: 1.3; }
+.ab-more-cnt { flex: none; padding: 2px 10px; border: 1px solid var(--line-strong); border-radius: var(--r-pill); font-size: var(--fs-sm); color: var(--fg-2); white-space: nowrap; }
+.ab-grp { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); align-items: start; padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+.ab-grp--bare { grid-template-columns: minmax(0, 1fr); }
+.ab-grp h3 { display: flex; align-items: center; gap: var(--sp-2); margin: 0; padding-top: var(--sp-2); font-size: var(--fs-sm); font-weight: 600; color: var(--fg-2); }
+.ab-grp h3 .ui-icon { color: var(--muted); }
+.ab-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+button.ab-chip { display: inline-flex; align-items: center; justify-content: flex-start; gap: var(--sp-2); min-height: 38px; padding: 0 var(--sp-2) 0 var(--sp-3); border: 1px solid transparent; border-radius: var(--r-md); background: var(--surface-soft); color: var(--fg); font-size: var(--fs-sm); font-weight: 500; text-align: left; }
+button.ab-chip:hover:not(:disabled) { background: var(--surface-sunken); }
+button.ab-chip.on, button.ab-chip.on:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: 600; box-shadow: 0 0 0 1px var(--accent); }
+.ab .ui-icon { flex: none; }
+.ab-chip .ab-ico { color: var(--muted); }
+.ab-chip.on .ab-ico { color: var(--accent-text); }
+.ab-go { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.ab-go--bare { grid-column: 1; }
+.ab-go-note { margin-right: var(--sp-1); font-size: var(--fs-sm); color: var(--muted); }
+button.ab-chip--go { padding: 0 var(--sp-3); border: 1px dashed var(--control-line); background: none; color: var(--fg-2); }
+button.ab-chip--go:hover:not(:disabled) { background: var(--surface-soft); }
+.ab-chip--go .ab-ext { color: var(--accent-text); }
+
+/* the footer: Cancel and the one primary button */
+.ab-foot { flex: none; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-5) var(--sp-4); border-top: 1px solid var(--line); background: var(--surface-raised); }
+.ab-foot-gap { flex: 1 1 auto; }
+.ab-foot-hint { font-size: var(--fs-sm); color: var(--muted); }
+.ab-foot .ab-cancel, .ab-foot .ab-primary { min-height: 42px; }
+.ab-primary { padding: 0 var(--sp-5); font-weight: 600; }
+
+@media (max-width: 760px) {
+  button.ab-card { flex-direction: column; align-items: flex-start; gap: var(--sp-2); min-height: 92px; padding: var(--sp-3); }
+  .ab-prim { gap: var(--sp-2); }
+}
+@media (max-width: 640px) {
+  .modal.ab-modal.modal--sheet { max-height: 92%; } /* of the backdrop, which follows the visible area when the keyboard is open */
+  .modal.ab-modal.modal--sheet::before { margin: var(--sp-2) auto 0; }
+  .ab-modal .modal-head { padding: var(--sp-1) var(--sp-2) var(--sp-2) var(--sp-5); font-size: var(--fs-lg); }
+  .ab-modal .modal-head button.link { min-width: 44px; min-height: 44px; }
+  .ab-cmd { margin: 0 var(--sp-4); min-height: 54px; }
+  /* With a chosen type, the token takes the first line and the text field the full second line, so a long type name never squeezes what is being typed. */
+  .ab-cmd--tok { flex-wrap: wrap; padding-top: var(--sp-2); padding-bottom: var(--sp-1); row-gap: 0; }
+  .ab-cmd--tok .ab-input { flex: 1 1 100%; min-height: 44px; }
+  .ab-ret { display: none; }
+  .ab-cmd .ab-input { font-size: max(1rem, var(--fs-base)); } /* 16px at least, so iPhone does not zoom the page when the field is focused */
+  .ab-body { padding: 0 var(--sp-4) var(--sp-2); }
+  .ab-foot-hint, .ab-sec--more { display: none; }
+  .ab-foot { padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom)); }
+  .modal-back[data-keyboard] .ab-foot { padding-bottom: var(--sp-3); } /* the keyboard covers the home indicator */
+  .ab-foot .ab-cancel, .ab-foot .ab-primary { min-height: 48px; }
+  .ab-foot .ab-primary { flex: 1 1 auto; }
+  button.ab-more { display: flex; }
+  .ab[data-expanded='false'] .ab-groups { display: none; }
+  /* With every type showing, the three cards shrink (no description) and the idle hint goes, so most of the list fits in view. */
+  .ab[data-expanded='true'] .ab-card-sub, .ab[data-expanded='true'] .ab-hint:not(.ab-ask) { display: none; }
+  .ab[data-expanded='true'] button.ab-card { min-height: 0; }
+  .ab-grp { grid-template-columns: minmax(0, 1fr); padding: var(--sp-3) 0 var(--sp-2); }
+  .ab-grp h3 { padding-top: 0; font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .ab-chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  button.ab-chip { min-height: 48px; padding: 0 var(--sp-2); line-height: 1.2; font-size: var(--fs-base); }
+  .ab-chip .ab-chip-label { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
+  .ab-go, .ab-go--bare { grid-column: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ab-go-note { grid-column: 1 / -1; margin: var(--sp-1) 0 0; }
+  button.ab-chip--go .ab-ext { margin-left: auto; flex: none; }
+}
+@media (max-width: 359px) {
+  button.ab-card { padding: var(--sp-2); }
+  .ab-card .ab-key { display: none; }
+  .ab-card-name { font-size: var(--fs-sm); }
+  button.ab-chip { padding: 0 var(--sp-2); gap: var(--sp-1); font-size: var(--fs-sm); }
+  .ab-chip .ab-key { display: none; } /* no room for the shortcut badge in two columns at 320px; the typed shortcuts still work */
+}
+/* A short window (a phone turned sideways, or with the keyboard open): trim the extras so the field, the choices and the buttons all fit. */
+@media (max-height: 520px) {
+  .ab-modal .modal-head { padding-top: var(--sp-2); padding-bottom: var(--sp-1); }
+  .modal.ab-modal.modal--sheet::before { display: none; }
+  .ab-card-sub, .ab-sec, .ab-foot-hint { display: none; }
+  .ab-prim { margin-top: var(--sp-3); }
+  button.ab-card { min-height: 56px; }
+  .ab-body { min-height: 72px; }
+  .ab-cmd, .ab-cmd--tok { flex-wrap: nowrap; min-height: 48px; padding-top: 0; padding-bottom: 0; }
+  .ab-cmd--tok .ab-input { flex: 1 1 auto; min-height: 40px; }
+  .ab-foot .ab-cancel, .ab-foot .ab-primary { min-height: 44px; }
+  .ab-foot { padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+}
+@media (pointer: coarse) { button.ab-tok-x { min-width: 44px; min-height: 44px; width: 44px; } }
+@media (forced-colors: active) { button.ab-card.on, button.ab-chip.on { outline: 2px solid Highlight; } }
 
 /* In-app payee suggestions (replaces the browser's datalist pop-up, which could open far from the box). */
 .payee-wrap { position: relative; display: block; }

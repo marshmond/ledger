@@ -297,9 +297,9 @@ describe('D6 shared pieces: same words, same roles, same structure', () => {
     expect(wide).toContain('class="modal wide modal--sheet"');
   });
 
-  it('nothing in the app uses the sheet variant yet (D10 adopts it)', () => {
-    const files = ['src/shell/QuickAdd.tsx', 'src/shell/AddBox.tsx', 'src/shell/SearchDialog.tsx', 'src/shell/ConfirmDialog.tsx'];
-    for (const f of files) expect(read(f), f).not.toMatch(/variant=/);
+  it('only the Add box uses the sheet variant (D10 adopted it); the Add button, search and confirmation dialogs do not', () => {
+    for (const f of ['src/shell/QuickAdd.tsx', 'src/shell/SearchDialog.tsx', 'src/shell/ConfirmDialog.tsx']) expect(read(f), f).not.toMatch(/variant=/);
+    expect(read('src/shell/AddBox.tsx')).toMatch(/variant="sheet"/);
   });
 });
 

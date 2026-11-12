@@ -84,15 +84,16 @@ describe('D5 the tracker is well formed', () => {
     for (const v of views) expect(pageIds.has(v.cells[0].split(' ')[0]), `${v.id} -> ${v.cells[0]}`).toBe(true);
   });
 
-  it('a row is not accepted before it has been built: after D8 only eleven global surfaces are beyond NS, and they are BLT (built, not accepted)', () => {
+  it('a row is not accepted before it has been built: after D10 only twelve global surfaces and the five Quick Add workflows are beyond NS, and they are BLT (built, not accepted)', () => {
     const beyond = [...pages, ...surfaces, ...views, ...workflows, ...dialogs, ...confirms].filter((r) => r.cells.some((c) => ['INH', 'BLT', 'CMT', 'DEP', 'ACC'].includes(c)));
     // D6 restyled the shared layer: the Add button colour (S-04), Modal and ConfirmDialog (S-08), Toast (S-09), PageHeader, EmptyState and Banner (S-21) and the chart
     // surface and series (S-23). No routed page, view, workflow or dialog call site changed, and nothing may read ACC until all six marks are recorded.
     // D7 restyled the global header (S-01), the module switcher list (S-02) and the sync chip (S-03); S-04 was already listed. S-12 (skip link) only has Kbd and Func marks and stays NS.
     // D8 replaced the desktop sidebar by the Ledger bar (S-13), moved the page top bar and breadcrumbs under it (S-14) and relocated the theme toggle (S-17). The phone's section
     // tabs (S-15) and bottom tab bar (S-16) were not visually modified and stay NS; no Ledger page row changed.
+    // D10 redesigned the Add box (S-05) and, with it, the five Quick Add workflows W-01 to W-05 were built and run. DL-01 stays NS (Search and the confirmation dialog are untouched).
     // Add an ID here only in the change that builds it.
-    expect(beyond.map((r) => r.id).sort()).toEqual(['S-01', 'S-02', 'S-03', 'S-04', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23']);
+    expect(beyond.map((r) => r.id).sort()).toEqual(['S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05']);
     for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });

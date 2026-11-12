@@ -150,11 +150,12 @@ button.ui-row:last-child { border-bottom: none; }
 /* ---------- empty and loading ---------- */
 .ui-empty-line { margin: var(--sp-2) 0; font-size: var(--fs-sm); color: var(--muted); }
 
-/* ---------- dialog sheet (opt-in; nothing uses it yet, see Modal's `variant`) ---------- */
-/* Below 640px a sheet rises from the bottom edge. Wider than that it is the ordinary dialog. Scroll locking and the on-screen keyboard are left for the phase that adopts it (D10). */
+/* ---------- dialog sheet (opt-in, see Modal's `variant`; Quick Add uses it since D10) ---------- */
+/* Below 640px a sheet rises from the bottom edge. Wider than that it is the ordinary dialog. Scroll locking and the on-screen keyboard are handled in src/shell/sheetBehavior.ts, which sets --sheet-top and --sheet-bottom on the backdrop (the part of the layout viewport the keyboard covers). */
+.modal-back.modal-back--sheet { top: var(--sheet-top, 0px); bottom: var(--sheet-bottom, 0px); overscroll-behavior: contain; }
 @media (max-width: 640px) {
   .modal-back.modal-back--sheet { align-items: flex-end; padding: 0; }
-  .modal.modal--sheet { width: 100%; max-height: 92vh; max-height: 92dvh; border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
+  .modal.modal--sheet { width: 100%; max-height: 92%; border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
   .modal.modal--sheet::before { content: ''; display: block; width: 36px; height: 4px; margin: 0 auto var(--sp-3); border-radius: 2px; background: var(--line-strong); }
 }
 
