@@ -41,3 +41,111 @@
 /* Projects card: a name, then short phrases, then progress counts. */
 .td-proj { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2, 8px) 0; border-bottom: 1px solid var(--line); }
 .td-proj-phrases { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: var(--fs-sm, 0.9rem); }
+
+/* ---- D11: the new top of Today, date tiles and the quieter header controls ---- */
+.page-desc time b { color: var(--fg); font-weight: 650; }
+.td-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); }
+.td-tools .td-switch { border-color: transparent; background: none; color: var(--fg-2); }
+.td-tools .td-switch:hover:not(:disabled) { background: var(--hover); }
+.td-tools button.ghost { color: var(--fg-2); }
+.td-tools button.ghost:hover:not(:disabled) { background: var(--hover); }
+.td-tools button.primary { padding: 0 var(--sp-4); }
+
+/* "Next up": a bar in the primary-button colors (navy under Signature, the accent elsewhere), so the text color always matches its fill. */
+.td-hero { display: grid; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.td-next { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 9fr); overflow: hidden; border-radius: var(--r-lg); background: var(--btn-bg); color: var(--btn-ink); box-shadow: var(--shadow-1); }
+.td-next-now { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-4) var(--sp-5); border-right: 1px solid color-mix(in srgb, var(--btn-ink) 25%, var(--btn-bg)); }
+.td-next-now .ui-icon { flex: none; }
+.td-next-now strong { display: block; font-size: var(--fs-base); line-height: 1.3; }
+.td-next-sub { display: block; font-size: var(--fs-sm); }
+.td-next-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label label" "body btn"; align-items: center; column-gap: var(--sp-4); row-gap: 2px; min-width: 0; padding: var(--sp-3) var(--sp-5); }
+.td-next-label { grid-area: label; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.td-next-body { grid-area: body; display: flex; flex-direction: column; min-width: 0; }
+.td-next-item > .td-next-when { grid-area: body; }
+.td-next-title { font-size: var(--fs-lg); line-height: 1.3; overflow-wrap: anywhere; }
+.td-next-when { font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.td-next-btn { grid-area: btn; border-color: var(--btn-ink); background: var(--btn-ink); color: var(--btn-bg); font-weight: 650; white-space: nowrap; } /* the bar's two colors swapped: the same contrast pair as the bar itself */
+.td-next-btn:hover:not(:disabled) { background: var(--btn-ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--btn-ink) 45%, var(--btn-bg)); }
+.td-next-btn:focus-visible, .td-next-title:focus-visible { outline: 2px solid var(--btn-ink); outline-offset: 2px; }
+
+/* The status band: three plain counts of lists the cards already draw. The word and an icon shape carry each status; the tint only reinforces. */
+.td-band { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; overflow: hidden; list-style: none; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
+.td-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: var(--sp-3) var(--sp-4); }
+.td-stat + .td-stat { border-left: 1px solid var(--line); }
+.td-stat-label { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--fg-2); }
+.td-stat-label .ui-icon { flex: none; }
+.td-stat-num { font-size: var(--fs-metric); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.td-stat-sub { font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
+.td-stat--overdue { background: linear-gradient(90deg, var(--neg-soft), transparent 75%); box-shadow: inset 4px 0 0 var(--neg); }
+.td-stat--overdue .td-stat-label, .td-stat--overdue .td-stat-num { color: var(--neg-text); }
+
+/* Rows with a date tile (Overdue). */
+.td-row--tile { grid-template-columns: 5px 54px minmax(0, 1fr) auto; align-items: center; }
+.td-row--tile .td-bar { align-self: stretch; }
+.td-tile { align-self: center; }
+
+/* Coming up: a tile per day beside that day's rows. */
+.td-day { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: var(--sp-3); padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+.td-day:last-child { border-bottom: none; padding-bottom: 0; }
+.td-day-side { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: var(--sp-2); }
+.td-day-cap { font-size: var(--fs-xs); font-weight: 600; color: var(--accent-text); }
+.td-day-body { min-width: 0; }
+.td-day .td-row:first-child { padding-top: var(--sp-2); }
+
+/* The phone day strip (a picture only; the list carries the words). */
+.td-strip { display: none; }
+.td-strip-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 6px 2px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-soft); }
+.td-strip-cell--weekend { background: var(--surface-sunken); }
+.td-strip-cell--tomorrow { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-text); }
+.td-strip-wd { font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.06em; color: var(--muted); }
+.td-strip-cell--tomorrow .td-strip-wd { color: var(--accent-text); }
+.td-strip-day { font-weight: 700; font-variant-numeric: tabular-nums; }
+.td-strip-dots { display: flex; gap: 2px; min-height: 6px; }
+.td-dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.td-dot--none { background: var(--line-strong); }
+
+@media (max-width: 640px), (pointer: coarse) {
+  .td-check { width: 44px; min-width: 44px; height: 44px; }
+  .td-tools button { min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .td-next { grid-template-columns: minmax(0, 1fr); }
+  .td-next-now { padding: var(--sp-3) var(--sp-4); border-right: none; border-bottom: 1px solid color-mix(in srgb, var(--btn-ink) 25%, var(--btn-bg)); }
+  .td-next-item { padding: var(--sp-3) var(--sp-4); }
+  .td-stat { padding: var(--sp-2) var(--sp-3); }
+  .td-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 4px; margin: var(--sp-1) 0 var(--sp-2); }
+  .td-day { grid-template-columns: 50px minmax(0, 1fr); gap: var(--sp-2); }
+}
+@media (max-width: 480px) {
+  .td-stat-sub { display: none; }
+  .td-next-item { grid-template-columns: minmax(0, 1fr); grid-template-areas: "label" "body" "btn"; row-gap: var(--sp-2); }
+  .td-next-btn { justify-self: start; }
+  /* A tile row stacks its action under the title instead of squeezing the title. */
+  .td-row--tile { grid-template-columns: 5px 50px minmax(0, 1fr); }
+  .td-row--tile .td-tile { grid-column: 2; grid-row: 1 / 3; }
+  .td-row--tile .td-main { grid-column: 3; grid-row: 1; }
+  .td-row--tile .td-act { grid-column: 3; grid-row: 2; justify-content: flex-start; }
+}
+@media (max-width: 380px) {
+  .td-stat-label .ui-icon { display: none; }
+}
+
+/* Today only: a card is as tall as its own content (the shared grid stretches each card to its neighbour). */
+.td-grid { align-items: start; }
+.td-grid .hc > .card { flex: none; }
+@media (max-width: 480px) {
+  .td-day .td-row, .td-row--tile { column-gap: var(--sp-2); }
+  /* A row whose action is a words button ("Open bill") puts it under the title, so the title keeps the full width; a round check button stays at the right. */
+  .td-row:not(.td-row--tile):has(.td-act .link) { grid-template-columns: 5px minmax(0, 1fr); }
+  .td-row:not(.td-row--tile):has(.td-act .link) .td-bar { grid-row: 1 / 4; }
+  .td-row:not(.td-row--tile):has(.td-act .link) .td-when { grid-column: 2; }
+  .td-row:not(.td-row--tile):has(.td-act .link) .td-act { grid-column: 2; grid-row: 3; justify-content: flex-start; }
+}
+@media (max-width: 480px) {
+  /* A tile row with a round check button keeps the button at the right, level with the title. */
+  .td-row--tile:has(.td-check) { grid-template-columns: 5px 50px minmax(0, 1fr) auto; }
+  .td-row--tile:has(.td-check) .td-tile { grid-column: 2; grid-row: 1; }
+  .td-row--tile:has(.td-check) .td-main { grid-column: 3; grid-row: 1; }
+  .td-row--tile:has(.td-check) .td-act { grid-column: 4; grid-row: 1; justify-content: flex-end; }
+  .td-row--tile:has(.td-check) .td-bar { grid-row: 1; }
+}

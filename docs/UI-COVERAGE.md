@@ -16,6 +16,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D10 (2026-11-12, built and tested locally, uncommitted) redesigned the Add box (Quick Add): S-05 reads `BLT` with all six marks, and the five Quick Add workflows W-01 to W-05 read `BLT` (section 1.5). S-04 and S-08 keep their `BLT` rows (notes in section 1.5). DL-01 stays `NS` (Search and the confirmation dialog are untouched). No routed page, view or other dialog changed, nothing is `ACC`, and real-device acceptance is not recorded.**
 
+**D11 (2026-11-12, committed and pushed after the final correction; deployment read from Actions) redesigned Today and Tasks: T-01 and K-01 read `BLT` with all six marks, the ten Tasks views IV-05 to IV-14 read `BLT` with only `Func` recorded, and W-12 and W-13 read `BLT` (section 1.6). The Tasks Filters sheet adds one `<Modal>` site, so DL-02 now has four and the dialog total is 63 in 42 files. S-07 (the Task creator dialog) and the other Tasks dialogs were not touched and stay `NS`. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -25,7 +27,7 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 | Routed page destinations | 59 | 0 |
 | Global surfaces | 23 | 0 |
 | In-page views | 31 | 0 |
-| Dialogs (`<Modal>` call sites) | 62 | 0 |
+| Dialogs (`<Modal>` call sites) | 63 | 0 |
 | Named workflows | 37 | 0 |
 
 A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is missing from section 2, if an ID is duplicated, if a referenced file no longer exists, or if any total above stops matching the rows below. Add the row **in the same change** that adds the page.
@@ -110,15 +112,26 @@ Seen in the Claude app's built-in browser against the fictional D1 demo househol
 - **S-08 Shared Modal:** one opt-in addition: `variant="sheet"` now also follows the visible area when the keyboard opens and locks the page behind it on a phone or touch screen (`src/shell/sheetBehavior.ts`); a plain dialog is unchanged. Row unchanged; its marks were not extended (only the Add box was checked as a sheet).
 - **Not checked:** real phones (the on-screen keyboard, the home-indicator padding, browser toolbars, touch scrolling: UNVERIFIED until the owner checks), screen readers, forced-colors mode (CSS written, not seen), Safari and Firefox, Classic contrast (looked at, not measured), the other four presets, Signature dark at 320 px. The 470 px keyboard run was a scripted resize of the visual viewport, not a real keyboard.
 
+### 1.6 D11 evidence: Today and Tasks (committed and pushed; nothing is `ACC`; Today's contributed cards were not redesigned)
+
+Seen in headless Chrome on a throwaway profile holding the fictional D1 demo household (own address `localhost:5231`, sync off), driven by DevTools-protocol scripts; the Claude app's browser pane was used only to read the existing data first. Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D11-Evidence`, `baseline` and `after`). Report: `docs/LEDGER-SIGNATURE-D11-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real phone or a screen reader.**
+
+- **T-01 Today:** `L` and `D` Signature at 1440 and 375 (light also at 800 and 320; Classic light looked at on the empty profile; Classic dark and Slate light captured, and Slate on a phone seen only as a thumbnail; an empty profile at 1440 and 375), `375`, `1440`. `Kbd`: a Tab walk of 34 stops (header controls, Next up, every row and its action) in order, each stop showing a visible focus indicator. `Func`: the three overdue and 17 coming-up items equal the pre-change baseline; the card list, default order and widths unchanged; card links, Open bill, Next up, mark done and Undo, Edit layout (reorder, hide, reload keeps it, Reset), Hide amounts (no amount in page text, accessible names or tooltips; survives a reload) all checked; the full suite. The 11 cards' own insides were not redesigned (they sit in the new layout unchanged).
+- **K-01 Tasks:** same widths and themes (phone at 375 and 320, dark at 375, 320 and 1440; Classic light at 1440 looked at; Classic and Slate at 375 and Slate at 1440 captured, not looked at closely). `Kbd`: Tab walks on desktop and phone (all stops visible), Escape closes the Filters sheet and the More menu and returns focus. `Func`: all ten views reachable on desktop and phone with the same tasks in the same order as before; one filter state shared by the computer's chips and the phone's sheet (same results for five combinations, kept across a width change, Clear filters returns to the default); search, sort, empty result, complete and reopen, edit, create, long and unbroken titles, no-due-date, bulk Reschedule, Complete and Undo, selection cancel, D10 Quick Add still creates a Task. **A bulk Priority, List or Tag change stores the wrong value; this was already so before D11 and was not changed (report section 16, finding D11-F1).**
+- **IV-05 to IV-14 (ten Tasks views):** `Func` only. Each was opened on desktop and on a phone and compared with the baseline. They were looked at as pictures only for Today (phone, dark), Upcoming (desktop), All (desktop, phone, dark) and By priority (phone), so the visual marks are left open.
+- **W-12 and W-13:** read `BLT`. W-12 (create, edit, complete, bulk, lists): the Lists dialog was not opened. W-13 (Edit layout, Hide amounts): all checked as above.
+- **DL-02 Tasks dialogs:** now four sites; the new one is the phone Filters sheet (the shared `Modal`, `variant="sheet"`; focus inside, Escape closes, focus returns). The other three are untouched, so the row stays `NS`. **S-07** also stays `NS` (`QuickTask.tsx` and `TaskEditor.tsx` were not edited).
+- **Not checked:** real phones (touch targets, the floating Add button over rows, on-screen keyboard in the sheet), screen readers, forced colors (no rule was added), Safari and Firefox, the other three presets, the Lists dialog and the Task editor in Signature, the Completed and Deleted views as pictures in dark, 800 px for Tasks beyond one picture. New text colors were measured by arithmetic for Classic and every preset in both modes (all 4.5:1 or better; `src/modules/today/d11Contrast.test.ts`); no foreground was checked on a real screen.
+
 Addresses are written as they appear after `#` in the browser. Ledger pages are under `/ledger`. The guard compares this column with the app's route registrations.
 
 ### 2.1 Today, Calendar, Tasks (3)
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| T-01 | `/today` | `src/modules/today/TodayModule.tsx` | D11 | NS | . | . | . | . | . | . |
+| T-01 | `/today` | `src/modules/today/TodayModule.tsx` | D11 | BLT | Y | Y | Y | Y | Y | Y |
 | C-01 | `/calendar` | `src/modules/calendar/CalendarPage.tsx` | D13 | NS | . | . | . | . | . | . |
-| K-01 | `/tasks` | `src/modules/tasks/TasksPage.tsx` | D11 | NS | . | . | . | . | . | . |
+| K-01 | `/tasks` | `src/modules/tasks/TasksPage.tsx` | D11 | BLT | Y | Y | Y | Y | Y | Y |
 
 ### 2.2 Projects, Home & Assets (5)
 
@@ -219,16 +232,16 @@ Views share their page's address. Each needs its page's checks plus its own empt
 | IV-02 | C-01 Calendar | Week | D13 | NS | . | . | . | . | . | . |
 | IV-03 | C-01 Calendar | Work week | D13 | NS | . | . | . | . | . | . |
 | IV-04 | C-01 Calendar | Agenda | D13 | NS | . | . | . | . | . | . |
-| IV-05 | K-01 Tasks | Today | D11 | NS | . | . | . | . | . | . |
-| IV-06 | K-01 Tasks | Upcoming | D11 | NS | . | . | . | . | . | . |
-| IV-07 | K-01 Tasks | Overdue | D11 | NS | . | . | . | . | . | . |
-| IV-08 | K-01 Tasks | All | D11 | NS | . | . | . | . | . | . |
-| IV-09 | K-01 Tasks | By list | D11 | NS | . | . | . | . | . | . |
-| IV-10 | K-01 Tasks | By tag | D11 | NS | . | . | . | . | . | . |
-| IV-11 | K-01 Tasks | By priority | D11 | NS | . | . | . | . | . | . |
-| IV-12 | K-01 Tasks | Waiting | D11 | NS | . | . | . | . | . | . |
-| IV-13 | K-01 Tasks | Completed | D11 | NS | . | . | . | . | . | . |
-| IV-14 | K-01 Tasks | Deleted | D11 | NS | . | . | . | . | . | . |
+| IV-05 | K-01 Tasks | Today | D11 | BLT | . | . | . | . | . | Y |
+| IV-06 | K-01 Tasks | Upcoming | D11 | BLT | . | . | . | . | . | Y |
+| IV-07 | K-01 Tasks | Overdue | D11 | BLT | . | . | . | . | . | Y |
+| IV-08 | K-01 Tasks | All | D11 | BLT | . | . | . | . | . | Y |
+| IV-09 | K-01 Tasks | By list | D11 | BLT | . | . | . | . | . | Y |
+| IV-10 | K-01 Tasks | By tag | D11 | BLT | . | . | . | . | . | Y |
+| IV-11 | K-01 Tasks | By priority | D11 | BLT | . | . | . | . | . | Y |
+| IV-12 | K-01 Tasks | Waiting | D11 | BLT | . | . | . | . | . | Y |
+| IV-13 | K-01 Tasks | Completed | D11 | BLT | . | . | . | . | . | Y |
+| IV-14 | K-01 Tasks | Deleted | D11 | BLT | . | . | . | . | . | Y |
 | IV-15 | P-01 Projects | Open | D14 | NS | . | . | . | . | . | . |
 | IV-16 | P-01 Projects | Finished | D14 | NS | . | . | . | . | . | . |
 | IV-17 | P-01 Projects | Archived | D14 | NS | . | . | . | . | . | . |
@@ -249,14 +262,14 @@ Views share their page's address. Each needs its page's checks plus its own empt
 
 ## 4. Dialogs and confirmations
 
-### 4.1 Dialogs: `<Modal>` call sites (62 in 41 files)
+### 4.1 Dialogs: `<Modal>` call sites (63 in 42 files)
 
 Each site is a form, a question or a detail view. Counted from the source in D5 (the number below must equal the guard's recorded baseline in `src/shell/uiBaseline.ts`).
 
 | ID | Module | Sites | Files | Phase | Status |
 |---|---|---|---|---|---|
 | DL-01 | Shell (Add box, Search, ConfirmDialog base) | 3 | `AddBox`, `SearchDialog`, `ConfirmDialog` | D6, D10 | NS |
-| DL-02 | Tasks | 3 | `TaskEditor`, `QuickTask`, `ListsDialog` | D11 | NS |
+| DL-02 | Tasks | 4 | `TaskEditor`, `QuickTask`, `ListsDialog`, `TasksPage` (the phone Filters sheet, D11) | D11 | NS |
 | DL-03 | Calendar | 8 | `EventEditor` (2), `dialogs` (5), `HandoffDialog` | D13 | NS |
 | DL-04 | Projects | 3 | `ProjectForm`, `CommitmentForm`, `DeleteProject` | D14 | NS |
 | DL-05 | Home & Assets | 7 | `AssetForm`, `AddMaintenance`, `ServiceForm` (2), `WarrantyForm`, `LifecycleDialog`, `DeleteAsset` | D14 | NS |
@@ -265,7 +278,7 @@ Each site is a form, a question or a detail view. Counted from the source in D5 
 | DL-08 | Bills & Subscriptions | 17 | `ObligationForm`, `Dialogs` (3), `CycleDialogs` (2), `LifecycleDialogs` (2), `PaymentUI`, `RepairDialogs` (2), `ScheduledUI` (3), `ContractCard` (2), `DiscoverCard` | D15 | NS |
 | DL-09 | Family | 3 | `MemberForm`, `DateForm`, `ImportantContacts` | D9, D15 | NS |
 | DL-10 | Ledger pages | 3 | `LedgerPage`, `ScheduledPage`, `TxnDeleteDialog` | D16 | NS |
-| | **Total** | **62** | 41 files | | |
+| | **Total** | **63** | 42 files | | |
 
 Inline (non-modal) forms in Ledger pages (transaction form, income setup, scenario editors, loan forms) are covered by their page rows.
 
@@ -298,8 +311,8 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-09 | Calendar events: create, edit, delete, repeating-event scope | D13 | NS |
 | W-10 | Calendars manager, layer menu, .ics export | D13 | NS |
 | W-11 | Calendar event handed to Ledger as a scheduled item | D13, D16 | NS |
-| W-12 | Tasks: create, edit, complete, bulk select, lists | D11 | NS |
-| W-13 | Today: edit layout, hide amounts | D11 | NS |
+| W-12 | Tasks: create, edit, complete, bulk select, lists | D11 | BLT |
+| W-13 | Today: edit layout, hide amounts | D11 | BLT |
 | W-14 | Monthly check-in | D16 | NS |
 | W-15 | Transactions: add, edit, split, reconcile, bulk category, delete with dependency check | D16 | NS |
 | W-16 | CSV import and undo import | D16 | NS |
@@ -342,10 +355,12 @@ Measured by `src/shell/uiBaseline.ts` at commit `8ab1789` plus the D5 change. Th
 | Own `<h1>` instead of `PageHeader` (files) | 13 | 13 | 13 | listed exceptions only |
 | `className="card…"` uses | 395 | 395 | not re-measured | n/a (restyled in place) |
 | Browser-native `confirm()` calls | 37 in 24 files | 37 in 24 files | 37 in 24 files | 0, or owner-accepted list (OD-6) |
-| `<Modal>` sites | 62 in 41 files | 62 in 41 files | 62 in 41 files | not above 62 |
+| `<Modal>` sites | 62 in 41 files | 62 in 41 files | 62 in 41 files | not above 62 (D11 made it 63 in 42: the phone Filters sheet; the baseline constant was raised with it) |
 | `!important` | 11 | 11 | 11 | not above 11 |
 
 Discrepancies found while re-measuring (none changed the baseline): D4's "9 font sizes below 12 px" counts `px` values only; the two further `rem` values (0.7rem and 0.68rem) make 11. D4's "37 confirm()" counts calls with a message; the source also has five local functions named `confirm` (not the browser's) which are not counted.
+
+Measured after D11 (informational): inline `style={{` 306 in 82 files, raw border-radius pixel values 61, raw font-size values 38, hex colours 147 (module CSS 54), own `<h1>` files 12 (Tasks now uses `PageHeader`), `<Modal>` sites 63 in 42 files, `!important` 11, native `confirm()` 37 in 24 files. The baseline constants in `src/shell/uiBaseline.ts` were not lowered except for the Modal count, which the guard needs.
 
 ## 7. Aliases and redirects (not pages)
 

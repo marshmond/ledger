@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { rovingKeys } from '../../ui/rovingKeys';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { Priority } from '../../core/entities';
 import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
+import { useMediaQuery } from '../../ui/useMediaQuery';
+import { PageHeader, EmptyState } from '../../ui/components';
+import { Icon } from '../../ui/icons';
+import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
 import { projectLabel, selectableProjects, useProjectChoices } from '../../core/projectLink';
 import { dayLabel } from '../../core/time';
@@ -15,6 +17,8 @@ import ListsDialog from './ListsDialog';
 import { QuickAddBar } from './QuickTask';
 import TaskEditor from './TaskEditor';
 import TaskRow from './TaskRow';
+import { FilterFields, PhoneViews, RangeSelect, SortSelect, ViewTabs, type FilterEnv } from './TasksControls';
+import { activeFilterCount, bulkListAction, bulkPriorityAction, bulkTagAction, describeFilters, isFiltering } from './viewModel';
 import type { TaskRecord } from './model';
 import { NO_FILTER, SORTS, VIEWS, buildView, counts, isOpen, type Filter, type SortKey, type ViewId } from './views';
 
@@ -54,6 +58,9 @@ export default function TasksPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editing, setEditing] = useState<TaskRecord | null>(null);
   const [manageLists, setManageLists] = useState(false);
+  const phone = useMediaQuery('(max-width: 640px)');
+  const [sheet, setSheet] = useState(false);
+  useEffect(() => { if (!phone) setSheet(false); }, [phone]);
 
   const go = (v: ViewId) => {
     try { localStorage.setItem(VIEW_KEY, v); } catch { /* storage unavailable */ }
@@ -159,42 +166,68 @@ export default function TasksPage() {
     if (next.projectId === '') delete next.projectId; // "Any project" is the same as no project filter at all
     setFilter(next);
   };
-  const filtering = JSON.stringify(filter) !== JSON.stringify(NO_FILTER);
+  const filtering = isFiltering(filter);
+  const env: FilterEnv = { filter, onChange: f, lists, tags: tagList, projects };
+  const openCount = tasks.filter(isOpen).length;
+  const summary = `${openCount} open · ${badge.overdue} overdue · ${badge.waiting} waiting`;
+  const active = describeFilters(filter, { lists, tags: tagList, projectLabel: (id) => projectLabel(projects, id), contact: filteredContact });
+  const toggleSelecting = () => { setSelecting(!selecting); setSelected(new Set()); };
+  const emptyText = filtering ? 'No tasks match these filters.' : EMPTY[view];
 
   return (
     <div className="tk">
-      <div className="row spread"><h1 className="cal-title">Tasks</h1><button className="link" onClick={() => setManageLists(true)}>Lists…</button></div>
+      <PageHeader title="Tasks" eyebrow="Productivity" description={summary} actions={<button className="link" onClick={() => setManageLists(true)}>Lists…</button>} />
       <QuickAddBar />
 
-      <div className="tk-tabs" role="tablist" aria-label="Task views" onKeyDown={rovingKeys}>
-        {VIEWS.map((v) => {
-          const n = v.id === 'today' ? badge.today : v.id === 'overdue' ? badge.overdue : v.id === 'waiting' ? badge.waiting : 0;
-          return <button key={v.id} role="tab" aria-selected={view === v.id} tabIndex={(view === v.id) ? 0 : -1} className={view === v.id ? 'on' : ''} onClick={() => go(v.id)}>{v.label}{n > 0 && <span className="count">{n}</span>}</button>;
-        })}
-      </div>
+      {phone ? <PhoneViews view={view} counts={badge} onGo={go} /> : <ViewTabs view={view} counts={badge} onGo={go} />}
 
-      <div className="tk-controls">
-        <input type="search" value={filter.text} onChange={(e) => f({ text: e.target.value })} placeholder="Search tasks" aria-label="Search tasks" />
-        <select value={effSort} onChange={(e) => setSort(e.target.value as SortKey)} aria-label="Sort by">{SORTS.filter((s) => s.id !== 'completed' || view === 'completed').map((s) => <option key={s.id} value={s.id}>Sort: {s.label}</option>)}</select>
-        <select value={filter.priority} onChange={(e) => f({ priority: e.target.value as Priority | '' })} aria-label="Filter by priority">
-          <option value="">Any priority</option>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_ICON[p]} {PRIORITY_LABEL[p]}</option>)}
-        </select>
-        <select value={String(filter.listId)} onChange={(e) => f({ listId: e.target.value === '' ? '' : e.target.value === 'none' ? 'none' : Number(e.target.value) })} aria-label="Filter by list">
-          <option value="">Any list</option><option value="none">No list</option>{lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
-        <select value={String(filter.tagId)} onChange={(e) => f({ tagId: e.target.value === '' ? '' : Number(e.target.value) })} aria-label="Filter by tag">
-          <option value="">Any tag</option>{tagList.map((t) => <option key={t.id} value={t.id}>#{t.name}</option>)}
-        </select>
-        {projects.length > 0 && (
-          <select value={String(filter.projectId ?? '')} onChange={(e) => f({ projectId: e.target.value === '' ? '' : e.target.value === 'none' ? 'none' : Number(e.target.value) })} aria-label="Filter by project">
-            <option value="">Any project</option><option value="none">No project</option>{projects.map((p) => <option key={p.id} value={p.id}>{projectLabel(projects, p.id)}</option>)}
-          </select>
-        )}
-        {view === 'upcoming' && <select value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Upcoming range">{[7, 14, 30].map((d) => <option key={d} value={d}>Next {d} days</option>)}</select>}
-        {filteredContact && <span className="badge">Contact: {filteredContact}</span>}
-        {filtering && <button className="link" onClick={() => setFilter(NO_FILTER)}>Clear filters</button>}
-        {view !== 'deleted' && <button className={`btn ${selecting ? 'primary' : ''}`} onClick={() => { setSelecting(!selecting); setSelected(new Set()); }}>{selecting ? 'Done selecting' : 'Select'}</button>}
-      </div>
+      {phone ? (
+        <div className="tk-controls tk-controls--phone">
+          <div className="tk-prow">
+            <input type="search" className="tk-search" value={filter.text} onChange={(e) => f({ text: e.target.value })} placeholder="Search tasks" aria-label="Search tasks" />
+            <button type="button" className={`tk-filterbtn${activeFilterCount(filter) > 0 ? ' on' : ''}`} aria-haspopup="dialog" onClick={() => setSheet(true)}>
+              <Icon name="sliders" size={16} /> Filters{activeFilterCount(filter) > 0 && <span className="count" aria-label={`${activeFilterCount(filter)} on`}>{activeFilterCount(filter)}</span>}
+            </button>
+          </div>
+          <div className="tk-prow tk-prow--sub">
+            <span className="tk-sortnote">Sorted by <b>{SORTS.find((s) => s.id === effSort)?.label.toLowerCase()}</b></span>
+            {view !== 'deleted' && <button type="button" className={`btn tk-selbtn ${selecting ? 'primary' : ''}`} onClick={toggleSelecting}>{selecting ? 'Done selecting' : 'Select'}</button>}
+          </div>
+          {active.length > 0 && (
+            <p className="tk-active">
+              {active.map((a) => <span key={a} className="ui-chip ui-chip--active">{a}</span>)}
+              <button className="link" onClick={() => setFilter(NO_FILTER)}>Clear filters</button>
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="tk-controls">
+          <input type="search" className="tk-search" value={filter.text} onChange={(e) => f({ text: e.target.value })} placeholder="Search tasks" aria-label="Search tasks" />
+          <FilterFields env={env} />
+          {view === 'upcoming' && <RangeSelect value={days} onChange={setDays} />}
+          {filteredContact && <span className="badge">Contact: {filteredContact}</span>}
+          {filtering && <button className="link" onClick={() => setFilter(NO_FILTER)}>Clear filters</button>}
+          <span className="tk-grow" />
+          <SortSelect value={effSort} view={view} onChange={setSort} />
+          {view !== 'deleted' && <button className={`btn ${selecting ? 'primary' : ''}`} onClick={toggleSelecting}>{selecting ? 'Done selecting' : 'Select'}</button>}
+        </div>
+      )}
+      <p className="sr-only" role="status">{visible.length} task{visible.length === 1 ? '' : 's'} shown{filtering ? ', filtered' : ''}</p>
+
+      {sheet && phone && (
+        <Modal title="Filters" onClose={() => setSheet(false)} variant="sheet">
+          <div className="tk-sheet">
+            <FilterFields env={env} labelled />
+            <SortSelect value={effSort} view={view} onChange={setSort} labelled />
+            {view === 'upcoming' && <RangeSelect value={days} onChange={setDays} labelled />}
+            {filteredContact && <p className="muted small">Contact: {filteredContact}</p>}
+            <div className="tk-sheet-foot">
+              <button className="link" disabled={!filtering} onClick={() => setFilter(NO_FILTER)}>Clear filters</button>
+              <button className="btn primary" onClick={() => setSheet(false)}>Show {visible.length} task{visible.length === 1 ? '' : 's'}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {selecting && (
         <div className="tk-bulk" role="toolbar" aria-label="Bulk actions">
@@ -205,10 +238,10 @@ export default function TasksPage() {
             <input type="date" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} aria-label="New due date" />
             <button className="btn" disabled={!selected.size || !moveTo} onClick={() => void bulkEdit(`Rescheduled to ${dayLabel(moveTo)}`, (d) => ({ ...d, dueDate: moveTo }))}>Reschedule</button>
           </span>
-          <select disabled={!selected.size} value="" aria-label="Change priority" onChange={(e) => e.target.value && void bulkEdit(`Priority ${e.target.value}`, (d) => ({ ...d, priority: e.target.value as Priority }))}>
+          <select disabled={!selected.size} value="" aria-label="Change priority" onChange={(e) => { const a = bulkPriorityAction(e.target.value); if (a) void bulkEdit(a.label, a.change); }}>
             <option value="">Priority…</option>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_ICON[p]} {PRIORITY_LABEL[p]}</option>)}
           </select>
-          <select disabled={!selected.size} value="" aria-label="Move to list" onChange={(e) => e.target.value && void bulkEdit('List changed', (d) => ({ ...d, listId: e.target.value === 'none' ? null : Number(e.target.value) }))}>
+          <select disabled={!selected.size} value="" aria-label="Move to list" onChange={(e) => { const a = bulkListAction(e.target.value); if (a) void bulkEdit(a.label, a.change); }}>
             <option value="">List…</option><option value="none">No list</option>{lists.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
           {projects.length > 0 && (
@@ -218,26 +251,37 @@ export default function TasksPage() {
               <option value="none">No project (take off)</option>
             </select>
           )}
-          <select disabled={!selected.size} value="" aria-label="Add a tag" onChange={(e) => e.target.value && void bulkEdit('Tag added', (d) => ({ ...d, tagIds: [...new Set([...d.tagIds, Number(e.target.value)])] }))}>
+          <select disabled={!selected.size} value="" aria-label="Add a tag" onChange={(e) => { const a = bulkTagAction(e.target.value); if (a) void bulkEdit(a.label, a.change); }}>
             <option value="">Add tag…</option>{tagList.map((t) => <option key={t.id} value={t.id}>#{t.name}</option>)}
           </select>
           <button className="btn danger" disabled={!selected.size} onClick={() => void bulkDelete()}>Delete</button>
         </div>
       )}
 
-      {groups.length === 0 ? <p className="muted tk-empty">{filtering ? 'No tasks match these filters.' : EMPTY[view]}</p> : groups.map((g) => (
-        <section key={g.key} className={`tk-group ${g.tone ?? ''}`} aria-label={g.title}>
-          <h2>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="muted">· {g.tasks.length}</span></h2>
-          <ul className="plain">
-            {g.tasks.map((t) => (
-              <TaskRow key={t.id} task={t} lists={lists} tags={tagList} projects={projects} today={today} selecting={selecting} selected={selected.has(t.id)}
-                onSelect={(id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
-                onOpen={setEditing} onToggle={(x) => void toggle(x)}
-                restore={view === 'deleted' ? async (x) => { await restoreTasks([x.id]); toast('Task restored'); } : undefined} />
-            ))}
-          </ul>
-        </section>
-      ))}
+      {groups.length === 0 ? (
+        <div className="card tk-empty-card"><EmptyState title={emptyText} action={filtering ? <button className="btn" onClick={() => setFilter(NO_FILTER)}>Clear filters</button> : undefined} /></div>
+      ) : (
+        <div className="card flush tk-card">
+          <div className="tk-colhead" aria-hidden="true"><span>Task</span><span>Project · progress</span><span>Due</span></div>
+          {groups.map((g) => (
+            <section key={g.key} className={`tk-group ${g.tone ?? ''}`} aria-label={g.title}>
+              <h2>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="tk-gcount">{g.tasks.length}</span></h2>
+              <ul className="plain">
+                {g.tasks.map((t) => (
+                  <TaskRow key={t.id} task={t} lists={lists} tags={tagList} projects={projects} today={today} selecting={selecting} selected={selected.has(t.id)}
+                    onSelect={(id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
+                    onOpen={setEditing} onToggle={(x) => void toggle(x)}
+                    restore={view === 'deleted' ? async (x) => { await restoreTasks([x.id]); toast('Task restored'); } : undefined} />
+                ))}
+              </ul>
+            </section>
+          ))}
+          <p className="tk-key" aria-hidden="true">
+            {PRIORITIES.map((p) => <span key={p}>{PRIORITY_ICON[p]} {PRIORITY_LABEL[p]}</span>)}
+            <span>↻ Repeats</span>
+          </p>
+        </div>
+      )}
 
       {editing && <TaskEditor key={editing.id} task={editing} onClose={() => setEditing(null)} />}
       {manageLists && <ListsDialog lists={lists} counts={listCounts} onClose={() => setManageLists(false)} />}

@@ -6,6 +6,7 @@ import { allTodayCards } from '../../core/registry';
 import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
 import { PageHeader } from '../../ui/components';
+import { Icon } from '../../ui/icons';
 import { useToday } from '../../ui/useToday';
 import '../calendar/calendar.css';
 import './today.css';
@@ -14,13 +15,10 @@ import { HIDE_AMOUNTS_KEY, HIDE_AMOUNTS_SCOPE, loadHideAmounts, saveHideAmounts 
 import { loadLayout, moveEntry, resetLayout, saveLayout, toggleEntryHidden, toggleEntrySize, type LayoutEntry } from './layout';
 import { LOOK_AHEAD_CHOICES, OVERDUE_ROWS_CHOICES, loadTodaySettings, saveTodaySettings } from './settings';
 import { TodayDataProvider } from './TodayData';
+import { TodayHero } from './TodayHero';
+import { headingDate } from './todayModel';
 
 export const TODAY_BASE = '/today';
-
-const longDate = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-};
 
 /** Today: one screen that merges every module. The cards come from the module registry; their order, width and visibility are per device. */
 export default function TodayModule() {
@@ -39,6 +37,12 @@ export default function TodayModule() {
       </ToastProvider>
     </ModuleBase>
   );
+}
+
+/** "Thursday · November 12, 2026": a bold weekday and the rest, from the app's own date (never a fixed one). */
+function DateLine({ today }: { today: string }) {
+  const d = headingDate(today);
+  return d ? <time dateTime={today}><b>{d.weekday}</b> · {d.rest}</time> : <>{today}</>;
 }
 
 function TodayScreen({ today }: { today: string }) {
@@ -71,14 +75,14 @@ function TodayScreen({ today }: { today: string }) {
     <>
       <PageHeader
         title="Today"
-        description={longDate(today)}
+        description={<DateLine today={today} />}
         actions={
-          <>
+          <div className="td-tools">
             <button type="button" role="switch" aria-checked={hideAmounts} className={`td-switch ${hideAmounts ? 'on' : ''}`} onClick={() => setHide(!hideAmounts)} data-key={HIDE_AMOUNTS_KEY} aria-describedby="td-hide-help">
               <span className="td-switch-box" aria-hidden="true" /> Hide amounts
             </button>
-            <button className={editing ? 'primary' : ''} onClick={() => setEditing(!editing)}>{editing ? 'Done' : 'Edit layout'}</button>
-          </>
+            <button className={editing ? 'primary' : 'ghost'} onClick={() => setEditing(!editing)}>{editing ? 'Done' : <><Icon name="sliders" size={16} /> Edit layout</>}</button>
+          </div>
         }
       />
 
@@ -105,7 +109,9 @@ function TodayScreen({ today }: { today: string }) {
         </div>
       )}
 
-      <div className="home-grid">
+      <TodayHero today={today} hideAmounts={hideAmounts} />
+
+      <div className="home-grid td-grid">
         {layout.map((entry, i) => {
           const def = byId.get(entry.id);
           if (!def) return null;

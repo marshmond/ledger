@@ -31,9 +31,9 @@ export const BASELINE = {
   /** Calls to the browser's own confirm box, with a message, in non-test .ts/.tsx (D4: 37 in 24 files). Local functions that happen to be named confirm are not counted. */
   nativeConfirm: 37,
   nativeConfirmFiles: 24,
-  /** `<Modal` call sites in non-test .tsx (D4: 62 in 41 files). */
-  modalSites: 62,
-  modalFiles: 41,
+  /** `<Modal` call sites in non-test .tsx (D4: 62 in 41 files; D11: 63 in 42, the Tasks Filters sheet). */
+  modalSites: 63,
+  modalFiles: 42,
   /** The important flag in CSS (D4: 11). */
   important: 11,
 } as const;

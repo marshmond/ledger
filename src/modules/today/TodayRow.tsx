@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { goTo } from '../../core/dueProvider';
+import { DateTile } from '../../ui/DateTile';
 import { useToast } from '../../ui/Toast';
 import { markOccurrenceDone } from '../calendar/data';
 import { Flags, PriorityMark, whenLabel } from '../calendar/parts';
@@ -20,7 +21,7 @@ export const openLabel = (item: CalItem) => (item.derived ? item.source?.sourceL
  * a check button (tasks, and events you chose to keep until done) or an "Edit in <module>" button. Money items never have a money
  * action here; they only open in Ledger.
  */
-export function TodayRow({ item, hideAmounts, when }: { item: CalItem; hideAmounts: boolean; when?: string }) {
+export function TodayRow({ item, hideAmounts, when, tile }: { item: CalItem; hideAmounts: boolean; when?: string; tile?: { today: string; overdue?: boolean } }) {
   const toast = useToast();
   const title = hideAmounts ? maskAmounts(item.title) : item.title;
   const complete = item.source?.actions?.complete;
@@ -43,9 +44,9 @@ export function TodayRow({ item, hideAmounts, when }: { item: CalItem; hideAmoun
   }
 
   return (
-    <li className={`td-row p-${item.priority} ${item.done ? 'done' : ''}`} style={{ ['--chip' as string]: item.color } as CSSProperties}>
+    <li className={`td-row p-${item.priority} ${item.done ? 'done' : ''} ${tile ? 'td-row--tile' : ''}`} style={{ ['--chip' as string]: item.color } as CSSProperties}>
       <span className="td-bar" aria-hidden="true" />
-      <span className="td-when">{when ?? whenLabel(item)}</span>
+      {tile ? <DateTile iso={item.firstDay} today={tile.today} overdue={tile.overdue} size="sm" className="td-tile" /> : <span className="td-when">{when ?? whenLabel(item)}</span>}
       <span className="td-main">
         <button type="button" className="td-title" onClick={() => openItem(item)}><PriorityMark priority={item.priority} /> {title}</button>
         <span className="td-sub">{item.layerName}{item.location ? ` · ${item.location}` : ''} <Flags item={item} /></span>

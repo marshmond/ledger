@@ -93,7 +93,7 @@ describe('D5 the tracker is well formed', () => {
     // tabs (S-15) and bottom tab bar (S-16) were not visually modified and stay NS; no Ledger page row changed.
     // D10 redesigned the Add box (S-05) and, with it, the five Quick Add workflows W-01 to W-05 were built and run. DL-01 stays NS (Search and the confirmation dialog are untouched).
     // Add an ID here only in the change that builds it.
-    expect(beyond.map((r) => r.id).sort()).toEqual(['S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05']);
+    expect(beyond.map((r) => r.id).sort()).toEqual(['IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13']);
     for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });
@@ -101,10 +101,10 @@ describe('D5 the tracker is well formed', () => {
 describe('D5 dialogs and confirmations are accounted for', () => {
   it('the dialog rows add up to the recorded <Modal> count, which equals the source baseline', () => {
     const sum = dialogs.reduce((n, r) => n + Number(r.cells[1]), 0);
-    expect(sum).toBe(62);
+    expect(sum).toBe(63);
     expect(sum).toBe(BASELINE.modalSites);
-    expect(tracker).toMatch(/\| \| \*\*Total\*\* \| \*\*62\*\* \| 41 files/);
-    expect(BASELINE.modalFiles).toBe(41);
+    expect(tracker).toMatch(/\| \| \*\*Total\*\* \| \*\*63\*\* \| 42 files/);
+    expect(BASELINE.modalFiles).toBe(42);
   });
   it('every dialog row names a module and a phase, and the three confirmation styles are listed with the native count', () => {
     for (const d of dialogs) expect(d.cells.some((c) => /^D\d+/.test(c)), d.id).toBe(true);
