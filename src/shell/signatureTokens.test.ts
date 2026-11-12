@@ -59,8 +59,9 @@ describe('D5 the Signature preset is a valid, readable palette', () => {
 
   it('every extra variable is one the token file declares or knowingly introduces, so none is a typo', () => {
     // --fs-md is deliberately NOT in the token file (see the test on it below), so Signature is the only thing that sets it.
+    // D6: the chart variables (--viz-*) are deliberately not declared either: styles.css reads each with the old chart colour as its fallback (see d6Shared.test.tsx).
     const known = new Set([...Object.keys(decls(rootBlock(tokens))), '--shadow-1', '--shadow-2', '--shadow-3', '--fs-md']);
-    for (const k of Object.keys(SIG.extras!.light)) expect(known.has(k), `${k} is not declared in src/ui/tokens.css`).toBe(true);
+    for (const k of Object.keys(SIG.extras!.light)) expect(known.has(k) || k.startsWith('--viz-'), `${k} is not declared in src/ui/tokens.css`).toBe(true);
   });
 
   it('the eight Signature variables the design names exist: page, surface, raised, soft, sunken, secondary text, control border, primary button, info', () => {
@@ -220,7 +221,7 @@ describe('D5 older palettes are protected: the new tokens are aliases of what th
     expect(SIG.extras!.light['--font-sans'].startsWith('Inter, system-ui')).toBe(true);
   });
   it('--fs-md is NOT defined for everyone: eight module rules fall back to 1rem or 1.05rem, and defining it would change them', () => {
-    expect(root['--fs-md']).toBeUndefined(); // D6 settles this for all palettes; then update this test
+    expect(root['--fs-md']).toBeUndefined(); // D6 settled it: still not defined for everyone (the card title falls back to --fs-lg); see d6Shared.test.tsx
     expect(SIG.extras!.light['--fs-md']).toBe('1rem');
   });
   it('--r-md defaults to the 8px every existing var(--r-md, 8px) already falls back to', () => {
@@ -238,7 +239,7 @@ describe('D5 older palettes are protected: the new tokens are aliases of what th
     expect(root['--shadow-1']).toBe('0 1px 2px rgba(16, 24, 40, 0.06)');
     expect(root['--control-h']).toBe('40px');
   });
-  it('the only existing rule that reads a new token is the page background (it falls back to --bg, so it cannot change an older palette)', () => {
+  it('the page background still reads --page (it falls back to --bg, so it cannot change an older palette); D6 added more rules that read new tokens, and src/shell/d6Shared.test.tsx pins the old-value default of each', () => {
     expect(styles).toMatch(/body \{ margin: 0; background: var\(--page\);/);
   });
 

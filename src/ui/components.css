@@ -1,17 +1,141 @@
 /*
- * Shared component styles for Ledger Signature (the planned home of the "ui-" classes: ui-chip, ui-dtile, ui-figure, ui-seg, ui-sheet ...).
- *
- * D5 created this file EMPTY on purpose: it is infrastructure only, so later phases have one agreed place and one agreed position in the
- * cascade. Nothing here styles any existing element, and no existing rule has been moved into it (several tests read styles.css and the
- * module sheets as text, so existing rules are restyled where they are).
+ * Shared component styles for Ledger Signature: the "ui-" classes (D6).
  *
  * Cascade position: styles.css imports this file right after src/ui/tokens.css, and an @import's rules come BEFORE the importing sheet's own
  * rules. So a rule here loses to an equal-specificity rule in styles.css or in a module sheet. That is the right order for brand-new "ui-"
  * classes (nothing else uses those names), and it means a rule here can never silently override an existing screen. A rule that must beat an
- * existing one belongs in the existing file, restyled in place.
+ * existing one belongs in the existing file, restyled in place. (Where a "ui-" rule must beat a global element rule such as `button`, it is
+ * written with a class on the element, which is more specific than the element selector.)
  *
- * Rules for this file (docs/LEDGER-SIGNATURE-D5-REPORT.md, "Rules for D6 onward"):
- *  - colours only through tokens (var(--surface), var(--control-line) ...), never a new hex;
+ * Rules for this file (docs/LEDGER-SIGNATURE-D5-REPORT.md "Rules for D6 onward", kept in D6):
+ *  - colours only through tokens (var(--surface), var(--control-line), the derived --pos-soft and so on), never a new hex;
  *  - new classes use the "ui-" prefix; module prefixes (cal-, bl-, as-, pj-, sv-, fm-, tk-, hh-, td-, ct-) stay in the module sheets;
- *  - no priority overrides (the important flag; the app has 11, see docs/UI-COVERAGE.md section 6) and no cascade layers.
+ *  - no priority overrides (the important flag; the app has 11) and no cascade layers;
+ *  - every class works under every palette: colours come from derived tokens, so Classic, the older presets and Signature all read well.
+ *
+ * Button guidance (the D4 rule, a design principle, not enforced by code): one visually dominant FILLED button (class "primary") per
+ * functional region, such as the global Add button, the Save/Add button of a form or dialog, or the single principal action of an empty
+ * state. Other actions in the same region are outlined (the default button) or quiet (class "link" or "ghost"). Nothing here removes or
+ * demotes an existing button on its own; each module adopts the rule when its page is redesigned.
  */
+
+/* ---------- text roles ---------- */
+.ui-eyebrow { display: block; margin: 0 0 var(--sp-1); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); }
+.ui-eyebrow--head { display: var(--ui-eyebrow); } /* above a page title: drawn only under Signature, so a page that passes one looks unchanged elsewhere */
+.ui-section-title { margin: 0; font-size: var(--fs-lg); font-weight: 650; letter-spacing: -0.01em; line-height: 1.3; }
+.ui-card-title { margin: 0; font-size: var(--fs-md, var(--fs-lg)); font-weight: 650; letter-spacing: -0.005em; line-height: 1.3; }
+.ui-desc { margin: var(--sp-1) 0 0; max-width: 60ch; color: var(--fg-2); }
+.ui-meta { color: var(--muted); font-size: var(--fs-sm); }
+.ui-caption { color: var(--muted); font-size: var(--fs-xs); }
+.ui-num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; } /* money and counts: aligned, never wrapped */
+
+/* ---------- buttons ---------- */
+/* A square button for one icon. It still needs an accessible name (aria-label). */
+.ui-iconbtn { width: var(--control-h); min-width: var(--control-h); height: var(--control-h); padding: 0; flex: none; color: var(--fg-2); }
+.ui-iconbtn .ui-icon { width: 18px; height: 18px; }
+.ui-iconbtn--quiet { border-color: transparent; background: none; }
+/* Loading: a small spinner after the label while the button is busy. The label should also change (for example "Saving"), so it never depends on motion. */
+button.ui-loading, button[aria-busy="true"] { cursor: progress; }
+button.ui-loading::after, button[aria-busy="true"]::after, .ui-spinner { content: ''; flex: none; display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: ui-spin 0.7s linear infinite; }
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+
+/* ---------- form fields ---------- */
+.ui-field { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.ui-label { font-size: var(--fs-sm); font-weight: 600; color: var(--label-fg); }
+.ui-help { margin: 0; font-size: var(--fs-sm); color: var(--muted); }
+.ui-error { margin: 0; font-size: var(--fs-sm); font-weight: 600; color: var(--neg-text); }
+.ui-error::before { content: 'Error: '; } /* the word, so the message is not told apart by colour alone */
+
+/* ---------- rows and lists ---------- */
+.ui-row { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); color: var(--fg); text-align: left; text-decoration: none; }
+.ui-row:last-child { border-bottom: none; }
+.ui-row-main { flex: 1 1 auto; min-width: 0; }
+.ui-row-title { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.ui-row-meta { display: block; font-size: var(--fs-sm); color: var(--muted); overflow-wrap: anywhere; }
+.ui-row-end { flex: none; margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+a.ui-row:hover { background: var(--hover); text-decoration: none; }
+/* Button row: a whole row that is one button, left-aligned. A plain button centres its content; this reset (the cause of Tasks' centred titles) keeps the row's text at the left. */
+button.ui-row { display: flex; width: 100%; min-height: var(--control-h); justify-content: flex-start; padding: var(--sp-2) 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; font-weight: 400; text-align: left; }
+button.ui-row:hover:not(:disabled) { background: var(--hover); }
+button.ui-row:last-child { border-bottom: none; }
+
+/* ---------- status chips (word first; an icon shape and a colour reinforce it) ---------- */
+.ui-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 2px 8px; border: 1px solid transparent; border-radius: var(--r-xs); background: var(--surface-sunken); color: var(--fg-2); font-size: var(--fs-xs); font-weight: 600; line-height: 1.35; white-space: nowrap; }
+.ui-chip .ui-icon { width: 12px; height: 12px; flex: none; }
+.ui-chip--overdue { background: var(--neg-soft); color: var(--neg-text); border-color: color-mix(in srgb, var(--neg) 30%, var(--surface)); }
+.ui-chip--warning { background: var(--warn-soft); color: var(--warn-text); border-color: color-mix(in srgb, var(--warn) 30%, var(--surface)); }
+.ui-chip--done { background: var(--pos-soft); color: var(--pos-text); border-color: color-mix(in srgb, var(--pos) 30%, var(--surface)); }
+.ui-chip--info { background: var(--info-soft); color: color-mix(in srgb, var(--info) 78%, var(--fg)); border-color: color-mix(in srgb, var(--info) 30%, var(--surface)); }
+.ui-chip--active { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-line); }
+
+/* ---------- segmented control (choose among options or filters) ---------- */
+.ui-seg { display: inline-flex; gap: 2px; max-width: 100%; padding: 3px; overflow-x: auto; border: 1px solid var(--line); border-radius: calc(var(--r-md) + 2px); background: var(--surface-sunken); scrollbar-width: none; }
+.ui-seg::-webkit-scrollbar { display: none; }
+.ui-seg > button { min-height: var(--control-h-sm); padding: 0 var(--sp-3); border: 0; border-radius: var(--r-md); background: none; color: var(--fg-2); font-weight: 500; white-space: nowrap; }
+.ui-seg > button:hover:not(:disabled) { background: var(--hover); }
+/* The chosen option is shown by weight and a clear ring as well as a fill, so it does not rely on colour. */
+.ui-seg > button[aria-pressed="true"], .ui-seg > button[aria-checked="true"], .ui-seg > button[aria-selected="true"], .ui-seg > button.on { background: var(--surface); color: var(--fg); font-weight: 650; box-shadow: var(--shadow-1), 0 0 0 1px var(--control-line); }
+
+/* ---------- tabs (switch views within a page) ---------- */
+.ui-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.ui-tabs::-webkit-scrollbar { display: none; }
+.ui-tabs > button, .ui-tabs > a { display: inline-flex; align-items: center; min-height: var(--control-h); margin-bottom: -1px; padding: 0 var(--sp-3); border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; color: var(--fg-2); font-weight: 500; text-decoration: none; white-space: nowrap; }
+.ui-tabs > button:hover:not(:disabled), .ui-tabs > a:hover { background: var(--hover); text-decoration: none; }
+.ui-tabs > [aria-selected="true"], .ui-tabs > [aria-current="page"], .ui-tabs > .on, .ui-tabs > .active { border-bottom-color: var(--accent); color: var(--accent-text); font-weight: 650; }
+
+/* ---------- date tile and inline date ---------- */
+/* The weekday and month labels are 11px bold capitals: the one documented exception to the 12px floor (--fs-micro). The tile always carries the full date as
+   hidden text for assistive technology, and its day number is large; tone (today, tomorrow, overdue, weekend, special) reinforces and never replaces words. */
+.ui-dtile { --dt-bg: var(--surface-soft); --dt-line: var(--line); --dt-ink: var(--fg); --dt-sub: var(--muted); display: inline-flex; flex-direction: column; align-items: center; justify-content: center; flex: none; min-width: 54px; padding: 6px 4px; border: 1px solid var(--dt-line); border-radius: calc(var(--r-md) + 2px); background: var(--dt-bg); color: var(--dt-ink); line-height: 1; text-align: center; }
+.ui-dtile-wd, .ui-dtile-mo, .ui-dtile-cap { font-size: var(--fs-micro); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dt-sub); }
+.ui-dtile-day { margin: 3px 0; font-size: 1.4375rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.ui-dtile-cap { margin-top: 3px; letter-spacing: 0.04em; }
+.ui-dtile--sm { min-width: 46px; padding: 5px 4px; }
+.ui-dtile--sm .ui-dtile-day { font-size: 1.125rem; margin: 2px 0; }
+.ui-dtile--weekend { --dt-bg: var(--surface-sunken); }
+.ui-dtile--tomorrow, .ui-dtile--today { --dt-bg: var(--accent-soft); --dt-line: var(--accent-line); --dt-ink: var(--accent-text); --dt-sub: var(--accent-text); }
+.ui-dtile--today { --dt-line: var(--accent); border-width: 2px; padding-block: 5px; }
+.ui-dtile--special { --dt-bg: var(--warn-soft); --dt-line: color-mix(in srgb, var(--warn) 40%, var(--surface)); --dt-ink: var(--warn-text); --dt-sub: var(--warn-text); border-width: 2px; padding-block: 5px; }
+.ui-dtile--overdue { --dt-bg: var(--neg-soft); --dt-line: var(--neg); --dt-ink: var(--neg-text); --dt-sub: var(--neg-text); border-width: 2px; padding-block: 5px; } /* a thicker edge is the shape cue for the strong states */
+.ui-dinline { color: var(--fg-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui-dinline b { color: var(--fg); font-weight: 700; }
+.ui-dinline--today { color: var(--accent-text); } .ui-dinline--today b { color: inherit; }
+.ui-dinline--overdue { color: var(--neg-text); font-weight: 600; } .ui-dinline--overdue b { color: inherit; }
+
+/* ---------- financial figure (the numbers arrive already formatted; nothing here adds anything up) ---------- */
+.ui-figure { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; padding: var(--sp-2) var(--sp-3); border: 1px solid transparent; border-radius: var(--r-md); }
+.ui-figure-label { font-size: var(--fs-sm); font-weight: 600; color: var(--fg-2); }
+.ui-figure-value { font-size: var(--fs-metric); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui-figure--lg .ui-figure-value { font-size: var(--fs-display); letter-spacing: -0.03em; }
+.ui-figure-desc { font-size: var(--fs-sm); color: var(--muted); }
+.ui-figure-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border: 1px dashed currentColor; border-radius: var(--r-xs); font-size: var(--fs-xs); font-weight: 600; color: var(--fg-2); }
+.ui-figure-tag .ui-icon { width: 12px; height: 12px; flex: none; }
+.ui-figure--estimated { border: 1px dashed var(--control-line); }
+.ui-figure--unknown { border: 1px dashed var(--warn); background: var(--warn-soft); }
+.ui-figure--unknown .ui-figure-value { font-size: var(--fs-lg); color: var(--warn-text); white-space: normal; }
+.ui-figure--unknown .ui-figure-tag { color: var(--warn-text); }
+.ui-figure--good .ui-figure-value { color: var(--pos-text); } .ui-figure--bad .ui-figure-value { color: var(--neg-text); } .ui-figure--warn .ui-figure-value { color: var(--warn-text); }
+.ui-figure-bar { height: 8px; margin-top: var(--sp-1); overflow: hidden; border-radius: 4px; background: var(--surface-sunken); }
+.ui-figure-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.ui-figure--estimated .ui-figure-bar > span { background: repeating-linear-gradient(135deg, var(--accent) 0 5px, color-mix(in srgb, var(--accent) 50%, var(--surface)) 5px 8px); } /* hatched: an estimate looks different from a known amount */
+.ui-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.ui-band > * + * { border-left: 1px solid var(--line); }
+@media (max-width: 640px) { .ui-figure--lg .ui-figure-value { font-size: var(--fs-title-sm); } .ui-band > * + * { border-left: none; border-top: 1px solid var(--line); } }
+
+/* ---------- empty and loading ---------- */
+.ui-empty-line { margin: var(--sp-2) 0; font-size: var(--fs-sm); color: var(--muted); }
+
+/* ---------- dialog sheet (opt-in; nothing uses it yet, see Modal's `variant`) ---------- */
+/* Below 640px a sheet rises from the bottom edge. Wider than that it is the ordinary dialog. Scroll locking and the on-screen keyboard are left for the phase that adopts it (D10). */
+@media (max-width: 640px) {
+  .modal-back.modal-back--sheet { align-items: flex-end; padding: 0; }
+  .modal.modal--sheet { width: 100%; max-height: 92vh; max-height: 92dvh; border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
+  .modal.modal--sheet::before { content: ''; display: block; width: 36px; height: 4px; margin: 0 auto var(--sp-3); border-radius: 2px; background: var(--line-strong); }
+}
+
+/* ---------- forced colours (Windows high contrast): keep selected and status states visible without fills ---------- */
+@media (forced-colors: active) {
+  .ui-chip, .ui-dtile, .ui-figure--estimated, .ui-figure--unknown { border: 1px solid CanvasText; }
+  .ui-seg > [aria-pressed="true"], .ui-seg > [aria-checked="true"], .ui-seg > [aria-selected="true"], .ui-seg > .on { outline: 2px solid Highlight; }
+  .ui-tabs > [aria-selected="true"], .ui-tabs > [aria-current="page"], .ui-tabs > .on, .ui-tabs > .active { border-bottom-color: Highlight; }
+}

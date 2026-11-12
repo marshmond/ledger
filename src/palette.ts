@@ -90,6 +90,24 @@ export interface PaletteDef {
 export type PresetId = 'teal' | 'navy' | 'forest' | 'slate' | 'signature';
 export type PaletteId = 'classic' | PresetId | 'custom';
 
+/**
+ * D6: the Signature appearance tokens that are the same in light and dark. They are the shared components' look (src/ui/tokens.css gives each its
+ * old value, so only this preset changes): larger card and dialog corners, white fields, soft search box, a stronger error border and label colour,
+ * the accent tick on check boxes, bold buttons, a larger tighter page title, soft table headings in small capitals, a small line icon where
+ * Classic shows a text glyph, and the chart surface, text, grid and axis (series 1 to 4 differ by mode, below). Values that name other variables
+ * (var(--surface) and so on) are resolved on the page, so they follow the colours of whichever mode is on.
+ */
+const SIGNATURE_SHARED: Record<string, string> = {
+  '--r-lg': '16px', '--r-modal': '20px',
+  '--search-bg': 'var(--surface-soft)', '--disabled-bg': 'var(--surface-sunken)', '--disabled-ink': 'var(--muted)',
+  '--invalid-line': 'var(--neg)', '--label-fg': 'var(--fg-2)', '--ctl-accent': 'var(--accent)', '--w-btn': '600',
+  '--h1-size': 'var(--fs-title)', '--h1-weight': '700', '--h1-ls': '-0.03em', '--h1-lh': '1.1', '--ui-eyebrow': 'block',
+  '--th-bg': 'var(--surface-soft)', '--th-fg': 'var(--fg-2)', '--th-fs': 'var(--fs-xs)', '--th-tt': 'uppercase', '--th-ls': '0.04em',
+  '--ui-glyph': 'inline-block', '--ui-glyph-legacy': 'none',
+  '--viz-surface': 'var(--surface)', '--viz-ink': 'var(--fg)', '--viz-ink-2': 'var(--fg-2)', '--viz-ink-3': 'var(--muted)',
+  '--viz-grid': 'var(--line)', '--viz-axis': 'var(--line-strong)',
+};
+
 export const PRESETS: PaletteDef[] = [
   {
     id: 'teal',
@@ -140,6 +158,10 @@ export const PRESETS: PaletteDef[] = [
         '--shadow-3': '0 2px 6px rgba(14, 26, 51, 0.08), 0 24px 60px rgba(14, 26, 51, 0.18)',
         '--r-md': '10px', '--fs-md': '1rem',
         '--font-sans': "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        ...SIGNATURE_SHARED,
+        '--field-bg': '#FFFFFF', '--btn-bg-hover': '#1C2D52',
+        '--scrim': 'rgba(11, 18, 32, 0.55)', '--toast-bg': '#0E1A33', '--toast-ink': '#FFFFFF', '--toast-edge': 'var(--shadow-2)',
+        '--viz-s1': '#1D3A6B', '--viz-s2': '#267880', '--viz-s3': '#A8730F', '--viz-s4': '#8391AA',
       },
       dark: {
         '--surface-raised': '#182339', '--surface-soft': '#182339', '--surface-sunken': '#1E2B46',
@@ -151,6 +173,10 @@ export const PRESETS: PaletteDef[] = [
         '--shadow-3': '0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.65)',
         '--r-md': '10px', '--fs-md': '1rem',
         '--font-sans': "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        ...SIGNATURE_SHARED,
+        '--field-bg': '#0E1727', '--btn-bg-hover': '#216D75',
+        '--scrim': 'rgba(3, 7, 14, 0.7)', '--toast-bg': '#223454', '--toast-ink': '#E9EEF7', '--toast-edge': 'var(--shadow-2), inset 0 0 0 1px #3A4D72',
+        '--viz-s1': '#8FB0E6', '--viz-s2': '#3A9AA4', '--viz-s3': '#E5B865', '--viz-s4': '#D0D8E6',
       },
     },
   },

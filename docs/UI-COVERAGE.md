@@ -12,7 +12,7 @@ The goal is **every page, surface, view and dialog in Ledger**, including every 
 `L` light, `D` dark, `375` phone width, `1440` desktop width, `Kbd` keyboard and focus, `Func` functional acceptance (existing tests plus the flow check passed, nothing about behaviour changed).
 A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The visual checklist V1 to V12 and functional checklist F1 to F6 are in the D4 roadmap (section 6).
 
-**Everything below starts at `NS` / `.`.** D5 changed no page, so no row has real implementation evidence yet. The Signature preset exists, but no screen has been restyled for it.
+**D5 left everything at `NS` / `.`. D6 (2026-11-11, built, uncommitted) restyled the shared component layer, so a few GLOBAL SURFACES now read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on).** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
 
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family colour picker; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
@@ -37,13 +37,13 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-01 | Global header: switcher button, Search, Add, Sync chip, Settings | `src/core/ModuleBar.tsx` | D7 | NS | . | . | . | . | . | . |
 | S-02 | Module switcher list (11 modules, 4 groups) | `src/core/moduleGroups.ts` | D7 | NS | . | . | . | . | . | . |
 | S-03 | Sync status chip and pop-over | `src/core/SyncChip.tsx` | D7 | NS | . | . | . | . | . | . |
-| S-04 | Add button (desktop in-bar, phone round button) | `src/shell/QuickAdd.tsx` | D7, D10 | NS | . | . | . | . | . | . |
-| S-05 | Add box (Quick Add) | `src/shell/AddBox.tsx` | D10 | NS | . | . | . | . | . | . |
-| S-06 | Search dialog | `src/shell/SearchDialog.tsx` | D6, D20 | NS | . | . | . | . | . | . |
+| S-04 | Add button (desktop in-bar, phone round button) | `src/shell/QuickAdd.tsx` | D7, D10 | BLT | Y | Y | Y | Y | Y | . |
+| S-05 | Add box (Quick Add) | `src/shell/AddBox.tsx` | D10 | NS | . | Y | . | Y | Y | . |
+| S-06 | Search dialog | `src/shell/SearchDialog.tsx` | D6, D20 | NS | . | Y | . | Y | Y | . |
 | S-07 | Task creator dialog | `src/modules/tasks/QuickTask.tsx` | D11 | NS | . | . | . | . | . | . |
-| S-08 | Shared Modal and ConfirmDialog | `src/shell/Modal.tsx` | D6 | NS | . | . | . | . | . | . |
-| S-09 | Toasts (Undo) | `src/ui/Toast.tsx` | D6 | NS | . | . | . | . | . | . |
-| S-10 | Backup reminder banner | `src/shell/BackupReminder.tsx` | D6 | NS | . | . | . | . | . | . |
+| S-08 | Shared Modal and ConfirmDialog | `src/shell/Modal.tsx` | D6 | BLT | . | Y | . | Y | Y | Y |
+| S-09 | Toasts (Undo) | `src/ui/Toast.tsx` | D6 | BLT | . | Y | . | Y | . | . |
+| S-10 | Backup reminder banner | `src/shell/BackupReminder.tsx` | D6 | NS | . | Y | . | Y | . | . |
 | S-11 | Module loading and load-failed states | `src/shell/ModuleLoader.tsx` | D6 | NS | . | . | . | . | . | . |
 | S-12 | Skip link, route announcer, main focus | `src/shell/SkipAndRoute.tsx` | D7 | NS | . | . | . | . | . | . |
 | S-13 | Ledger desktop sidebar | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
@@ -54,11 +54,19 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-18 | Unknown-address fallback and legacy redirects | `src/core/legacy.ts` | all | NS | . | . | . | . | . | . |
 | S-19 | Print styles | `src/styles.css` | D19 | NS | . | . | . | . | . | . |
 | S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | NS | . | . | . | . | . | . |
-| S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline | `src/ui/components.tsx` | D6 | NS | . | . | . | . | . | . |
+| S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline | `src/ui/components.tsx` | D6 | BLT | Y | Y | . | Y | . | Y |
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
-| S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | NS | . | . | . | . | . | . |
+| S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | . | Y | . | Y | . | . |
 
 S-20 note: D5 deliberately left the browser-bar colour, `index.html` and the manifest alone (the default look is unchanged). When Signature is selected the bar takes the Signature canvas colour at run time; the fixed values move in D21.
+
+### 1.1 D6 evidence behind the marks above, and what was seen on the routed pages (no routed row changed)
+
+Everything below was seen under **Ledger Signature**, in the Claude app's built-in browser, against the fictional D1 demo household (own address, sync off). Screenshots were kept outside the repository.
+
+- **Marks recorded on the surfaces:** `D` = Signature dark, desktop width (about 1280 px); `1440` = the same desktop view (the pane could not be made wider, so 1440 is read as "desktop width", not measured at 1440); `L` = Signature light; `375` = phone width. **S-04** (Add button): navy in light, teal in dark, round on a phone; focus returned to it after the Add box closed. **S-05/S-06/S-08**: opened, Tab kept inside, Escape closed, focus returned to the opener (Add button, Delete account button); in the confirmation Cancel had focus first. **S-09**: seen live in Signature dark on the Tasks page; the Undo path itself was NOT exercised live (the 8-second window passed), so Func stays `.`. **S-10**: the unsaved-data banner on Accounts. **S-21**: gallery and pages in both themes; text and structure pinned by `src/shell/d6Shared.test.tsx`. **S-23**: Reports chart (spending, income) in dark.
+- **Routed pages looked at in Signature** (inherited look only, never a redesign): light desktop for Today, Calendar, Tasks, Projects, Home & Assets, Household Services, Bills, Family, Contacts, Ledger Home, Ledger Transactions and Household Finances (all eleven modules); dark desktop for Ledger Transactions, Ledger Accounts, Ledger Reports, Household Finances, Calendar and Family (Family in the older "Deep navy" palette); phone width (375 px) for Tasks, Ledger Transactions and Household Finances. Horizontal-overflow measurement only (no visual check) on 17 addresses at 375 px and 14 at 320 px, light: none overflowed.
+- **Not checked:** light mode on Ledger Reports, any page at 320 px visually, Signature dark at phone width, every in-page view and every dialog call site (62), real phones, screen readers, forced-colours mode.
 
 ## 2. Routed page destinations (59)
 
@@ -283,19 +291,19 @@ W-29 note: D5 added the Signature choice to Appearance and left the rest of the 
 
 Measured by `src/shell/uiBaseline.ts` at commit `8ab1789` plus the D5 change. The aim is for them to go **down**; `src/shell/uiResidue.test.ts` prints each count against this baseline on every run and **never fails** because one moved (D5 release correction). The targets are the D4 roadmap (section 7) and are reached phase by phase, not in D5.
 
-| Measure | D4 baseline | D5 measured | Target |
-|---|---|---|---|
-| Static inline `style={{` (non-test screens) | 307 in 83 files | 307 in 83 files | only data-driven values |
-| Raw `border-radius` pixel values in CSS (including 999px pills) | 67 | 67 | 0 outside token files and chart geometry |
-| Raw `font-size` px or rem values in CSS | 36 | 36 | tokens only |
-| Font sizes below 12 px (px only / px and rem) | 9 | 9 / 11 | none except the date-tile label |
-| Hex colours in CSS | 152 | 152 | only palettes and chart sets |
-| Hex colours in module CSS | 56 | 56 | 0 |
-| Own `<h1>` instead of `PageHeader` (files) | 13 | 13 | listed exceptions only |
-| `className="card…"` uses | 395 | 395 | n/a (restyled in place) |
-| Browser-native `confirm()` calls | 37 in 24 files | 37 in 24 files | 0, or owner-accepted list (OD-6) |
-| `<Modal>` sites | 62 in 41 files | 62 in 41 files | not above 62 |
-| `!important` | 11 | 11 | not above 11 |
+| Measure | D4 baseline | D5 measured | D6 measured | Target |
+|---|---|---|---|---|
+| Static inline `style={{` (non-test screens) | 307 in 83 files | 307 in 83 files | 308 in 84 files (one data-driven bar width in `Figure.tsx`) | only data-driven values |
+| Raw `border-radius` pixel values in CSS (including 999px pills) | 67 | 67 | 69 (two in the new stylesheet: a 4px bar, a 2px sheet handle) | 0 outside token files and chart geometry |
+| Raw `font-size` px or rem values in CSS | 36 | 36 | 38 (two date-tile day sizes in the new stylesheet) | tokens only |
+| Font sizes below 12 px (px only / px and rem) | 9 | 9 / 11 | 9 / 11 | none except the date-tile label |
+| Hex colours in CSS | 152 | 152 | 150 | only palettes and chart sets |
+| Hex colours in module CSS | 56 | 56 | 56 | 0 |
+| Own `<h1>` instead of `PageHeader` (files) | 13 | 13 | 13 | listed exceptions only |
+| `className="card…"` uses | 395 | 395 | not re-measured | n/a (restyled in place) |
+| Browser-native `confirm()` calls | 37 in 24 files | 37 in 24 files | 37 in 24 files | 0, or owner-accepted list (OD-6) |
+| `<Modal>` sites | 62 in 41 files | 62 in 41 files | 62 in 41 files | not above 62 |
+| `!important` | 11 | 11 | 11 | not above 11 |
 
 Discrepancies found while re-measuring (none changed the baseline): D4's "9 font sizes below 12 px" counts `px` values only; the two further `rem` values (0.7rem and 0.68rem) make 11. D4's "37 confirm()" counts calls with a message; the source also has five local functions named `confirm` (not the browser's) which are not counted.
 

@@ -105,6 +105,50 @@
   --mc-gray: #6b7280;
   --mc-ink-mix: 58%;   /* monogram text: this much of the member colour mixed into the text colour (72% failed 4.5:1 for Gold and Teal in D3.4) */
   --mc-tint-mix: 16%;  /* monogram tile fill: this much of the member colour mixed into the surface */
+
+  /* ---------------------------------------------------------------------------------------------------------------------------
+     D6 (shared components). Appearance tokens for the shared layer. EVERY value below is exactly what the stylesheet did before D6, so
+     Classic, the four older presets and any custom palette or saved theme look as they did. Only the Signature preset (src/palette.ts
+     `extras`) gives them other values; that is how the shared components "speak Signature" without forcing it on anyone else.
+     src/shell/d6Shared.test.ts pins each default. Names avoid the prefixes the D5 test reserves for hex colours (surface, fg, control, btn, info).
+     --------------------------------------------------------------------------------------------------------------------------- */
+
+  /* Forms and buttons */
+  --field-bg: var(--bg);                  /* input, select, textarea fill */
+  --search-bg: var(--field-bg);           /* search boxes (Signature: the soft fill) */
+  --disabled-bg: var(--field-bg);         /* a disabled field (before D6 it looked like an enabled one) */
+  --disabled-ink: var(--fg);
+  --invalid-line: var(--control-line);    /* border of a field marked aria-invalid (Signature: the error colour) */
+  --label-fg: var(--muted);               /* field labels */
+  --ctl-accent: auto;                     /* tick of a check box or radio button (Signature: the accent) */
+  --w-btn: 500;                           /* button text weight */
+  --btn-bg-hover: color-mix(in srgb, var(--btn-bg) 88%, var(--fg));
+  /* Headings */
+  --h1-size: var(--fs-xl);
+  --h1-weight: 650;
+  --h1-ls: -0.01em;
+  --h1-lh: 1.25;
+  --ui-eyebrow: none;                     /* the small module name above a page title (only drawn when a page passes one) */
+  /* Tables */
+  --th-bg: var(--bg);
+  --th-fg: var(--muted);
+  --th-fs: var(--fs-sm);
+  --th-tt: none;
+  --th-ls: normal;
+  /* Dialogs and toasts */
+  --scrim: rgba(0, 0, 0, 0.5);
+  --r-modal: var(--r-lg);
+  --toast-bg: var(--fg);
+  --toast-ink: var(--bg);
+  --toast-edge: var(--shadow-2);          /* Signature adds a hairline in dark mode */
+  /* Icons next to text: before D6 a few shared pieces used a text glyph (the empty-state circle). Signature draws a small line icon instead. */
+  --ui-glyph: none;
+  --ui-glyph-legacy: inline;
+}
+
+/* A page title is one step smaller on a phone (only Signature reads this: --h1-size is --fs-xl for everyone else). */
+@media (max-width: 640px) {
+  :root { --fs-title: var(--fs-title-sm); }
 }
 
 /* Bigger touch targets on phones and touch screens. */

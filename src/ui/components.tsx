@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatCents } from '../lib/money';
+import { Icon } from './icons';
 
 /**
  * A page normally has ONE h1. A page that is shown inside another titled page (the pages under Settings) says so by providing level 2,
@@ -7,14 +8,16 @@ import { formatCents } from '../lib/money';
  */
 export const PageHeadingLevel = createContext<1 | 2>(1);
 
-/** Page title, one line of explanation, and the page's main action on the right. Longer help goes in `about`, collapsed until asked for. */
-export function PageHeader({ title, description, actions, about, className = '' }: { title: string; description?: ReactNode; actions?: ReactNode; about?: ReactNode; className?: string }) {
+/** Page title, one line of explanation, and the page's main action on the right. Longer help goes in `about`, collapsed until asked for. `eyebrow` is an optional module name shown above the title under Ledger Signature only. */
+export function PageHeader({ title, description, actions, about, className = '', eyebrow }: { title: string; description?: ReactNode; actions?: ReactNode; about?: ReactNode; className?: string; eyebrow?: string }) {
   const level = useContext(PageHeadingLevel);
   const Title = level === 2 ? 'h2' : 'h1';
   return (
     <>
       <header className={`page-head ${className}`}>
         <div className="page-head-text">
+          {/* D6: an optional small line above the title (a module name the PAGE passes; it is never worked out from the address). Drawn only under Ledger Signature, hidden from everyone else, and not a heading. */}
+          {eyebrow && <div className="ui-eyebrow ui-eyebrow--head">{eyebrow}</div>}
           <Title>{title}</Title>
           {description && <p className="page-desc">{description}</p>}
         </div>
@@ -34,12 +37,21 @@ export function PageHeader({ title, description, actions, about, className = '' 
 export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty">
-      <div className="empty-icon" aria-hidden="true">○</div>
+      <div className="empty-icon" aria-hidden="true">
+        {/* D6: the text circle stays for every palette; Ledger Signature swaps it for a line icon (both are decoration). */}
+        <span className="glyph-legacy">○</span>
+        <Icon name="inbox" size={22} />
+      </div>
       <strong>{title}</strong>
       {children && <p className="muted">{children}</p>}
       {action}
     </div>
   );
+}
+
+/** One quiet line for an empty list ("Nothing due this week."). Smaller than EmptyState, for inside a card or list. */
+export function EmptyLine({ children }: { children: ReactNode }) {
+  return <p className="ui-empty-line">{children}</p>;
 }
 
 /** A small labelled figure. */
@@ -53,12 +65,14 @@ export function Stat({ label, cents, tone }: { label: string; cents: number; ton
   );
 }
 
-/** A tinted notice. */
+const BANNER_ICON = { info: 'info', warn: 'warning', bad: 'alert', ok: 'check' } as const;
+
+/** A tinted notice. Under Ledger Signature a small shape icon sits before the title (hidden elsewhere), so the level is not carried by colour alone; the title text is unchanged. */
 export function Banner({ level = 'info', title, children, action }: { level?: 'info' | 'warn' | 'bad' | 'ok'; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className={`banner ${level}`} role={level === 'bad' ? 'alert' : undefined}>
       <div className="banner-text">
-        <strong>{title}</strong>
+        <strong>{BANNER_ICON[level] && <Icon name={BANNER_ICON[level]} />}{title}</strong>
         {children && <div className="muted">{children}</div>}
       </div>
       {action && <div className="banner-act">{action}</div>}

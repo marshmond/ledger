@@ -84,9 +84,13 @@ describe('D5 the tracker is well formed', () => {
     for (const v of views) expect(pageIds.has(v.cells[0].split(' ')[0]), `${v.id} -> ${v.cells[0]}`).toBe(true);
   });
 
-  it('a row is not accepted before anything has been built: nothing in D5 is beyond NS', () => {
+  it('a row is not accepted before it has been built: after D6 only five shared global surfaces are beyond NS, and they are BLT (built, not accepted)', () => {
     const beyond = [...pages, ...surfaces, ...views, ...workflows, ...dialogs, ...confirms].filter((r) => r.cells.some((c) => ['INH', 'BLT', 'CMT', 'DEP', 'ACC'].includes(c)));
-    expect(beyond.map((r) => r.id)).toEqual([]);
+    // D6 restyled the shared layer: the Add button colour (S-04), Modal and ConfirmDialog (S-08), Toast (S-09), PageHeader, EmptyState and Banner (S-21) and the chart
+    // surface and series (S-23). No routed page, view, workflow or dialog call site changed, and nothing may read ACC until all six marks are recorded.
+    // Add an ID here only in the change that builds it.
+    expect(beyond.map((r) => r.id).sort()).toEqual(['S-04', 'S-08', 'S-09', 'S-21', 'S-23']);
+    for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });
 
