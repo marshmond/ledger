@@ -20,6 +20,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D13.1 (2026-11-12, built and tested locally, uncommitted) rebuilt the composition of Today (T-01 and W-13 stay `BLT`; evidence in section 1.10; no tracker row, mark or count changed). D13 is committed and deployed as `bec7a86`.** **D13 (2026-11-12, built and tested locally, uncommitted) redesigned the Calendar page: C-01 and the four views IV-01 to IV-04 read `BLT` with the marks actually recorded (section 1.9), DL-03 and W-09 and W-10 read `BLT` for the parts section 1.9 names, W-11 and every other dialog row are untouched. `Kbd` is recorded only for C-01 and the Month view (a 30-stop Tab walk and arrow-key runs with synthetic key events); the other three views are left open. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
 
+**D14 (2026-11-12, built and tested locally, uncommitted) redesigned Projects, Home & Assets and Contacts: P-01, P-02, A-01, A-02, A-03, N-01 and N-02 read `BLT` with the marks actually recorded (section 1.11), the nine tab views IV-15 to IV-23 read `BLT` with `Func` only, and W-31, W-32 and W-36 read `BLT` for the parts section 1.11 names. IV-31 (the project task filter) was not driven and stays `NS`. DL-04, DL-05 and DL-06 (the module-owned dialogs) stay `NS`: their markup was not touched and D20 owns the dialog sweep. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.** D13.1 is committed and deployed as `11bb7e4` (Actions run #100 success, Pages deployment success).
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -156,6 +158,16 @@ D13.1 (2026-11-12) rebuilt the composition of T-01 Today (two columns, Household
 - **Final mobile correction (T-01 on a phone):** the first three days of Coming up with "Show all N items" and "Show fewer" (a real tap, Enter and Space; `aria-expanded`; the state is not saved), Cash outlook after Overdue at 640 px and narrower, checked at 375 and 320 (also 640 x 360, 375 x 560, 812 x 375), Signature light and dark and Classic, with Hide amounts, completion with Undo, an event link, the floating Add, a Tab walk that follows the page order, and three fictional preference profiles (none, an earlier layout, a saved layout) with no stored value changed. The desktop pictures are byte-identical to before. No tracker row or mark changed.
 - **Not checked:** real phones, screen readers, forced colors, Safari and Firefox, midnight rollover in a browser, a Tab walk on a phone with a physical keyboard, the other presets on a phone. T-01 stays `BLT`; the in-page cards and views of Today are tracked inside T-01.
 
+### 1.11 D14 evidence: Projects, Home & Assets, Contacts (built, NOT committed; nothing is `ACC`)
+
+D14 (2026-11-12) redesigned the composition of seven routed pages. Seen in headless Chrome on throwaway profiles holding the fictional D1 demo household plus a few invented edge cases (own address `localhost:5231`, sync off), driven by DevTools-protocol scripts. Screenshots are outside the repository (`Ledger-Design-Concepts\\D14-Evidence`, `baseline`, `Projects`, `Home-Assets`, `Contacts`, `Comparisons`). Report: `docs/LEDGER-SIGNATURE-D14-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real phone or a screen reader.**
+
+- **P-01 Projects, P-02 Project detail:** `L` and `D` Signature at 1440 and 375, plus 1024, 800 and 320 for overflow and columns, Classic light and Slate light in the sweep. `Func`: the four tab counts, every figure on the detail page (budget, planned, agreed, paid, left to pay, expected, left in budget, not planned) equal the baseline on the same data, create, edit, status change, archive and restore, and the permanent-delete dialog (it still blocks a project that has a commitment and shows its plan; nothing was deleted). `Kbd`: a Tab walk of P-01 only (the detail page was not walked).
+- **A-01 Overview, A-02 All assets, A-03 Asset detail:** the same widths and looks. `Func`: counts and warranty rows equal the baseline, search, type filter, Past tab, create, edit, the delete confirmation, the sensitive-field reveal. `Kbd`: a Tab walk of A-02 only.
+- **N-01 Directory, N-02 Contact page:** the same widths and looks. `Func`: every contact is listed, both same-name contacts are marked and kept apart, search, the Show filter, the duplicate-name warning (nothing is saved without the explicit choice), create, edit, no merge, archive or delete control, removal still refused for a contact in use. `Kbd`: a Tab walk of N-01 only; the focus ring covers the whole row.
+- **Sweep:** 220 combinations (11 views, 5 widths, 4 looks): no horizontal overflow, one h1 and no skipped heading level, every interactive control has a name. Phone touch targets under 44 px that remain: the Tasks check circle (28 px with a 46 px hit area, a shared control from the Tasks module).
+- **Not checked:** real phones, screen readers, forced colors, Safari and Firefox, budget-line, commitment and vendor edits on the project page (their code is unchanged except that two status labels now use the shared chip), the project task filter (IV-31), the asset maintenance, service and warranty dialogs.
+
 ### 1.9 D13 evidence: Calendar (built, NOT committed; nothing is `ACC`)
 
 Seen in headless Chrome on a throwaway profile holding the fictional D1 demo household (own address `localhost:5231`, sync off), driven by DevTools-protocol scripts. Screenshots are outside the repository (`DocumentsLedger-Design-ConceptsD13-Evidence`, `baseline` and `after`). Report: `docs/LEDGER-SIGNATURE-D13-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real phone or a screen reader.** There is no approved Calendar prototype; the design applies the approved Today and Tasks language.
@@ -179,11 +191,11 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| P-01 | `/projects` | `src/modules/projects/ProjectsPage.tsx` | D14 | NS | . | . | . | . | . | . |
-| P-02 | `/projects/:id` | `src/modules/projects/ProjectPage.tsx` | D14 | NS | . | . | . | . | . | . |
-| A-01 | `/assets` | `src/modules/assets/OverviewPage.tsx` | D14 | NS | . | . | . | . | . | . |
-| A-02 | `/assets/list` | `src/modules/assets/AssetsPage.tsx` | D14 | NS | . | . | . | . | . | . |
-| A-03 | `/assets/:id` | `src/modules/assets/AssetPage.tsx` | D14 | NS | . | . | . | . | . | . |
+| P-01 | `/projects` | `src/modules/projects/ProjectsPage.tsx` | D14 | BLT | Y | Y | Y | Y | Y | Y |
+| P-02 | `/projects/:id` | `src/modules/projects/ProjectPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
+| A-01 | `/assets` | `src/modules/assets/OverviewPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
+| A-02 | `/assets/list` | `src/modules/assets/AssetsPage.tsx` | D14 | BLT | Y | Y | Y | Y | Y | Y |
+| A-03 | `/assets/:id` | `src/modules/assets/AssetPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
 
 ### 2.3 Household Services, Bills & Subscriptions (9)
 
@@ -207,8 +219,8 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 | F-01 | `/family` | `src/modules/family/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
 | F-02 | `/family/m/:id` | `src/modules/family/MemberPage.tsx` | D9, D15 | NS | . | . | . | . | . | . |
 | F-03 | `/family/dates` | `src/modules/family/DatesPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| N-01 | `/contacts` | `src/modules/contacts/DirectoryPage.tsx` | D14 | NS | . | . | . | . | . | . |
-| N-02 | `/contacts/c/:id` | `src/modules/contacts/ContactPage.tsx` | D14 | NS | . | . | . | . | . | . |
+| N-01 | `/contacts` | `src/modules/contacts/DirectoryPage.tsx` | D14 | BLT | Y | Y | Y | Y | Y | Y |
+| N-02 | `/contacts/c/:id` | `src/modules/contacts/ContactPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
 
 ### 2.5 Settings (5)
 
@@ -284,15 +296,15 @@ Views share their page's address. Each needs its page's checks plus its own empt
 | IV-12 | K-01 Tasks | Waiting | D11 | BLT | . | . | . | . | . | Y |
 | IV-13 | K-01 Tasks | Completed | D11 | BLT | . | . | . | . | . | Y |
 | IV-14 | K-01 Tasks | Deleted | D11 | BLT | . | . | . | . | . | Y |
-| IV-15 | P-01 Projects | Open | D14 | NS | . | . | . | . | . | . |
-| IV-16 | P-01 Projects | Finished | D14 | NS | . | . | . | . | . | . |
-| IV-17 | P-01 Projects | Archived | D14 | NS | . | . | . | . | . | . |
-| IV-18 | P-01 Projects | All | D14 | NS | . | . | . | . | . | . |
-| IV-19 | A-02 Assets list | In use | D14 | NS | . | . | . | . | . | . |
-| IV-20 | A-02 Assets list | Stored | D14 | NS | . | . | . | . | . | . |
-| IV-21 | A-02 Assets list | Past (with sold, disposed, replaced sub-filter) | D14 | NS | . | . | . | . | . | . |
-| IV-22 | A-02 Assets list | Archived | D14 | NS | . | . | . | . | . | . |
-| IV-23 | A-02 Assets list | All | D14 | NS | . | . | . | . | . | . |
+| IV-15 | P-01 Projects | Open | D14 | BLT | . | . | . | . | . | Y |
+| IV-16 | P-01 Projects | Finished | D14 | BLT | . | . | . | . | . | Y |
+| IV-17 | P-01 Projects | Archived | D14 | BLT | . | . | . | . | . | Y |
+| IV-18 | P-01 Projects | All | D14 | BLT | . | . | . | . | . | Y |
+| IV-19 | A-02 Assets list | In use | D14 | BLT | . | . | . | . | . | Y |
+| IV-20 | A-02 Assets list | Stored | D14 | BLT | . | . | . | . | . | Y |
+| IV-21 | A-02 Assets list | Past (with sold, disposed, replaced sub-filter) | D14 | BLT | . | . | . | . | . | Y |
+| IV-22 | A-02 Assets list | Archived | D14 | BLT | . | . | . | . | . | Y |
+| IV-23 | A-02 Assets list | All | D14 | BLT | . | . | . | . | . | Y |
 | IV-24 | L-14 Investments | Accounts | D17 | NS | . | . | . | . | . | . |
 | IV-25 | L-14 Investments | Realized gains | D17 | NS | . | . | . | . | . | . |
 | IV-26 | L-14 Investments | Prices and assumptions | D17 | NS | . | . | . | . | . | . |
@@ -372,12 +384,12 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-28 | Device sync set-up and conflicts | D19 | NS |
 | W-29 | Appearance: palette, custom palette builder, saved themes | D5, D19 | NS |
 | W-30 | General and Calendar settings | D19 | NS |
-| W-31 | Projects: create, edit, delete (plan), budget lines, commitments, vendors | D14 | NS |
-| W-32 | Assets: add, maintenance, service, warranty, lifecycle, delete | D14 | NS |
+| W-31 | Projects: create, edit, delete (plan), budget lines, commitments, vendors | D14 | BLT |
+| W-32 | Assets: add, maintenance, service, warranty, lifecycle, delete | D14 | BLT |
 | W-33 | Household Services: arrangements, visits, payments, schedule changes, contract dates, hand-offs | D15 | NS |
 | W-34 | Bills: add/edit, periods and payments, lifecycle, discovery, review list, links | D15 | NS |
 | W-35 | Family: member add/edit (contact choice, colour), dates, important contacts, removal | D9, D15 | NS |
-| W-36 | Contacts: add/edit/remove, where used | D14 | NS |
+| W-36 | Contacts: add/edit/remove, where used | D14 | BLT |
 | W-37 | Household Finances review: period, disclosures, hide amounts | D12 | BLT |
 
 W-29 note: D5 added the Signature choice to Appearance and left the rest of the flow untouched; the flow is re-accepted in D19.

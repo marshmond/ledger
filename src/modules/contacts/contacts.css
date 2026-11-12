@@ -1,11 +1,8 @@
 /* Contacts & Relationships (C1). Uses the app's colour variables so light and dark both work. */
-.ct-main { padding-bottom: var(--sp-6, 48px); max-width: min(900px, 100%); }
+.ct-main { padding-bottom: var(--sp-6, 48px); max-width: min(1240px, 100%); }
 .ct-tools { display: grid; grid-template-columns: 1fr 220px; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .ct-tools .f { min-width: 0; }
 .ct-list { margin: 0; padding: 0; }
-.ct-row { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); min-height: 44px; overflow-wrap: anywhere; }
-.ct-list > .ct-row:last-child { border-bottom: none; }
-.ct-name { font-weight: 600; display: inline-flex; align-items: center; min-height: 32px; align-self: flex-start; }
 .ct-rel { color: var(--fg); }
 .ct-same { color: var(--warn, #9a6700); }
 .ct-warn { border: 1px solid var(--warn, #9a6700); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); min-width: 0; }
@@ -45,4 +42,60 @@
 @media (max-width: 480px) {
   .ct-ref-title { min-height: 44px; }
   .ct-refgroup .link, .ct-refgroup .btn { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* D14: the directory as a card of hairline rows (initials tile, name and relationship, contact details, relationships, where used), and the Contact page as a
+   summary card beside two columns. A Contact's tile is always neutral: Family colors belong to Family members only. */
+.ct-dir { padding: var(--sp-3) var(--sp-4); }
+.ct-dir-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.ct-dir-head .card-title { margin: 0; }
+.ct-row { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1.4fr) minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, 1fr); align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2); border-bottom: 1px solid var(--line); min-height: 56px; overflow-wrap: anywhere; border-radius: var(--r-md); }
+.ct-row:last-child { border-bottom: none; }
+.ct-row:hover { background: var(--hover); }
+.ct-name { font-weight: 650; display: inline-flex; align-items: center; min-height: 32px; align-self: flex-start; color: var(--fg); text-decoration: none; }
+.ct-name::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-md); } /* the whole row is the link's target */
+.ct-name:hover { text-decoration: underline; }
+.ct-name:focus-visible { outline: none; }
+.ct-name:focus-visible::after { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ct-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ct-rels { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.ct-mono { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface-sunken); color: var(--fg-2); font-weight: 700; font-size: var(--fs-sm); letter-spacing: 0.02em; }
+.ct-mono--lg { width: 64px; height: 64px; border-radius: var(--r-lg); font-size: var(--fs-lg); }
+.ct-hero { display: flex; align-items: center; gap: var(--sp-4); margin-bottom: var(--sp-3); }
+.ct-hero-body { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; }
+.ct-hero-rels { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); }
+.ct-strip { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); margin: 0; padding: 0; }
+.ct-strip li { display: flex; align-items: baseline; gap: var(--sp-2); }
+.ct-strip strong { font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
+.ct-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
+.ct-col { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.ct-col > .card { margin-bottom: 0; }
+@media (max-width: 1000px) {
+  .ct-row { grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr); }
+  .ct-row .ct-reach { grid-column: 2 / -1; }
+  .ct-row .ct-rels, .ct-row .ct-used { grid-column: 2 / -1; }
+  .ct-layout { grid-template-columns: minmax(0, 1fr); }
+  .ct-row .ct-reach:empty, .ct-row .ct-rels:empty { display: none; }
+  .ct-row { gap: var(--sp-1) var(--sp-3); }
+}
+@media (max-width: 600px) {
+  .ct-row { grid-template-columns: 40px minmax(0, 1fr); align-items: start; }
+  .ct-row .ct-reach, .ct-row .ct-rels, .ct-row .ct-used { grid-column: 2; }
+  .ct-hero { align-items: flex-start; }
+  .ct-mono--lg { width: 48px; height: 48px; }
+  .ct-dir { padding: var(--sp-3); }
+  .ct-tools { grid-template-columns: 1fr 1fr; }
+  .ct-tools .f:first-child { grid-column: 1 / -1; }
+}
+
+/* D14: the name link is the row's target on a phone (its pseudo-element covers the whole row, which is at least 56px tall) */
+@media (max-width: 600px) {
+  .ct-name { min-height: 44px; }
+}
+
+/* D14: on a narrow screen the two columns merge into one list and the contact's own details come first, then where it is used, then the cross-check and removal. */
+@media (max-width: 1000px) {
+  .ct-layout { gap: var(--sp-3); }
+  .ct-col { display: contents; }
+  .ct-col > section[aria-labelledby="ct-details"] { order: -1; }
 }

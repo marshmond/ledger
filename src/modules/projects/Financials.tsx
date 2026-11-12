@@ -9,8 +9,6 @@ const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behav
 
 interface Props {
   summary: ProjectSummary;
-  /** True when no overall budget is set, so the budget is the total of the lines. */
-  derived: boolean;
   warnings: Warning[];
   focusLine: number | null | undefined;
   onFocus: (line: number | null | undefined) => void;
@@ -19,25 +17,55 @@ interface Props {
   projectId?: number;
 }
 
-/** The money picture of one project: the headline figures, what needs attention, and the budget lines side by side. All figures come from Finance. */
-export default function Financials({ summary: s, derived, warnings, focusLine, onFocus, onFix, projectId }: Props) {
+/**
+ * The headline money figures of one project, in four groups that keep the different ideas apart: the plan (budget and its lines), what is committed
+ * (accepted agreements; quotes are shown but never counted), what has actually been spent (Finance transactions) and the outlook that follows from them.
+ * D14 only regrouped and restyled the figures that were already here; every value still comes straight from the Finance summary.
+ */
+export function FinancialBand({ summary: s, derived }: { summary: ProjectSummary; derived: boolean }) {
   const left = s.leftInBudgetCents;
+  const fig = (label: string, value: string, tone?: 'neg') => (
+    <div className="pj-fig"><span className="pj-fig-label">{label}</span><strong className={`pj-fig-value${tone ? ` ${tone}` : ''}`}>{value}</strong></div>
+  );
+  return (
+    <section className="card pj-band" aria-label="Project money">
+      <div className="pj-band-group">
+        <h2 className="pj-band-h">Plan</h2>
+        <div className="pj-band-figs">
+          {fig(derived ? 'Budget (total of lines)' : 'Project budget', formatCents(s.budgetCents))}
+          {fig('Planned in lines', formatCents(s.plannedTotalCents))}
+          {!derived && s.notYetPlannedCents !== 0 && fig(s.notYetPlannedCents < 0 ? 'Lines over budget by' : 'Not planned in lines', formatCents(Math.abs(s.notYetPlannedCents)), s.notYetPlannedCents < 0 ? 'neg' : undefined)}
+        </div>
+      </div>
+      <div className="pj-band-group">
+        <h2 className="pj-band-h">Committed</h2>
+        <div className="pj-band-figs">
+          <button className="pj-fig as-btn" onClick={() => jump('pj-commitments')} aria-label={`Agreed ${formatCents(s.agreedCents)}. Show commitments`}><span className="pj-fig-label">Agreed (accepted)</span><strong className="pj-fig-value">{formatCents(s.agreedCents)}</strong></button>
+          {s.quotedCents > 0 && <button className="pj-fig as-btn" onClick={() => jump('pj-commitments')}><span className="pj-fig-label">Quotes waiting (not counted)</span><strong className="pj-fig-value">{formatCents(s.quotedCents)}</strong></button>}
+        </div>
+      </div>
+      <div className="pj-band-group">
+        <h2 className="pj-band-h">Spent</h2>
+        <div className="pj-band-figs">
+          <button className="pj-fig as-btn" onClick={() => jump('pj-txns')} aria-label={`Paid ${formatCents(s.paidCents)}. Show transactions`}><span className="pj-fig-label">Paid so far</span><strong className="pj-fig-value">{formatCents(s.paidCents)}</strong></button>
+        </div>
+      </div>
+      <div className="pj-band-group">
+        <h2 className="pj-band-h">Outlook</h2>
+        <div className="pj-band-figs">
+          {fig('Left to pay', formatCents(s.leftToPayCents))}
+          {fig('Expected total cost', formatCents(s.expectedTotalCents), s.flags.overBudget ? 'neg' : undefined)}
+          {fig(left < 0 ? 'Over budget by' : 'Left in budget', formatCents(Math.abs(left)), left < 0 ? 'neg' : undefined)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** What needs attention on the project, where the money goes, and the budget lines side by side. All figures come from Finance. */
+export default function Financials({ summary: s, warnings, focusLine, onFocus, onFix, projectId }: Props) {
   return (
     <>
-      <section className="pj-summary" aria-label="Project money">
-        <div className="pj-stat"><span className="muted small">{derived ? 'Budget (total of lines)' : 'Project budget'}</span><strong>{formatCents(s.budgetCents)}</strong></div>
-        <div className="pj-stat"><span className="muted small">Planned in lines</span><strong>{formatCents(s.plannedTotalCents)}</strong></div>
-        <button className="pj-stat as-btn" onClick={() => jump('pj-commitments')} aria-label={`Agreed ${formatCents(s.agreedCents)}. Show commitments`}><span className="muted small">Agreed (accepted)</span><strong>{formatCents(s.agreedCents)}</strong></button>
-        <button className="pj-stat as-btn" onClick={() => jump('pj-txns')} aria-label={`Paid ${formatCents(s.paidCents)}. Show transactions`}><span className="muted small">Paid so far</span><strong>{formatCents(s.paidCents)}</strong></button>
-        <div className="pj-stat"><span className="muted small">Left to pay</span><strong>{formatCents(s.leftToPayCents)}</strong></div>
-        <div className="pj-stat"><span className="muted small">Expected total cost</span><strong className={s.flags.overBudget ? 'neg' : ''}>{formatCents(s.expectedTotalCents)}</strong></div>
-        <div className="pj-stat"><span className="muted small">{left < 0 ? 'Over budget by' : 'Left in budget'}</span><strong className={left < 0 ? 'neg' : ''}>{formatCents(Math.abs(left))}</strong></div>
-        {!derived && s.notYetPlannedCents !== 0 && (
-          <div className="pj-stat"><span className="muted small">{s.notYetPlannedCents < 0 ? 'Lines over budget by' : 'Not planned in lines'}</span><strong className={s.notYetPlannedCents < 0 ? 'neg' : ''}>{formatCents(Math.abs(s.notYetPlannedCents))}</strong></div>
-        )}
-        {s.quotedCents > 0 && <button className="pj-stat as-btn" onClick={() => jump('pj-commitments')}><span className="muted small">Quotes waiting (not counted)</span><strong>{formatCents(s.quotedCents)}</strong></button>}
-      </section>
-
       {warnings.length > 0 && (
         <section className="card pj-card pj-warnings" aria-labelledby="pj-warn-h">
           <h2 id="pj-warn-h">Needs attention</h2>

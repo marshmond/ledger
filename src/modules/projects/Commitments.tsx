@@ -4,6 +4,7 @@ import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
 import type { ProjectPiece } from '../../lib/txnProject';
 import { EmptyState } from '../../ui/components';
+import { StatusChip } from '../../ui/StatusChip';
 import { useToast } from '../../ui/Toast';
 import { activeSplit, COMMITMENT_LABEL, creditChangeOrderDraft, type CommitmentRecord, type CommitmentStatus } from './commitmentModel';
 import type { CommitmentDraft } from './CommitmentForm';
@@ -128,7 +129,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
       <li key={c.id} className="pj-contract">
         <div className="pj-contract-head">
           <span className="pj-contract-title"><strong>{c.data.title}</strong>{meta(c, row) && <span className="muted small">{meta(c, row)}</span>}</span>
-          <span className="pj-status s-active">Accepted{c.data.acceptedDate ? ` ${dayLabel(c.data.acceptedDate, { year: true })}` : ''}</span>
+          <StatusChip tone="active">Accepted{c.data.acceptedDate ? ` ${dayLabel(c.data.acceptedDate, { year: true })}` : ''}</StatusChip>
         </div>
         {m && (
           <dl className="pj-figures">
@@ -171,7 +172,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
       <li key={c.id} className="pj-contract">
         <div className="pj-contract-head">
           <span className="pj-contract-title"><strong>{c.data.title}</strong>{meta(c, row) && <span className="muted small">{meta(c, row)}</span>}</span>
-          <span className={`pj-status ${status === 'cancelled' ? 's-cancelled' : ''}`}>{COMMITMENT_LABEL[status]}</span>
+          <StatusChip tone={status === 'quoted' ? 'info' : 'neutral'}>{COMMITMENT_LABEL[status]}</StatusChip>
         </div>
         <p className="pj-amount">{formatCents(c.data.amountCents)} {status === 'quoted' && <span className="muted small">· not counted until you accept it</span>}</p>
         {m && m.paidCents > 0 && <p className="pj-flag" role="status">{formatCents(m.paidCents)} has been paid on this. It stays counted as spent; nothing more is expected.</p>}

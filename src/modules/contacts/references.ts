@@ -43,6 +43,9 @@ export function matchesFilter(filter: FilterId, f: ContactFacts, checked: boolea
   return f.facets.has(filter);
 }
 
+/** Pure: the relationship names for a row, in the fixed order ("Household member", "Service provider"), or an empty list. */
+export const facetList = (facets: ReadonlySet<ContactFacet>): string[] =>
+  (['member', 'important', 'provider', 'project'] as const).filter((x) => facets.has(x)).map((x) => FACET_LABEL[x]);
+
 /** Pure: "Household member, Service provider" for a row, or an empty string. */
-export const facetText = (facets: ReadonlySet<ContactFacet>): string =>
-  (['member', 'important', 'provider', 'project'] as const).filter((x) => facets.has(x)).map((x) => FACET_LABEL[x]).join(', ');
+export const facetText = (facets: ReadonlySet<ContactFacet>): string => facetList(facets).join(', ');

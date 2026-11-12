@@ -3,14 +3,18 @@ import { rovingKeys } from '../../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate } from '../../core/router';
 import { dayLabel } from '../../core/time';
+import { db } from '../../db';
 import { formatCents } from '../../lib/money';
+import { loadProjectSummary } from '../../lib/txnProject';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { StatusChip } from '../../ui/StatusChip';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import { loadTasks } from '../tasks/data';
 import { loadAllBudgetLines, loadProjects } from './data';
 import { progressChips, summarizeWork } from './work';
 import ProjectForm from './ProjectForm';
+import { groupProjects, isLive, progressTone, STATUS_TONE } from './presentation';
 import { budgetSummary, OPEN_STATUSES, STATUS_LABEL, type ProjectRecord } from './model';
 
 type Tab = 'open' | 'finished' | 'archived' | 'all';
@@ -35,11 +39,21 @@ const dates = (p: ProjectRecord) => {
   return '';
 };
 
+/** The Projects overview: filter tabs, then one card per project (grouped by status on the Open tab) with its status, progress and money at a glance. */
 export default function ProjectsPage() {
   const nav = useNavigate();
   const projects = useLiveQuery(() => loadProjects(), []);
   const lines = useLiveQuery(() => loadAllBudgetLines(), []) ?? [];
   const allTasks = useLiveQuery(() => loadTasks(), []) ?? [];
+  // The same Finance-based summary the project page uses, so "Agreed" and "Paid" here are the very figures shown there.
+  const money = useLiveQuery(async () => {
+    const m = new Map<number, { agreed: number; paid: number }>();
+    for (const p of await loadProjects()) {
+      const s = await loadProjectSummary(db, p.id);
+      if (s) m.set(p.id, { agreed: s.agreedCents, paid: s.paidCents });
+    }
+    return m;
+  }, []);
   const today = useToday() || todayISO();
   const [tab, setTab] = useState<Tab>('open');
   const [creating, setCreating] = useState(false);
@@ -51,6 +65,44 @@ export default function ProjectsPage() {
   }, [lines]);
   const counts = useMemo(() => Object.fromEntries(TABS.map((t) => [t.id, (projects ?? []).filter(t.show).length])) as Record<Tab, number>, [projects]);
   const shown = (projects ?? []).filter(TABS.find((t) => t.id === tab)!.show);
+  const groups = groupProjects(shown, tab === 'open');
+
+  const card = (p: ProjectRecord) => {
+    const ls = byProject.get(p.id) ?? [];
+    const b = budgetSummary(p.data.budgetCents, ls);
+    const mm = money?.get(p.id);
+    const meta = [dates(p), `${ls.length} budget ${ls.length === 1 ? 'line' : 'lines'}`, `${p.data.vendorContactIds.length} ${p.data.vendorContactIds.length === 1 ? 'vendor' : 'vendors'}`].filter(Boolean).join(' · ');
+    return (
+      <li key={p.id}>
+        <Link to={`/${p.id}`} className="pj-pcard">
+          <span className="pj-pcard-top">
+            <strong className="pj-pcard-title">{p.data.name}</strong>
+            <span className="pj-pcard-status">
+              <StatusChip tone={STATUS_TONE[p.data.status]}>{STATUS_LABEL[p.data.status]}</StatusChip>
+              {p.data.archived && <StatusChip>Archived</StatusChip>}
+            </span>
+          </span>
+          <span className="pj-pcard-meta">{meta}</span>
+          <span className="pj-chips" aria-label="Progress">
+            {progressChips(summarizeWork(allTasks, p.id, today), isLive(p)).map((c) => <StatusChip key={c.text} tone={progressTone(c.tone)} icon={false}>{c.text}</StatusChip>)}
+          </span>
+          <span className="pj-pcard-figs">
+            <span className="pj-fig">
+              <span className="pj-fig-label">Budget</span>
+              <span className="pj-fig-value">{b.budgetCents > 0 || !b.derived ? formatCents(b.budgetCents) : 'No budget yet'}</span>
+              {b.derived && b.budgetCents > 0 && <span className="pj-fig-note">from lines</span>}
+            </span>
+            {mm && (
+              <>
+                <span className="pj-fig"><span className="pj-fig-label">Agreed</span><span className="pj-fig-value">{formatCents(mm.agreed)}</span></span>
+                <span className="pj-fig"><span className="pj-fig-label">Paid so far</span><span className="pj-fig-value">{formatCents(mm.paid)}</span></span>
+              </>
+            )}
+          </span>
+        </Link>
+      </li>
+    );
+  };
 
   return (
     <div className="pj">
@@ -59,7 +111,7 @@ export default function ProjectsPage() {
         description="Renovations, trips and other big jobs: a budget made of lines, and the people involved."
         actions={<button className="btn primary" onClick={() => setCreating(true)}>New project</button>}
       />
-      <div className="pj-tabs" role="tablist" aria-label="Show" onKeyDown={rovingKeys}>
+      <div className="ui-seg pj-tabs" role="tablist" aria-label="Show" onKeyDown={rovingKeys}>
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} tabIndex={(tab === t.id) ? 0 : -1} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
             {t.label} <span className="count">{counts[t.id]}</span>
@@ -74,31 +126,7 @@ export default function ProjectsPage() {
           {EMPTY[tab]}
         </EmptyState>
       ) : (
-        <ul className="plain pj-list">
-          {shown.map((p) => {
-            const ls = byProject.get(p.id) ?? [];
-            const b = budgetSummary(p.data.budgetCents, ls);
-            return (
-              <li key={p.id}>
-                <Link to={`/${p.id}`} className="pj-row">
-                  <span className="pj-row-main">
-                    <strong>{p.data.name}</strong>
-                    <span className="pj-row-sub muted small">{[dates(p), `${ls.length} budget ${ls.length === 1 ? 'line' : 'lines'}`, `${p.data.vendorContactIds.length} ${p.data.vendorContactIds.length === 1 ? 'vendor' : 'vendors'}`].filter(Boolean).join(' · ')}</span>
-                    <span className="pj-chips" aria-label="Progress">
-                      {progressChips(summarizeWork(allTasks, p.id, today), !p.data.archived && OPEN_STATUSES.includes(p.data.status)).map((c) => <span key={c.text} className={`pj-chip ${c.tone ?? ''}`}>{c.text}</span>)}
-                    </span>
-                  </span>
-                  <span className="pj-row-side">
-                    <span className={`pj-status s-${p.data.status}`}>{STATUS_LABEL[p.data.status]}</span>
-                    {p.data.archived && <span className="pj-status s-archived">Archived</span>}
-                    <span className="pj-amount">{b.budgetCents > 0 || !b.derived ? formatCents(b.budgetCents) : 'No budget yet'}</span>
-                    {b.derived && b.budgetCents > 0 && <span className="muted small">from lines</span>}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <ul className="plain pj-grid">{groups.flatMap((g) => g.projects).map(card)}</ul>
       )}
 
       {creating && <ProjectForm onClose={() => setCreating(false)} onSaved={(id) => nav(`/${id}`)} />}

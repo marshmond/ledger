@@ -4,15 +4,20 @@ import { Link } from '../../core/router';
 import { store } from '../../core/store';
 import { dayLabel } from '../../core/time';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { DateTile } from '../../ui/DateTile';
+import { Figure } from '../../ui/Figure';
+import { StatusChip } from '../../ui/StatusChip';
 import { formatCents, todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import { loadAssets } from './data';
 import { attentionRows } from './overviewText';
 import { loadOverview } from './overviewData';
 import { isYear, type Overview } from './overview';
+import { topLevelPlaces } from './presentation';
 import { SERVICE_KIND_LABEL } from './service';
 import { GROUP_LABEL, type CostGroup } from './spending';
 import { SOON_DAYS } from './warranty';
+import { TYPE_LABEL } from './model';
 
 /** Written as constants (not inline) because the address check in core.test.ts reads inline addresses as Ledger pages. */
 const LIST = '/list';
@@ -27,8 +32,9 @@ const assetNames = (names: Map<number, string>, ids: number[]) => {
 };
 
 /**
- * The landing view of Home & Assets: what needs attention, what maintenance is coming, which warranties end soon, what was done lately and
- * what was spent. Every number is read from the same records the asset pages use (`overviewData.ts`); nothing is stored here.
+ * The landing view of Home & Assets: a band of counts, then what needs attention, what maintenance is coming, which warranties end soon, what was done
+ * lately and what was spent, beside a list of the places and top-level assets. Every number is read from the same records the asset pages use
+ * (`overviewData.ts`); nothing is stored here, and the counts in the band are the lengths of the lists below it.
  */
 export default function OverviewPage() {
   const today = useToday() || todayISO();
@@ -41,6 +47,7 @@ export default function OverviewPage() {
   if (!ov || !assets) return <div className="as"><PageHeader title="Home & Assets" /><p className="muted">Loading…</p></div>;
   const names = new Map(assets.map((a) => [a.id, a.data.name]));
   const rows = attentionRows(ov.attention);
+  const places = topLevelPlaces(assets);
   const contact = (id: number | null) => (id === null ? '' : contacts.find((c) => c.id === id)?.name ?? '');
 
   return (
@@ -57,72 +64,111 @@ export default function OverviewPage() {
         </EmptyState>
       ) : (
         <>
-          <section className="card as-card" aria-labelledby="ov-att-h">
-            <h2 id="ov-att-h">Needs attention</h2>
-            {rows.length === 0 ? <p className="as-ok" role="status">✓ Nothing needs attention right now.</p> : (
-              <ul className="plain as-items">
-                {rows.map((r) => (
-                  <li key={r.id}>
-                    <span aria-hidden="true">⚠ </span><strong>{r.text}</strong>{r.hint && <span className="muted small"> · {r.hint}</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <AttentionLinks ov={ov} names={names} />
+          <section className="card as-band ui-band" aria-label="At a glance">
+            <Figure label="Assets" value={ov.counts.total} description={`${ov.counts.inUse} in use`} />
+            <Figure label="Needs attention" value={rows.length} tone={rows.length > 0 ? 'warn' : 'default'} />
+            <Figure label="Upcoming maintenance" value={ov.upcomingTotal} />
+            <Figure label="Warranties ending soon" value={ov.attention.expiringWarranties.length} description={`next ${SOON_DAYS} days`} />
           </section>
 
-          <div className="as-ov-grid">
-            <section className="card as-card" aria-labelledby="ov-next-h">
-              <h2 id="ov-next-h">Upcoming maintenance</h2>
-              {ov.upcoming.length === 0 ? <p className="muted">No dated maintenance. Open an asset and use Add maintenance to schedule some.</p> : (
-                <ul className="plain as-items">
-                  {ov.upcoming.map((m) => (
-                    <li key={m.taskId}>
-                      <a href={`#/tasks?task=${m.taskId}`}><strong>{m.title}</strong></a>
-                      <div className="small">
-                        <Link to={`/${m.assetIds[0]}`}>{assetNames(names, m.assetIds)}</Link> · {m.overdue ? <span className="as-late">Overdue, was due {day(m.dueDate)}</span> : <>Due {day(m.dueDate)}</>}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {ov.upcomingTotal > ov.upcoming.length && <p className="muted small">{ov.upcomingTotal - ov.upcoming.length} more in <a href="#/tasks">Tasks</a>.</p>}
-            </section>
+          <div className="as-layout as-ov-layout">
+            <div className="as-col">
+              <section className="card as-card" aria-labelledby="ov-att-h">
+                <h2 id="ov-att-h">Needs attention</h2>
+                {rows.length === 0 ? <p className="as-ok" role="status">✓ Nothing needs attention right now.</p> : (
+                  <ul className="plain as-items">
+                    {rows.map((r) => (
+                      <li key={r.id}>
+                        <span aria-hidden="true">⚠ </span><strong>{r.text}</strong>{r.hint && <span className="muted small"> · {r.hint}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <AttentionLinks ov={ov} names={names} />
+              </section>
 
-            <section className="card as-card" aria-labelledby="ov-war-h">
-              <h2 id="ov-war-h">Warranties ending soon</h2>
-              {ov.warranties.length === 0 ? <p className="muted">No warranty ends in the next {SOON_DAYS} days.</p> : (
-                <ul className="plain as-items">
-                  {ov.warranties.map((w) => (
-                    <li key={`${w.assetId}:${w.warrantyId ?? 'old'}`}>
-                      <Link to={w.warrantyId === null ? `/${w.assetId}` : `/${w.assetId}?warranty=${w.warrantyId}`}><strong>{names.get(w.assetId)}</strong>{w.title !== 'Warranty' && <> · {w.title}</>}</Link>
-                      <div className="small">Ends {day(w.endDate)} <span className="muted">({w.daysLeft === 0 ? 'today' : `in ${w.daysLeft} ${w.daysLeft === 1 ? 'day' : 'days'}`})</span>{contact(w.providerContactId) && <span className="muted"> · {contact(w.providerContactId)}</span>}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {ov.attention.expiringWarranties.length > ov.warranties.length && <p className="muted small">{ov.attention.expiringWarranties.length - ov.warranties.length} more on the <a href="#/calendar">Calendar</a>.</p>}
-            </section>
+              <section className="card as-card" aria-labelledby="ov-next-h">
+                <h2 id="ov-next-h">Upcoming maintenance</h2>
+                {ov.upcoming.length === 0 ? <p className="muted">No dated maintenance. Open an asset and use Add maintenance to schedule some.</p> : (
+                  <ul className="plain as-items as-dated">
+                    {ov.upcoming.map((m) => (
+                      <li key={m.taskId} className="as-trow">
+                        <DateTile iso={m.dueDate} today={today} overdue={m.overdue} size="sm" labelled={false} />
+                        <div className="as-trow-main">
+                          <a href={`#/tasks?task=${m.taskId}`}><strong>{m.title}</strong></a>
+                          <div className="small">
+                            <Link to={`/${m.assetIds[0]}`}>{assetNames(names, m.assetIds)}</Link> · {m.overdue ? <StatusChip tone="overdue">Overdue, was due {day(m.dueDate)}</StatusChip> : <>Due {day(m.dueDate)}</>}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {ov.upcomingTotal > ov.upcoming.length && <p className="muted small">{ov.upcomingTotal - ov.upcoming.length} more in <a href="#/tasks">Tasks</a>.</p>}
+              </section>
+
+              <section className="card as-card" aria-labelledby="ov-rec-h">
+                <h2 id="ov-rec-h">Recent service history</h2>
+                {ov.recent.length === 0 ? <p className="muted">No work has been logged yet. Finish a maintenance task with &ldquo;Done, log it&rdquo;, or use Log service on an asset.</p> : (
+                  <ul className="plain as-items as-dated">
+                    {ov.recent.map(({ service: s, cost }) => (
+                      <li key={s.id} className="as-trow">
+                        <DateTile iso={s.data.date} today={today} size="sm" labelled={false} />
+                        <div className="as-trow-main">
+                          <Link to={`/${s.data.assetId}?service=${s.id}`}><strong>{s.data.title}</strong></Link>
+                          <div className="small">
+                            {day(s.data.date)} · {names.get(s.data.assetId) ?? '(asset removed)'} · {SERVICE_KIND_LABEL[s.data.kind]}
+                            {contact(s.data.providerContactId) && <> · {contact(s.data.providerContactId)}</>}
+                            {' · '}{cost.kind === 'amount' ? formatCents(cost.cents) : cost.kind === 'review' ? <span className="as-late">cost needs review</span> : <span className="muted">cost not recorded</span>}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="muted small">Find older work on each asset&rsquo;s page, or search for it from the search box.</p>
+              </section>
+            </div>
+
+            <div className="as-col">
+              <section className="card as-card" aria-labelledby="ov-places-h">
+                <div className="as-card-head">
+                  <h2 id="ov-places-h">Places and assets</h2>
+                  <Link to={LIST} className="small">All assets</Link>
+                </div>
+                {places.length === 0 ? <p className="muted">Nothing is in use right now. Past and archived assets are on the All assets page.</p> : (
+                  <ul className="plain as-items as-places">
+                    {places.map(({ asset: a, inside }) => (
+                      <li key={a.id}>
+                        <Link to={`/${a.id}`} className="as-place-link">
+                          <span className="as-place-name"><strong>{a.data.name}</strong><span className="muted small">{TYPE_LABEL[a.data.type]}</span></span>
+                          <span className="muted small">{inside === 0 ? 'Nothing inside yet' : `${inside} inside`}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="card as-card" aria-labelledby="ov-war-h">
+                <h2 id="ov-war-h">Warranties ending soon</h2>
+                {ov.warranties.length === 0 ? <p className="muted">No warranty ends in the next {SOON_DAYS} days.</p> : (
+                  <ul className="plain as-items as-dated">
+                    {ov.warranties.map((w) => (
+                      <li key={`${w.assetId}:${w.warrantyId ?? 'old'}`} className="as-trow">
+                        <DateTile iso={w.endDate} today={today} size="sm" labelled={false} caption="Ends" />
+                        <div className="as-trow-main">
+                          <Link to={w.warrantyId === null ? `/${w.assetId}` : `/${w.assetId}?warranty=${w.warrantyId}`}><strong>{names.get(w.assetId)}</strong>{w.title !== 'Warranty' && <> · {w.title}</>}</Link>
+                          <div className="small">Ends {day(w.endDate)} <span className="muted">({w.daysLeft === 0 ? 'today' : `in ${w.daysLeft} ${w.daysLeft === 1 ? 'day' : 'days'}`})</span>{contact(w.providerContactId) && <span className="muted"> · {contact(w.providerContactId)}</span>}</div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {ov.attention.expiringWarranties.length > ov.warranties.length && <p className="muted small">{ov.attention.expiringWarranties.length - ov.warranties.length} more on the <a href="#/calendar">Calendar</a>.</p>}
+              </section>
+            </div>
           </div>
-
-          <section className="card as-card" aria-labelledby="ov-rec-h">
-            <h2 id="ov-rec-h">Recent service history</h2>
-            {ov.recent.length === 0 ? <p className="muted">No work has been logged yet. Finish a maintenance task with &ldquo;Done, log it&rdquo;, or use Log service on an asset.</p> : (
-              <ul className="plain as-items">
-                {ov.recent.map(({ service: s, cost }) => (
-                  <li key={s.id}>
-                    <Link to={`/${s.data.assetId}?service=${s.id}`}><strong>{s.data.title}</strong></Link>
-                    <div className="small">
-                      {day(s.data.date)} · {names.get(s.data.assetId) ?? '(asset removed)'} · {SERVICE_KIND_LABEL[s.data.kind]}
-                      {contact(s.data.providerContactId) && <> · {contact(s.data.providerContactId)}</>}
-                      {' · '}{cost.kind === 'amount' ? formatCents(cost.cents) : cost.kind === 'review' ? <span className="as-late">cost needs review</span> : <span className="muted">cost not recorded</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="muted small">Find older work on each asset&rsquo;s page, or search for it from the search box.</p>
-          </section>
 
           <SpendingBlock ov={ov} period={year} onPeriod={setPeriod} />
         </>

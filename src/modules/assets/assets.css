@@ -1,47 +1,79 @@
-/* Home & Assets. Uses the app's design tokens; a stack of cards that is one column on a phone. */
+/* Home & Assets. Built on the shared tokens and components (D14): an overview with a band of counts and two columns, an asset list of hairline rows, and an
+   asset page with a hero and two columns (the asset on the left, what surrounds it on the right) that becomes one column on a phone. */
 
 .as-main { padding-bottom: var(--sp-6, 48px); max-width: min(1500px, 100%); }
 .as { max-width: none; }
 
-.as-tabs { display: flex; gap: var(--sp-1); overflow-x: auto; padding: var(--sp-1) 0 var(--sp-2); scrollbar-width: none; }
-.as-tabs::-webkit-scrollbar { display: none; }
-.as-tabs button { flex: none; min-height: 40px; padding: 0 var(--sp-3); border-radius: 999px; border-color: transparent; background: none; color: var(--muted); font-weight: 500; white-space: nowrap; }
-.as-tabs button.on, .as-tabs button.on:hover { background: var(--accent); color: var(--on-accent, #fff); }
-.as-tabs .count { margin-left: 4px; font-size: var(--fs-xs); opacity: 0.85; }
+/* list: filter tabs, toolbar and rows */
+.as-tabs { margin: 0 0 var(--sp-3); }
+.as-tabs .count { margin-left: 4px; padding: 1px 7px; background: var(--surface-sunken); color: var(--fg-2); font-weight: 600; }
+.as-tabs button.on .count { background: var(--accent-soft); color: var(--accent-text); }
+.as-subtabs { margin: 0 0 var(--sp-3); }
 
 .as-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .as-filters .f { min-width: 160px; flex: 1 1 160px; max-width: 280px; }
+.as-filters .as-find { flex: 2 1 240px; max-width: 420px; }
 .as-check { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 40px; }
-.as-check.warn { color: var(--warn, #9a6700); }
+.as-check.warn { color: var(--warn-text); }
 
-.as-list { margin: 0; padding: 0; }
+.as-list { margin: 0; padding: var(--sp-1) var(--sp-3); }
 .as-li { display: flex; align-items: center; gap: var(--sp-1); border-bottom: 1px solid var(--line); }
+.as-li:last-child { border-bottom: none; }
 .as-fold, .as-fold-gap { flex: none; width: 40px; min-width: 40px; height: 40px; }
 .as-fold { padding: 0; border-color: transparent; background: none; }
-.as-row { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2); color: inherit; text-decoration: none; min-height: 56px; min-width: 0; }
-.as-row:hover { background: var(--accent-soft); }
+.as-row { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-2); color: inherit; text-decoration: none; min-height: 56px; min-width: 0; border-radius: var(--r-md); }
+.as-row:hover { background: var(--hover); text-decoration: none; }
+.as-row:hover strong { text-decoration: underline; }
 .as-row-main { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
-.as-row-main strong { overflow-wrap: anywhere; }
+.as-row-main strong { overflow-wrap: anywhere; font-weight: 650; }
 .as-row-side { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-1); flex: none; max-width: 50%; }
 
-.as-chip { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-size: var(--fs-xs); font-weight: 600; border: 1px solid var(--line-strong); color: var(--muted); background: var(--card); white-space: nowrap; }
-.as-chip.s-past { color: var(--warn, #9a6700); border-color: currentColor; }
-.as-chip.w-ok { color: var(--accent-text); border-color: var(--accent-line); background: var(--accent-soft); }
-.as-chip.w-soon { color: var(--warn, #9a6700); border-color: currentColor; }
-.as-chip.w-past { color: var(--neg); border-color: currentColor; }
+/* the older small chip, drawn like the shared status chip (still used inside the maintenance, warranty and related cards) */
+.as-chip { display: inline-flex; align-items: center; padding: 2px 8px; border: 1px solid transparent; border-radius: var(--r-xs); font-size: var(--fs-xs); font-weight: 600; line-height: 1.35; background: var(--surface-sunken); color: var(--fg-2); }
+.as-chip.s-past { background: var(--warn-soft); color: var(--warn-text); }
+.as-chip.w-ok { background: var(--accent-soft); color: var(--accent-text); }
+.as-chip.w-soon { background: var(--warn-soft); color: var(--warn-text); }
+.as-chip.w-past { background: var(--neg-soft); color: var(--neg-text); }
 
+/* asset page: hero */
 .as-back { margin: 0 0 var(--sp-2); }
 .as-crumbs { margin: 0 0 var(--sp-1); color: var(--muted); }
-.as-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-.as-head h1 { margin: 0 0 var(--sp-1); overflow-wrap: anywhere; }
-.as-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0; }
+.as-hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
+.as-hero-main { display: flex; align-items: flex-start; gap: var(--sp-4); min-width: 0; flex: 1 1 360px; }
+.as-hero-dates { display: flex; gap: var(--sp-2); flex: none; }
+.as-hero-text { min-width: 0; }
+.as-hero-text h1 { margin: 0 0 var(--sp-2); overflow-wrap: anywhere; }
+.as-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin: 0; }
 .as-head-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+/* two columns (asset page and overview) */
+.as-jump { display: none; margin: 0 0 var(--sp-3); }
+.as-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
+.as-col { display: flex; flex-direction: column; min-width: 0; scroll-margin-top: calc(var(--topbar-h, 56px) + var(--sp-3)); }
+.as-stack { min-width: 0; scroll-margin-top: calc(var(--topbar-h, 56px) + var(--sp-3)); }
+.as-ov-layout { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+@media (max-width: 1000px) {
+  .as-layout, .as-ov-layout { grid-template-columns: minmax(0, 1fr); }
+  .as-jump { display: inline-flex; }
+}
+
+/* overview: band, dated rows, places */
+.as-band { padding: 0; margin-bottom: var(--sp-3); overflow: hidden; }
+.as-band > .ui-figure { border: 0; border-radius: 0; background: none; padding: var(--sp-3) var(--sp-4); }
+.as-dated { margin: 0 0 var(--sp-2); padding: 0; }
+.as-trow { display: flex; align-items: center; gap: var(--sp-3); }
+.as-trow-main { min-width: 0; }
+.as-place-link { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 44px; color: inherit; text-decoration: none; }
+.as-place-link:hover strong { text-decoration: underline; }
+.as-place-name { display: flex; flex-direction: column; min-width: 0; }
+.as-place-name strong { overflow-wrap: anywhere; }
+.as-lifecycle { border-left: 3px solid var(--warn); }
 
 .as-card { margin-bottom: var(--sp-3); }
 .as-card h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-md, 1.05rem); }
 .as-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-2); }
 .as-card-head h2 { margin: 0; }
-.as-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.as-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--sp-3); margin: 0 0 var(--sp-3); }
 .as-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .as-fact dt { font-size: var(--fs-xs); color: var(--muted); }
 .as-fact dd { margin: 0; overflow-wrap: anywhere; }
@@ -49,6 +81,7 @@
 .as-notes { white-space: pre-wrap; margin: 0; overflow-wrap: anywhere; }
 .as-items { margin: 0 0 var(--sp-2); padding: 0; }
 .as-items li { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.as-items li:last-child { border-bottom: none; }
 .as-reasons li { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
 
 .as-form { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -68,6 +101,7 @@
   .as-line { grid-template-columns: minmax(0, 1fr); }
   .as-row { flex-direction: column; align-items: flex-start; }
   .as-row-side { justify-content: flex-start; max-width: 100%; }
+  .as-hero-main { flex-direction: column; }
   .as-head-actions .btn, .as-actions .btn { min-height: 44px; }
 }
 
@@ -105,3 +139,23 @@
 /* S4: where a service entry came from */
 .as-hist-source { display: flex; flex-wrap: wrap; gap: var(--sp-1, 4px); padding: 0 var(--sp-2, 8px); }
 .as-hist-source:empty { display: none; }
+
+/* D14: the spending block on the overview (period picker beside the title, the total as the lead figure) */
+.as-card-head .as-inline { flex: 0 0 auto; display: inline-flex; flex-direction: row; align-items: center; gap: var(--sp-2); }
+.as-card-head .as-inline select { width: auto; min-width: 110px; }
+.as-spend-top .as-total dd strong { font-size: var(--fs-lg, 1.15rem); font-variant-numeric: tabular-nums; }
+.as-spend-top .as-fact dd { font-variant-numeric: tabular-nums; }
+.as-ok { color: var(--pos-text); font-weight: 600; }
+
+/* D14: comfortable phone targets for the jump row and the page actions */
+@media (max-width: 640px) {
+  .as .as-jump > button, .as .btn { min-height: 44px; }
+  .as .as-card-head > a.small { display: inline-flex; align-items: center; min-height: 44px; }
+  .as button.link { min-height: 44px; display: inline-flex; align-items: center; }
+}
+
+/* D14 release check: on a phone the filter tabs wrap instead of scrolling sideways, so every tab is visible without having to discover a hidden scroll. */
+@media (max-width: 640px) {
+  .as .ui-seg.as-tabs, .as .ui-seg.as-subtabs { display: flex; flex-wrap: wrap; overflow: visible; }
+  .as .ui-seg.as-tabs > button, .as .ui-seg.as-subtabs > button { flex: 1 1 auto; }
+}

@@ -4,11 +4,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate } from '../../core/router';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { StatusChip } from '../../ui/StatusChip';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import AssetForm from './AssetForm';
 import { buildTree, loadAssets, whereIs, warrantyState } from './data';
 import OrphanCard from './OrphanCard';
+import { WARRANTY_TONE } from './presentation';
 import { groupByAsset } from './warranty';
 import { loadWarranties } from './warrantyData';
 import { STATUS_LABEL, TYPE_LABEL, type AssetRecord } from './model';
@@ -83,7 +85,7 @@ export default function AssetsPage() {
         description="Every asset, as a tree by where things are or as a flat list. Open one for its maintenance, history, warranties and spending."
         actions={<button className="btn primary" onClick={() => setParams({ new: '1' })}>Add asset</button>}
       />
-      <div className="as-tabs" role="tablist" aria-label="Show" onKeyDown={rovingKeys}>
+      <div className="ui-seg as-tabs" role="tablist" aria-label="Show" onKeyDown={rovingKeys}>
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} tabIndex={(tab === t.id) ? 0 : -1} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
             {t.label} <span className="count">{counts[t.id]}</span>
@@ -91,14 +93,14 @@ export default function AssetsPage() {
         ))}
       </div>
       {tab === 'past' && (
-        <div className="as-tabs as-subtabs" role="group" aria-label="Kind of past asset">
+        <div className="ui-seg as-subtabs" role="group" aria-label="Kind of past asset">
           {[['', 'All past'], ['sold', 'Sold'], ['disposed', 'Disposed of'], ['replaced', 'Replaced']].map(([k, label]) => (
             <button key={k} aria-pressed={pastKind === k} className={pastKind === k ? 'on' : ''} onClick={() => setPastKind(k)}>{label}</button>
           ))}
         </div>
       )}
       <div className="as-filters">
-        <label className="f">Find<input value={text} onChange={(e) => setText(e.target.value)} placeholder="Name, make or model" type="search" /></label>
+        <label className="f as-find">Find<input value={text} onChange={(e) => setText(e.target.value)} placeholder="Name, make or model" type="search" /></label>
         <label className="f">Type
           <select value={type} onChange={(e) => setType(e.target.value)}>
             <option value="">All types</option>
@@ -117,7 +119,7 @@ export default function AssetsPage() {
           {filtering ? 'Nothing matches that.' : EMPTY[tab]}
         </EmptyState>
       ) : (
-        <ul className="plain as-list">
+        <ul className="plain as-list card">
           {shown.map((r) => {
             const a = r.asset, w = warrantyState(a.data, today, warByAsset.get(a.id) ?? []), place = whereIs(assets, a.id);
             return (
@@ -133,10 +135,10 @@ export default function AssetsPage() {
                     </span>
                   </span>
                   <span className="as-row-side">
-                    <span className="as-chip">{TYPE_LABEL[a.data.type]}</span>
-                    {a.data.status !== 'active' && <span className="as-chip s-past">{STATUS_LABEL[a.data.status]}</span>}
-                    {a.data.archived && <span className="as-chip s-past">Archived</span>}
-                    {w && <span className={`as-chip w-${w.tone}`}>{w.label}</span>}
+                    <StatusChip icon={false}>{TYPE_LABEL[a.data.type]}</StatusChip>
+                    {a.data.status !== 'active' && <StatusChip tone="warning">{STATUS_LABEL[a.data.status]}</StatusChip>}
+                    {a.data.archived && <StatusChip>Archived</StatusChip>}
+                    {w && <StatusChip tone={WARRANTY_TONE[w.tone]}>{w.label}</StatusChip>}
                   </span>
                 </Link>
               </li>

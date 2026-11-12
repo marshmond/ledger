@@ -94,8 +94,9 @@ describe('D5 the tracker is well formed', () => {
     // D10 redesigned the Add box (S-05) and, with it, the five Quick Add workflows W-01 to W-05 were built and run. DL-01 stays NS (Search and the confirmation dialog are untouched).
     // D12 redesigned Ledger Home (L-01), Family overview (F-01) and Household Finances (H-01, with its review workflow W-37); the shared charts (S-23) gained marks. Family detail pages, Contacts and every other module page are untouched.
     // Add an ID here only in the change that builds it.
+    // D14 redesigned Projects (P-01, P-02), Home & Assets (A-01 to A-03) and Contacts (N-01, N-02) with their tab views (IV-15 to IV-23) and the three workflows W-31, W-32 and W-36; DL-04 to DL-06 and IV-31 are untouched.
     // D13 redesigned the Calendar page (C-01 and its four views), the event editor and day dialog (DL-03) and the layer menu and event workflows (W-09, W-10); W-11 and the other Calendar dialogs are untouched.
-    expect(beyond.map((r) => r.id).sort()).toEqual([...['F-01', 'H-01', 'IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'L-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13', 'W-37'], 'C-01', 'DL-03', 'IV-01', 'IV-02', 'IV-03', 'IV-04', 'W-09', 'W-10'].sort());
+    expect(beyond.map((r) => r.id).sort()).toEqual([...['F-01', 'H-01', 'IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'L-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13', 'W-37'], 'C-01', 'DL-03', 'IV-01', 'IV-02', 'IV-03', 'IV-04', 'W-09', 'W-10', 'P-01', 'P-02', 'A-01', 'A-02', 'A-03', 'N-01', 'N-02', 'IV-15', 'IV-16', 'IV-17', 'IV-18', 'IV-19', 'IV-20', 'IV-21', 'IV-22', 'IV-23', 'W-31', 'W-32', 'W-36'].sort());
     for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });

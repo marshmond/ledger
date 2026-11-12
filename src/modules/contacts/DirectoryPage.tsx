@@ -9,15 +9,20 @@ import { allContactReferenceProviders } from '../../core/registry';
 import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { memberInitials } from '../../ui/memberIdentityModel';
+import { StatusChip } from '../../ui/StatusChip';
 import { useToast } from '../../ui/Toast';
 import ContactForm from './ContactForm';
 import { contactRoute, filterContacts, sameNameCounts, sortContacts, type SortMode } from './model';
-import { facetText, factsFor, FILTERS, matchesFilter, type FilterId } from './references';
+import { facetList, factsFor, FILTERS, matchesFilter, type FilterId } from './references';
 
 /**
  * The Contacts directory: every live Contact, found by name, relationship, phone or email, and filtered by the relationships Ledger already stores
  * (household member, important Family contact, service provider, project participant, or no confirmed references). One list read, ONE usage read and ONE pass
  * of each module's named reader for the whole list (not one per row). A name shared by more than one Contact is marked, never merged.
+ *
+ * D14: each row is a person or organization with a neutral initials tile (never a Family color: a Contact is not a Family member), its phone and email,
+ * the relationships already stored (as words) and where it is used. The whole row opens the Contact; the name is still the one link.
  */
 export default function DirectoryPage() {
   const data = useLiveQuery(async () => {
@@ -88,8 +93,11 @@ export default function DirectoryPage() {
           Contacts are the people and organizations you deal with: family, a plumber, the school office.
         </EmptyState>
       ) : (
-        <section className="card" aria-labelledby="ct-list">
-          <div className="card-head"><h2 className="card-title" id="ct-list">{FILTERS.find((f) => f.id === filter)?.label}</h2><span className="muted small" role="status">{shown.length === data.contacts.length ? `${shown.length}` : `${shown.length} of ${data.contacts.length}`}</span></div>
+        <section className="card ct-dir" aria-labelledby="ct-list">
+          <div className="ct-dir-head">
+            <h2 className="card-title" id="ct-list">{FILTERS.find((f) => f.id === filter)?.label}</h2>
+            <span className="muted small" role="status">{shown.length === data.contacts.length ? `${shown.length}` : `${shown.length} of ${data.contacts.length}`}</span>
+          </div>
           <div className="ct-tools">
             <label className="f">Search<input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, relationship, phone or email" autoComplete="off" /></label>
             <label className="f">Show
@@ -111,14 +119,20 @@ export default function DirectoryPage() {
               {shown.map((c) => {
                 const n = same.get(c.id as number);
                 const f = facts.get(c.id as number)!;
+                const rels = facetList(f.facets);
                 return (
                   <li key={c.id} className="ct-row">
-                    <Link to={contactRoute(c.id as number)} className="ct-name">{c.name}</Link>
-                    {c.relationship && <span className="ct-rel">{c.relationship}</span>}
-                    {(c.phone || c.email) && <span className="muted small">{[c.phone, c.email].filter(Boolean).join(' · ')}</span>}
-                    {n ? <span className="ct-same small">Same name as {n === 1 ? '1 other contact' : `${n} other contacts`}</span> : null}
-                    {f.facets.size > 0 && <span className="small">{facetText(f.facets)}</span>}
-                    <span className="muted small">{usageSummary(data.usage.byContact.get(c.id as number))}</span>
+                    <span className="ct-mono" aria-hidden="true">{memberInitials(c.name) || '?'}</span>
+                    <span className="ct-id">
+                      <Link to={contactRoute(c.id as number)} className="ct-name">{c.name}</Link>
+                      {c.relationship && <span className="ct-rel">{c.relationship}</span>}
+                      {n ? <span className="ct-same small"><StatusChip tone="warning">Same name as {n === 1 ? '1 other contact' : `${n} other contacts`}</StatusChip></span> : null}
+                    </span>
+                    <span className="ct-reach muted small">{[c.phone, c.email].filter(Boolean).join(' · ')}</span>
+                    <span className="ct-rels">
+                      {rels.map((r) => <StatusChip key={r} icon={false}>{r}</StatusChip>)}
+                    </span>
+                    <span className="ct-used muted small">{usageSummary(data.usage.byContact.get(c.id as number))}</span>
                   </li>
                 );
               })}
