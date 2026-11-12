@@ -91,8 +91,8 @@ describe('module list overflow (the eleventh module)', () => {
   const css = readFileSync('src/styles.css', 'utf8');
   const rule = css.split('\n').find((l) => l.startsWith('.modmenu {')) ?? '';
   it('the open module list fits the screen height and scrolls inside itself', () => {
-    expect(rule).toMatch(/max-height:\s*calc\(100dvh - \d+px\)/);
-    expect(rule).toMatch(/max-height:\s*calc\(100vh - \d+px\)/); // the older-browser fallback, declared first
+    expect(rule).toMatch(/max-height:\s*calc\(100dvh - var\(--bar-h\) - \d+px/); // D7: measured from the bottom of the header
+    expect(rule).toMatch(/max-height:\s*calc\(100vh - var\(--bar-h\) - \d+px\)/); // the older-browser fallback, declared first
     expect(rule.indexOf('100vh')).toBeLessThan(rule.indexOf('100dvh'));
     expect(rule).toMatch(/overflow-y:\s*auto/);
   });

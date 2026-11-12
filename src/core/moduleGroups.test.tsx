@@ -113,7 +113,7 @@ describe('N1: source guards (no browser needed)', () => {
 
   it('the list still fits the screen height and scrolls inside itself; long labels wrap instead of overflowing', () => {
     const rule = css.split('\n').find((l) => l.startsWith('.modmenu {')) ?? '';
-    expect(rule).toMatch(/max-height:\s*calc\(100dvh - \d+px\)/);
+    expect(rule).toMatch(/max-height:\s*calc\(100dvh - var\(--bar-h\) - \d+px/); // D7: measured from the bottom of the header, whatever height the palette gives it
     expect(rule).toMatch(/overflow-y:\s*auto/);
     expect(rule).toMatch(/overscroll-behavior:\s*contain/);
     expect(css).toMatch(/\.modmenu a \{ overflow-wrap: anywhere; \}/);

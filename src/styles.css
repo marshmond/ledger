@@ -626,30 +626,57 @@ details.pick label.chk:hover { background: var(--hover); }
 @media (max-width: 640px) { .backup-reminder { margin: var(--sp-3) var(--sp-4) 0; } }
 @media print { .backup-reminder { display: none !important; } }
 
-/* Module bar: the thin strip above every screen (module switcher + shared Settings). */
-:root { --bar-h: calc(36px + env(safe-area-inset-top)); }
-.modulebar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: var(--sp-3); height: var(--bar-h); padding: env(safe-area-inset-top) var(--sp-4) 0; background: var(--card, var(--bg)); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
-.modswitch { position: relative; }
-.modbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
-.modicon { display: inline-flex; width: 16px; height: 16px; }
+/* Module bar: the strip across the top of every screen (D7: the application header). Brand mark, module switcher, Search, Sync, Settings and (computer) Add.
+   Heights come from the --hdr-* tokens (src/ui/tokens.css): 36px / 48px for every palette except Signature (62px / 60px). Everything that sticks below it reads --bar-h. */
+:root { --bar-h: calc(var(--hdr-h) + env(safe-area-inset-top)); }
+.modulebar { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: var(--sp-3); height: var(--bar-h); padding: env(safe-area-inset-top) max(var(--sp-4), env(safe-area-inset-right)) 0 max(var(--sp-4), env(safe-area-inset-left)); background: var(--card, var(--bg)); border-bottom: 1px solid var(--line); box-shadow: var(--hdr-shadow); font-size: var(--fs-sm); }
+.modbrand { display: var(--ui-brand); align-items: center; gap: 10px; flex: none; margin-right: var(--sp-1); font-weight: 700; font-size: var(--fs-lg); letter-spacing: -0.015em; color: var(--fg); }
+.modbrand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--on-accent, #fff); font-size: 0.9375rem; line-height: 1; }
+.modbrand-name { display: none; }
+.modswitch { min-width: 0; }
+.modbtn { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--hdr-ctl-h); max-width: 100%; padding: 2px var(--sp-3); border: 1px solid var(--hdr-ctl-line); border-radius: var(--hdr-ctl-r); background: var(--bg); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.modbtn:hover { background: var(--hover); }
+.modbtn[aria-expanded='true'] { border-color: var(--accent-line); box-shadow: var(--focus-ring); }
+.modbtn .modicon { color: var(--accent-text); }
+.modname { min-width: 0; overflow-wrap: anywhere; }
+.modall { display: none; padding-left: var(--sp-3); margin-left: 2px; border-left: 1px solid var(--line); font-weight: 500; font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+.modbtn .chev { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.modbtn[aria-expanded='true'] .chev { transform: rotate(180deg); }
+.modicon { display: inline-flex; flex: none; width: 16px; height: 16px; }
 .modicon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.modmenu { position: absolute; left: 0; top: calc(100% + 4px); min-width: 180px; display: flex; flex-direction: column; padding: 4px; background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); max-height: calc(100vh - 72px); max-height: calc(100dvh - 72px); overflow-y: auto; overscroll-behavior: contain; }
-.modmenu a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; color: var(--fg); text-decoration: none; }
-.modmenu a:hover, .modmenu a.active { background: var(--hover, rgba(127, 127, 127, 0.14)); }
-.modmenu a.active { font-weight: 600; }
-.modgroup { display: flex; flex-direction: column; }
-.modgroup + .modgroup { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+/* The open list is a panel under the bar (positioned against the bar, which is sticky): three columns on a computer, two on a phone. It scrolls inside itself when the screen is short. */
+.modmenu { position: absolute; left: var(--sp-4); top: calc(100% + 4px); width: min(700px, calc(100vw - 32px)); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-1) var(--sp-4); align-items: start; padding: var(--sp-3); background: var(--surface-raised); border: 1px solid var(--line-strong, var(--line)); border-radius: var(--r-lg); box-shadow: var(--shadow-2); max-height: calc(100vh - var(--bar-h) - 16px); max-height: calc(100dvh - var(--bar-h) - 16px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
+.modmenu a { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 10px; border-radius: var(--r-sm); color: var(--fg); text-decoration: none; }
+.modmenu a:hover { background: var(--hover); }
+.modmenu a.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.modmenu .modicon { width: 18px; height: 18px; color: var(--muted); }
+.modmenu .modicon svg { width: 18px; height: 18px; }
+.modmenu a.active .modicon { color: inherit; }
+.modgroup { display: flex; flex-direction: column; min-width: 0; }
+.modgroup-top { grid-column: 1 / -1; }
 .modgroup-top a { font-weight: 600; }
-.modgroup-label { padding: 6px 10px 2px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted, var(--fg)); opacity: 0.75; cursor: default; user-select: none; overflow-wrap: anywhere; }
+.modgroup-label { padding: 6px 10px 4px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted, var(--fg)); cursor: default; user-select: none; overflow-wrap: anywhere; }
 .modmenu a { overflow-wrap: anywhere; }
+.modfoot { display: none; }
 .modspacer { flex: 1; }
-.modsearch { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--muted); font: inherit; cursor: pointer; }
-.modsearch:hover:not(:disabled) { color: var(--fg); background: var(--hover, rgba(127, 127, 127, 0.14)); }
+.modsearch { display: inline-flex; align-items: center; gap: 6px; min-height: var(--hdr-ctl-h); padding: 2px 8px; border: 1px solid var(--hdr-search-line); border-radius: var(--hdr-ctl-r); background: var(--hdr-search-bg); color: var(--muted); font: inherit; cursor: pointer; }
+.modsearch:hover:not(:disabled) { color: var(--fg); background: var(--hover); }
+.modsearch .ui-icon { flex: none; }
 .modsearch-label { display: none; }
-@media (min-width: 900px) { .modsearch-label { display: inline; } }
-.modulebar .qa-btn { height: 28px; }
-.modsettings { color: var(--muted); text-decoration: none; }
+.modkbd { display: none; margin-left: auto; padding: 1px 6px; border: 1px solid var(--line); border-radius: var(--r-xs); background: var(--bg); color: var(--muted); font-family: inherit; font-weight: 500; font-size: var(--fs-micro); line-height: 1.4; }
+@media (min-width: 900px) {
+  .modulebar .modsearch { width: var(--hdr-search-w); justify-content: flex-start; } /* the field, with its label and shortcut hint (a touch screen this wide keeps the label left, not centred) */
+  .modsearch-label { display: inline; }
+  .modbrand-name { display: inline; }
+  .modall { display: var(--ui-modall); }
+  .modkbd { display: var(--ui-kbd); }
+}
+.modulebar .qa-btn { height: var(--hdr-ctl-h); }
+.modsettings { display: inline-flex; align-items: center; gap: 6px; min-height: var(--hdr-ctl-h); padding: 0 var(--sp-2); border-radius: var(--hdr-ctl-r); color: var(--muted); text-decoration: none; }
+.modsettings-icon { display: none; flex: none; }
+@media (min-width: 900px) { .modsettings-icon { display: var(--ui-modall); } }
 .modsettings:hover, .modsettings.active { color: var(--fg); }
+.modsettings:hover { background: var(--hover); }
 .settings-tabs { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-4); border-bottom: 1px solid var(--line); }
 .settings-tabs a { padding: var(--sp-2) 0; border-radius: 0; color: var(--muted); text-decoration: none; }
 .settings-tabs a.active { background: none; color: var(--fg); font-weight: 650; box-shadow: inset 0 -2px 0 var(--accent); } /* ST-S3 (AX-04): without background:none the .sectiontabs pill colour showed through, dark text on blue (2.8:1) */
@@ -662,8 +689,9 @@ details.pick label.chk:hover { background: var(--hover); }
 
 /* Sync status in the module bar. */
 .syncwrap { position: relative; }
-.syncchip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 8px; border: none; border-radius: 8px; background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; text-decoration: none; white-space: nowrap; }
-.syncchip:hover { background: var(--hover, rgba(127, 127, 127, 0.14)); text-decoration: none; }
+.syncicon { display: none; flex: none; }
+.syncchip { display: inline-flex; align-items: center; gap: 6px; min-height: var(--hdr-ctl-h); padding: 2px 8px; border: none; border-radius: var(--hdr-ctl-r); background: none; color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; text-decoration: none; white-space: nowrap; }
+.syncchip:hover { background: var(--hover); text-decoration: none; }
 .syncdot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .syncchip.ok .syncdot { background: #2e9e5b; }
 .syncchip.busy .syncdot { background: var(--accent); animation: syncpulse 1s ease-in-out infinite; }
@@ -671,8 +699,10 @@ details.pick label.chk:hover { background: var(--hover); }
 .syncchip.bad .syncdot { background: #d23b3b; }
 .syncchip.bad, .syncchip.warn { color: var(--fg); font-weight: 600; }
 @keyframes syncpulse { 50% { opacity: 0.35; } }
-.syncpop { position: absolute; right: 0; top: calc(100% + 4px); width: min(300px, calc(100vw - 24px)); padding: var(--sp-3); background: var(--bg); border: 1px solid var(--line-strong, var(--line)); border-radius: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); z-index: 60; }
+.syncpop { position: absolute; right: 0; top: calc(100% + 4px); width: min(300px, calc(100vw - 24px)); padding: var(--sp-3); background: var(--surface-raised); border: 1px solid var(--line-strong, var(--line)); border-radius: var(--r-lg); box-shadow: var(--shadow-2); z-index: 60; }
 .syncpop p { margin: 0 0 var(--sp-2); }
+/* The copy inside the phone module list opens its details in the flow of the list, not floating over it. */
+.syncwrap.inline .syncpop { position: static; width: auto; margin-top: var(--sp-2); box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .syncchip.busy .syncdot { animation: none; } }
 
 /* Accounts page: the optional "Keep at least" minimum balance, one tidy line under the account name */
@@ -730,15 +760,11 @@ details.pick label.chk:hover { background: var(--hover); }
 .confirm-body > p { margin: var(--sp-2) 0; }
 
 @media (max-width: 640px), (pointer: coarse) {
-  :root { --bar-h: calc(48px + env(safe-area-inset-top)); }
-  .modulebar { gap: var(--sp-2); padding-left: var(--sp-3); padding-right: var(--sp-2); }
+  :root { --bar-h: calc(var(--hdr-h-touch) + env(safe-area-inset-top)); }
+  .modulebar { gap: var(--sp-2); }
   .modbtn, .modsearch, .syncchip, .modsettings, .modmenu a { min-height: 44px; }
   .modsearch { min-width: 44px; justify-content: center; }
-  /* On the narrowest phones a long module name (Bills & Subscriptions) shortens with an ellipsis instead of pushing the bar wider than the screen. */
-  .modswitch { min-width: 0; flex: 0 1 auto; }
-  .modbtn { max-width: 100%; }
-  .modbtn > span:nth-child(2) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .modsettings { display: inline-flex; align-items: center; padding: 0 var(--sp-2); }
+  .modsettings { padding: 0 var(--sp-2); }
   .syncchip { padding: 2px var(--sp-2); }
   /* Standalone links inside cards, tables and alerts. Links inside a sentence keep their natural height (WCAG 2.5.8 allows that). */
   .card-link, .alert-act, .td-title { display: inline-flex; align-items: center; min-height: 44px; }
@@ -758,3 +784,33 @@ details.pick label.chk:hover { background: var(--hover); }
   .chk input[type="checkbox"] { margin-top: 0; }
   td > input[type="checkbox"] { margin: 6px; }
 }
+
+/* ---- D7: the header on a phone (640px and narrower) ---------------------------------------------------------------------------------
+   The bar holds the Ledger mark, the module switcher and Search; Add is the round button above the screen's bottom edge (QuickAdd). Settings and the
+   sync status move into the open module list (.modfoot), so nothing is lost. A long module name wraps onto a second line instead of being cut off.
+   The list becomes a two-column sheet under the bar. It is still the same disclosure of plain links, not a dialog. */
+@media (max-width: 640px) {
+  :root { --bar-h: calc(var(--hdr-h-phone) + env(safe-area-inset-top)); }
+  .modulebar { padding-left: max(var(--sp-3), env(safe-area-inset-left)); padding-right: max(var(--sp-2), env(safe-area-inset-right)); }
+  .modulebar > .syncwrap:not(.attn), .modulebar > .syncchip, .modulebar > .modsettings { display: none; }
+  /* A sync problem (error, or edits to review) stays visible in the bar as a 44px warning icon; the words are kept for assistive technology. */
+  .modulebar > .syncwrap.attn .syncchip { min-width: 44px; justify-content: center; padding: 0; color: var(--fg); }
+  .modulebar > .syncwrap.attn .syncdot { display: none; }
+  .modulebar > .syncwrap.attn .syncicon { display: block; }
+  .modulebar > .syncwrap.attn .syncchip.bad .syncicon { color: var(--neg-text); }
+  .modulebar > .syncwrap.attn .syncchip.warn .syncicon { color: var(--warn-text); }
+  .modulebar > .syncwrap.attn .synctext { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .modswitch { flex: 0 1 auto; }
+  .modbtn { padding: 2px var(--sp-3) 2px 10px; }
+  .modname { font-size: 0.875rem; line-height: 1.15; }
+  .modmenu { left: var(--sp-2); right: var(--sp-2); width: auto; max-width: 440px; margin-inline: auto; grid-template-columns: minmax(0, 1fr); padding: var(--sp-3) var(--sp-2) var(--sp-2); }
+  .modgroup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-2); align-content: start; }
+  .modgroup-label { grid-column: 1 / -1; }
+  .modgroup-top { display: block; }
+  .modfoot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: center; gap: var(--sp-1) var(--sp-2); margin-top: var(--sp-1); padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+  .modfoot .syncwrap.inline { display: contents; }
+  .modfoot .syncchip { justify-self: start; }
+  .modfoot .syncwrap.inline .syncpop { grid-column: 1 / -1; }
+}
+/* On the narrowest phones (a 320px screen) the mark gives way, so the module name keeps the room. */
+@media (max-width: 359px) { .modbrand { display: none; } }

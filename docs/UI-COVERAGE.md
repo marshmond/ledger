@@ -12,7 +12,7 @@ The goal is **every page, surface, view and dialog in Ledger**, including every 
 `L` light, `D` dark, `375` phone width, `1440` desktop width, `Kbd` keyboard and focus, `Func` functional acceptance (existing tests plus the flow check passed, nothing about behaviour changed).
 A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The visual checklist V1 to V12 and functional checklist F1 to F6 are in the D4 roadmap (section 6).
 
-**D5 left everything at `NS` / `.`. D6 (2026-11-11, built, uncommitted) restyled the shared component layer, so a few GLOBAL SURFACES now read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on).** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
+**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (2026-11-11, built, uncommitted) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2).** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
 
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family colour picker; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
@@ -34,10 +34,10 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 
 | ID | Surface | Source | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| S-01 | Global header: switcher button, Search, Add, Sync chip, Settings | `src/core/ModuleBar.tsx` | D7 | NS | . | . | . | . | . | . |
-| S-02 | Module switcher list (11 modules, 4 groups) | `src/core/moduleGroups.ts` | D7 | NS | . | . | . | . | . | . |
-| S-03 | Sync status chip and pop-over | `src/core/SyncChip.tsx` | D7 | NS | . | . | . | . | . | . |
-| S-04 | Add button (desktop in-bar, phone round button) | `src/shell/QuickAdd.tsx` | D7, D10 | BLT | Y | Y | Y | Y | Y | . |
+| S-01 | Global header: switcher button, Search, Add, Sync chip, Settings | `src/core/ModuleBar.tsx` | D7 | BLT | Y | Y | Y | Y | Y | Y |
+| S-02 | Module switcher list (11 modules, 4 groups) | `src/core/moduleGroups.ts` | D7 | BLT | Y | Y | Y | Y | Y | Y |
+| S-03 | Sync status chip and pop-over | `src/core/SyncChip.tsx` | D7 | BLT | Y | Y | Y | . | Y | Y |
+| S-04 | Add button (desktop in-bar, phone round button) | `src/shell/QuickAdd.tsx` | D7, D10 | BLT | Y | Y | Y | Y | Y | Y |
 | S-05 | Add box (Quick Add) | `src/shell/AddBox.tsx` | D10 | NS | . | Y | . | Y | Y | . |
 | S-06 | Search dialog | `src/shell/SearchDialog.tsx` | D6, D20 | NS | . | Y | . | Y | Y | . |
 | S-07 | Task creator dialog | `src/modules/tasks/QuickTask.tsx` | D11 | NS | . | . | . | . | . | . |
@@ -45,7 +45,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-09 | Toasts (Undo) | `src/ui/Toast.tsx` | D6 | BLT | . | Y | . | Y | . | . |
 | S-10 | Backup reminder banner | `src/shell/BackupReminder.tsx` | D6 | NS | . | Y | . | Y | . | . |
 | S-11 | Module loading and load-failed states | `src/shell/ModuleLoader.tsx` | D6 | NS | . | . | . | . | . | . |
-| S-12 | Skip link, route announcer, main focus | `src/shell/SkipAndRoute.tsx` | D7 | NS | . | . | . | . | . | . |
+| S-12 | Skip link, route announcer, main focus | `src/shell/SkipAndRoute.tsx` | D7 | NS | . | . | . | . | Y | Y |
 | S-13 | Ledger desktop sidebar | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
 | S-14 | Ledger top bar and breadcrumbs | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
 | S-15 | Ledger section tabs (below 900 px) | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
@@ -67,6 +67,17 @@ Everything below was seen under **Ledger Signature**, in the Claude app's built-
 - **Marks recorded on the surfaces:** `D` = Signature dark, desktop width (about 1280 px); `1440` = the same desktop view (the pane could not be made wider, so 1440 is read as "desktop width", not measured at 1440); `L` = Signature light; `375` = phone width. **S-04** (Add button): navy in light, teal in dark, round on a phone; focus returned to it after the Add box closed. **S-05/S-06/S-08**: opened, Tab kept inside, Escape closed, focus returned to the opener (Add button, Delete account button); in the confirmation Cancel had focus first. **S-09**: seen live in Signature dark on the Tasks page; the Undo path itself was NOT exercised live (the 8-second window passed), so Func stays `.`. **S-10**: the unsaved-data banner on Accounts. **S-21**: gallery and pages in both themes; text and structure pinned by `src/shell/d6Shared.test.tsx`. **S-23**: Reports chart (spending, income) in dark.
 - **Routed pages looked at in Signature** (inherited look only, never a redesign): light desktop for Today, Calendar, Tasks, Projects, Home & Assets, Household Services, Bills, Family, Contacts, Ledger Home, Ledger Transactions and Household Finances (all eleven modules); dark desktop for Ledger Transactions, Ledger Accounts, Ledger Reports, Household Finances, Calendar and Family (Family in the older "Deep navy" palette); phone width (375 px) for Tasks, Ledger Transactions and Household Finances. Horizontal-overflow measurement only (no visual check) on 17 addresses at 375 px and 14 at 320 px, light: none overflowed.
 - **Not checked:** light mode on Ledger Reports, any page at 320 px visually, Signature dark at phone width, every in-page view and every dialog call site (62), real phones, screen readers, forced-colours mode.
+
+### 1.2 D7 evidence behind the marks on S-01 to S-04 and S-12 (built, uncommitted; nothing is `ACC`)
+
+Seen under **Ledger Signature** in the Claude app's built-in browser, against the fictional D1 demo household on its own address (sync off). Screenshots are kept outside the repository (`DocumentsLedger-Design-ConceptsD7-Evidence`). Report: `docs/LEDGER-SIGNATURE-D7-REPORT.md`.
+
+- **S-01 header and S-02 switcher:** `L` = Signature light, desktop; `D` = Signature dark, desktop (the phone list was **not** seen in dark); `1440` = viewport set to 1440 x 900 (pictures come back scaled); `375` = phone width, **light only**, also seen at 320 px and 660 px, with 800 px for the tablet range. `Kbd` = desktop only: Tab order (skip link, switcher, Search, Sync, Settings, Add), Tab through the open list, Escape returns focus to the button, Enter on a link navigates and closes; the phone list foot was clicked, **not** reached by keyboard. `Func` = the 24 new tests and the whole suite (4,446) pass, and Search (button and Ctrl+K), Add (button and N), Settings (phone foot) and module switching were exercised. Classic and the "Deep navy" preset were looked at **at desktop width only**.
+- **S-03 sync chip:** restyled; on a phone the bar shows it only as a warning icon when sync has an error or edits to review (D7 correction). Seen live: the error state at 375 and 320 px in Signature light, 375 px in Signature dark, Classic and "Slate and indigo"; the popover from the bar and from the list foot (opens, Escape closes, focus returns to the chip, Sync settings link present); "Sync off". Not seen live: the healthy and edits-to-review states (mocked tests only), desktop width in an error state, real devices. **`L`, `D`, `375`, `Kbd` and `Func` are marked for the phone attention state and its popover only;** `1440` stays `.` because the desktop chip was not looked at in any state other than "Sync off".
+- **S-04 Add button:** the in-bar Add (900 px and up) is navy in light and teal in dark; the round floating button (below 900 px) is unchanged apart from the shared colour already recorded in D6. Header Add and the N shortcut open the Add box. Its redesign belongs to D10, so the row stays `BLT` and the Add box (S-05) is untouched.
+- **S-12 skip link:** still the first Tab stop; its visible state in the new header was **not** looked at, so the row stays `NS` with only `Kbd` and `Func` marked.
+- **S-17 theme toggle:** not touched in D7 (it lives in Ledger's sidebar and Settings > Appearance).
+- **Not checked:** real phones, screen readers, forced-colours mode, Safari and Firefox, print preview, toast placement, the ⌘K hint on a Mac.
 
 ## 2. Routed page destinations (59)
 

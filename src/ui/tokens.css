@@ -144,6 +144,26 @@
   /* Icons next to text: before D6 a few shared pieces used a text glyph (the empty-state circle). Signature draws a small line icon instead. */
   --ui-glyph: none;
   --ui-glyph-legacy: inline;
+
+  /* ---------------------------------------------------------------------------------------------------------------------------
+     D7 (global header and module switcher). Same rule as D6: every value below is what the header did before D7, so Classic, the four
+     older presets and any custom palette keep the thin 36px bar (48px on a phone or touch screen). Only the Signature preset (src/palette.ts
+     SIGNATURE_SHARED) gives them other values. The header's HEIGHT is the one number the sticky layers below it depend on: styles.css
+     builds --bar-h from these three, and the Ledger sidebar, the page top bar, the table headings and the Tasks bulk bar all read --bar-h.
+     --------------------------------------------------------------------------------------------------------------------------- */
+  --hdr-h: 36px;          /* computer */
+  --hdr-h-touch: 48px;    /* touch screen wider than a phone (needs 44px controls) */
+  --hdr-h-phone: 48px;    /* 640px and narrower */
+  --hdr-ctl-h: 28px;      /* height of the controls in the bar (they are 44px on touch screens whatever this says) */
+  --hdr-ctl-r: var(--r-sm);
+  --hdr-ctl-line: var(--line);          /* border of the switcher button */
+  --hdr-search-bg: transparent;         /* the search entry: quiet button (Signature: a soft field) */
+  --hdr-search-line: transparent;
+  --hdr-search-w: auto;
+  --hdr-shadow: none;
+  --ui-brand: none;       /* the Ledger mark and name at the left of the bar */
+  --ui-modall: none;      /* the small "All modules" caption inside the switcher button */
+  --ui-kbd: none;         /* the Ctrl K hint inside the search entry */
 }
 
 /* A page title is one step smaller on a phone (only Signature reads this: --h1-size is --fs-xl for everyone else). */

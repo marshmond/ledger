@@ -84,12 +84,13 @@ describe('D5 the tracker is well formed', () => {
     for (const v of views) expect(pageIds.has(v.cells[0].split(' ')[0]), `${v.id} -> ${v.cells[0]}`).toBe(true);
   });
 
-  it('a row is not accepted before it has been built: after D6 only five shared global surfaces are beyond NS, and they are BLT (built, not accepted)', () => {
+  it('a row is not accepted before it has been built: after D7 only eight shared global surfaces are beyond NS, and they are BLT (built, not accepted)', () => {
     const beyond = [...pages, ...surfaces, ...views, ...workflows, ...dialogs, ...confirms].filter((r) => r.cells.some((c) => ['INH', 'BLT', 'CMT', 'DEP', 'ACC'].includes(c)));
     // D6 restyled the shared layer: the Add button colour (S-04), Modal and ConfirmDialog (S-08), Toast (S-09), PageHeader, EmptyState and Banner (S-21) and the chart
     // surface and series (S-23). No routed page, view, workflow or dialog call site changed, and nothing may read ACC until all six marks are recorded.
+    // D7 restyled the global header (S-01), the module switcher list (S-02) and the sync chip (S-03); S-04 was already listed. S-12 (skip link) only has Kbd and Func marks and stays NS.
     // Add an ID here only in the change that builds it.
-    expect(beyond.map((r) => r.id).sort()).toEqual(['S-04', 'S-08', 'S-09', 'S-21', 'S-23']);
+    expect(beyond.map((r) => r.id).sort()).toEqual(['S-01', 'S-02', 'S-03', 'S-04', 'S-08', 'S-09', 'S-21', 'S-23']);
     for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });

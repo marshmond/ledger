@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
  * Every icon is decoration: it is hidden from assistive technology, and the words beside it (or an aria-label on the button that holds it)
  * carry the meaning. A status is therefore never told by an icon or a colour alone.
  */
-export type IconName = 'check' | 'alert' | 'warning' | 'info' | 'dot' | 'wave' | 'help' | 'inbox' | 'close' | 'plus';
+export type IconName = 'check' | 'alert' | 'warning' | 'info' | 'dot' | 'wave' | 'help' | 'inbox' | 'close' | 'plus' | 'search' | 'chevron-down' | 'sliders';
 
 const SHAPES: Record<IconName, ReactNode> = {
   check: <path d="M5 12.5 9.5 17 19 7.5" />,
@@ -20,6 +20,10 @@ const SHAPES: Record<IconName, ReactNode> = {
   inbox: <><path d="M4 13.5 6.5 5h11L20 13.5" /><path d="M4 13.5h4.2l1 2.3h5.6l1-2.3H20V19H4Z" /></>,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  // D7 (global header): search, the switcher's chevron and Settings (the same sliders mark the D3 prototypes use).
+  search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4-4" /></>,
+  'chevron-down': <path d="m6 9 6 6 6-6" />,
+  sliders: <><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" /><circle cx="15" cy="6" r="2" /><circle cx="9" cy="12" r="2" /><circle cx="17" cy="18" r="2" /></>,
 };
 
 export function Icon({ name, size = 16, className = '' }: { name: IconName; size?: number; className?: string }) {
