@@ -31,11 +31,12 @@ export function TodayHeroView({ s, today, hideAmounts, overdueDays, lookAheadDay
           <Icon name={s.todayCount ? 'calendar' : 'check'} size={22} />
           <div>
             <strong>{s.todayCount ? `${s.todayCount} on today's schedule` : 'Nothing scheduled for today'}</strong>
-            {s.todayCount > 0 && <span className="td-next-sub">Listed in the Today card</span>}
+            <span className="td-next-sub">{s.todayCount > 0 ? 'Listed under Today below' : 'No events or due items today'}</span>
           </div>
         </div>
         <div className="td-next-item">
-          <span className="td-next-label">Next up</span>
+          {/* D13.1: Next up is the first row of Coming up, which starts TOMORROW, so when today still has items the label says so (the words are added only then). Selection is unchanged. */}
+          <span className="td-next-label">Next up{s.todayCount > 0 && next ? <span className="td-next-qual"> · after today</span> : null}</span>
           {next ? (
             <>
               <div className="td-next-body">

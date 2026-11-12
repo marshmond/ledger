@@ -11,6 +11,7 @@
  */
 import { addDays } from '../../lib/dates';
 import { dateTileModel, inlineDateText } from '../../ui/dateTileModel';
+import type { IconName } from '../../ui/icons';
 import type { CalItem } from '../calendar/useCalendarData';
 import { overdueGroups, todayList, upcomingDays, type UpcomingDay } from './logic';
 
@@ -73,6 +74,71 @@ export function stripCells(days: UpcomingDay[], today: string, lookAheadDays: nu
 export function headingDate(today: string): { weekday: string; rest: string } | null {
   const m = dateTileModel(today, today);
   return m ? { weekday: m.weekdayLong, rest: `${m.monthLong} ${m.day}, ${m.year}` } : null;
+}
+
+/**
+ * D13.1 final mobile correction: the phone shows only the first few populated days of Coming up until "Show all" is used. DISPLAY ONLY: the days come from the
+ * same `upcomingDays` value the card always drew, nothing is recounted, filtered or re-sorted, and a day is never cut in the middle (all of its items show).
+ */
+export const PREVIEW_DAYS = 3;
+
+/** The width at which Today uses its phone layout (the same 640 px the stylesheet uses). */
+export const PHONE_QUERY = '(max-width: 640px)';
+
+export interface UpcomingPreview {
+  /** The first `limit` populated days, whole. */
+  shown: UpcomingDay[];
+  /** Every later day, whole. */
+  hidden: UpcomingDay[];
+  /** Items in all the days (the number the status band calls Coming up). */
+  totalItems: number;
+  /** Items in the hidden days. */
+  hiddenItems: number;
+}
+
+export function previewDays(days: UpcomingDay[], limit: number = PREVIEW_DAYS): UpcomingPreview {
+  const n = Math.max(0, Math.floor(limit));
+  const shown = days.slice(0, n);
+  const hidden = days.slice(n);
+  const count = (list: UpcomingDay[]) => list.reduce((s, d) => s + d.items.length, 0);
+  return { shown, hidden, totalItems: count(days), hiddenItems: count(hidden) };
+}
+
+/** "Show all 17 items" (the number is the real count of Coming up rows). */
+export const showAllLabel = (total: number): string => `Show all ${total} ${total === 1 ? 'item' : 'items'}`;
+
+/** "Sat 14 to Tue 17", or "Sat 14" for one day; the month is added to both ends when the days are in different months ("Sat Nov 28 to Tue Dec 1"). Empty for no days. */
+export function hiddenRangeText(hidden: UpcomingDay[]): string {
+  if (hidden.length === 0) return '';
+  const first = dateTileModel(hidden[0].date, hidden[0].date);
+  const last = dateTileModel(hidden[hidden.length - 1].date, hidden[0].date);
+  if (!first || !last) return '';
+  const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
+  const sameMonth = first.month === last.month && first.year === last.year;
+  const part = (m: NonNullable<typeof first>) => (sameMonth ? `${cap(m.weekday)} ${m.day}` : `${cap(m.weekday)} ${cap(m.month)} ${m.day}`);
+  return hidden.length === 1 ? part(first) : `${part(first)} to ${part(last)}`;
+}
+
+/** The second line of the Show all button: "Also Sat 14 to Tue 17 · 10 more". */
+export function moreText(p: UpcomingPreview): string {
+  const range = hiddenRangeText(p.hidden);
+  return range ? `Also ${range} · ${p.hiddenItems} more` : '';
+}
+
+/**
+ * D13.1: the small kind icon on an agenda row, from the item's EXISTING source (the module that provided it, or Calendar for your own events). It repeats what the
+ * row's source line already says in words (so the icon is decorative) and decides nothing: an unknown source gets the plain calendar icon.
+ */
+export function kindIcon(moduleId: string): IconName {
+  switch (moduleId) {
+    case 'tasks': return 'task';
+    case 'bills': case 'ledger': return 'receipt';
+    case 'family': return 'gift';
+    case 'services': return 'wrench';
+    case 'assets': return 'home';
+    case 'projects': return 'folder';
+    default: return 'calendar';
+  }
 }
 
 /** "Tomorrow" or "Wed, Nov 18" for an item's day, from calendar facts only. */

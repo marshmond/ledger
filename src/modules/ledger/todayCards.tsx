@@ -8,6 +8,7 @@ import { formatCents } from '../../lib/money';
 import { loadForecast } from '../../lib/forecastLive';
 import { useLedgerAlerts } from '../../pages/useLedgerAlerts';
 import { dayLabel } from '../../core/time';
+import { Icon } from '../../ui/icons';
 import { maskAmounts } from '../today/logic';
 import { alertKey, isAlertHidden, isValidSnoozeDate, loadAlertMemory, rememberAlert, restoreAlert, snoozeUntil } from '../today/settings';
 
@@ -41,7 +42,9 @@ function AttentionCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
           {shown.map((a) => {
             const key = alertKey(a);
             return (
-              <li key={key} className={`alert ${a.level}`}>
+              <li key={key} className={`alert ${a.level} td-alert`}>
+                {/* D13.1: a small icon (decorative; the title and detail say everything). Presentation only: the alert, its actions and its memory are unchanged. */}
+                <span className="td-att-icon" aria-hidden="true"><Icon name={a.level === 'warn' ? 'warning' : 'info'} size={16} /></span>
                 <div className="td-att">
                   <strong>{text(a.title)}</strong>
                   <div className="muted">{text(a.detail)}</div>

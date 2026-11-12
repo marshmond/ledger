@@ -1,11 +1,14 @@
 import type { CSSProperties } from 'react';
 import { goTo } from '../../core/dueProvider';
 import { DateTile } from '../../ui/DateTile';
+import { Icon } from '../../ui/icons';
+import { StatusChip } from '../../ui/StatusChip';
 import { useToast } from '../../ui/Toast';
 import { markOccurrenceDone } from '../calendar/data';
-import { Flags, PriorityMark, whenLabel } from '../calendar/parts';
+import { PriorityMark, whenLabel } from '../calendar/parts';
 import type { CalItem } from '../calendar/useCalendarData';
-import { maskAmounts } from './logic';
+import { maskAmounts, moduleOf } from './logic';
+import { kindIcon } from './todayModel';
 
 /** Opens an item in the module that owns it. Navigation only: Today never changes money. */
 export function openItem(item: CalItem): void {
@@ -17,9 +20,9 @@ export function openItem(item: CalItem): void {
 export const openLabel = (item: CalItem) => (item.derived ? item.source?.sourceLabel ?? 'Open' : 'Edit in Calendar');
 
 /**
- * One line on the Today screen, the same everywhere: a bar in the calendar's colour, the priority mark, the title, when it is, and either
- * a check button (tasks, and events you chose to keep until done) or an "Edit in <module>" button. Money items never have a money
- * action here; they only open in Ledger.
+ * One line on the Today screen, the same everywhere: the time (or, in Overdue, a date tile), a small kind icon, the priority mark and title, a status chip,
+ * the source line, and either a check button (tasks, and events you chose to keep until done) or an "Edit in <module>" button. Money items never have a
+ * money action here; they only open in Ledger. D13.1 replaced the colored bar with the kind icon; the calendar color is still carried by the icon's tint.
  */
 export function TodayRow({ item, hideAmounts, when, tile }: { item: CalItem; hideAmounts: boolean; when?: string; tile?: { today: string; overdue?: boolean } }) {
   const toast = useToast();
@@ -27,6 +30,7 @@ export function TodayRow({ item, hideAmounts, when, tile }: { item: CalItem; hid
   const complete = item.source?.actions?.complete;
   const reopen = item.source?.actions?.reopen;
   const canCheck = !item.done && (!!complete || !!item.occ?.trackDone);
+  const icon = kindIcon(moduleOf(item));
 
   async function check() {
     try {
@@ -45,16 +49,26 @@ export function TodayRow({ item, hideAmounts, when, tile }: { item: CalItem; hid
 
   return (
     <li className={`td-row p-${item.priority} ${item.done ? 'done' : ''} ${tile ? 'td-row--tile' : ''}`} style={{ ['--chip' as string]: item.color } as CSSProperties}>
-      <span className="td-bar" aria-hidden="true" />
-      {tile ? <DateTile iso={item.firstDay} today={tile.today} overdue={tile.overdue} size="sm" className="td-tile" /> : <span className="td-when">{when ?? whenLabel(item)}</span>}
+      {tile
+        ? <DateTile iso={item.firstDay} today={tile.today} overdue={tile.overdue} size="sm" className="td-tile" />
+        : <span className="td-when">{when ?? whenLabel(item)}</span>}
+      {!tile && <span className="td-kind" aria-hidden="true"><Icon name={icon} size={16} /></span>}
       <span className="td-main">
-        <button type="button" className="td-title" onClick={() => openItem(item)}><PriorityMark priority={item.priority} /> {title}</button>
-        <span className="td-sub">{item.layerName}{item.location ? ` · ${item.location}` : ''} <Flags item={item} /></span>
+        <span className="td-line">
+          <button type="button" className="td-title" onClick={() => openItem(item)}><PriorityMark priority={item.priority} /> {title}</button>
+          {item.overdue && <StatusChip tone="overdue">Overdue</StatusChip>}
+          {item.soon && <StatusChip tone="warning" title="A reminder time has passed">Due soon</StatusChip>}
+          {item.done && !item.derived && <StatusChip tone="done">Done</StatusChip>}
+        </span>
+        <span className="td-sub">
+          {tile && <span className="td-sub-kind" aria-hidden="true"><Icon name={icon} size={13} /></span>}
+          {item.layerName}{item.location ? ` · ${item.location}` : ''}
+        </span>
       </span>
       <span className="td-act">
         {canCheck
           ? <button type="button" className="td-check" aria-label={`Mark done: ${title}`} title="Mark done" onClick={check}><span aria-hidden="true">✓</span></button>
-          : <button type="button" className="link" onClick={() => openItem(item)}>{openLabel(item)}</button>}
+          : <button type="button" className="link td-open" onClick={() => openItem(item)}>{openLabel(item)}</button>}
       </span>
     </li>
   );
