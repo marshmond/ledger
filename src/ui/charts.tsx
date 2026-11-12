@@ -51,6 +51,8 @@ export interface Bar {
   ratio: number;
   detail: string;
   over?: boolean;
+  /** A word shown beside an over bar (for example "Over budget"), so the state is never carried by color alone. Optional; the bar is drawn the same without it. */
+  overLabel?: string;
   /** Green fill that never turns amber (for income, where full is good). */
   good?: boolean;
 }
@@ -61,7 +63,7 @@ export function BarList({ bars }: { bars: Bar[] }) {
     <ul className="bars">
       {bars.map((b) => (
         <li key={b.name}>
-          <div className="bar-top"><span>{b.name}</span><span className={`bar-detail ${b.over ? 'neg' : 'muted'}`}>{b.detail}</span></div>
+          <div className="bar-top"><span>{b.name}</span><span className={`bar-detail ${b.over ? 'neg' : 'muted'}`}>{b.over && b.overLabel && <span className="bar-flag">{b.overLabel}</span>}{b.detail}</span></div>
           <div className="bar-track" role="progressbar" aria-label={b.name} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(b.ratio * 100))}>
             <div className={`bar-fill ${b.over ? 'over' : b.good ? 'good' : b.ratio > 0.85 ? 'warn' : ''}`} style={{ width: `${Math.min(1, b.ratio) * 100}%` }} />
           </div>
@@ -91,28 +93,55 @@ export interface PairPoint {
   label: string;
   a: number;
   b: number;
+  /** True for a period that is still in progress (the current month). It is drawn dashed and lighter, with the words "so far", so a part month is not read as a drop. */
+  partial?: boolean;
 }
 
-/** Side-by-side columns per period: `a` (income) and `b` (spending). */
+/**
+ * Side-by-side columns per period: `a` (income) and `b` (spending). D12: a dollar axis with faint grid lines, a native hover tooltip per column, and a dashed
+ * look for a period still in progress. The scale is the largest value drawn, rounded up to a tidy tick; nothing is added or averaged.
+ */
 export function PairedColumns({ points, aName, bName, label }: { points: PairPoint[]; aName: string; bName: string; label: string }) {
-  const W = 360;
-  const H = 150;
-  const base = H - 22;
+  // Drawn at the card's real width (like the net-worth chart) so the labels keep their size instead of growing with a wide card.
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(360);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setW(Math.max(260, Math.round(el.clientWidth))));
+    ro.observe(el);
+    setW(Math.max(260, Math.round(el.clientWidth)));
+    return () => ro.disconnect();
+  }, []);
+  const H = 190;
+  const L = 42;
+  const base = H - 30;
   const max = Math.max(1, ...points.flatMap((p) => [p.a, p.b]));
-  const slot = W / points.length;
-  const bw = Math.min(22, slot * 0.34);
-  const h = (v: number) => (Math.max(0, v) / max) * (base - 6);
+  const ticks = niceTicks(max / 100, 3).map((v) => v * 100);
+  const top = ticks[ticks.length - 1] || max;
+  const slot = (W - L) / points.length;
+  const bw = Math.min(30, slot * 0.34);
+  const h = (v: number) => (Math.max(0, v) / top) * (base - 8);
   return (
-    <div>
-      <svg className="paired" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
-        <line x1="0" x2={W} y1={base} y2={base} className="axis" />
+    <div className="paired-wrap" ref={box}>
+      <svg className="paired" style={{ height: H }} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
+        {ticks.map((t) => (
+          <g key={t}>
+            {t !== 0 && <line x1={L} x2={W} y1={base - h(t)} y2={base - h(t)} className="grid-line" />}
+            <text x={L - 6} y={base - h(t) + 4} textAnchor="end" className="axis-label">{compactUSD(t)}</text>
+          </g>
+        ))}
+        <line x1={L} x2={W} y1={base} y2={base} className="axis" />
         {points.map((p, i) => {
-          const cx = slot * i + slot / 2;
+          const cx = L + slot * i + slot / 2;
+          const cls = p.partial ? ' partial' : '';
+          const when = `${p.label}${p.partial ? ' (so far)' : ''}`;
           return (
             <g key={p.label}>
-              <rect x={cx - bw - 1} y={base - h(p.a)} width={bw} height={h(p.a)} rx="3" className="col-a" />
-              <rect x={cx + 1} y={base - h(p.b)} width={bw} height={h(p.b)} rx="3" className="col-b" />
-              <text x={cx} y={H - 6} textAnchor="middle" className="axis-label">{p.label}</text>
+              <rect x={cx - bw - 1} y={base - h(p.a)} width={bw} height={h(p.a)} rx="3" className={`col-a${cls}`}><title>{`${when}: ${aName} ${formatCents(p.a)}`}</title></rect>
+              <rect x={cx + 1} y={base - h(p.b)} width={bw} height={h(p.b)} rx="3" className={`col-b${cls}`}><title>{`${when}: ${bName} ${formatCents(p.b)}`}</title></rect>
+              <text x={cx} y={H - (p.partial ? 16 : 8)} textAnchor="middle" className="axis-label">{p.label}</text>
+              {p.partial && <text x={cx} y={H - 4} textAnchor="middle" className="axis-label axis-sub">so far</text>}
             </g>
           );
         })}
@@ -126,15 +155,15 @@ export function PairedColumns({ points, aName, bName, label }: { points: PairPoi
 }
 
 const NW_PARTS: { key: 'cashCents' | 'investmentsCents' | 'propertyCents' | 'cardsOwedCents' | 'loansOwedCents'; name: string; color: string; up: boolean }[] = [
-  { key: 'cashCents', name: 'Cash', color: 'var(--chart-1)', up: true },
-  { key: 'investmentsCents', name: 'Investments', color: 'var(--chart-3)', up: true },
-  { key: 'propertyCents', name: 'Property', color: 'var(--chart-4)', up: true },
-  { key: 'cardsOwedCents', name: 'Credit cards', color: 'var(--chart-5)', up: false },
-  { key: 'loansOwedCents', name: 'Loans', color: 'var(--chart-2)', up: false },
+  { key: 'cashCents', name: 'Cash', color: 'var(--nw-1, var(--chart-1))', up: true },
+  { key: 'investmentsCents', name: 'Investments', color: 'var(--nw-3, var(--chart-3))', up: true },
+  { key: 'propertyCents', name: 'Property', color: 'var(--nw-4, var(--chart-4))', up: true },
+  { key: 'cardsOwedCents', name: 'Credit cards', color: 'var(--nw-5, var(--chart-5))', up: false },
+  { key: 'loansOwedCents', name: 'Loans', color: 'var(--nw-2, var(--chart-2))', up: false },
 ];
 
 /** Assets stacked above the zero line, what is owed stacked below it, and net worth as a line on top. Hover, tap, or use the arrow keys to read a month. */
-export function NetWorthChart({ bars, label }: { bars: NetWorthBar[]; label: string }) {
+export function NetWorthChart({ bars, label, height = 240 }: { bars: NetWorthBar[]; label: string; height?: number }) {
   const [idx, setIdx] = useState<number | null>(null);
   // Draw at the card's real width so labels stay readable instead of shrinking with the card.
   const box = useRef<HTMLDivElement>(null);
@@ -147,7 +176,7 @@ export function NetWorthChart({ bars, label }: { bars: NetWorthBar[]; label: str
     setW(Math.max(260, Math.round(el.clientWidth)));
     return () => ro.disconnect();
   }, []);
-  const H = 240;
+  const H = height;
   const M = { l: 52, r: 10, t: 10, b: 26 };
   const n = bars.length;
   const upTicks = niceTicks(Math.max(...bars.map((b) => Math.max(b.upCents, b.netCents)), 1) / 100, 3).map((v) => v * 100);

@@ -92,8 +92,9 @@ describe('D5 the tracker is well formed', () => {
     // D8 replaced the desktop sidebar by the Ledger bar (S-13), moved the page top bar and breadcrumbs under it (S-14) and relocated the theme toggle (S-17). The phone's section
     // tabs (S-15) and bottom tab bar (S-16) were not visually modified and stay NS; no Ledger page row changed.
     // D10 redesigned the Add box (S-05) and, with it, the five Quick Add workflows W-01 to W-05 were built and run. DL-01 stays NS (Search and the confirmation dialog are untouched).
+    // D12 redesigned Ledger Home (L-01), Family overview (F-01) and Household Finances (H-01, with its review workflow W-37); the shared charts (S-23) gained marks. Family detail pages, Contacts and every other module page are untouched.
     // Add an ID here only in the change that builds it.
-    expect(beyond.map((r) => r.id).sort()).toEqual(['IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13']);
+    expect(beyond.map((r) => r.id).sort()).toEqual(['F-01', 'H-01', 'IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'L-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13', 'W-37']);
     for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });

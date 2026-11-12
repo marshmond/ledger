@@ -115,3 +115,50 @@
 
 /* D9: identity on the member page. The mark sits beside the "Profile" heading; the card-head already wraps and centres on its own row. */
 .fm .fm-profile-head { align-items: center; justify-content: flex-start; gap: var(--sp-3); }
+
+/* ---- Family overview (D12) ----
+   Presentation only. Each member is a card with the D9 identity pieces (a mark, a dot and the color's NAME in words); a member with no color keeps the neutral look
+   (a dashed top edge, a gray mark). The identity color is never a Calendar color: the stripe on an activity is still the calendar's own. */
+.fm-main:has(.fm-grid) { max-width: min(1220px, 100%); }
+.fm-members { margin-bottom: var(--sp-4); }
+.fm-sec-head { display: flex; align-items: center; gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.fm-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
+.fm-grid > .fm-mcard { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-3); min-height: 0; padding: var(--sp-4); border: 1px solid var(--line); border-top: 4px solid var(--pc, var(--control-line)); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow-1); }
+.fm-grid > .fm-mcard:not([data-mc]) { border-top-style: dashed; }
+.fm-mcard-top { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.fm-mcard .fm-card-text { gap: 2px; min-width: 0; }
+.fm-mcard .fm-name { align-self: flex-start; color: var(--fg); font-size: var(--fs-md, 1rem); font-weight: 650; text-decoration: none; overflow-wrap: anywhere; }
+.fm-mcard .fm-name:hover { text-decoration: underline; }
+.fm-role { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.fm-mfacts { margin: 0; padding: var(--sp-3) 0 0; display: grid; gap: var(--sp-2); border-top: 1px solid var(--line); list-style: none; }
+.fm-mfacts:empty { display: none; }
+.fm-mfacts li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); color: var(--fg-2); }
+.fm-mfacts .ui-icon { color: var(--muted); }
+.fm-mfacts .fm-needs, .fm-mfacts .fm-needs .ui-icon { color: var(--warn-text); }
+.fm-colorname { display: inline-flex; align-items: center; gap: var(--sp-2); color: var(--fg-2); }
+
+/* The "Show" filter: one chip per person on a computer, the select on a phone. Both set the same choice. */
+.fm-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.fm-fchip { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--control-h-sm); padding: 0 var(--sp-4); border: 1px solid var(--control-line); border-radius: var(--r-pill); background: var(--surface); color: var(--fg); font-weight: 500; }
+.fm-fchip:hover:not([aria-pressed="true"]) { background: var(--hover); }
+.fm-fchip[aria-pressed="true"] { border-color: var(--btn-bg); background: var(--btn-bg); color: var(--btn-ink); font-weight: 650; }
+.fm-who-select { display: none; }
+@media (max-width: 700px) { .fm-chips { display: none; } .fm-who-select { display: inline-block; } }
+@media (pointer: coarse) { .fm-fchip { min-height: 44px; } }
+
+/* The three household sections: Activities on the left, tasks and dates on the right (one column on a phone). Each row starts with a date tile. */
+.fm-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.fm-col-main, .fm-col-side { display: grid; gap: var(--sp-4); min-width: 0; }
+.fm-cols .card { margin-bottom: 0; }
+@media (min-width: 1000px) { .fm-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.fm-item { align-items: center; padding-block: var(--sp-3); }
+.fm-item > .ui-dtile { align-self: flex-start; }
+.fm-tile-none { flex: none; width: 46px; }
+.fm-people .fm-chip { min-height: 28px; padding: 1px 10px 1px 8px; border: 1px solid color-mix(in srgb, var(--pc, var(--control-line)) 40%, var(--surface)); border-radius: var(--r-pill); background: color-mix(in srgb, var(--pc, var(--surface-sunken)) 12%, var(--surface)); color: color-mix(in srgb, var(--pc, var(--fg-2)) 44%, var(--fg)); font-size: var(--fs-sm); text-decoration: none; }
+.fm-warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 40%, var(--surface)); }
+@media (max-width: 480px) {
+  .fm-people .fm-chip { min-height: 44px; }
+  .fm-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-3); } /* two cards across on a phone; one at 320px or when a name is long */
+  .fm-grid > .fm-mcard { padding: var(--sp-3); }
+  .fm-mcard-top { flex-direction: column; align-items: flex-start; }
+}

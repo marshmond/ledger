@@ -6,7 +6,7 @@ import { scrubGeneratedIds } from '../../lib/leakTestkit';
 import { accessibleName, all, byTag, headingSkips, headings, parseHtml, textOf, unnamedButtons, unnamedFields } from '../../lib/a11yTestkit';
 import { ModuleBase } from '../../core/router';
 import { ToastProvider } from '../../ui/Toast';
-import { ActivitiesSection, daysUntil, DatesSection, inWords, PREVIEW, ResponsibilitiesSection } from './HouseholdSections';
+import { ActivitiesSection, daysUntil, DatesSection, inWords, PREVIEW, RelatedTasksSection } from './HouseholdSections';
 import type { HouseholdActivity, HouseholdDate, HouseholdTask, PersonRef } from './householdOverview';
 import OverviewPage from './OverviewPage';
 import { calendarLink } from './memberSchedule';
@@ -73,9 +73,9 @@ describe('activities', () => {
   });
 });
 
-describe('responsibilities', () => {
+describe('related tasks', () => {
   it('overdue and high priority are words, a repeating task says so, and the wording is "associated with", never ownership', () => {
-    const d = html(createElement(ResponsibilitiesSection, {
+    const d = html(createElement(RelatedTasksSection, {
       items: [taskRow(7, 'Sign form', { overdue: true, high: true, repeats: true, when: { label: 'Due', date: '2026-11-03', time: null }, people: [robin, sam] }), taskRow(8, 'Undated thing')],
       who: null,
     }));
@@ -92,18 +92,18 @@ describe('responsibilities', () => {
   });
 
   it('one row per task however many members it names; no completion control is offered', () => {
-    const d = html(createElement(ResponsibilitiesSection, { items: [taskRow(7, 'Pack bags', { people: [robin, sam] })], who: null }));
+    const d = html(createElement(RelatedTasksSection, { items: [taskRow(7, 'Pack bags', { people: [robin, sam] })], who: null }));
     expect(all(d, (e) => e.tag === 'li')).toHaveLength(1);
     expect(byTag(d, 'input')).toEqual([]);
     expect(byTag(d, 'button').map((b) => textOf(b))).toEqual([]);
   });
 
   it('previews six rows and offers Show all; empty states for everyone and for one person', () => {
-    const many = html(createElement(ResponsibilitiesSection, { items: Array.from({ length: 9 }, (_, i) => taskRow(i + 1, `Task ${i + 1}`)), who: null }));
+    const many = html(createElement(RelatedTasksSection, { items: Array.from({ length: 9 }, (_, i) => taskRow(i + 1, `Task ${i + 1}`)), who: null }));
     expect(all(many, (e) => e.tag === 'li')).toHaveLength(PREVIEW);
     expect(textOf(byTag(many, 'button')[0])).toBe('Show all 9 tasks');
-    expect(textOf(html(createElement(ResponsibilitiesSection, { items: [], who: null })))).toMatch(/No open tasks/);
-    expect(textOf(html(createElement(ResponsibilitiesSection, { items: [], who: 'Robin Example' })))).toMatch(/Robin Example is not named on any open task/);
+    expect(textOf(html(createElement(RelatedTasksSection, { items: [], who: null })))).toMatch(/No open tasks/);
+    expect(textOf(html(createElement(RelatedTasksSection, { items: [], who: 'Robin Example' })))).toMatch(/Robin Example is not named on any open task/);
   });
 });
 
@@ -147,11 +147,11 @@ describe('birthdays and dates', () => {
 describe('structure and the whole page', () => {
   const sections = html(createElement('div', null, createElement('h1', null, 'Family'),
     createElement(ActivitiesSection, { items: [activity(1, 'A')], hiddenCount: 0, today: TODAY, who: null }),
-    createElement(ResponsibilitiesSection, { items: [taskRow(1, 'T')], who: null }),
+    createElement(RelatedTasksSection, { items: [taskRow(1, 'T')], who: null }),
     createElement(DatesSection, { items: [dateRow('b1')], today: TODAY, who: null }),
   ));
   it('each section is a named region with an h2 and no heading level is skipped', () => {
-    expect(headings(sections).filter((h) => h.level === 2).map((h) => h.text)).toEqual(['Activities, next 7 days', 'Responsibilities', 'Birthdays and dates, next 30 days']);
+    expect(headings(sections).filter((h) => h.level === 2).map((h) => h.text)).toEqual(['Activities, next 7 days', 'Related tasks', 'Birthdays and dates, next 30 days']);
     expect(headingSkips(sections)).toEqual([]);
     for (const s of all(sections, (e) => e.tag === 'section')) expect(s.attrs['aria-labelledby']).toBeTruthy();
   });

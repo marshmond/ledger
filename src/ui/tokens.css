@@ -170,6 +170,18 @@
      styles.css adds this height to --bar-h wherever something sticks below the bar (the page's top bar and the table headings). */
   --lnav-h: 40px;
   --ui-lnav-ic: none;
+
+  /* D12 (Ledger Home, Family Overview, Household Finances). Same rule as D6 and D7: every value below makes the screen look as it did before D12, so Classic, the four
+     older presets and any custom palette are unchanged. Only the Signature preset (src/palette.ts SIGNATURE_SHARED) gives them other values.
+     The hero is the one dark panel on Ledger Home (the net-worth card); its text pairs are measured in src/pages/d12Contrast.test.ts. */
+  --hero-bg: var(--surface);          /* Home's net-worth panel (Signature: navy) */
+  --hero-ink: var(--fg);
+  --hero-ink-2: var(--muted);
+  --hero-line: var(--line);
+  --hero-pos: var(--pos-text);
+  --hero-neg: var(--neg-text);
+  --hero-label-tt: none;              /* the small label above the figure (Signature: capitals) */
+  --chart-spend: var(--chart-2);      /* the "Spent" columns of Income vs spending (the app's colour for spending money; Signature: navy) */
 }
 
 /* A page title is one step smaller on a phone (only Signature reads this: --h1-size is --fs-xl for everyone else). */

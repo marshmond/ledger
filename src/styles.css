@@ -363,7 +363,8 @@ a.list-row:hover { text-decoration: none; background: var(--hover); }
 .toast button.link:hover:not(:disabled) { background: color-mix(in srgb, var(--toast-ink) 18%, transparent); }
 
 /* ---- home dashboard: a grid of cards you can reorder ---- */
-:root { --chart-1: #3f7fd9; --chart-2: #e08a2b; --chart-3: #3aa17e; --chart-4: #9b6ad6; --chart-5: #d65f7a; --chart-6: #7a8794; }
+/* D12: each Home chart color reads an optional --viz-c* variable and falls back to the value it always had, so only Signature (src/palette.ts) changes. */
+:root { --chart-1: var(--viz-c1, #3f7fd9); --chart-2: var(--viz-c2, #e08a2b); --chart-3: var(--viz-c3, #3aa17e); --chart-4: var(--viz-c4, #9b6ad6); --chart-5: var(--viz-c5, #d65f7a); --chart-6: var(--viz-c6, #7a8794); }
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
 .hc { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
 .hc > .card { margin-bottom: 0; flex: 1; }
@@ -393,9 +394,9 @@ a.list-row:hover { text-decoration: none; background: var(--hover); }
 .legend.inline { display: flex; gap: var(--sp-4); justify-content: center; margin-top: var(--sp-1); flex: none; }
 .swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .col-a { fill: var(--pos); }
-.col-b { fill: var(--chart-2); }
+.col-b { fill: var(--chart-spend); } /* D12: the app's color for spending (token; Classic keeps chart-2) */
 .col-a-sw { background: var(--pos); }
-.col-b-sw { background: var(--chart-2); }
+.col-b-sw { background: var(--chart-spend); }
 .paired { width: 100%; height: auto; display: block; }
 .axis { stroke: var(--line-strong); stroke-width: 1; }
 .axis-label { fill: var(--muted); font-size: 11px; }

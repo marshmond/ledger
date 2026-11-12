@@ -60,7 +60,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | NS | . | . | . | . | . | . |
 | S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline; member identity mark, dot and chip (D9) | `src/ui/components.tsx`, `src/ui/MemberIdentity.tsx` | D6, D9 | BLT | Y | Y | . | Y | . | Y |
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
-| S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | . | Y | . | Y | . | . |
+| S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | Y | Y | Y | Y | . | Y |
 
 S-20 note: D5 deliberately left the browser-bar colour, `index.html` and the manifest alone (the default look is unchanged). When Signature is selected the bar takes the Signature canvas colour at run time; the fixed values move in D21.
 
@@ -123,6 +123,28 @@ Seen in headless Chrome on a throwaway profile holding the fictional D1 demo hou
 - **DL-02 Tasks dialogs:** now four sites; the new one is the phone Filters sheet (the shared `Modal`, `variant="sheet"`; focus inside, Escape closes, focus returns). The other three are untouched, so the row stays `NS`. **S-07** also stays `NS` (`QuickTask.tsx` and `TaskEditor.tsx` were not edited).
 - **Not checked:** real phones (touch targets, the floating Add button over rows, on-screen keyboard in the sheet), screen readers, forced colors (no rule was added), Safari and Firefox, the other three presets, the Lists dialog and the Task editor in Signature, the Completed and Deleted views as pictures in dark, 800 px for Tasks beyond one picture. New text colors were measured by arithmetic for Classic and every preset in both modes (all 4.5:1 or better; `src/modules/today/d11Contrast.test.ts`); no foreground was checked on a real screen.
 
+### 1.7 D12 evidence: Ledger Home, Family overview, Household Finances (built, NOT committed; nothing is `ACC`)
+
+Seen in headless Chrome on a throwaway profile holding the fictional D1 demo household (own address `localhost:5231`, sync off), driven by DevTools-protocol scripts. Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D12-Evidence`, `baseline` and `after`). Report: `docs/LEDGER-SIGNATURE-D12-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real phone or a screen reader.**
+
+- **L-01 Ledger Home:** `L` and `D` Signature at 1440 (light also at 1024, 800, 375, 320; dark also at 375), Classic light and Slate light at 1440, Edit Home mode and "Show all steps" open. `Kbd`: a Tab walk of 25 stops on a computer and on a phone, each with a visible focus indicator. `Func`: all 12 card ids in the default order; every money figure equals the pre-change baseline; chart labels carry the provider values; a saved layout (order, widths, removed card) honored after a reload; Edit Home bars; removing a card saved in the same format; Reset to default; "Show all steps". Seven-digit amounts and an unbroken 55-character payee name were tried at 320 and 375 (DOM text only, nothing saved): no overflow. The card list, ids, order, widths and the stored layout are unchanged; Hide amounts does not cover Ledger Home (its documented scope), so none was added.
+- **H-01 Household Finances:** same widths and themes, plus the certainty summary at 1440 and 375, Needs review, the 90-day view, and Hide amounts at 1440 and 375. `Kbd`: Tab walks of 22 stops (both widths). `Func` (browser): every baseline figure still present with the same count, the only additions being the ten repeats in the summary tiles and the equation; the Expected tile and card follow 7, 30 and 90 days and equal the reader's values; the Recorded tile follows the period menu (Last 90 days checked); Needs review count equals the reader's list; all five disclosures open; "See ..." buttons move focus to their section; with Hide amounts on there is no dollar digit in text or in any accessible name and no proportion bar; hidden is a mask, never $0.00.
+- **F-01 Family overview:** same widths and themes, plus the person filter, the Add member form (8 swatches and No color), and a member with no color (a stored color was cleared on the throwaway profile for the check and put back). `Kbd`: Tab walks of 32 stops on a computer and 28 on a phone. `Func`: every active member is one card; each card and mark carries its stored color id; choosing a person narrows the three sections (activities 3 to 2, tasks 4 to 1 for one member) and Everyone restores them; Add member opens the D9 form and Escape closes it without saving; a card opens that member's page. Long, unbroken names were tried at 320 and 375: no overflow.
+- **S-23 charts:** the Home charts (spending ring, income and spending columns with the dollar axis and the dashed "so far" month, assets ring, the net-worth chart's colors). The net-worth trend chart itself was not drawn (the demo household has no saved history), so its keyboard behavior was not exercised and `Kbd` stays `.`.
+- **W-37:** read `BLT`: period, disclosures and Hide amounts were run as above. No overlap marker was built (not authorized).
+- **Not checked:** real phones, screen readers, forced colors (no new rule), Safari and Firefox, the other two presets ("Calm teal", "Forest") and Deep navy for these three pages, the Family member pages and dates (D15), the Household pages' modules (Bills, Services, Assets), a Home with a saved net-worth history (the dark hero with the white chart band below it was seen only through its empty-trend state), and any real household data. Text colors for the hero and the new Home words were measured by arithmetic for Classic and every preset in both modes (`src/pages/d12Contrast.test.ts`); no foreground was checked on a real screen.
+
+### 1.8 D12 refinement evidence: Ledger Home composition (built, NOT committed; nothing is `ACC`)
+
+Owner priority recorded: the approved prototypes are the visual targets; the old layout is not sacred; a designed default beats an unrestricted dashboard builder; reordering matters more than add, remove, hide or resize; financial and functional integrity stay non-negotiable; material deviations need justification and review. Report: `docs/LEDGER-SIGNATURE-D12-REFINEMENT-REPORT.md`. Same method as section 1.7 (headless Chrome, throwaway profile, fictional data, synthetic key events; **not** a real phone or screen reader). Pictures: `D12-Evidence\refinement`.
+
+- **L-01 Ledger Home (marks unchanged, now resting on the new composition):** full-width hero (net worth and the month), Needs attention strip, one-row Get started, two columns (analysis 5 : 3 supporting), one-card Spending & budget; `L` and `D` at 1440 (also 1024, 800, 375, 320 light; 375 dark; Classic and Slate at 1440); `Kbd`: Tab walks, every stop with a visible focus indicator, phone links 44 px or taller; `Func`: all baseline figures and labels equal (31 of 31), sections reordered, hidden, shown and reset with the result kept after a reload, a fictional customized `ledger.home.layout.v1` carried over with a visible note and left byte for byte unchanged, "Use my earlier arrangement again". The net-worth trend chart was seen with six fictional saved months in light and dark, read with the arrow keys, and with none or one month (note, no chart). **The earlier one-card-per-widget customization is gone by design** (widths, removing the top cards, moving Spending and Budget separately).
+- **L-01, D12 final pass (marks unchanged):** hero "Assets (positive balances)" and "Owed (cards and loans)" figures; What you own and owe as two bars on one scale; Monthly check-in as a segmented bar; a divider between the spending and budget panels. Seen at 1440 (light, dark, Classic, Slate), 1024, 800, 375 (light, dark) and 320, with seven-digit amounts at 320 and 375; `Kbd`: Tab walks re-run (every stop visible, phone links 44 px or taller); `Func`: 43 browser checks and the new unit tests. A category-keyed spending and budget table was NOT built (report 22.2).
+- **L-01, D12 final mobile correction (marks unchanged):** on a phone the top panel is two cards (net worth, then the month), from the same markup and data; the chart is 176 px tall on a phone. Seen as real 812 px viewports at 375 (light and dark, with and without six fictional months) and as pages at 320 (light, dark, long amounts); bottom navigation and the Add button checked in a normal viewport (fixed, nothing permanently covered, a tap opens the Add box); arrow-key reading of the chart on a phone-sized page; 55 phone checks and the 43 desktop checks pass. Real phones and screen readers are still not tested.
+- **F-01 Family overview:** the tasks section now reads "Related tasks" and the intro says "associated with"; nothing else changed.
+- **S-23 charts:** the Income vs spending chart draws at its card's width; the net-worth chart takes light colors inside the dark hero.
+- **Not checked:** real phones, screen readers, forced colors, Safari and Firefox, the other three presets for Home, the Home alerts' Snooze and Dismiss (not built), a merged spending and budget table (not built).
+
 Addresses are written as they appear after `#` in the browser. Ledger pages are under `/ledger`. The guard compares this column with the app's route registrations.
 
 ### 2.1 Today, Calendar, Tasks (3)
@@ -161,8 +183,8 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| H-01 | `/household` | `src/modules/household/OverviewPage.tsx` | D12 | NS | . | . | . | . | . | . |
-| F-01 | `/family` | `src/modules/family/OverviewPage.tsx` | D12 | NS | . | . | . | . | . | . |
+| H-01 | `/household` | `src/modules/household/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
+| F-01 | `/family` | `src/modules/family/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
 | F-02 | `/family/m/:id` | `src/modules/family/MemberPage.tsx` | D9, D15 | NS | . | . | . | . | . | . |
 | F-03 | `/family/dates` | `src/modules/family/DatesPage.tsx` | D15 | NS | . | . | . | . | . | . |
 | N-01 | `/contacts` | `src/modules/contacts/DirectoryPage.tsx` | D14 | NS | . | . | . | . | . | . |
@@ -188,7 +210,7 @@ Ledger has 32 route entries and 31 pages. `/ledger/backup` is a redirect to `/se
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| L-01 | `/ledger` | `src/pages/HomePage.tsx` | D12 | NS | . | . | . | . | . | . |
+| L-01 | `/ledger` | `src/pages/HomePage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
 | L-02 | `/ledger/checkin` | `src/pages/CheckinPage.tsx` | D16 | NS | . | . | . | . | . | . |
 | L-03 | `/ledger/accounts` | `src/pages/AccountsPage.tsx` | D16 | NS | . | . | . | . | . | . |
 | L-04 | `/ledger/account/:id` | `src/pages/LedgerPage.tsx` | D16 | NS | . | . | . | . | . | . |
@@ -336,7 +358,7 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-34 | Bills: add/edit, periods and payments, lifecycle, discovery, review list, links | D15 | NS |
 | W-35 | Family: member add/edit (contact choice, colour), dates, important contacts, removal | D9, D15 | NS |
 | W-36 | Contacts: add/edit/remove, where used | D14 | NS |
-| W-37 | Household Finances review: period, disclosures, hide amounts | D12 | NS |
+| W-37 | Household Finances review: period, disclosures, hide amounts | D12 | BLT |
 
 W-29 note: D5 added the Signature choice to Appearance and left the rest of the flow untouched; the flow is re-accepted in D19.
 

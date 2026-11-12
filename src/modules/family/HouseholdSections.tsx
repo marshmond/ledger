@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from '../../core/router';
 import { PRIORITY_LABEL } from '../../core/priority';
 import { EmptyState } from '../../ui/components';
+import { DateTile } from '../../ui/DateTile';
 import { MemberDot } from '../../ui/MemberIdentity';
 import { memberColorId } from './memberIdentity';
 import { dayLabel, timeLabel } from '../calendar/time';
@@ -35,7 +36,7 @@ function People({ label, people }: { label: string; people: readonly PersonRef[]
     <span className="fm-people small">
       <span className="muted">{label}</span>
       {people.map((p) => (
-        <Link key={p.memberId} to={memberRoute(p.memberId)} className="fm-chip">
+        <Link key={p.memberId} to={memberRoute(p.memberId)} className="fm-chip" data-mc={memberColorId(p.color) ?? undefined}>
           <MemberDot colorId={memberColorId(p.color)} />{p.name}
         </Link>
       ))}
@@ -56,7 +57,7 @@ export function ActivitiesSection({ items, hiddenCount, today, who }: { items: r
   const shown = visible(items, open);
   return (
     <section className="card" aria-labelledby="fm-hh-act">
-      <div className="card-head"><h2 className="card-title" id="fm-hh-act">Activities, next {ACTIVITY_DAYS} days</h2><span className="muted small">{items.length}</span></div>
+      <div className="card-head"><h2 className="card-title" id="fm-hh-act">Activities, next {ACTIVITY_DAYS} days</h2><span className="badge">{items.length}</span></div>
       {items.length === 0 ? (
         <EmptyState title={hiddenCount > 0 ? 'No activities shown' : `Nothing planned in the next ${ACTIVITY_DAYS} days`}>
           {who ? `${who} is not named on any upcoming Calendar event.` : 'Events appear here when they name a household member under “People” in the Calendar.'}
@@ -66,6 +67,7 @@ export function ActivitiesSection({ items, hiddenCount, today, who }: { items: r
           <ul className="plain fm-items">
             {shown.map((it) => (
               <li key={it.key} className="fm-item">
+                <DateTile iso={it.firstDay} today={today} size="sm" labelled={false} />
                 <span className="fm-bar" style={{ background: it.color }} aria-hidden="true" />
                 <div className="fm-item-text">
                   <a className="fm-item-title" href={calendarLink(it)}>{it.title}</a>
@@ -87,14 +89,14 @@ export function ActivitiesSection({ items, hiddenCount, today, who }: { items: r
   );
 }
 
-/** Responsibilities: open Tasks that name a household member. Read-only; each title opens the Task in Tasks, where it is finished or changed. */
-export function ResponsibilitiesSection({ items, who }: { items: readonly HouseholdTask[]; who: string | null }) {
+/** Related tasks: open Tasks that name a household member. Read-only; each title opens the Task in Tasks, where it is finished or changed. The link is an association, never an assignment. */
+export function RelatedTasksSection({ items, today, who }: { items: readonly HouseholdTask[]; today?: string; who: string | null }) {
   const [open, setOpen] = useState(false);
   const shown = visible(items, open);
   const overdue = items.filter((t) => t.overdue).length;
   return (
     <section className="card" aria-labelledby="fm-hh-todo">
-      <div className="card-head"><h2 className="card-title" id="fm-hh-todo">Responsibilities</h2><span className="muted small">{items.length}</span></div>
+      <div className="card-head"><h2 className="card-title" id="fm-hh-todo">Related tasks</h2><span className="badge">{items.length}</span></div>
       {items.length === 0 ? (
         <EmptyState title="No open tasks">
           {who ? `${who} is not named on any open task.` : 'Open tasks appear here when they name a household member under “People” in Tasks.'}
@@ -107,6 +109,7 @@ export function ResponsibilitiesSection({ items, who }: { items: readonly Househ
           <ul className="plain fm-items">
             {shown.map((t) => (
               <li key={t.id} className="fm-item">
+                {today && (t.when ? <DateTile iso={t.when.date} today={today} size="sm" overdue={t.overdue} labelled={false} /> : <span className="fm-tile-none" aria-hidden="true" />)}
                 <div className="fm-item-text">
                   <a className="fm-item-title" href={`#/tasks?task=${t.id}`}>{t.title}</a>
                   <span className="muted small">
@@ -134,7 +137,7 @@ export function ResponsibilitiesSection({ items, who }: { items: readonly Househ
 export function DatesSection({ items, today, who }: { items: readonly HouseholdDate[]; today: string; who: string | null }) {
   return (
     <section className="card" aria-labelledby="fm-hh-dates">
-      <div className="card-head"><h2 className="card-title" id="fm-hh-dates">Birthdays and dates, next {DATE_DAYS} days</h2><span className="muted small">{items.length}</span></div>
+      <div className="card-head"><h2 className="card-title" id="fm-hh-dates">Birthdays and dates, next {DATE_DAYS} days</h2><span className="badge">{items.length}</span></div>
       {items.length === 0 ? (
         <EmptyState title={`No dates in the next ${DATE_DAYS} days`}>
           {who ? `${who} has no birthday or important date coming up.` : 'Birthdays come from member profiles; add anniversaries and other yearly dates under Family dates.'}
@@ -145,6 +148,7 @@ export function DatesSection({ items, today, who }: { items: readonly HouseholdD
             const to = r.type === 'birthday' ? (r.memberId !== undefined ? memberRoute(r.memberId) : DATES_ROUTE) : r.aboutMemberId !== undefined ? memberRoute(r.aboutMemberId) : DATES_ROUTE;
             return (
               <li key={r.key} className="fm-item">
+                <DateTile iso={r.date} today={today} size="sm" special={r.type === 'birthday'} labelled={false} />
                 <div className="fm-item-text">
                   <Link to={to} className="fm-item-title">{r.title}</Link>
                   <span className="muted small">{dayLabel(r.date)} · {inWords(daysUntil(today, r.date))} · {r.type === 'birthday' ? 'Birthday' : DATE_KIND_LABEL[r.type]}{r.onCalendar ? '' : ' · Not on my Calendar'}</span>

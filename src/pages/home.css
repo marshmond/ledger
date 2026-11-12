@@ -1,0 +1,209 @@
+/* ---- Ledger Home (D12, composition refined) ----
+   A fixed top (one full-width panel for net worth and the month, Needs attention, Get started) and two columns of sections: a wide analysis column and a narrow
+   supporting column. Presentation only: every figure comes from the same readers, and the colors come from tokens (src/ui/tokens.css), so Classic and the older presets
+   get the same composition with plain card colors; only Signature makes the top panel dark. */
+.home-page { display: grid; gap: var(--sp-5); min-width: 0; }
+.home-page > * { margin: 0; min-width: 0; }
+.home-page .card-head { margin-bottom: var(--sp-3); }
+.home-page .card-link { font-size: var(--fs-sm); font-weight: 600; }
+.home-page .card-title { letter-spacing: -0.005em; }
+.home-page .legend-val, .home-page .bar-detail, .home-page .kv .v { font-variant-numeric: tabular-nums; }
+
+/* A note that the earlier layout was carried over */
+.home-notice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--accent-soft); border-color: var(--accent-line); }
+.home-notice > div:first-child { flex: 1 1 320px; }
+
+/* The top panel */
+.home-page .home-hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); padding: 0; overflow: hidden; border-radius: var(--r-xl); background: var(--hero-bg); border-color: var(--hero-line); color: var(--hero-ink); }
+.hh-nw, .hh-month { min-width: 0; padding: var(--sp-6); }
+.hh-month { display: flex; flex-direction: column; justify-content: flex-start; gap: var(--sp-5); border-left: 1px solid var(--hero-line); }
+.hh-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.hh-label { margin: 0; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0.1em; text-transform: var(--hero-label-tt); color: var(--hero-ink-2); }
+.home-hero .card-link { color: var(--hero-ink); }
+.home-hero .hero { margin: var(--sp-1) 0 var(--sp-2); font-size: clamp(2rem, 9vw, var(--fs-display)); letter-spacing: -0.03em; color: var(--hero-ink); overflow-wrap: anywhere; }
+.home-hero .hero.neg { color: var(--hero-neg); }
+.hh-sub { margin: 0; font-size: var(--fs-sm); color: var(--hero-ink-2); }
+.hh-sub .pos { color: var(--hero-pos); }
+.hh-sub .neg { color: var(--hero-neg); }
+.hh-trend-empty { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-4); }
+.hh-dots { flex: none; width: 28px; border-top: 2px dotted var(--hero-ink-2); }
+.hh-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); margin: 0; }
+.hh-fig { min-width: 0; }
+.hh-fig dt { font-size: var(--fs-sm); color: var(--hero-ink-2); }
+.hh-fig dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-2); margin: 2px 0 0; font-size: clamp(1.375rem, 2.1vw, 1.875rem); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.hh-fig--ready dd { color: var(--hero-pos); }
+.hh-fig--ready.neg dd { color: var(--hero-neg); }
+.home-hero .bar-flag { background: none; border-color: var(--hero-neg); color: var(--hero-neg); font-size: var(--fs-xs); letter-spacing: 0; }
+.hh-bars { display: grid; gap: var(--sp-2); }
+.hh-barrow { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); align-items: center; gap: var(--sp-3); }
+.hh-barname { font-size: var(--fs-sm); color: var(--hero-ink-2); }
+.hh-bar { height: 8px; border-radius: 4px; background: var(--hero-line); overflow: hidden; }
+.hh-bar > span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--hero-ink); }
+.hh-bar.good > span { background: var(--hero-pos); }
+.hh-bar.over > span { background: var(--hero-neg); }
+
+/* The net-worth chart is drawn for a light ground; inside the panel it reads the panel's own text colors, and a light ramp for its stacked bars. */
+.hh-chart { margin-top: var(--sp-4); }
+.home-hero .nwchart { --fg: var(--hero-ink); --muted: var(--hero-ink-2); --line: var(--hero-line); --card: var(--hero-bg); --accent-soft: color-mix(in srgb, var(--hero-ink) 12%, transparent);
+  --nw-1: var(--viz-hc1, var(--chart-1)); --nw-2: var(--viz-hc2, var(--chart-2)); --nw-3: var(--viz-hc3, var(--chart-3)); --nw-4: var(--viz-hc4, var(--chart-4)); --nw-5: var(--viz-hc5, var(--chart-5)); }
+.home-hero .nwchart .axis { stroke: var(--hero-line); }
+.home-hero .nwchart .legend { color: var(--hero-ink-2); }
+.home-hero .nwchart svg:focus-visible { outline-color: var(--hero-ink); }
+.home-hero .nw-tip { border-color: var(--hero-line); }
+
+@media (max-width: 960px) {
+  .home-page .home-hero { grid-template-columns: minmax(0, 1fr); }
+  .hh-month { border-left: 0; border-top: 1px solid var(--hero-line); }
+}
+@media (max-width: 640px) {
+  .hh-nw, .hh-month { padding: var(--sp-4); }
+  .hh-month { gap: var(--sp-4); }
+}
+@media (max-width: 520px) {
+  .hh-figs { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .hh-fig { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+  .hh-fig dd { margin: 0; font-size: 1.375rem; justify-content: flex-end; text-align: right; }
+}
+
+/* Needs attention: the alerts sit side by side on a computer */
+.home-attn .alerts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--sp-3) var(--sp-4); }
+.home-attn .alert { align-items: flex-start; border-radius: var(--r-md); }
+.home-attn .alert strong { overflow-wrap: anywhere; }
+@media (max-width: 640px) { .home-attn .alert { flex-wrap: wrap; } }
+
+/* Get started: one slim row. The four steps are still one click away ("Show all steps"). */
+.home-start { padding-block: var(--sp-3); }
+.home-start-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.home-start-title { font-size: var(--fs-md, 1rem); }
+.home-start-count { font-size: var(--fs-sm); white-space: nowrap; }
+.home-start-bar { flex: none; width: 96px; margin: 0; }
+.home-start-next { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); flex: 1 1 260px; min-width: 0; padding-left: var(--sp-4); border-left: 1px solid var(--line); overflow-wrap: anywhere; }
+.home-start-eyebrow { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.home-start-acts { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-left: auto; }
+.home-start .onboard-steps { margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+@media (max-width: 640px), (pointer: coarse) {
+  .home-start-acts .link, .home-start-next a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .home-start-next { flex-basis: 100%; padding-left: 0; border-left: 0; }
+  .home-start-acts { margin-left: 0; }
+}
+
+/* The two columns: analysis (wide) and supporting lists (narrow). One column on a phone, analysis first. */
+.home-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+.home-primary, .home-side { display: grid; gap: var(--sp-5); min-width: 0; align-content: start; }
+.home-slot { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.home-slot > .card { margin-bottom: 0; flex: 1; }
+.home-slot.editing { outline: 2px dashed var(--accent-line); outline-offset: 4px; border-radius: var(--r-lg); }
+@media (min-width: 1000px) { .home-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); } }
+/* The supporting column is quieter than the analysis column. */
+.home-side .card { padding: var(--sp-4); }
+.home-side .card-title { font-size: var(--fs-base); }
+
+/* Spending & budget: one card, two panels */
+.home-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+.home-panel { min-width: 0; }
+.home-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line); }
+.home-panel-head h3 { margin: 0; font-size: var(--fs-sm); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-2); }
+@media (min-width: 700px) and (max-width: 999px), (min-width: 1280px) { .home-split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); } }
+
+/* Bars (budget, owed, goals) and rings */
+.home-page .bars { gap: var(--sp-3); }
+.home-page .bars > li { min-width: 0; }
+.home-page .bar-top { flex-wrap: wrap; align-items: baseline; font-weight: 500; }
+.home-page .bar-detail { white-space: normal; text-align: right; overflow-wrap: anywhere; }
+.home-page .bar-track { height: 8px; border-radius: 4px; background: var(--surface-sunken); }
+.home-page .bar-fill { border-radius: 4px; }
+.bar-flag { display: inline-flex; align-items: center; margin-right: var(--sp-2); padding: 1px 8px; border: 1px solid color-mix(in srgb, var(--neg) 30%, var(--surface)); border-radius: var(--r-xs); background: var(--neg-soft); color: var(--neg-text); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.home-page .donut { gap: var(--sp-5); }
+.home-page .donut-ring { width: 168px; height: 168px; }
+.home-page .donut-track { stroke: var(--surface-sunken); stroke-width: 12; }
+.home-page .donut-seg { stroke-width: 12; }
+.home-page .donut-center strong { font-size: var(--fs-md, 1rem); letter-spacing: -0.01em; }
+.home-page .legend { gap: var(--sp-2); font-size: var(--fs-sm); }
+.home-page .legend-val { font-weight: 600; }
+.home-page .legend .swatch { width: 10px; height: 10px; border-radius: 3px; }
+@media (max-width: 640px) { .home-page .donut-ring { width: 148px; height: 148px; } }
+
+/* Income vs spending */
+.paired-wrap { margin-top: var(--sp-1); }
+.grid-line { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; }
+.axis-sub { font-style: italic; }
+.col-a.partial { fill: color-mix(in srgb, var(--pos) 28%, var(--surface)); stroke: var(--pos); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.col-b.partial { fill: color-mix(in srgb, var(--chart-spend) 28%, var(--surface)); stroke: var(--chart-spend); stroke-width: 1.5; stroke-dasharray: 3 2; }
+.home-note { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); }
+
+/* Recent transactions: a date tile, the payee over its account, the amount aligned at the right. */
+.home-page .home-txn { display: flex; justify-content: flex-start; gap: var(--sp-3); } /* beats the touch rule `a.list-row { display: inline-block }` on a phone */
+.home-txn-main { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.home-txn-main strong { overflow-wrap: anywhere; }
+.home-txn .amt { margin-left: auto; font-variant-numeric: tabular-nums; }
+.home-txn .amt.pos { color: var(--pos-text); }
+
+/* The "Coming up" link is at least 44px tall on a phone or touch screen. */
+@media (max-width: 640px), (pointer: coarse) {
+  .home-slot[data-section="comingup"] li a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* A long amount (seven digits or more) stays inside a ring: the figure wraps by character instead of spilling out. */
+.home-page .donut-center { padding: 0 var(--sp-5); }
+.home-page .donut-center strong { overflow-wrap: anywhere; line-height: 1.15; }
+@media (max-width: 640px) { .home-page .donut-center { padding: 0 var(--sp-4); } .home-page .donut-center strong { font-size: var(--fs-sm); } }
+
+/* The hero's two small figures: what the page counts as assets (positive balances) and what is owed. Named for what they are; nothing joins them. */
+.hh-pair { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin: var(--sp-4) 0 0; }
+.hh-chip2 { flex: 1 1 9.5rem; min-width: 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--hero-line); border-radius: var(--r-md); background: color-mix(in srgb, var(--hero-ink) 7%, transparent); }
+.hh-chip2 dt { font-size: var(--fs-xs); color: var(--hero-ink-2); }
+.hh-chip2 dd { margin: 2px 0 0; font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* What you own and owe: two bars on one drawing scale (the longer one fills the track), then the parts of the assets. The widths are only a drawing; no ratio is shown. */
+.home-own { display: grid; gap: var(--sp-4); }
+.home-own-row .bar-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--sp-1) var(--sp-3); margin-bottom: 6px; font-weight: 500; }
+.home-own-row .bar-detail { font-size: var(--fs-lg); font-weight: 700; color: var(--fg); overflow-wrap: anywhere; }
+.home-own-row .bar-detail.neg { color: var(--neg-text); }
+.home-parts { display: grid; gap: var(--sp-1); margin: 0; padding: var(--sp-3) 0 0; border-top: 1px solid var(--line); list-style: none; font-size: var(--fs-sm); color: var(--fg-2); }
+.home-parts li { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.home-parts-val { font-variant-numeric: tabular-nums; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
+
+/* Monthly check-in: one segment for each step that applies to you; the filled ones are done. */
+.home-steps { display: grid; gap: var(--sp-2); }
+.home-steps-bar { display: flex; gap: 4px; }
+.home-steps-bar > span { flex: 1 1 0; min-width: 0; height: 8px; border-radius: 4px; background: var(--surface-sunken); }
+.home-steps-bar > span.on { background: var(--accent); }
+.home-steps-count { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--fg-2); }
+.home-steps-count strong { font-size: var(--fs-xl); color: var(--fg); letter-spacing: -0.01em; margin-right: var(--sp-1); }
+.home-steps-next { margin: 0; overflow-wrap: anywhere; }
+
+/* Spending & budget: a divider between the two panels where they sit side by side, and equal heights so the card reads as one block. */
+@media (min-width: 700px) and (max-width: 999px), (min-width: 1280px) {
+  .home-split { align-items: stretch; }
+  .home-split > .home-panel + .home-panel { padding-left: var(--sp-5); border-left: 1px solid var(--line); }
+}
+
+/* A phone (640px and narrower): the same panel is drawn as two cards, like the approved mobile design. The net-worth card keeps the dark surface; the month card takes the
+   ordinary card surface (light in Signature light, the dark card color in Signature dark) by re-pointing the panel's text variables for that card only. */
+@media (max-width: 640px) {
+  .home-page .home-hero { gap: var(--sp-4); background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+  .hh-nw { background: var(--hero-bg); color: var(--hero-ink); border: 1px solid var(--hero-line); border-radius: var(--r-xl); }
+  .hh-month { --hero-ink: var(--fg); --hero-ink-2: var(--fg-2); --hero-line: var(--line); --hero-pos: var(--pos-text); --hero-neg: var(--neg-text); border: 1px solid var(--line); border-radius: var(--r-xl); background: var(--surface); box-shadow: var(--shadow-1); color: var(--fg); }
+  .hh-month .card-link { color: var(--accent-text); }
+  .hh-month { gap: var(--sp-3); }
+  .hh-month .hh-head { margin-bottom: 0; }
+  .hh-pair { margin-top: var(--sp-3); }
+  .hh-chip2 { flex-basis: 8rem; }
+  .hh-pair--stack .hh-chip2 { flex-basis: 100%; }
+  .hh-pair--stack .hh-chip2 dd { font-size: 1rem; }
+  .hh-trend-empty { margin-top: var(--sp-3); }
+  .hh-chart { margin-top: var(--sp-3); }
+  .home-hero .nwchart .legend.inline { gap: 2px var(--sp-3); font-size: var(--fs-xs); }
+}
+
+/* The Home heading on a phone (640px and narrower). The bar above the page already says "Home", so the page's own title block (small label, heading, one-line
+   description) is kept for screen readers but not drawn, and the three actions share one compact row. Nothing is removed: the heading and description stay in the
+   page, and Monthly check-in, Refresh prices and Edit Home are all still plain buttons. Only Home uses this (the shared PageHeader is unchanged). */
+@media (max-width: 640px) {
+  .home-head { margin-bottom: var(--sp-3); }
+  .home-head .page-head-text { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .home-head .page-actions { flex: 1 1 100%; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--sp-1); }
+  .home-head .page-actions .btn, .home-head .page-actions button { padding-inline: var(--sp-2); font-size: var(--fs-sm); white-space: nowrap; }
+}

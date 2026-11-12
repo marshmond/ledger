@@ -112,6 +112,10 @@ const SIGNATURE_SHARED: Record<string, string> = {
   '--hdr-shadow': 'var(--shadow-1)', '--ui-brand': 'flex', '--ui-modall': 'inline', '--ui-kbd': 'inline-block',
   // D8: the 46px Ledger navigation bar with line icons.
   '--lnav-h': '46px', '--ui-lnav-ic': 'inline-flex',
+  // D12: the dark Home hero panel's text colors (the panel's own fill differs by mode, below), and its small capitals label.
+  '--hero-ink': '#FFFFFF', '--hero-ink-2': '#B6C3DB', '--hero-line': 'rgba(255, 255, 255, 0.16)', '--hero-pos': '#8EE0B8', '--hero-neg': '#FFB3AB', '--hero-label-tt': 'uppercase',
+  // The net-worth chart's stacked bars on the dark panel: the light ramp (the panel is dark in both modes).
+  '--viz-hc1': '#8FB0E6', '--viz-hc2': '#3A9AA4', '--viz-hc3': '#7DC8CF', '--viz-hc4': '#D0D8E6', '--viz-hc5': '#E5B865',
 };
 
 export const PRESETS: PaletteDef[] = [
@@ -168,6 +172,9 @@ export const PRESETS: PaletteDef[] = [
         '--field-bg': '#FFFFFF', '--btn-bg-hover': '#1C2D52',
         '--scrim': 'rgba(11, 18, 32, 0.55)', '--toast-bg': '#0E1A33', '--toast-ink': '#FFFFFF', '--toast-edge': 'var(--shadow-2)',
         '--viz-s1': '#1D3A6B', '--viz-s2': '#267880', '--viz-s3': '#A8730F', '--viz-s4': '#8391AA',
+        // D12: Home's category colors are a navy-to-teal ramp, so blue, orange, green and purple keep one meaning (a Family member). Spending is navy; income stays the positive color.
+        '--hero-bg': '#0E1A33', '--chart-spend': '#1D3A6B',
+        '--viz-c1': '#1D3A6B', '--viz-c2': '#267880', '--viz-c3': '#5FAAB2', '--viz-c4': '#8391AA', '--viz-c5': '#A8730F', '--viz-c6': '#B3BDCF',
       },
       dark: {
         '--surface-raised': '#182339', '--surface-soft': '#182339', '--surface-sunken': '#1E2B46',
@@ -183,6 +190,8 @@ export const PRESETS: PaletteDef[] = [
         '--field-bg': '#0E1727', '--btn-bg-hover': '#216D75',
         '--scrim': 'rgba(3, 7, 14, 0.7)', '--toast-bg': '#223454', '--toast-ink': '#E9EEF7', '--toast-edge': 'var(--shadow-2), inset 0 0 0 1px #3A4D72',
         '--viz-s1': '#8FB0E6', '--viz-s2': '#3A9AA4', '--viz-s3': '#E5B865', '--viz-s4': '#D0D8E6',
+        '--hero-bg': '#1B2D52', '--chart-spend': '#8FB0E6',
+        '--viz-c1': '#8FB0E6', '--viz-c2': '#3A9AA4', '--viz-c3': '#7DC8CF', '--viz-c4': '#D0D8E6', '--viz-c5': '#E5B865', '--viz-c6': '#6F82A3',
       },
     },
   },
