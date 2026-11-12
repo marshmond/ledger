@@ -156,10 +156,11 @@ describe('D7 stylesheet: the sticky layers still hang from one number, and the l
     expect(css).toMatch(/:root \{ --bar-h: calc\(var\(--hdr-h\) \+ env\(safe-area-inset-top\)\); \}/);
     expect(block('@media (max-width: 640px), (pointer: coarse) {')).toMatch(/--bar-h: calc\(var\(--hdr-h-touch\) \+ env\(safe-area-inset-top\)\)/);
     expect(block('@media (max-width: 640px) {', css.indexOf('D7: the header on a phone'))).toMatch(/--bar-h: calc\(var\(--hdr-h-phone\) \+ env\(safe-area-inset-top\)\)/);
-    expect(css).toMatch(/\.topbar \{ top: var\(--bar-h\)/);
-    expect(css).toMatch(/\.txn-table thead th, \.budget-table thead th \{ top: calc\(var\(--topbar-h\) \+ var\(--bar-h\)\)/);
-    expect(css).toMatch(/\.txn-table thead tr\.col-filters th \{ top: calc\(var\(--topbar-h\) \+ var\(--bar-h\) \+ 36px\)/);
-    expect(css).toMatch(/\.sidebar \{ top: var\(--bar-h\); height: calc\(100vh - var\(--bar-h\)\)/);
+    // D8: the Ledger bar (--sub-h, 0 on a phone) sits between the header and these layers, so each adds it after --bar-h. The old `.sidebar { top: var(--bar-h) }` rule is gone with the sidebar.
+    expect(css).toMatch(/\.topbar \{ top: calc\(var\(--bar-h\) \+ var\(--sub-h\)\)/);
+    expect(css).toMatch(/\.txn-table thead th, \.budget-table thead th \{ top: calc\(var\(--topbar-h\) \+ var\(--bar-h\) \+ var\(--sub-h\)\)/);
+    expect(css).toMatch(/\.txn-table thead tr\.col-filters th \{ top: calc\(var\(--topbar-h\) \+ var\(--bar-h\) \+ var\(--sub-h\) \+ var\(--txn-head-h\)\)/); // D8 correction: the filter row sticks at the heading row's fixed height, not a 36px guess
+    expect(css).toMatch(/\.lnav \{ display: block; position: sticky; top: var\(--bar-h\);/);
     expect(readFileSync('src/modules/tasks/tasks.css', 'utf8')).toMatch(/\.tk-bulk \{ position: sticky; top: calc\(var\(--bar-h, 36px\) \+ 4px\)/);
   });
 

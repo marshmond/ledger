@@ -164,6 +164,11 @@
   --ui-brand: none;       /* the Ledger mark and name at the left of the bar */
   --ui-modall: none;      /* the small "All modules" caption inside the switcher button */
   --ui-kbd: none;         /* the Ctrl K hint inside the search entry */
+
+  /* D8 (Ledger's desktop navigation bar under the header). Classic and the older presets get a 40px bar with words only; Signature a 46px bar with line icons.
+     styles.css adds this height to --bar-h wherever something sticks below the bar (the page's top bar and the table headings). */
+  --lnav-h: 40px;
+  --ui-lnav-ic: none;
 }
 
 /* A page title is one step smaller on a phone (only Signature reads this: --h1-size is --fs-xl for everyone else). */

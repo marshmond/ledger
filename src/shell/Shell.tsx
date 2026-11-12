@@ -1,33 +1,24 @@
 import Main from './Main';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { matchPath } from 'react-router-dom';
 import { Link, NavLink, useLocation } from '../core/router';
-import { loadOpenGroup, saveOpenGroup, toggleGroup } from './sideState';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { dueInstances } from '../lib/schedule';
 import { useToday } from '../ui/useToday';
 import { loadNetWorth } from '../lib/netWorthLive';
 import { saveMonthlySnapshot } from '../lib/snapshots';
-import ThemeToggle from '../pages/ThemeToggle';
-import { GROUPS, crumbsFor, groupForPath, type GroupId } from './nav';
+import { GROUPS, crumbsFor, groupForPath } from './nav';
+import LedgerNav, { ICONS } from './LedgerNav';
+import { activePageFor } from './ledgerNavModel';
 import { ToastProvider } from '../ui/Toast';
 import { useEdgeFade } from '../ui/components';
-import { openSearch } from '../core/globalEvents';
 import BackupReminder from './BackupReminder';
 
-/** Simple line icons for the bottom tab bar, one per group. */
-const ICONS: Record<GroupId, ReactNode> = {
-  home: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h13V10" /></svg>,
-  money: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>,
-  invest: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16 5-5 4 4 7-8" /><path d="M15 7h5v5" /></svg>,
-  plan: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>,
-  more: <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>,
-};
-
 /**
- * The frame around every page. Desktop: a left sidebar with the five groups and their pages. Phone: a top bar with the section's
- * pages as a scrolling row, and a bottom tab bar for the five groups. Search and quick add are reachable from everywhere.
+ * The frame around every page. Desktop (900 px and wider, D8): a bar of the five groups under the global header (LedgerNav), then the page's
+ * top bar with its breadcrumbs. Phone: the section's pages as a scrolling row, and a bottom tab bar for the five groups (unchanged by D8).
+ * Search and quick add are reachable from everywhere (the global header).
  */
 export default function Shell({ children }: { children: ReactNode }) {
   const loc = useLocation();
@@ -38,8 +29,6 @@ export default function Shell({ children }: { children: ReactNode }) {
   const today = useToday();
   const dueCount = useLiveQuery(async () => (await dueInstances(db, today, 7)).length, [today]) ?? 0;
   const nw = useLiveQuery(() => loadNetWorth(db, today), [today]);
-  const [open, setOpen] = useState<string | null>(() => loadOpenGroup());
-  const toggle = (id: string) => setOpen((cur) => { const next = toggleGroup(cur, id); saveOpenGroup(next); return next; });
 
   // Net worth history: this month's point follows the latest figures (saved shortly after they settle).
   useEffect(() => {
@@ -50,55 +39,19 @@ export default function Shell({ children }: { children: ReactNode }) {
   const crumbs = crumbsFor(loc.pathname, account?.name);
   const fade = useEdgeFade<HTMLElement>();
 
-  // Search and quick add are app-wide now (GlobalFrame and the module bar); Ctrl/Cmd+K and "/" are handled there.
-  // Landing on a page opens its group in the sidebar, so you can always see its neighbours.
-  useEffect(() => { if (group.id !== 'home') setOpen((cur) => { if (cur === group.id) return cur; saveOpenGroup(group.id); return group.id; }); }, [group.id]);
+  // Search and quick add are app-wide (GlobalFrame and the module bar); Ctrl/Cmd+K and "/" are handled there.
 
-  // An account's ledger page lights up Accounts.
-  const inLedger = (to: string) => to === '/accounts' && loc.pathname.startsWith('/account/');
+  // An account's ledger page lights up Accounts (the same rule the desktop bar uses, from the navigation model).
+  const inLedger = (to: string) => activePageFor(loc.pathname) === to;
   const badge = (to: string) => (to === '/scheduled' && dueCount > 0 ? <span className="count" aria-label={`${dueCount} due`}>{dueCount}</span> : null);
 
   return (
     <ToastProvider>
     <div className="shell">
-      <nav className="sidebar" aria-label="Ledger pages">
-        <button className="searchbtn side" onClick={openSearch} aria-label="Search">
-          <span aria-hidden="true">⌕</span> Search <kbd>Ctrl K</kbd>
-        </button>
-        {GROUPS.map((g) => (
-          <div className="side-group" key={g.id}>
-            {g.id === 'home' ? (
-              <NavLink to="/" end className="side-link top">⌂ Home</NavLink>
-            ) : (
-              <>
-                <button
-                  className={`side-head ${open === g.id ? '' : 'closed'} ${group.id === g.id ? 'has-active' : ''}`}
-                  aria-expanded={open === g.id}
-                  aria-controls={`side-${g.id}`}
-                  onClick={() => toggle(g.id)}
-                >
-                  <span>{g.label}</span>
-                  <span className="chev" aria-hidden="true">▾</span>
-                </button>
-                {open === g.id && (
-                  <div className="side-items" id={`side-${g.id}`}>
-                    {g.items.filter((i) => !(g.id === 'more' && i.to === '/more')).map((i) => (
-                      <NavLink key={i.to} to={i.to} className={({ isActive }) => `side-link ${isActive || inLedger(i.to) ? 'active' : ''}`} end>{i.label}{badge(i.to)}</NavLink>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ))}
-        <div className="side-foot">
-          <NavLink to="/more" className="side-link">Settings &amp; about</NavLink>
-          <ThemeToggle />
-        </div>
-      </nav>
+      <LedgerNav pathname={loc.pathname} dueCount={dueCount} />
 
       <div className="shell-main">
-        <header className="topbar">
+        <header className={crumbs.length === 0 ? 'topbar topbar-home' : 'topbar'}>
           <nav className="crumbs" aria-label="Breadcrumb">
             {crumbs.length === 0 ? <span>Home</span> : crumbs.map((c, i) => (
               <span key={i}>{i > 0 && <span className="sep"> › </span>}{c.to && i < crumbs.length - 1 ? <Link to={c.to}>{c.label}</Link> : <span aria-current={i === crumbs.length - 1 ? 'page' : undefined}>{c.label}</span>}</span>

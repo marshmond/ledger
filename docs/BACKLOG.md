@@ -4,7 +4,18 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-11 (newest): LEDGER SIGNATURE D7 (GLOBAL HEADER AND MODULE SWITCHER) CONDITIONALLY APPROVED; FINAL CORRECTION (SYNC PROBLEMS VISIBLE ON A PHONE) BUILT; release result is in the D7 report section 17 and the handoff; NOT REAL-DEVICE TESTED
+## STATUS 2026-11-11 (newest): LEDGER SIGNATURE D8 (LEDGER DESKTOP NAVIGATION) BUILT AND TESTED LOCALLY; UNCOMMITTED; AWAITING OWNER AND CHATGPT REVIEW; NOT REAL-DEVICE TESTED; D9 NOT STARTED
+
+Report: `docs/LEDGER-SIGNATURE-D8-REPORT.md`. Tracker: `docs/UI-COVERAGE.md` (section 1.3). Gate verified first: `main` = `origin/main` = `13acc04` (D7, including its phone sync-attention correction), Pages run #93 and its deployment both success (public GitHub API; `gh` is not installed); only the three pre-existing untracked files in the tree, untouched. **4,499 tests in 246 files pass** (one full run after the code settled; +43 tests in `src/shell/d8LedgerNav.test.tsx`); `tsc` and `npm run build` clean.
+- [x] **Sidebar replaced (900 px and wider):** a bar under the global header with Home, Money, Invest, Plan, More. Each section is a link to its default page (Money Accounts, Invest Net worth, Plan Income, More Settings, read from `nav.ts`) plus a separate chevron button opening a plain list of its pages (Money 10 and Plan 10 in two columns, Invest 4, More 6). Tab, Enter, Escape (focus returns to the chevron), outside press, Tab-out and navigation close it; no hover opening, no ARIA menu. The old 248 px column is gone; the pages gained the width (content 1267 px at 1440 px, was 1123 px).
+- [x] **Nothing lost:** all 31 destinations plus the individual account page are reachable (the model reads `nav.ts`; nothing duplicated); `/backup` still goes to Settings; breadcrumbs unchanged (account page still Money > Accounts > name); due count on Money and Scheduled (the existing 7-day `dueInstances` number, passed in); theme toggle moved to the right end of the bar (same component and storage); Search, Settings, Add and Sync stay in the D7 header.
+- [x] **Phone and tablet below 900 px unchanged:** five-tab bottom bar, scrolling section tabs, same code.
+- [x] **Sticky layers:** the page top bar and the Transactions and Budget table headings now sit below header plus bar (`--bar-h + --sub-h`); measured 62 / 108 / 164 px at 1440 px. Print shows no bar.
+- [x] **Palettes:** Signature light and dark (46 px bar with icons), Classic and "Deep navy" (40 px bar, words only, in the preset's own menu colours).
+- [ ] **NOT built / open:** real phone or tablet, screen reader, forced colours, Safari and Firefox, print preview; the palette builder still calls the menu colours "Sidebar" (D19); `sideState.ts` is now unused (left in place); the 31 Ledger pages' own redesign (D12, D16 to D19); D9 onward.
+- **Judgment calls (please review):** see report section 14 (13 items: chevron split, labels, theme toggle placement, Home crumb hidden, width, universal structure, touch bar height and others).
+
+## STATUS 2026-11-11 (D7, earlier; now COMMITTED AND DEPLOYED `13acc04`, Pages run #93): LEDGER SIGNATURE D7 (GLOBAL HEADER AND MODULE SWITCHER) CONDITIONALLY APPROVED; FINAL CORRECTION (SYNC PROBLEMS VISIBLE ON A PHONE) BUILT; release result is in the D7 report section 17 and the handoff; NOT REAL-DEVICE TESTED
 
 Final correction (2026-11-11): on a phone a sync error or edits to review show in the header as a 44 px warning icon (shape plus colour, words kept as the accessible name) that opens the existing sync details; healthy, paused, offline and not-set-up states keep the clean header. Presentation only, no sync change. Escape in the sync details now returns focus to the chip. +9 tests (`d7SyncAttention.test.tsx`); targeted run 451 passed; full suite not re-run (4,446 + 9 = 4,455 by addition). Checked at 320 and 375 px in Signature light and dark, Classic and Slate. Judgment call 4 below is superseded.
 

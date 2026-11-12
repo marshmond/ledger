@@ -226,10 +226,9 @@ tr.selected td { background: color-mix(in srgb, var(--accent) 10%, transparent);
   table input, table select { max-width: 160px; }
 }
 
-/* ---- app shell: sidebar (desktop), bottom tabs (phone), search, quick add ---- */
+/* ---- app shell: Ledger bar under the header (desktop, D8), bottom tabs (phone), search, quick add ---- */
 .shell { min-height: 100vh; }
 .shell-main { min-width: 0; }
-.sidebar { display: none; }
 .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: var(--sp-3); min-height: var(--topbar-h); padding: var(--sp-2) var(--sp-4); padding-top: calc(var(--sp-2) + env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--line); }
 .topbar-title { flex: 1; font-size: var(--fs-lg); font-weight: 650; }
 .crumbs { display: none; flex: 1; color: var(--muted); font-size: var(--fs-sm); }
@@ -310,30 +309,12 @@ kbd { font: inherit; font-size: var(--fs-xs); border: 1px solid var(--line-stron
 .pagetabs button { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 0 var(--sp-3); color: var(--muted); white-space: nowrap; }
 .pagetabs button.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 650; }
 
-/* Sidebar */
-.brand-link { text-decoration: none; color: var(--side-fg, var(--fg)); padding: var(--sp-1) var(--sp-3) var(--sp-3); font-size: var(--fs-lg); font-weight: 700; }
-.brand-link:hover { text-decoration: none; }
-.side-group { display: flex; flex-direction: column; }
-.side-head { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 36px; margin-top: var(--sp-3); padding: 0 var(--sp-3); font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--side-fg, var(--fg)); background: none; border: none; border-radius: var(--r-sm); text-align: left; cursor: pointer; }
-.side-head:hover:not(:disabled) { background: rgba(127, 127, 127, 0.14); }
-.side-head .chev { font-size: var(--fs-sm); transition: transform 0.15s; opacity: 0.75; }
-.side-head.closed .chev { transform: rotate(-90deg); }
-.side-head.has-active { color: var(--side-active, var(--accent)); }
-.side-items { display: flex; flex-direction: column; gap: 2px; }
-.side-link { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-height: 36px; padding: 0 var(--sp-3); border-radius: var(--r-sm); color: var(--side-fg, var(--fg)); text-decoration: none; font-size: var(--fs-base); }
-.side-link:hover { background: rgba(127, 127, 127, 0.14); text-decoration: none; }
-.side-link.active { background: color-mix(in srgb, var(--side-active, var(--accent)) 16%, transparent); color: color-mix(in srgb, var(--side-active, var(--accent)) 78%, var(--side-fg, var(--fg))); font-weight: 650; box-shadow: inset 3px 0 0 var(--side-active, var(--accent)); } /* ST-S3 (AX-04): text pulled slightly toward the sidebar text colour; the accent alone on its own tint measured 4.41:1 */
-.side-link.top { margin-top: var(--sp-1); font-weight: 600; }
-.side-foot { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: auto; padding-top: var(--sp-3); }
 .themebtn { align-self: flex-start; border-radius: 999px; padding: 0 var(--sp-3); white-space: nowrap; min-height: 36px; }
-.searchbtn.side { width: 100%; justify-content: space-between; margin: var(--sp-1) 0 var(--sp-2); }
 @media (min-width: 600px) {
   .crumbs { display: block; }
   .topbar-title { display: none; }
 }
 @media (min-width: 900px) {
-  .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); }
-  .sidebar { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: var(--sp-4) var(--sp-3); background: var(--side-bg, var(--card)); color: var(--side-fg, var(--fg)); border-right: 1px solid var(--line); }
   .tabbar, .sectiontabs-wrap { display: none; }
   .main { padding-bottom: var(--sp-6); }
   .topbar { padding-top: var(--sp-2); padding-inline: var(--sp-5); }
@@ -343,7 +324,7 @@ kbd { font: inherit; font-size: var(--fs-xs); border: 1px solid var(--line-stron
   .qa-label { display: inline; font-weight: 600; }
   .qa-menu { bottom: auto; top: calc(100% + var(--sp-2)); }
 }
-@media print { .sidebar, .tabbar, .topbar, .sectiontabs-wrap, .qa { display: none !important; } }
+@media print { .lnav, .tabbar, .topbar, .sectiontabs-wrap, .qa { display: none !important; } }
 
 /* ---- shared page pieces ---- */
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap; margin-bottom: var(--sp-5); }
@@ -512,7 +493,6 @@ details.pick label.chk:hover { background: var(--hover); }
   a { color: inherit; text-decoration: none; }
 }
 
-.searchbtn.side { color: var(--side-fg, var(--muted)); background: transparent; }
 .swatches { display: flex; gap: 3px; margin: 6px 0; }
 .swatches i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(127, 127, 127, 0.4); display: inline-block; }
 .pal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 8px 0; }
@@ -682,10 +662,60 @@ details.pick label.chk:hover { background: var(--hover); }
 .settings-tabs a.active { background: none; color: var(--fg); font-weight: 650; box-shadow: inset 0 -2px 0 var(--accent); } /* ST-S3 (AX-04): without background:none the .sectiontabs pill colour showed through, dark text on blue (2.8:1) */
 @media print { .modulebar { display: none; } }
 /* Everything that stuck to the very top now sticks just below the module bar. */
-.topbar { top: var(--bar-h); padding-top: var(--sp-2); }
-.txn-table thead th, .budget-table thead th { top: calc(var(--topbar-h) + var(--bar-h)); }
-.txn-table thead tr.col-filters th { top: calc(var(--topbar-h) + var(--bar-h) + 36px); }
-@media (min-width: 900px) { .sidebar { top: var(--bar-h); height: calc(100vh - var(--bar-h)); } }
+/* D8: on a computer the Ledger bar (--sub-h) sits between the header and the page's top bar, so everything below it adds --sub-h (0 on a phone, where the bar does not exist). */
+:root { --sub-h: 0px; }
+.topbar { top: calc(var(--bar-h) + var(--sub-h)); padding-top: var(--sp-2); }
+.txn-table thead th, .budget-table thead th { top: calc(var(--topbar-h) + var(--bar-h) + var(--sub-h)); }
+/* The filter row sticks directly under the heading row. The heading row is given one fixed height (the content, a 44px-class control plus padding, measured 47 to 49px in every palette) so the offset is a real number, not a guess; before, a 36px guess overlapped the heading by 11 to 13px. */
+.txn-table { --txn-head-h: 50px; }
+.txn-table thead tr:first-child th { height: var(--txn-head-h); box-sizing: border-box; vertical-align: middle; }
+.txn-table thead tr.col-filters th { top: calc(var(--topbar-h) + var(--bar-h) + var(--sub-h) + var(--txn-head-h)); }
+
+/* ---- D8: Ledger's desktop navigation (900px and wider) ----------------------------------------------------------------------------------
+   A bar directly under the global header replaces the old 248px left sidebar. Below 900px it does not exist (the phone keeps its bottom tab bar and
+   scrolling section tabs, unchanged). Colours are the palette's three menu roles (side-bg, side-fg, side-active), so every palette keeps its own
+   look and the contrast checks that already cover those roles cover this bar. Each section is a link plus a separate chevron button that opens a list of its pages. */
+.lnav { display: none; }
+@media (min-width: 900px) {
+  :root { --sub-h: var(--lnav-h); --ledger-w: clamp(1120px, 88vw, 1760px); }
+  .lnav { display: block; position: sticky; top: var(--bar-h); z-index: 45; height: var(--sub-h); background: var(--side-bg, var(--card)); color: var(--side-fg, var(--fg)); border-bottom: 1px solid var(--line); }
+  .lnav-in { display: flex; align-items: stretch; height: 100%; gap: var(--sp-3); padding: 0 max(var(--sp-4), env(safe-area-inset-right)) 0 max(var(--sp-4), env(safe-area-inset-left)); }
+  .lnav-list { display: flex; align-items: stretch; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  .lnav-item { position: relative; display: flex; }
+  .lnav-tab { display: flex; align-items: stretch; border-bottom: 2px solid transparent; margin-bottom: -1px; border-radius: var(--r-sm) var(--r-sm) 0 0; }
+  .lnav-tab:hover, .lnav-item.open .lnav-tab { background: var(--hover); }
+  .lnav-item.active .lnav-tab { border-bottom-color: var(--side-active, var(--accent)); }
+  .lnav-link { display: inline-flex; align-items: center; gap: 7px; padding: 0 var(--sp-1) 0 14px; color: inherit; text-decoration: none; font-size: var(--fs-base); font-weight: 500; white-space: nowrap; }
+  .lnav-link:last-child { padding-right: 14px; }
+  .lnav-link:hover { text-decoration: none; }
+  .lnav-item.active .lnav-link { font-weight: 650; color: color-mix(in srgb, var(--side-active, var(--accent)) 78%, var(--side-fg, var(--fg))); } /* same text mix as the old sidebar's active row (ST-S3 AX-04: the accent alone on a tint measured 4.41:1) */
+  .lnav-ic { display: var(--ui-lnav-ic); color: var(--muted); }
+  .lnav-item.active .lnav-ic { color: inherit; }
+  .lnav-ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .lnav-tog { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; padding: 0 6px 0 2px; border: none; border-radius: 0; background: none; color: inherit; opacity: 0.7; cursor: pointer; } /* the bar's own text colour, softened: the muted grey is too faint on a dark bar (navy preset) */
+  .lnav-tog:hover:not(:disabled), .lnav-tog[aria-expanded='true'] { background: none; opacity: 1; }
+  .lnav-tog .ui-icon { transition: transform 0.15s; }
+  .lnav-tog[aria-expanded='true'] .ui-icon { transform: rotate(180deg); }
+  .lnav-tools { display: flex; align-items: center; margin-left: auto; }
+  .lnav .themebtn { min-height: 32px; font-size: var(--fs-sm); background: none; border-color: var(--line-strong, var(--line)); color: inherit; }
+  .lnav .themebtn:hover:not(:disabled) { background: var(--hover); }
+  /* The list of a section's pages: a panel under its tab, two columns for the long sections (Money, Plan). Plain links; the current page is marked by weight and a bar as well as colour. */
+  .lnav-menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 46; min-width: 220px; max-width: calc(100vw - 32px); padding: var(--sp-2); background: var(--surface-raised); color: var(--fg); border: 1px solid var(--line-strong, var(--line)); border-radius: var(--r-lg); box-shadow: var(--shadow-2); max-height: calc(100vh - var(--bar-h) - var(--sub-h) - 16px); max-height: calc(100dvh - var(--bar-h) - var(--sub-h) - 16px); overflow-y: auto; overscroll-behavior: contain; }
+  .lnav-menu ul { display: grid; gap: 2px var(--sp-2); margin: 0; padding: 0; list-style: none; }
+  .lnav-menu.cols-2 ul { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  .lnav-menu a { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 40px; padding: 6px 12px; border-radius: var(--r-sm); color: var(--fg); text-decoration: none; overflow-wrap: anywhere; }
+  .lnav-menu a:hover { background: var(--hover); text-decoration: none; }
+  .lnav-menu a.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 650; box-shadow: inset 3px 0 0 var(--accent); }
+  /* The recovered sidebar width goes to the page: wider than before (the old limit was 78vw beside a 248px sidebar), still capped so tables are not stretched. The page's top bar lines up with it. */
+  .shell-main .main { max-width: var(--ledger-w); }
+  .topbar-home { display: none; } /* Home has no breadcrumb beyond its own name, which the bar above already shows as the current section */
+  .shell-main .topbar { padding-inline: max(var(--sp-5), calc((100% - var(--ledger-w)) / 2 + var(--sp-5))); }
+}
+@media (min-width: 900px) and (pointer: coarse) {
+  :root { --sub-h: max(var(--lnav-h), 44px); }
+  .lnav-tog { min-width: 44px; }
+  .lnav .themebtn { min-height: 44px; }
+}
 
 /* Sync status in the module bar. */
 .syncwrap { position: relative; }

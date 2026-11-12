@@ -110,6 +110,8 @@ const SIGNATURE_SHARED: Record<string, string> = {
   '--hdr-h': '62px', '--hdr-h-touch': '62px', '--hdr-h-phone': '60px', '--hdr-ctl-h': '40px', '--hdr-ctl-r': 'var(--r-md)',
   '--hdr-ctl-line': 'var(--control-line)', '--hdr-search-bg': 'var(--surface-soft)', '--hdr-search-line': 'var(--control-line)', '--hdr-search-w': 'min(300px, 26vw)',
   '--hdr-shadow': 'var(--shadow-1)', '--ui-brand': 'flex', '--ui-modall': 'inline', '--ui-kbd': 'inline-block',
+  // D8: the 46px Ledger navigation bar with line icons.
+  '--lnav-h': '46px', '--ui-lnav-ic': 'inline-flex',
 };
 
 export const PRESETS: PaletteDef[] = [

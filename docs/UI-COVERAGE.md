@@ -12,7 +12,7 @@ The goal is **every page, surface, view and dialog in Ledger**, including every 
 `L` light, `D` dark, `375` phone width, `1440` desktop width, `Kbd` keyboard and focus, `Func` functional acceptance (existing tests plus the flow check passed, nothing about behaviour changed).
 A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The visual checklist V1 to V12 and functional checklist F1 to F6 are in the D4 roadmap (section 6).
 
-**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (2026-11-11, built, uncommitted) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2).** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
+**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (committed and deployed `13acc04`, Pages run #93) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2). D8 (2026-11-11, built, uncommitted) replaced Ledger's desktop sidebar by a bar under the header: S-13, S-14 and S-17 read `BLT` (section 1.3); S-15 and S-16 are untouched and stay `NS`.** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
 
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family colour picker; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
@@ -46,11 +46,11 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-10 | Backup reminder banner | `src/shell/BackupReminder.tsx` | D6 | NS | . | Y | . | Y | . | . |
 | S-11 | Module loading and load-failed states | `src/shell/ModuleLoader.tsx` | D6 | NS | . | . | . | . | . | . |
 | S-12 | Skip link, route announcer, main focus | `src/shell/SkipAndRoute.tsx` | D7 | NS | . | . | . | . | Y | Y |
-| S-13 | Ledger desktop sidebar | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
-| S-14 | Ledger top bar and breadcrumbs | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
+| S-13 | Ledger desktop navigation bar (replaces the 248 px sidebar) | `src/shell/LedgerNav.tsx` | D8 | BLT | Y | Y | . | Y | Y | Y |
+| S-14 | Ledger top bar and breadcrumbs | `src/shell/Shell.tsx` | D8 | BLT | Y | Y | Y | Y | . | Y |
 | S-15 | Ledger section tabs (below 900 px) | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
 | S-16 | Ledger bottom tab bar (below 900 px) | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
-| S-17 | Theme toggle (Device, Light, Dark) | `src/pages/ThemeToggle.tsx` | D8, D19 | NS | . | . | . | . | . | . |
+| S-17 | Theme toggle (Device, Light, Dark) | `src/pages/ThemeToggle.tsx` | D8, D19 | BLT | Y | Y | . | Y | Y | Y |
 | S-18 | Unknown-address fallback and legacy redirects | `src/core/legacy.ts` | all | NS | . | . | . | . | . | . |
 | S-19 | Print styles | `src/styles.css` | D19 | NS | . | . | . | . | . | . |
 | S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | NS | . | . | . | . | . | . |
@@ -76,8 +76,18 @@ Seen under **Ledger Signature** in the Claude app's built-in browser, against th
 - **S-03 sync chip:** restyled; on a phone the bar shows it only as a warning icon when sync has an error or edits to review (D7 correction). Seen live: the error state at 375 and 320 px in Signature light, 375 px in Signature dark, Classic and "Slate and indigo"; the popover from the bar and from the list foot (opens, Escape closes, focus returns to the chip, Sync settings link present); "Sync off". Not seen live: the healthy and edits-to-review states (mocked tests only), desktop width in an error state, real devices. **`L`, `D`, `375`, `Kbd` and `Func` are marked for the phone attention state and its popover only;** `1440` stays `.` because the desktop chip was not looked at in any state other than "Sync off".
 - **S-04 Add button:** the in-bar Add (900 px and up) is navy in light and teal in dark; the round floating button (below 900 px) is unchanged apart from the shared colour already recorded in D6. Header Add and the N shortcut open the Add box. Its redesign belongs to D10, so the row stays `BLT` and the Add box (S-05) is untouched.
 - **S-12 skip link:** still the first Tab stop; its visible state in the new header was **not** looked at, so the row stays `NS` with only `Kbd` and `Func` marked.
-- **S-17 theme toggle:** not touched in D7 (it lives in Ledger's sidebar and Settings > Appearance).
+- **S-17 theme toggle:** not touched in D7 (it lives in Ledger's sidebar and Settings > Appearance). D8 moved it (section 1.3).
 - **Not checked:** real phones, screen readers, forced-colours mode, Safari and Firefox, print preview, toast placement, the ⌘K hint on a Mac.
+
+### 1.3 D8 evidence behind S-13, S-14 and S-17 (built, uncommitted; nothing is `ACC`; the 31 financial pages are NOT marked redesigned)
+
+Seen in the Claude app's built-in browser, fictional D1 demo household on its own address (sync off). Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D8-Evidence`). Report: `docs/LEDGER-SIGNATURE-D8-REPORT.md`. **Navigation verification is not visual acceptance of the pages' contents:** every Ledger page row in section 2.4 stays `NS`.
+
+- **S-13 (navigation bar replacing the sidebar):** `L` Signature light and `D` Signature dark at 1440 x 900; also looked at in Classic (light) and the "Deep navy" preset (light). `1440` measured (bar 62 to 108, page content 1267 px wide). `375` is `.` on purpose: the bar does not exist below 900 px (checked at 899, 800, 375, 320 and a landscape 812 x 375: the bar is absent and the phone bars show). `Kbd`: Tab, Enter, Escape (focus returns to the chevron), Tab out of an open list (closes it), switching lists. `Func`: all 31 destinations opened from the bar (21 from the lists plus Home, Money's ten), active section and page, an account page, direct link with reload, Back and Forward, due-count badges with two temporary demo rules (removed afterwards).
+- **S-14 (top bar and breadcrumbs):** the crumb row is unchanged in content and behaviour; it now sits below the bar, lines up with the page content, and is hidden on desktop Home only (its sole crumb, "Home", repeats the bar). Phone: unchanged, seen at 375 (light). `Kbd` is `.` (crumb links were not Tabbed through separately).
+- **S-15 section tabs and S-16 bottom tab bar:** NOT visually modified, so they stay `NS` (their code and styles are untouched; only the shared "active page" rule they call now comes from the navigation model, with the same result). Their behaviour was re-checked at 375: five tabs, same destinations, ten, four, ten and six section tabs.
+- **S-17 (theme toggle):** now at the right end of the Ledger bar (still the same component, same Device, Light, Dark cycle and storage; cycle and persistence seen). Still also in Settings > Appearance.
+- **Not checked:** real phones or tablets (touch, 44 px targets measured by style only), screen readers, forced-colours mode, Safari and Firefox, print preview, dark mode at phone width, Classic and navy at phone width.
 
 ## 2. Routed page destinations (59)
 
