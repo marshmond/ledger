@@ -12,9 +12,9 @@ The goal is **every page, surface, view and dialog in Ledger**, including every 
 `L` light, `D` dark, `375` phone width, `1440` desktop width, `Kbd` keyboard and focus, `Func` functional acceptance (existing tests plus the flow check passed, nothing about behaviour changed).
 A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The visual checklist V1 to V12 and functional checklist F1 to F6 are in the D4 roadmap (section 6).
 
-**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (committed and deployed `13acc04`, Pages run #93) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2). D8 (2026-11-11, built, uncommitted) replaced Ledger's desktop sidebar by a bar under the header: S-13, S-14 and S-17 read `BLT` (section 1.3); S-15 and S-16 are untouched and stay `NS`.** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
+**D5 left everything at `NS` / `.`. D6 (committed and deployed `17e509d`, Pages run #92) restyled the shared component layer, so a few GLOBAL SURFACES read `BLT` with the marks that were actually recorded (section 1.1 says what each mark rests on). D7 (committed and deployed `13acc04`, Pages run #93) restyled the global header and module switcher: S-01 to S-04 read `BLT` and S-12 has two marks (section 1.2). D8 (committed and deployed `8e08fd9`, Pages run #94) replaced Ledger's desktop sidebar by a bar under the header: S-13, S-14 and S-17 read `BLT` (section 1.3); S-15 and S-16 are untouched and stay `NS`. D9 (2026-11-11, approved, committed and pushed; deployment pending verification) added the Family member color picker and the shared member identity pieces (mark, dot, chip): S-21 now includes the pieces and section 1.4 records what was built and seen. No routed page, dialog or workflow row changes status: the Family rows F-01, F-02, DL-09 and W-35 stay `NS`, because only the member form and the identity markers changed, not those whole screens.** No routed page, in-page view, workflow or dialog call site is beyond `NS`, and nothing is `ACC`: a page that merely inherits the shared look has not been redesigned, and no page has all six marks. The Signature preset is opt-in; the pages have not been redesigned for it.
 
-**Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family colour picker; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
+**Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
 
@@ -54,7 +54,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-18 | Unknown-address fallback and legacy redirects | `src/core/legacy.ts` | all | NS | . | . | . | . | . | . |
 | S-19 | Print styles | `src/styles.css` | D19 | NS | . | . | . | . | . | . |
 | S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | NS | . | . | . | . | . | . |
-| S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline | `src/ui/components.tsx` | D6 | BLT | Y | Y | . | Y | . | Y |
+| S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline; member identity mark, dot and chip (D9) | `src/ui/components.tsx`, `src/ui/MemberIdentity.tsx` | D6, D9 | BLT | Y | Y | . | Y | . | Y |
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
 | S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | . | Y | . | Y | . | . |
 
@@ -79,7 +79,7 @@ Seen under **Ledger Signature** in the Claude app's built-in browser, against th
 - **S-17 theme toggle:** not touched in D7 (it lives in Ledger's sidebar and Settings > Appearance). D8 moved it (section 1.3).
 - **Not checked:** real phones, screen readers, forced-colours mode, Safari and Firefox, print preview, toast placement, the ⌘K hint on a Mac.
 
-### 1.3 D8 evidence behind S-13, S-14 and S-17 (built, uncommitted; nothing is `ACC`; the 31 financial pages are NOT marked redesigned)
+### 1.3 D8 evidence behind S-13, S-14 and S-17 (committed and deployed `8e08fd9`; nothing is `ACC`; the 31 financial pages are NOT marked redesigned)
 
 Seen in the Claude app's built-in browser, fictional D1 demo household on its own address (sync off). Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D8-Evidence`). Report: `docs/LEDGER-SIGNATURE-D8-REPORT.md`. **Navigation verification is not visual acceptance of the pages' contents:** every Ledger page row in section 2.4 stays `NS`.
 
@@ -89,7 +89,14 @@ Seen in the Claude app's built-in browser, fictional D1 demo household on its ow
 - **S-17 (theme toggle):** now at the right end of the Ledger bar (still the same component, same Device, Light, Dark cycle and storage; cycle and persistence seen). Still also in Settings > Appearance.
 - **Not checked:** real phones or tablets (touch, 44 px targets measured by style only), screen readers, forced-colours mode, Safari and Firefox, print preview, dark mode at phone width, Classic and navy at phone width.
 
-## 2. Routed page destinations (59)
+### 1.4 D9 evidence: Family member color picker and member identity pieces (committed; deployment pending verification; nothing is `ACC`; no Family row is marked redesigned)
+
+Seen in the Claude app's built-in browser against the fictional D1 demo household (own address, sync off). Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D9-Evidence`). Report: `docs/LEDGER-SIGNATURE-D9-REPORT.md`. **This phase changed the member form and the small identity markers, not whole screens, so every Family row (F-01, F-02, F-03, DL-09, W-35) stays `NS`.** The marks below say what was actually seen.
+
+- **Member form (the Add and Edit dialog; one of the three call sites in DL-09, the other two untouched):** two columns from 780 px, one column below, with a sticky Cancel and Save bar. `L` and `D` Signature, `1440` (880 px dialog), `375` (light and dark), `320` (light, no overflow), Classic (light, desktop). `Kbd`: Tab order checked with the real keyboard (close, who is this, contact search, contact list, role, month, day, year, calendar box, the color group as ONE stop, note, Cancel, Add), arrow keys moved the color choice (Teal to Gray) with the focus outline visible. `Func`: add from an existing Contact, add through an explicit new Contact, edit a color, No color (the stored key is removed, never Gray), Cancel (database byte-identical), the same-name warning and its confirmation, "Use this one instead".
+- **Color picker:** eight native radio buttons plus "No color — neutral gray" in one group. 48 px swatches (52 px at 640 px and narrower), four columns, ring in the main text color, check mark, bold name, separate accent focus outline. Contrast measured on all six palettes in light and dark (report section 9; pinned by `family-d9-identity.test.tsx`).
+- **Shared identity pieces (S-21):** `MemberMark`, `MemberDot`, `MemberChip` in `src/ui/MemberIdentity.tsx`, colors from the existing `--mc-*` tokens. Used on the Family overview cards (F-01), the household "People" rows (F-01), and the member page profile (F-02). They are not used in Calendar, Tasks or Today.
+- **Not checked:** real phones, screen readers, forced-colors mode (CSS written, not seen), Safari and Firefox, the sticky bar when a phone keyboard is open, Signature at 320 px in dark, the other presets at phone width, Edit on a phone.
 
 Addresses are written as they appear after `#` in the browser. Ledger pages are under `/ledger`. The guard compares this column with the app's route registrations.
 

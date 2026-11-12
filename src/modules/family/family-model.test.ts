@@ -36,7 +36,7 @@ describe('validation', () => {
     expect(validateFields({ role: 'child', status: 'active', birthYear: 2026 }, 2026)).toBeNull();
   });
   it('only the approved colours, and a bounded note', () => {
-    expect(validateFields({ role: 'child', status: 'active', color: '#123456' }, 2026)).toMatch(/colour/);
+    expect(validateFields({ role: 'child', status: 'active', color: '#123456' }, 2026)).toMatch(/color/);
     expect(validateFields({ role: 'child', status: 'active', note: 'x'.repeat(NOTE_MAX) }, 2026)).toBeNull();
     expect(validateFields({ role: 'child', status: 'active', note: 'x'.repeat(NOTE_MAX + 1) }, 2026)).toMatch(/at most/);
   });

@@ -6,7 +6,9 @@ import ConfirmDialog from '../../shell/ConfirmDialog';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import { useToday } from '../../ui/useToday';
+import { MemberChip, MemberMark } from '../../ui/MemberIdentity';
 import { ImportantContactsSection } from './ImportantContacts';
+import { memberColorId } from './memberIdentity';
 import { MemberDatesSection, ProjectsSection, ScheduleSection, TodoSection } from './MemberSections';
 import MemberForm, { contactDetail } from './MemberForm';
 import { getMember, loadMembers, setBirthdayOnCalendar, setMe, setMemberStatus } from './data';
@@ -115,7 +117,7 @@ export default function MemberPage({ id }: { id: number }) {
       )}
 
       <section className="card" aria-labelledby="fm-profile">
-        <div className="card-head"><h2 className="card-title" id="fm-profile">Profile</h2></div>
+        <div className="card-head fm-profile-head"><MemberMark name={contact?.name} colorId={memberColorId(d.color)} size="lg" /><h2 className="card-title" id="fm-profile">Profile</h2></div>
         <dl className="fm-facts">
           <div><dt>Role</dt><dd>{ROLE_LABEL[d.role]}</dd></div>
           <div><dt>Status</dt><dd>{STATUS_LABEL[d.status]}</dd></div>
@@ -149,7 +151,7 @@ export default function MemberPage({ id }: { id: number }) {
             </dd>
           </div>
           <div><dt>Birth year</dt><dd>{d.birthYear ?? <span className="muted">Not set</span>}</dd></div>
-          <div><dt>Display colour</dt><dd>{d.color ? <><span className="fm-dot" style={{ background: d.color }} aria-hidden="true" /> {colorName(d.color)}</> : <span className="muted">None</span>}</dd></div>
+          <div><dt>Display color</dt><dd>{d.color ? <MemberChip colorId={memberColorId(d.color)}>{colorName(d.color)}</MemberChip> : <MemberChip>No color</MemberChip>}</dd></div>
         </dl>
       </section>
 

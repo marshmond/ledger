@@ -38,7 +38,7 @@ import { loadDates } from './dateData';
 import { DATE_KIND_LABEL, type DateRecord } from './dateModel';
 import { DATES_ROUTE, FAMILY_BASE, memberRoute, type MemberRecord } from './model';
 
-/** The Calendar's Pink swatch; the layer is seeded with it and the owner can recolour it. */
+/** The Calendar's Pink swatch; the layer is seeded with it and the owner can recolor it. */
 export const FAMILY_LAYER_COLOR = '#c4398a';
 
 /** The title of a member's birthday marker. The same wording as the Calendar's own Birthday type (a test compares them). Name only. */

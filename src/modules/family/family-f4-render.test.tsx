@@ -40,9 +40,9 @@ describe('activities', () => {
     expect(textOf(d)).toMatch(/People:/);
   });
 
-  it('the colour dot is decoration only: the name is always in text', () => {
+  it('the color dot is decoration only: the name is always in text', () => {
     const d = html(createElement(ActivitiesSection, { items: [activity(5, 'Practice')], hiddenCount: 0, today: TODAY, who: null }));
-    for (const dot of all(d, (e) => /\bfm-(dot|bar)\b/.test(e.attrs.class ?? ''))) expect(dot.attrs['aria-hidden']).toBe('true');
+    for (const dot of all(d, (e) => /\b(fm-bar|ui-mdot)\b/.test(e.attrs.class ?? ''))) expect(dot.attrs['aria-hidden']).toBe('true');
     expect(textOf(d)).toContain('Sam Example');
   });
 

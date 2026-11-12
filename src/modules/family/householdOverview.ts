@@ -38,7 +38,7 @@ export const NO_CONTACT_NAME = 'Contact no longer exists';
 
 /** One household member as the overview shows them. The name always comes from the shared Contact. */
 export interface HouseholdPerson { memberId: number; contactId: number; name: string; role: Role; color?: string; isMe: boolean }
-/** The small piece of a person that a row carries: enough to show a coloured, named link. */
+/** The small piece of a person that a row carries: enough to show a colored, named link. */
 export interface PersonRef { memberId: number; contactId: number; name: string; color?: string }
 
 export interface HouseholdActivity extends ScheduleItem {
@@ -76,7 +76,7 @@ export interface HouseholdOverview {
 
 const byName = (a: { name: string; memberId: number }, b: { name: string; memberId: number }) => a.name.localeCompare(b.name) || a.memberId - b.memberId;
 
-/** Pure: the active, readable members (one per Contact, the oldest record), with their names, colours and the effective "me". */
+/** Pure: the active, readable members (one per Contact, the oldest record), with their names, colors and the effective "me". */
 export function householdPeople(members: readonly MemberRecord[], names: ReadonlyMap<number, string>): HouseholdPerson[] {
   const me = effectiveMe(members).me;
   return [...activeByContact(members).values()]

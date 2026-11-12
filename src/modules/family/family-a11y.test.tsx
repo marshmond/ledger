@@ -31,9 +31,9 @@ describe('add-member form', () => {
     const radios = byTag(d, 'input').filter((i) => i.attrs.name === 'fm-mode');
     expect(radios.map((r) => accessibleName(d, r))).toEqual(['Use an existing contact', 'Create a new contact']);
   });
-  it('every colour is offered by NAME, plus "None", so colour is never the only cue', () => {
+  it('every color is offered by NAME, plus "No color", so color is never the only cue', () => {
     const names = byTag(d, 'input').filter((i) => i.attrs.name === 'fm-color').map((i) => accessibleName(d, i).trim());
-    expect(names).toEqual(['None', ...COLORS.map((c) => c.name)]);
+    expect(names).toEqual([...COLORS.map((c) => c.name), 'No color — neutral gray']);
   });
   it('the note box is described by its length and caution text', () => {
     const ta = byTag(d, 'textarea')[0];

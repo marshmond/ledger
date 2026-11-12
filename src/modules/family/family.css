@@ -1,11 +1,10 @@
-/* Family (F1). Uses the app's colour variables so light and dark both work. Colour is never the only cue: every colour also has a name in text. */
+/* Family (F1). Uses the app's color variables so light and dark both work. Color is never the only cue: every color also has a name in text. */
 .fm-main { padding-bottom: var(--sp-6, 48px); max-width: min(900px, 100%); }
 .fm-list { margin: 0; padding: 0; }
 .fm-card { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); min-height: 44px; overflow-wrap: anywhere; }
 .fm-list > .fm-card:last-child { border-bottom: none; }
 .fm-card-text { display: flex; flex-direction: column; min-width: 0; }
 .fm-name { font-weight: 600; display: inline-flex; align-items: center; min-height: 32px; }
-.fm-dot { display: inline-block; flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--card); vertical-align: -2px; }
 .fm-warn { border: 1px solid var(--warn, #9a6700); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
 .fm-warn > strong { color: var(--warn, #9a6700); }
 .fm-note { background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: var(--r-lg); padding: var(--sp-2) var(--sp-3); margin: 0; }
@@ -25,11 +24,6 @@
 .fm-opt.off { opacity: 0.6; cursor: default; }
 .fm-opt input { margin-top: 4px; }
 .fm-opt:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
-.fm-colors { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.fm-color { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 var(--sp-3); border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer; background: var(--card); }
-.fm-color.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
-.fm-color input { position: absolute; opacity: 0; pointer-events: none; }
-.fm-color:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .fm-actions { justify-content: flex-end; gap: var(--sp-2); }
 @media (max-width: 480px) {
   .fm-name, .fm-back { min-height: 44px; }
@@ -46,7 +40,7 @@
   .fm-mini { min-height: 44px; }
 }
 
-/* Family member sections (F3): schedule, to do, projects, important contacts. Colour is never the only cue: every row also names its calendar or status in text. */
+/* Family member sections (F3): schedule, to do, projects, important contacts. Color is never the only cue: every row also names its calendar or status in text. */
 .fm-items { margin: 0; padding: 0; display: flex; flex-direction: column; }
 .fm-item { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); min-height: 44px; min-width: 0; overflow-wrap: anywhere; }
 .fm-items > .fm-item:last-child { border-bottom: none; }
@@ -62,7 +56,7 @@
   .fm-ic-row .fm-date-actions { width: 100%; }
 }
 
-/* Family overview (F4): people on a row, and the optional "Show" filter. Colour is never the only cue: every dot sits beside the person's name. */
+/* Family overview (F4): people on a row, and the optional "Show" filter. Color is never the only cue: every dot sits beside the person's name. */
 .fm-people { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-3); }
 .fm-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-weight: 600; overflow-wrap: anywhere; }
 .fm-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
@@ -77,3 +71,47 @@
 /* U1: touch targets for the "This is me" conflict controls (links on the overview, buttons on a member page), at least 44px tall on every width. */
 .fm-touch { display: inline-flex; align-items: center; min-height: 44px; }
 .fm-warn li.row { flex-wrap: wrap; gap: var(--sp-2); }
+
+/* Add / edit member (D9). Two columns from 780px up (who, role and birthday on the left; the color preview, the swatches and the note on the right), one column on a
+   phone with the Cancel / Save bar kept in view. Every color the swatches show comes from the --mc-* tokens (lighter in dark themes), and the ring is the main text
+   color, not the accent, so a chosen Teal cannot be mistaken for the accent. Selection is the ring AND a check mark AND a bold name AND the radio's own checked state. */
+.modal:has(.fm-form--cols) { width: min(880px, 100%); scroll-padding-bottom: 88px; } /* keeps a focused control clear of the sticky Cancel / Save bar */
+.fm-form--cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3) var(--sp-5); }
+.fm-col { display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.fm-span { grid-column: 1 / -1; }
+.fm-form--cols .fm-sub { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
+@media (min-width: 780px) { .fm-form--cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+/* The action bar stays at the bottom of the dialog's own scroll area. */
+.fm-form--cols .fm-actions { position: sticky; bottom: calc(var(--sp-4) * -1); z-index: 1; margin: 0 calc(var(--sp-4) * -1) calc(var(--sp-4) * -1); padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--line); background: var(--surface-raised); }
+
+.fm-preview { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-soft); }
+.fm-preview-text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fm-preview-name { font-size: var(--fs-lg); line-height: 1.25; overflow-wrap: anywhere; }
+.fm-preview-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.fm-swatches { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-3) var(--sp-1); padding: var(--sp-2) 0; }
+.fm-sw { position: relative; display: flex; flex-direction: column; align-items: center; gap: 11px; min-width: 0; padding: var(--sp-2) 0 var(--sp-1); border-radius: var(--r-md); cursor: pointer; }
+.fm-sw input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.fm-sw-dot { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: var(--pc); color: var(--swatch-check); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pc) 72%, var(--fg)); }
+.fm-sw-dot .ui-icon { opacity: 0; stroke-width: 2.6; }
+.fm-sw.on .fm-sw-dot { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--pc) 72%, var(--fg)), 0 0 0 3px var(--surface-raised), 0 0 0 5px var(--fg); }
+.fm-sw.on .fm-sw-dot .ui-icon { opacity: 1; }
+.fm-sw-name { font-size: var(--fs-sm); font-weight: 500; line-height: 1.15; color: var(--fg-2); text-align: center; overflow-wrap: anywhere; }
+.fm-sw.on .fm-sw-name { font-weight: 700; color: var(--fg); }
+.fm-sw input:focus-visible ~ .fm-sw-dot { outline: 2px solid var(--accent); outline-offset: 7px; }
+
+.fm-nocolor { display: flex; align-items: center; gap: var(--sp-2); min-height: 48px; padding: 0 var(--sp-3); border: 1px dashed var(--control-line); border-radius: var(--r-lg); font-weight: 500; cursor: pointer; }
+.fm-nocolor input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--ctl-accent); }
+.fm-nocolor.on { border: 1px solid var(--fg); background: var(--surface-soft); font-weight: 650; }
+.fm-nocolor:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fm-color-note { min-width: 0; }
+@media (max-width: 640px) { .fm-sw-dot { width: 52px; height: 52px; } }
+@media (forced-colors: active) {
+  .fm-sw-dot { forced-color-adjust: none; box-shadow: inset 0 0 0 1px CanvasText; }
+  .fm-sw.on .fm-sw-dot { box-shadow: 0 0 0 3px Canvas, 0 0 0 5px CanvasText; }
+  .fm-sw input:focus-visible ~ .fm-sw-dot, .fm-nocolor:has(input:focus-visible) { outline-color: Highlight; }
+  .fm-nocolor.on { border-color: Highlight; }
+}
+
+/* D9: identity on the member page. The mark sits beside the "Profile" heading; the card-head already wraps and centres on its own row. */
+.fm .fm-profile-head { align-items: center; justify-content: flex-start; gap: var(--sp-3); }

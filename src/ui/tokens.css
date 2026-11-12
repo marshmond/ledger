@@ -105,6 +105,7 @@
   --mc-gray: #6b7280;
   --mc-ink-mix: 58%;   /* monogram text: this much of the member colour mixed into the text colour (72% failed 4.5:1 for Gold and Teal in D3.4) */
   --mc-tint-mix: 16%;  /* monogram tile fill: this much of the member colour mixed into the surface */
+  --swatch-check: #ffffff; /* D9: the check mark on a chosen color swatch (white on the light-theme colors; the dark theme sets a dark one). Named without the mc- prefix because the D5 guard pins that prefix to the eight colors. */
 
   /* ---------------------------------------------------------------------------------------------------------------------------
      D6 (shared components). Appearance tokens for the shared layer. EVERY value below is exactly what the stylesheet did before D6, so
@@ -195,6 +196,7 @@
     --mc-gold: #e0b04a;
     --mc-teal: #5cc3d1;
     --mc-gray: #a3acbb;
+    --swatch-check: #0b1220;
   }
 }
 :root[data-theme="dark"] {
@@ -209,4 +211,5 @@
   --mc-gold: #e0b04a;
   --mc-teal: #5cc3d1;
   --mc-gray: #a3acbb;
+  --swatch-check: #0b1220;
 }

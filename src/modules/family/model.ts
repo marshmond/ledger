@@ -2,7 +2,7 @@
  * Family Management F1: the household-member record. PURE (no database, clock or network).
  *
  * A member is a `moduleRecords` row (module `family`, kind `member`) that POINTS AT one shared Contact. The Contact is the person's identity
- * (name, phone, email); the member holds only what a Contact cannot: role, active/past, birthday, display colour and a short masked note.
+ * (name, phone, email); the member holds only what a Contact cannot: role, active/past, birthday, display color and a short masked note.
  * Nothing about the person's name is copied here, so there is no second address book.
  *
  * Reading is defensive and lossless: a row this code cannot make sense of is returned as "needs review" (`data: null`) and is never rewritten;
@@ -27,7 +27,7 @@ export const STATUSES = ['active', 'past'] as const;
 export type Status = (typeof STATUSES)[number];
 export const STATUS_LABEL: Record<Status, string> = { active: 'In the household', past: 'Past member' };
 
-/** The approved display colours. Same values as the Calendar's swatches (a test pins that); each has a NAME so colour is never the only cue. */
+/** The approved display colors. Same values as the Calendar's swatches (a test pins that); each has a NAME so color is never the only cue. */
 export const COLORS: readonly { value: string; name: string }[] = [
   { value: '#4a7bd0', name: 'Blue' },
   { value: '#2f8f6b', name: 'Green' },
@@ -111,7 +111,7 @@ export function validateFields(f: Partial<MemberFields>, thisYear: number): stri
     if (!validBirthYear(f.birthYear, thisYear)) return `The birth year must be a whole year from ${MIN_BIRTH_YEAR} to ${thisYear}.`;
     if (f.birthMonthDay === '02-29' && !isLeap(f.birthYear)) return `${f.birthYear} was not a leap year, so it has no 29 February.`;
   }
-  if (f.color !== undefined && !COLORS.some((c) => c.value === f.color)) return 'Choose one of the listed colours.';
+  if (f.color !== undefined && !COLORS.some((c) => c.value === f.color)) return 'Choose one of the listed colors.';
   if (f.note !== undefined && (typeof f.note !== 'string' || f.note.length > NOTE_MAX)) return `The note can be at most ${NOTE_MAX} characters.`;
   return null;
 }
@@ -156,7 +156,7 @@ export function asMember(r: ModuleRecord, thisYear = new Date().getFullYear()): 
   }
   if (raw.color !== undefined) {
     if (typeof raw.color === 'string' && COLORS.some((c) => c.value === raw.color)) data.color = raw.color;
-    else problems.push('The colour could not be read.');
+    else problems.push('The color could not be read.');
   }
   if (raw.note !== undefined) {
     if (typeof raw.note === 'string') data.note = raw.note.slice(0, NOTE_MAX * 4); // a very long note from another version is shown cut, never stored cut
@@ -222,8 +222,8 @@ export function effectiveMe(members: readonly MemberRecord[]): MeState {
 }
 
 /**
- * U1: a short label that tells members apart when they share a name, built only from what the member already has on screen elsewhere (role, colour NAME,
- * and when the record was added). No ids, free text, birth years or contact details. Order: role, colour, added date.
+ * U1: a short label that tells members apart when they share a name, built only from what the member already has on screen elsewhere (role, color NAME,
+ * and when the record was added). No ids, free text, birth years or contact details. Order: role, color, added date.
  */
 export function memberHint(m: MemberRecord): string {
   const parts: string[] = [];

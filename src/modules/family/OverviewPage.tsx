@@ -12,6 +12,8 @@ import { loadMembers } from './data';
 import { forPerson, readHouseholdOverview } from './householdOverview';
 import { ADD_MEMBER } from './quickAddDef';
 import { useAddIntent } from './useAddIntent';
+import { MemberMark } from '../../ui/MemberIdentity';
+import { memberColorId } from './memberIdentity';
 import { colorName, DATES_ROUTE, duplicateGroups, effectiveMe, memberHint, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
 
 /**
@@ -59,7 +61,7 @@ export default function OverviewPage() {
     const sharedName = readable.filter((o) => nameOf(o) === nameOf(m)).length > 1;
     return (
       <li key={m.id} className="fm-card">
-        <span className="fm-dot" style={d.color ? { background: d.color } : undefined} aria-hidden="true" />
+        <MemberMark name={contacts.find((c) => c.id === d.contactId)?.name} colorId={memberColorId(d.color)} size="md" />
         <div className="fm-card-text">
           <Link to={memberRoute(m.id)} className="fm-name">{nameOf(m)}</Link>
           <span className="muted small">{ROLE_LABEL[d.role]}{meState.me?.id === m.id ? ' · This is you' : ''}{d.color ? ` · ${colorName(d.color)}` : ''}{sharedName ? ` · added ${new Date(m.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}{bday ? ` · Birthday ${bday}` : ''}{m.problems.length ? ' · needs a look' : ''}</span>

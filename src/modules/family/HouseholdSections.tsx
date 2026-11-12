@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link } from '../../core/router';
 import { PRIORITY_LABEL } from '../../core/priority';
 import { EmptyState } from '../../ui/components';
+import { MemberDot } from '../../ui/MemberIdentity';
+import { memberColorId } from './memberIdentity';
 import { dayLabel, timeLabel } from '../calendar/time';
 import { ACTIVITY_DAYS, DATE_DAYS, type HouseholdActivity, type HouseholdDate, type HouseholdTask, type PersonRef } from './householdOverview';
 import { calendarLink, scheduleWhen } from './memberSchedule';
@@ -27,14 +29,14 @@ function timeFromHM(hm: string): string {
   return timeLabel(new Date(2000, 0, 1, h, m).getTime());
 }
 
-/** Everyone a row names, as coloured dots with their NAMES in text (colour is never the only cue). Each name opens that member's profile. */
+/** Everyone a row names, as color dots with their NAMES in text (color is never the only cue). Each name opens that member's profile. */
 function People({ label, people }: { label: string; people: readonly PersonRef[] }) {
   return (
     <span className="fm-people small">
       <span className="muted">{label}</span>
       {people.map((p) => (
         <Link key={p.memberId} to={memberRoute(p.memberId)} className="fm-chip">
-          <span className="fm-dot" style={p.color ? { background: p.color } : undefined} aria-hidden="true" />{p.name}
+          <MemberDot colorId={memberColorId(p.color)} />{p.name}
         </Link>
       ))}
     </span>

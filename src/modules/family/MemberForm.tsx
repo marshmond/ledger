@@ -4,8 +4,12 @@ import Modal from '../../shell/Modal';
 import { nameKey } from '../../core/contacts';
 import { store } from '../../core/store';
 import type { Contact } from '../../core/entities';
+import { Icon } from '../../ui/icons';
+import { MemberChip, MemberMark } from '../../ui/MemberIdentity';
+import { StatusChip } from '../../ui/StatusChip';
 import { createMember, loadMembers, updateMember, type ContactChoice } from './data';
-import { COLORS, MONTH_NAMES, NOTE_MAX, ROLES, ROLE_LABEL, monthDay, sameNameContacts, validMonthDay, type MemberFields, type MemberRecord, type Role } from './model';
+import { COLOR_IN_USE, MEMBER_COLOR_CHOICES, NO_COLOR_CHOICE, colorUsedByAnother, memberPreview, previewName } from './memberIdentity';
+import { MONTH_NAMES, NOTE_MAX, ROLES, ROLE_LABEL, monthDay, sameNameContacts, validMonthDay, type MemberFields, type MemberRecord, type Role } from './model';
 
 /** Enough to tell two same-named contacts apart: what they are to you, how to reach them, and when the entry was added. Never a note. */
 export function contactDetail(c: Contact): string {
@@ -47,6 +51,10 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
     return contacts.filter((c) => !q || nameKey(c.name).includes(q)).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 50);
   }, [contacts, filter]);
   const matches = mode === 'new' ? sameNameContacts(contacts, newName, nameKey) : [];
+  // D9: the preview reads the form's CURRENT state only (nothing is saved, nothing is looked up by similarity): the linked Contact when editing, the Contact
+  // picked from the list, or the exact name typed for a new Contact.
+  const preview = memberPreview(previewName({ editing, mode, linkedName: linked?.name, pickedName: contacts.find((c) => c.id === picked)?.name, newName }), role, color);
+  const inUse = colorUsedByAnother(members, member?.id, color);
 
   async function save() {
     if (busy) return;
@@ -90,7 +98,8 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
 
   return (
     <Modal title={editing ? 'Edit family member' : 'Add a family member'} onClose={onClose}>
-      <form className="fm-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+      <form className="fm-form fm-form--cols" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+        <div className="fm-col">
         {editing ? (
           <p className="fm-note" id="fm-contact-fixed">Linked contact: <strong>{linked?.name ?? 'a contact that no longer exists'}</strong>. The link stays fixed so that tasks and events keep belonging to the same person.</p>
         ) : (
@@ -145,9 +154,11 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
           </>
         )}
 
-        <label className="f">Role
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)}>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
-        </label>
+        <div className="fm-sub">
+          <label className="f">Role
+            <select value={role} onChange={(e) => setRole(e.target.value as Role)}>{ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select>
+          </label>
+        </div>
 
         <fieldset className="fm-sub">
           <legend>Birthday (optional)</legend>
@@ -170,26 +181,51 @@ export default function MemberForm({ member, onClose, onSaved }: { member?: Memb
           <p className="muted small" id="fm-cal-help">Your own Calendar and Today only. It does not share the birthday with anyone or anything else. If you already keep your own Birthday event for this person, Ledger shows just one of the two when it can tell they are the same.</p>
         </fieldset>
 
-        <fieldset className="fm-sub">
-          <legend>Display colour (optional)</legend>
-          <div className="fm-colors">
-            <label className={`fm-color${color === '' ? ' on' : ''}`}><input type="radio" name="fm-color" checked={color === ''} onChange={() => setColor('')} /> None</label>
-            {COLORS.map((c) => (
-              <label key={c.value} className={`fm-color${color === c.value ? ' on' : ''}`}>
-                <input type="radio" name="fm-color" checked={color === c.value} onChange={() => setColor(c.value)} />
-                <span className="fm-dot" style={{ background: c.value }} aria-hidden="true" /> {c.name}
+        </div>
+
+        <div className="fm-col">
+        <fieldset className="fm-sub" aria-describedby="fm-color-help fm-color-note">
+          <legend>Display color (optional)</legend>
+          {/* D9: a look at the member as the Family screens will show them. It reads the form as it stands; nothing is saved until Add member or Save. */}
+          <div className="fm-preview">
+            <MemberMark name={preview.name} colorId={preview.colorId} size="xl" />
+            <div className="fm-preview-text">
+              <strong className={`fm-preview-name${preview.name ? '' : ' muted'}`}>{preview.name || (editing ? 'Contact no longer exists' : 'New member')}</strong>
+              <span className="fm-preview-tags">
+                <StatusChip icon={false}>{preview.roleLabel}</StatusChip>
+                <MemberChip colorId={preview.colorId}>{preview.colorText}</MemberChip>
+              </span>
+            </div>
+          </div>
+          {/* Native radio buttons: arrow keys, Space and the one-choice rule come from the browser. The ring and check mark show the choice without relying on color. */}
+          <div className="fm-swatches">
+            {MEMBER_COLOR_CHOICES.map((c) => (
+              <label key={c.id} className={`fm-sw${color === c.value ? ' on' : ''}`} data-mc={c.id}>
+                <input type="radio" name="fm-color" value={c.value} checked={color === c.value} onChange={() => setColor(c.value)} />
+                <span className="fm-sw-dot" aria-hidden="true"><Icon name="check" size={24} /></span>
+                <span className="fm-sw-name">{c.name}</span>
               </label>
             ))}
           </div>
+          {/* "No color" keeps the existing absent value. It is NOT the stored Gray swatch. */}
+          <label className={`fm-nocolor${color === '' ? ' on' : ''}`}>
+            <input type="radio" name="fm-color" value="" checked={color === ''} onChange={() => setColor('')} />
+            <span>{NO_COLOR_CHOICE}</span>
+          </label>
+          <p className="ui-help fm-color-note" id="fm-color-note" aria-live="polite">{inUse ? COLOR_IN_USE : ''}</p>
+          <p className="ui-help" id="fm-color-help">A color helps tell people apart on Family screens, and its name always appears with it. Two people may share a color.{editing ? ' Calendars keep their own colors.' : ''}</p>
         </fieldset>
 
-        <label className="f">Private note (optional)
-          <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} maxLength={NOTE_MAX} aria-describedby="fm-note-help" />
-        </label>
-        <p className="muted small" id="fm-note-help">{note.length} of {NOTE_MAX} characters. The note is hidden until you press Show. Do not store health details, identity numbers, passwords or account details here. Plain backups are not encrypted.</p>
+        <div className="fm-sub">
+          <label className="f">Private note (optional)
+            <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} maxLength={NOTE_MAX} aria-describedby="fm-note-help" />
+          </label>
+          <p className="muted small" id="fm-note-help">{note.length} of {NOTE_MAX} characters. The note is hidden until you press Show. Do not store health details, identity numbers, passwords or account details here. Plain backups are not encrypted.</p>
+        </div>
+        </div>
 
-        {error && <div className="error" role="alert">{error}</div>}
-        <div className="row fm-actions">
+        {error && <div className="error fm-span" role="alert">{error}</div>}
+        <div className="row fm-actions fm-span">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
           <button type="submit" className="btn primary" disabled={busy}>{editing ? 'Save' : 'Add member'}</button>
         </div>
