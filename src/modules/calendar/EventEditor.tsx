@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { addDays } from '../../lib/dates';
 import { daysBetween } from '../../lib/money';
@@ -220,16 +220,26 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   };
   const del = () => (occ?.recurring ? setAsk({ kind: 'delete' }) : void doDelete('all'));
 
+  // D13-F2: a NEW event starts in the Title box. The shared Modal moves focus to the dialog box after the field's own autofocus, so this effect (it runs after the
+  // Modal's, being the parent) puts it back. Not on a touch screen (it would raise the keyboard over the sheet) and not when editing (the dialog box keeps focus, as before).
+  const titleRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (occ || (typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches)) return;
+    titleRef.current?.focus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Esc closes the dialog (Modal handles it); Enter in the title saves.
   useEffect(() => setError(''), [title]);
 
 
   return (
     <>
-      <Modal title={occ ? 'Edit event' : 'New event'} onClose={onClose} wide>
+      <Modal title={occ ? 'Edit event' : 'New event'} onClose={onClose} wide variant="sheet">
         <form className="cal-form" onSubmit={(e) => { e.preventDefault(); save(); }}>
+          <section className="cal-sec" aria-labelledby="ev-s-what">
+          <h3 className="cal-sec-title" id="ev-s-what">What</h3>
           <label className="f">Title
-            <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="What is it?" />
+            <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="What is it?" />
           </label>
 
           <div className="cal-when">
@@ -255,7 +265,10 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
               <span className="muted small">Optional. Only if you want {handoffFor(type)!.ownerName} to keep track of it. Otherwise it stays a normal calendar event.</span>
             </p>
           )}
+          </section>
 
+          <section className="cal-sec" aria-labelledby="ev-s-when">
+          <h3 className="cal-sec-title" id="ev-s-when">When</h3>
           <label className="row cal-check"><input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day</label>
           <div className="cal-when">
             <label className="f">{allDay ? 'First day' : 'Starts'}
@@ -272,7 +285,10 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
             </label>
           </div>
           {allDay && <p className="muted small">All-day items are plain dates, so they stay on the same day in any time zone.</p>}
+          </section>
 
+          <section className="cal-sec" aria-labelledby="ev-s-where">
+          <h3 className="cal-sec-title" id="ev-s-where">Calendar and priority</h3>
           <div className="cal-when">
             <label className="f">Calendar
               <select value={calendarId} onChange={(e) => setCalendarId(Number(e.target.value))}>
@@ -299,9 +315,12 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
             </span>
             {occ?.recurring && <span className="muted small">The project applies to every date of a repeating event.</span>}
           </div>
+          </section>
 
           <RepeatFields rule={rule} onChange={setRule} start={startDate || localISO(Date.now())} />
 
+          <section className="cal-sec" aria-labelledby="ev-s-details">
+          <h3 className="cal-sec-title" id="ev-s-details">Details</h3>
           <label className="f">Location<input value={location} onChange={(e) => setLocation(e.target.value)} /></label>
           <label className="f">Notes<textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
 
@@ -316,7 +335,10 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
           </div>
 
           <label className="row cal-check"><input type="checkbox" checked={trackDone} onChange={(e) => setTrackDone(e.target.checked)} /> Keep it as overdue until I mark it done</label>
+          </section>
 
+          <section className="cal-sec" aria-labelledby="ev-s-people">
+          <h3 className="cal-sec-title" id="ev-s-people">Tags, people and links</h3>
           <div className="f"><span>Tags</span><TagPicker value={tagIds} onChange={setTagIds} /></div>
           <div className="f"><span>People</span><ContactPicker value={contactIds} onChange={(ids) => void onContacts(ids)} /></div>
           <div className="f"><span>Linked records</span>
@@ -327,6 +349,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
               onUndoRemove={(r) => setRemoved(new Set([...removed].filter((k) => k !== refKey(r))))}
             />
           </div>
+          </section>
 
           {error && <p className="cal-error" role="alert">{error}</p>}
           <div className="row spread cal-actions">

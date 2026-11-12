@@ -357,6 +357,8 @@ a.list-row:hover { text-decoration: none; background: var(--hover); }
 
 .toasts { position: fixed; z-index: 120; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h) + 84px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--sp-2); width: min(440px, calc(100vw - 32px)); }
 @media (min-width: 900px) { .toasts { bottom: var(--sp-5); } }
+/* D13-F1: while a dialog is open the notifications sit BELOW it (behind its dimmed backdrop), so a stacked toast can never cover or intercept a dialog's Save and Cancel. They are still in the page, read by assistive technology (role=status) and come back to the front when the dialog closes. */
+body:has(.modal-back) .toasts { z-index: 90; }
 .toast { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); background: var(--toast-bg); color: var(--toast-ink); border-radius: var(--r-md); box-shadow: var(--toast-edge); }
 .toast > span { flex: 1; }
 .toast button.link { color: var(--toast-ink); text-decoration: underline; }

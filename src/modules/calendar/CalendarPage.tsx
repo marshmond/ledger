@@ -3,11 +3,15 @@ import { rovingKeys } from '../../ui/rovingKeys';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { loadCalendarSettings, saveCalendarSettings, type ViewId } from '../../core/calendarSettings';
-import { addDays, addMonths, monthLabel } from '../../lib/dates';
-import { todayISO } from '../../lib/money';
+import { addDays, monthLabel } from '../../lib/dates';
+import { useToday } from '../../ui/useToday';
+import { PageHeader } from '../../ui/components';
+import { Icon } from '../../ui/icons';
 import { requestTask } from '../../core/taskBridge';
 import AgendaView from './AgendaView';
 import { DayPanel, DerivedDetail, ExportDialog, ManageCalendars } from './dialogs';
+import { contextLine, stepMonth } from './calendarModel';
+import SelectedDay from './SelectedDay';
 import LayerMenu from './LayerMenu';
 import { defaultCalendarId, ensureCalendarSeed } from './data';
 import EventEditor, { type EditorStart } from './EventEditor';
@@ -36,7 +40,7 @@ type Editor = { occ: Occurrence; start?: undefined } | { occ?: undefined; start:
 
 export default function CalendarPage() {
   const [sp, setSp] = useSearchParams();
-  const today = todayISO();
+  const today = useToday();
   const now = useNow();
   const settings = useLiveQuery(() => loadCalendarSettings(), []);
   useEffect(() => { void ensureCalendarSeed().catch(() => undefined); }, []);
@@ -101,44 +105,69 @@ export default function CalendarPage() {
   }, [openParam, data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const step = (dir: 1 | -1) => {
-    if (view === 'month') go({ d: addMonths(`${anchor.slice(0, 7)}-01`, dir, 1) });
+    if (view === 'month') go({ d: stepMonth(anchor, dir) });
     else if (view === 'agenda') go({ d: addDays(anchor, dir * rangeDays) });
     else go({ d: addDays(anchor, dir * 7) });
   };
   const title = view === 'month' ? monthLabel(anchor.slice(0, 7)) : `${dayLabel(range.from)} – ${dayLabel(range.to, { year: true })}`;
 
   if (!settings) return <p className="muted">Loading…</p>;
+  const ctx = contextLine(today);
+  const addDate = today >= range.from && today <= range.to ? today : anchor;
+  const sideDay = view === 'month';
   return (
     <div className="cal">
-      <div className="cal-toolbar">
-        <h1 className="cal-title" aria-live="polite" data-page-title="Calendar">{title}</h1>
-        <div className="row cal-nav">
-          <button className="btn" onClick={() => step(-1)} aria-label="Previous">‹</button>
-          <button className="btn" onClick={() => go({ d: today })} disabled={range.from <= today && range.to >= today && anchor === today}>Today</button>
-          <button className="btn" onClick={() => step(1)} aria-label="Next">›</button>
+      <PageHeader
+        title="Calendar"
+        eyebrow="Productivity"
+        description={<><b>{ctx.weekday}</b> · {ctx.rest}</>}
+        actions={
+          <div className="cal-head-actions">
+            <button className="btn primary cal-add" onClick={() => setEditor({ start: { date: addDate } })}><Icon name="plus" size={16} /> Add event</button>
+            <button className="btn cal-addtask" onClick={() => requestTask({ dueDate: addDate })}><Icon name="plus" size={16} /> Add task</button>
+          </div>
+        }
+      />
+      <div className="cal-bar">
+        <div className="cal-bar-nav">
+          <div className="cal-stepper" role="group" aria-label="Change period">
+            <button className="btn cal-step" onClick={() => step(-1)} aria-label="Previous"><Icon name="chevron-down" size={16} className="cal-chev cal-chev-prev" /></button>
+            <button className="btn cal-today-btn" onClick={() => go({ d: today })} disabled={range.from <= today && range.to >= today && anchor === today}>Today</button>
+            <button className="btn cal-step" onClick={() => step(1)} aria-label="Next"><Icon name="chevron-down" size={16} className="cal-chev cal-chev-next" /></button>
+          </div>
+          <h2 className="cal-period" aria-live="polite">{title}</h2>
+        </div>
+        <div className="cal-bar-tools">
+          <div className="ui-seg cal-views" role="tablist" aria-label="View" onKeyDown={rovingKeys}>
+            {VIEWS.map((v) => <button key={v.id} role="tab" aria-selected={view === v.id} tabIndex={(view === v.id) ? 0 : -1} className={view === v.id ? 'on' : ''} onClick={() => go({ v: v.id })}>{v.label}</button>)}
+          </div>
+          {view === 'agenda' && (
+            <label className="row cal-range">Show <select value={rangeDays} onChange={(e) => go({ r: Number(e.target.value) })} aria-label="Agenda range">{RANGES.map((r) => <option key={r} value={r}>next {r} days</option>)}</select></label>
+          )}
+          {data && <LayerMenu layers={data.layers.map((l) => ({ id: l.id, name: l.name, color: l.color, derived: l.sourceType === 'derived' }))} isVisible={vis.isVisible} onToggle={vis.toggle} onSelectAll={vis.selectAll} onDeselectAll={vis.deselectAll} onManage={() => setManage(true)} />}
           <label className="cal-jump"><span className="sr-only">Jump to date</span><input type="date" value={anchor} onChange={(e) => e.target.value && go({ d: e.target.value })} aria-label="Jump to date" /></label>
-          <button className="btn primary cal-add" onClick={() => setEditor({ start: { date: today >= range.from && today <= range.to ? today : anchor } })}>+ Add event</button>
-          <button className="btn cal-addtask" onClick={() => requestTask({ dueDate: today >= range.from && today <= range.to ? today : anchor })}>+ Add task</button>
+          <button className="link cal-export" onClick={() => setExporting({})}>Export…</button>
         </div>
-      </div>
-      <div className="cal-toolbar2">
-        <div className="cal-views" role="tablist" aria-label="View" onKeyDown={rovingKeys}>
-          {VIEWS.map((v) => <button key={v.id} role="tab" aria-selected={view === v.id} tabIndex={(view === v.id) ? 0 : -1} className={view === v.id ? 'on' : ''} onClick={() => go({ v: v.id })}>{v.label}</button>)}
-        </div>
-        {view === 'agenda' && (
-          <label className="row cal-range">Show <select value={rangeDays} onChange={(e) => go({ r: Number(e.target.value) })} aria-label="Agenda range">{RANGES.map((r) => <option key={r} value={r}>next {r} days</option>)}</select></label>
-        )}
-        {data && <LayerMenu layers={data.layers.map((l) => ({ id: l.id, name: l.name, color: l.color, derived: l.sourceType === 'derived' }))} isVisible={vis.isVisible} onToggle={vis.toggle} onSelectAll={vis.selectAll} onDeselectAll={vis.deselectAll} onManage={() => setManage(true)} />}
-        <button className="link" onClick={() => setExporting({})}>Export…</button>
       </div>
       {data && vis.count === 0 && <p className="muted cal-allhidden" role="status">Every calendar is switched off, so nothing is shown. Open <strong>Layers</strong> and choose <strong>Select all</strong>, or switch on a calendar (for example Personal). Nothing was deleted or changed.</p>}
 
-      {!data ? <p className="muted">Loading…</p> : view === 'month' ? (
-        <MonthView month={anchor.slice(0, 7)} weekStart={weekStart} today={today} items={items} onCreate={(date) => setEditor({ start: { date } })} onOpenDay={setDayOpen} onOpenItem={openItem} />
-      ) : view === 'agenda' ? (
-        <AgendaView from={range.from} days={rangeDays} today={today} items={items} onOpenItem={openItem} onCreate={(date) => setEditor({ start: { date } })} />
-      ) : (
-        <TimeGrid days={range.days} today={today} now={now} items={items} onSlot={(date, minutes) => setEditor({ start: { date, minutes } })} onOpenItem={openItem} onOpenDay={setDayOpen} />
+      {!data ? <p className="muted">Loading…</p> : (
+        <div className={`cal-body${sideDay ? ' with-side' : ''}`}>
+          <div className="cal-stage">
+            {view === 'month' ? (
+              <MonthView month={anchor.slice(0, 7)} selected={anchor} weekStart={weekStart} today={today} items={items} onSelect={(date) => go({ d: date })} onCreate={(date) => setEditor({ start: { date } })} onOpenItem={openItem} />
+            ) : view === 'agenda' ? (
+              <AgendaView from={range.from} days={rangeDays} today={today} items={items} onOpenItem={openItem} onCreate={(date) => setEditor({ start: { date } })} />
+            ) : (
+              <TimeGrid days={range.days} today={today} now={now} items={items} onSlot={(date, minutes) => setEditor({ start: { date, minutes } })} onOpenItem={openItem} onOpenDay={setDayOpen} />
+            )}
+          </div>
+          {sideDay && (
+            <aside className="cal-side" aria-label="Selected day">
+              <SelectedDay date={anchor} today={today} items={items} onOpenItem={openItem} onAdd={(date) => setEditor({ start: { date } })} onAddTask={(date) => requestTask({ dueDate: date })} />
+            </aside>
+          )}
+        </div>
       )}
 
       {editor && data && <EventEditor key={editor.occ ? `${editor.occ.eventId}:${editor.occ.key}` : 'new'} occ={editor.occ} start={editor.start} layers={data.layers} defaultCalendarId={defaultCal} onClose={() => setEditor(null)} />}

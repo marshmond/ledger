@@ -18,6 +18,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D11 (2026-11-12, committed and pushed after the final correction; deployment read from Actions) redesigned Today and Tasks: T-01 and K-01 read `BLT` with all six marks, the ten Tasks views IV-05 to IV-14 read `BLT` with only `Func` recorded, and W-12 and W-13 read `BLT` (section 1.6). The Tasks Filters sheet adds one `<Modal>` site, so DL-02 now has four and the dialog total is 63 in 42 files. S-07 (the Task creator dialog) and the other Tasks dialogs were not touched and stay `NS`. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
 
+**D13 (2026-11-12, built and tested locally, uncommitted) redesigned the Calendar page: C-01 and the four views IV-01 to IV-04 read `BLT` with the marks actually recorded (section 1.9), DL-03 and W-09 and W-10 read `BLT` for the parts section 1.9 names, W-11 and every other dialog row are untouched. `Kbd` is recorded only for C-01 and the Month view (a 30-stop Tab walk and arrow-key runs with synthetic key events); the other three views are left open. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -145,6 +147,15 @@ Owner priority recorded: the approved prototypes are the visual targets; the old
 - **S-23 charts:** the Income vs spending chart draws at its card's width; the net-worth chart takes light colors inside the dark hero.
 - **Not checked:** real phones, screen readers, forced colors, Safari and Firefox, the other three presets for Home, the Home alerts' Snooze and Dismiss (not built), a merged spending and budget table (not built).
 
+### 1.9 D13 evidence: Calendar (built, NOT committed; nothing is `ACC`)
+
+Seen in headless Chrome on a throwaway profile holding the fictional D1 demo household (own address `localhost:5231`, sync off), driven by DevTools-protocol scripts. Screenshots are outside the repository (`DocumentsLedger-Design-ConceptsD13-Evidence`, `baseline` and `after`). Report: `docs/LEDGER-SIGNATURE-D13-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real phone or a screen reader.** There is no approved Calendar prototype; the design applies the approved Today and Tasks language.
+
+- **C-01 and IV-01 (Month):** `L` and `D` Signature at 1440 (also 1280 and 1024; Classic light and dark, Slate light at 1440), `375` and `320` (light; 375 also dark), a phone held sideways (812 x 375) and 800 wide. `Func`: the 42 cells list the same items in the same order as the pre-change baseline; next, previous, Today, a month boundary (Jan 31 to Feb 28); select a day, a dense day (4 items, "+1 more", all 4 in the list); a 30-stop Tab walk (the grid is one stop; every stop showed a focus ring except the native date picker button of the jump-to-date field), arrow keys, Home, PageUp, PageDown; double-click and the selected day's Add event create with the date filled in; open an existing event, create, edit, cancel an edit (stored record byte-identical); layer menu: Deselect all, Personal only, persisted across a reload, kept across a view change, Select all; address links `?new=1`, `?open=` and `?d=`; Search and Quick Add create exactly one event; 13 months of Household Services visits equal the baseline (37 dates, 26 house-cleaning visits, no duplicates), browsing wrote nothing, only one open House cleaning Task.
+- **IV-02, IV-03, IV-04:** opened on desktop and phone with no horizontal overflow; Week and Agenda also in dark; Agenda also with a filter active and the overdue section. Week and Work week were not compared item by item with the baseline (`Func` left open for them; the time-grid logic was not edited).
+- **DL-03:** the event editor (five named sections, sticky Save and Cancel, phone sheet) and the day dialog. **W-09/W-10:** as the rows say.
+- **Not checked:** real phones, screen readers, forced colors, Safari and Firefox, a Tab walk of Week, Work week and Agenda, the Calendars manager, .ics export, delete and the repeat-scope dialog in the browser, the other two presets, Signature dark at 320.
+
 Addresses are written as they appear after `#` in the browser. Ledger pages are under `/ledger`. The guard compares this column with the app's route registrations.
 
 ### 2.1 Today, Calendar, Tasks (3)
@@ -152,7 +163,7 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
 | T-01 | `/today` | `src/modules/today/TodayModule.tsx` | D11 | BLT | Y | Y | Y | Y | Y | Y |
-| C-01 | `/calendar` | `src/modules/calendar/CalendarPage.tsx` | D13 | NS | . | . | . | . | . | . |
+| C-01 | `/calendar` | `src/modules/calendar/CalendarPage.tsx` | D13 | BLT | Y | Y | Y | Y | Y | Y |
 | K-01 | `/tasks` | `src/modules/tasks/TasksPage.tsx` | D11 | BLT | Y | Y | Y | Y | Y | Y |
 
 ### 2.2 Projects, Home & Assets (5)
@@ -250,10 +261,10 @@ Views share their page's address. Each needs its page's checks plus its own empt
 
 | ID | Page | View | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| IV-01 | C-01 Calendar | Month | D13 | NS | . | . | . | . | . | . |
-| IV-02 | C-01 Calendar | Week | D13 | NS | . | . | . | . | . | . |
-| IV-03 | C-01 Calendar | Work week | D13 | NS | . | . | . | . | . | . |
-| IV-04 | C-01 Calendar | Agenda | D13 | NS | . | . | . | . | . | . |
+| IV-01 | C-01 Calendar | Month | D13 | BLT | Y | Y | Y | Y | Y | Y |
+| IV-02 | C-01 Calendar | Week | D13 | BLT | Y | Y | Y | Y | . | . |
+| IV-03 | C-01 Calendar | Work week | D13 | BLT | Y | . | Y | Y | . | . |
+| IV-04 | C-01 Calendar | Agenda | D13 | BLT | Y | Y | Y | Y | . | Y |
 | IV-05 | K-01 Tasks | Today | D11 | BLT | . | . | . | . | . | Y |
 | IV-06 | K-01 Tasks | Upcoming | D11 | BLT | . | . | . | . | . | Y |
 | IV-07 | K-01 Tasks | Overdue | D11 | BLT | . | . | . | . | . | Y |
@@ -292,7 +303,7 @@ Each site is a form, a question or a detail view. Counted from the source in D5 
 |---|---|---|---|---|---|
 | DL-01 | Shell (Add box, Search, ConfirmDialog base) | 3 | `AddBox`, `SearchDialog`, `ConfirmDialog` | D6, D10 | NS |
 | DL-02 | Tasks | 4 | `TaskEditor`, `QuickTask`, `ListsDialog`, `TasksPage` (the phone Filters sheet, D11) | D11 | NS |
-| DL-03 | Calendar | 8 | `EventEditor` (2), `dialogs` (5), `HandoffDialog` | D13 | NS |
+| DL-03 | Calendar | 8 | `EventEditor` (2), `dialogs` (5), `HandoffDialog` | D13 | BLT |
 | DL-04 | Projects | 3 | `ProjectForm`, `CommitmentForm`, `DeleteProject` | D14 | NS |
 | DL-05 | Home & Assets | 7 | `AssetForm`, `AddMaintenance`, `ServiceForm` (2), `WarrantyForm`, `LifecycleDialog`, `DeleteAsset` | D14 | NS |
 | DL-06 | Contacts | 2 | `ContactForm`, `RemoveContact` | D14 | NS |
@@ -330,8 +341,8 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-06 | Global search (Ctrl/Cmd+K, `/`) and its 7 actions | D6 | NS |
 | W-07 | Add-a-task dialog (from search or `requestTask`) | D11 | NS |
 | W-08 | Module switching, "open where I left off" landing | D7 | NS |
-| W-09 | Calendar events: create, edit, delete, repeating-event scope | D13 | NS |
-| W-10 | Calendars manager, layer menu, .ics export | D13 | NS |
+| W-09 | Calendar events: create, edit, delete, repeating-event scope | D13 | BLT |
+| W-10 | Calendars manager, layer menu, .ics export | D13 | BLT |
 | W-11 | Calendar event handed to Ledger as a scheduled item | D13, D16 | NS |
 | W-12 | Tasks: create, edit, complete, bulk select, lists | D11 | BLT |
 | W-13 | Today: edit layout, hide amounts | D11 | BLT |

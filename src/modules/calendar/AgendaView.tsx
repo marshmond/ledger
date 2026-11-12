@@ -1,4 +1,6 @@
 import { addDays } from '../../lib/dates';
+import { DateInline, DateTile } from '../../ui/DateTile';
+import { itemAccessibleName } from './calendarModel';
 import { Flags, PriorityMark, colorStyle, itemClass, whenLabel } from './parts';
 import { onDay, type CalItem } from './useCalendarData';
 import { dayLabel } from './time';
@@ -7,7 +9,7 @@ import { dayLabel } from './time';
 export function AgendaRow({ item, onOpen }: { item: CalItem; onOpen: (i: CalItem) => void }) {
   return (
     <li>
-      <button type="button" className={`cal-row ${itemClass(item).replace('cal-chip', '')}`} style={colorStyle(item)} onClick={() => onOpen(item)}>
+      <button type="button" className={`cal-row ${itemClass(item).replace('cal-chip', '')}`} style={colorStyle(item)} onClick={() => onOpen(item)} aria-label={itemAccessibleName(item)}>
         <span className="cal-row-when">{whenLabel(item)}</span>
         <span className="cal-row-dot" aria-hidden="true" />
         <span className="cal-row-main">
@@ -40,8 +42,8 @@ export default function AgendaView({ from, days, today, items, onOpenItem, onCre
           <ul className="plain">
             {overdue.map((i) => (
               <li key={i.key}>
-                <button type="button" className={`cal-row ${itemClass(i).replace('cal-chip', '')}`} style={colorStyle(i)} onClick={() => onOpenItem(i)}>
-                  <span className="cal-row-when">{dayLabel(i.firstDay)}</span>
+                <button type="button" className={`cal-row ${itemClass(i).replace('cal-chip', '')}`} style={colorStyle(i)} onClick={() => onOpenItem(i)} aria-label={`${itemAccessibleName(i)}, was due ${dayLabel(i.firstDay, { weekday: 'long', year: true })}`}>
+                  <span className="cal-row-when"><DateInline iso={i.firstDay} today={today} overdue /></span>
                   <span className="cal-row-dot" aria-hidden="true" />
                   <span className="cal-row-main">
                     <span className="cal-row-title"><PriorityMark priority={i.priority} /> {i.title}</span>
@@ -55,9 +57,12 @@ export default function AgendaView({ from, days, today, items, onOpenItem, onCre
       )}
       {groups.length === 0 && <p className="muted cal-empty">Nothing on the calendar from {dayLabel(from, { year: true })} to {dayLabel(to, { year: true })}. <button className="link" onClick={() => onCreate(from > today ? from : today)}>Add an event</button></p>}
       {groups.map(({ d, list }) => (
-        <section key={d} className={`cal-ag-day ${d === today ? 'today' : ''}`} aria-label={dayLabel(d, { weekday: 'long', year: true })}>
-          <h2>{dayLabel(d, { weekday: 'long' })}{d === today && <span className="badge scheduled">Today</span>}</h2>
-          <ul className="plain">{list.map((i) => <AgendaRow key={i.key} item={i} onOpen={onOpenItem} />)}</ul>
+        <section key={d} className={`cal-ag-day cal-ag-grid ${d === today ? 'today' : ''}`} aria-label={dayLabel(d, { weekday: 'long', year: true })}>
+          <div className="cal-ag-tile"><DateTile iso={d} today={today} size="sm" labelled={false} /></div>
+          <div className="cal-ag-main">
+            <h2>{dayLabel(d, { weekday: 'long' })}{d === today && <span className="ui-chip ui-chip--active">Today</span>}</h2>
+            <ul className="plain">{list.map((i) => <AgendaRow key={i.key} item={i} onOpen={onOpenItem} />)}</ul>
+          </div>
         </section>
       ))}
     </div>

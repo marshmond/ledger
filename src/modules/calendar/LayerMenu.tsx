@@ -64,6 +64,8 @@ export default function LayerMenu({ layers, isVisible, onToggle, onSelectAll, on
         aria-controls={open ? popId : undefined}
         onClick={() => setOpen((o) => !o)}
       >
+        {/* D13: the colors of the layers that are on, as a small stack (decoration; <i> not <span>, the count words are the accessible name). */}
+        <i className="cal-lm-stack" aria-hidden="true">{layers.filter((l) => isVisible(l.id)).slice(0, 6).map((l) => <i key={l.id} className="cal-lm-chipdot" style={{ background: swatchColor(l.color) }} />)}</i>
         <span aria-hidden="true">{triggerLabel(shown, total)}</span>
         <span className="sr-only">{triggerSpeech(shown, total)}</span>
         <span className="cal-lm-caret" aria-hidden="true">▾</span>

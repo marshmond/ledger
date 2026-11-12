@@ -7,25 +7,22 @@ import { store } from '../../core/store';
 import { queryProviders } from '../../core/dueProvider';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
-import { AgendaRow } from './AgendaView';
+import { DayItems } from './SelectedDay';
 import { buildIcs } from './ics';
 import { loadEvents, createCalendar, deleteCalendar, updateCalendar } from './data';
 import { PRIORITY_LABEL, PERSONAL_ID, SWATCHES, type CalendarLayer } from './model';
 import { PriorityMark } from './parts';
 import { loadHideAmounts } from '../../core/hideAmounts';
 import { dayLabel } from './time';
-import { onDay, type CalItem } from './useCalendarData';
+import type { CalItem } from './useCalendarData';
 
 /** Everything on one day, with a button to add something. Opened from "+N more" or a day number. */
 export function DayPanel({ date, items, onOpenItem, onAdd, onAddTask, onClose }: {
   date: string; items: CalItem[]; onOpenItem: (i: CalItem) => void; onAdd: (date: string) => void; onAddTask: (date: string) => void; onClose: () => void;
 }) {
-  const list = onDay(items, date);
   return (
     <Modal title={dayLabel(date, { weekday: 'long', year: true })} onClose={onClose}>
-      {list.length === 0 ? <p className="muted">Nothing on this day.</p> : (
-        <ul className="plain cal-daylist">{list.map((i) => <AgendaRow key={i.key} item={i} onOpen={(x) => { onClose(); onOpenItem(x); }} />)}</ul>
-      )}
+      <DayItems date={date} items={items} onOpenItem={(x) => { onClose(); onOpenItem(x); }} />
       <div className="row cal-actions"><button className="btn primary" onClick={() => { onClose(); onAdd(date); }}>Add event</button><button className="btn" onClick={() => { onClose(); onAddTask(date); }}>Add task</button></div>
     </Modal>
   );

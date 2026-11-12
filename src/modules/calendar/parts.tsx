@@ -4,6 +4,7 @@ import { PriorityMark } from '../../ui/PriorityMark';
 export { PriorityMark };
 import type { CalItem } from './useCalendarData';
 import { timeLabel } from './time';
+import { itemAccessibleName } from './calendarModel';
 
 export const itemClass = (i: CalItem) =>
   `cal-chip p-${i.priority} ${i.derived ? 'derived' : ''} ${i.done ? 'done' : ''} ${i.overdue ? 'overdue' : ''} ${i.soon ? 'soon' : ''}`;
@@ -22,12 +23,14 @@ export function Flags({ item }: { item: CalItem }) {
 
 export const whenLabel = (i: CalItem) => (i.allDay ? 'All day' : `${timeLabel(i.startMs)}`);
 
-export function Chip({ item, onOpen, showTime = true }: { item: CalItem; onOpen: (i: CalItem) => void; showTime?: boolean }) {
+export function Chip({ item, onOpen, showTime = true, tabIndex }: { item: CalItem; onOpen: (i: CalItem) => void; showTime?: boolean; tabIndex?: number }) {
   return (
     <button
       type="button"
       className={itemClass(item)}
       style={colorStyle(item)}
+      tabIndex={tabIndex}
+      aria-label={itemAccessibleName(item)}
       onClick={(e) => { e.stopPropagation(); onOpen(item); }}
       title={`${item.title}${item.allDay ? '' : ' · ' + timeLabel(item.startMs)} · ${item.layerName}${item.project ? ' · Project: ' + item.project.label : ''}`}
     >

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { addDays } from '../../lib/dates';
+import { fullDate, itemAccessibleName } from './calendarModel';
 import { layoutDay, segmentOnDay } from './layout';
 import { Chip, colorStyle, itemClass, PriorityMark } from './parts';
 import { onDay, type CalItem } from './useCalendarData';
@@ -41,7 +42,7 @@ export default function TimeGrid({ days, today, now, items, onSlot, onOpenItem, 
         <div className="cal-tg-gutter" />
         <div className="cal-tg-cols" style={{ gridTemplateColumns: cols }}>
           {days.map((d) => (
-            <button key={d} type="button" className={`cal-tg-day ${d === today ? 'today' : ''}`} onClick={() => onOpenDay(d)}>
+            <button key={d} type="button" className={`cal-tg-day ${d === today ? 'today' : ''}`} onClick={() => onOpenDay(d)} aria-label={`${fullDate(d)}${d === today ? ', today' : ''}, show the day`} aria-current={d === today ? 'date' : undefined}>
               <span className="cal-tg-dow">{WEEKDAYS_SHORT[new Date(d + 'T00:00:00Z').getUTCDay()]}</span>
               <span className="cal-tg-date">{Number(d.slice(8, 10))}</span>
             </button>
@@ -95,6 +96,7 @@ export default function TimeGrid({ days, today, now, items, onSlot, onOpenItem, 
                         style={{ ...colorStyle(i), top: (p.start / 60) * HOUR, height: Math.max(18, ((p.end - p.start) / 60) * HOUR - 1), left: `${(p.col / p.cols) * 100}%`, width: `${100 / p.cols}%` }}
                         onClick={(e) => { e.stopPropagation(); onOpenItem(i); }}
                         title={`${i.title} · ${timeLabel(i.startMs)}–${timeLabel(i.endMs)} · ${i.layerName}`}
+                        aria-label={itemAccessibleName(i)}
                       >
                         <span className="cal-block-title"><PriorityMark priority={i.priority} /> {i.title}</span>
                         <span className="cal-block-time">{timeLabel(i.startMs)}</span>
