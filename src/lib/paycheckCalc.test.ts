@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TAX_2026 as T } from '../data/taxYears';
 import { defaultFlags } from './payroll';
 import { newDeduction, newProfile } from './income';
-import { blankScenario, headline, paycheckLines, runActual, runScenario, scenarioFromProfile, type ScenarioInputs } from './paycheckCalc';
+import { blankScenario, headline, paycheckLines, runActual, runScenario, scenarioFromProfile, scenarioStampMs, sortScenariosNewestFirst, type ScenarioInputs } from './paycheckCalc';
 import type { Bonus, IncomeProfile, Person } from '../types';
 
 const $ = (n: number) => Math.round(n * 100);
@@ -108,3 +108,22 @@ describe('headline numbers', () => {
 });
 
 void T;
+
+describe('saved scenario ordering (Paycheck page crash: sync stamps updatedAt as a number)', () => {
+  const row = (id: number, updatedAt: unknown) => ({ id, updatedAt });
+  it('does not throw for numeric, text, missing or garbled stamps, and puts the newest first', () => {
+    const list = [row(1, 1000), row(2, '2026-01-02T00:00:00.000Z'), row(3, undefined), row(4, 'not a date'), row(5, Date.parse('2026-03-01T00:00:00Z'))];
+    expect(() => sortScenariosNewestFirst(list)).not.toThrow();
+    expect(sortScenariosNewestFirst(list).map((r) => r.id).slice(0, 2)).toEqual([5, 2]);
+  });
+  it('does not change the list it is given', () => {
+    const list = [row(1, 1), row(2, 2)];
+    sortScenariosNewestFirst(list);
+    expect(list.map((r) => r.id)).toEqual([1, 2]);
+  });
+  it('reads both stamp kinds as milliseconds', () => {
+    expect(scenarioStampMs({ updatedAt: 1794580471777 })).toBe(1794580471777);
+    expect(scenarioStampMs({ updatedAt: '2026-01-01T00:00:00.000Z' })).toBe(Date.parse('2026-01-01T00:00:00.000Z'));
+    expect(scenarioStampMs({})).toBe(0);
+  });
+});

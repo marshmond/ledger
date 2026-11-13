@@ -31,6 +31,22 @@ export function blankScenario(personId: number, year: number, name: string, annu
   return { name, personId, year, profile: p, bonuses: [], includeSpouse: true, startedFrom: 'blank', updatedAt: now };
 }
 
+/**
+ * When a scenario was last changed, as milliseconds. Saved scenarios carry this either as text (made by the page) or as a number
+ * (stamped by the sync layer on every save), and old rows may have neither. Never throws; unreadable or missing counts as 0. Nothing is written back.
+ */
+export function scenarioStampMs(s: { updatedAt?: unknown }): number {
+  const v = s.updatedAt;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if (typeof v === 'string') { const t = Date.parse(v); return Number.isNaN(t) ? 0 : t; }
+  return 0;
+}
+
+/** Saved scenarios, most recently changed first (ties keep their stored order). Returns a new array. */
+export function sortScenariosNewestFirst<T extends { updatedAt?: unknown }>(list: T[]): T[] {
+  return [...list].sort((a, b) => scenarioStampMs(b) - scenarioStampMs(a));
+}
+
 export interface ScenarioInputs {
   people: Person[];
   profiles: IncomeProfile[];

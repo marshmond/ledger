@@ -5,7 +5,7 @@ import { db } from '../db';
 import type { PayScenario } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import { monthLabel } from '../lib/dates';
-import { blankScenario, headline, paycheckLines, runActual, runScenario, scenarioFromProfile, type Headline, type ScenarioResult } from '../lib/paycheckCalc';
+import { blankScenario, headline, paycheckLines, runActual, sortScenariosNewestFirst, runScenario, scenarioFromProfile, type Headline, type ScenarioResult } from '../lib/paycheckCalc';
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import ProfileEditor from './ProfileEditor';
@@ -100,7 +100,7 @@ export default function PaycheckPage() {
     { label: 'MA refund (+) or amount due (−)', f: (h) => h.maBalance },
   ];
 
-  const sorted = [...scenarios].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const sorted = sortScenariosNewestFirst(scenarios);
   const incomeOptions = profiles.slice().sort((a, b) => b.year - a.year);
 
   return (

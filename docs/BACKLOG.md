@@ -4,7 +4,19 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest): LEDGER SIGNATURE D17 (FORECAST, REPORTS, NET WORTH, INVESTMENTS, DEBT, PAYOFF) BUILT, TESTED, VISUALLY APPROVED BY CHATGPT AND RELEASED IN THE D17 COMMIT (SHA and CI result in the release report); D18 NOT STARTED
+## STATUS 2026-11-13 (newest, standalone fix): PAYCHECK PAGE CRASH FIXED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting owner and ChatGPT review
+
+**Asked:** Plan > Paycheck crashed the app. **Cause:** the page sorted scenarios with `updatedAt.localeCompare`, but sync stamps `updatedAt` as a number, so any saved scenario crashed it (predates D17 and D18). **Fix:** safe `sortScenariosNewestFirst` in `src/lib/paycheckCalc.ts`, used by the page; 3 new tests (paycheckCalc.test.ts 14 pass), tsc and build clean, checked in the app. Full report: `docs/PAYCHECK-CRASH-FIX-REPORT.md`.
+
+**Judgment calls (please review):**
+1. I did NOT change `ModuleLoadBoundary`'s deliberate rethrow, so any other screen bug can still freeze the whole app; a small "this screen hit a problem" recovery is proposed in the report for separate approval.
+2. Scenarios with a missing or unreadable stamp sort last.
+
+**NOT built / not done:** the recovery boundary, the full test suite (CI will run it), a real-device check. D18 not started.
+
+**Future stabilization item (separate, not a prerequisite for this release):** no page-level crash recovery. `ModuleLoadBoundary` rethrows screen errors and nothing above it catches them, so one broken screen freezes the whole app. Needs its own design, approval and test updates.
+
+## STATUS 2026-11-13 (previous): LEDGER SIGNATURE D17 (FORECAST, REPORTS, NET WORTH, INVESTMENTS, DEBT, PAYOFF) BUILT, TESTED, VISUALLY APPROVED BY CHATGPT AND RELEASED IN THE D17 COMMIT (SHA and CI result in the release report); D18 NOT STARTED
 
 **Asked:** redesign the six analysis, investing and debt screens in the Ledger Signature look without changing any calculation, assumption, trade, lot, price or valuation.
 
