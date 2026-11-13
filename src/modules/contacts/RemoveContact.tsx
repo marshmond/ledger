@@ -65,7 +65,7 @@ export default function RemoveContact({ contact, inUse, checkedAll }: { contact:
       )}
 
       {step === 'confirm' && plan?.contact && (
-        <ConfirmDialog title="Remove this contact?" confirmLabel="Remove contact" busyLabel="Removing…" onConfirm={confirm} onCancel={() => setStep('idle')}>
+        <ConfirmDialog title="Remove this contact?" confirmLabel="Remove contact" busyLabel="Removing…" kind="linked" onConfirm={confirm} onCancel={() => setStep('idle')}>
           <p><strong>{plan.contact.name}</strong><br /><span className="muted small">{contactBrief(plan.contact)}</span></p>
           <p>This changes the one shared contact, not just this screen. Ledger checked every place a contact can be used and found nothing that uses this one.</p>
           <ul>

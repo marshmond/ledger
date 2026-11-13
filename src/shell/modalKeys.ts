@@ -46,3 +46,11 @@ export function attachModal(doc: DocLike, box: BoxLike | null, close: () => void
     before?.focus?.();
   };
 }
+
+/**
+ * D20: the close action a dialog hands to Escape, a click outside and its close button. While `isLocked()` is true (a save is running), it does nothing, so the dialog cannot be dismissed
+ * in the middle of the action and leave the result unclear. With no lock it simply calls `close`. Reads the lock at the moment of use, never a stale copy.
+ */
+export function guardedClose(isLocked: () => boolean, close: () => void): () => void {
+  return () => { if (!isLocked()) close(); };
+}

@@ -63,9 +63,9 @@ export default function App() {
       <TaskCreator />
       <Routes>
         {allModules().map((m) => (
-          <Route key={m.id} path={`/${m.id}/*`} element={<><Remember id={m.id} /><ModuleLoadBoundary key={m.id} name={m.name} component={m.Component}><m.Component /></ModuleLoadBoundary></>} />
+          <Route key={m.id} path={`/${m.id}/*`} element={<><Remember id={m.id} /><ModuleLoadBoundary key={m.id} name={m.name} component={m.Component} resetKey={loc.pathname}><m.Component /></ModuleLoadBoundary></>} />
         ))}
-        <Route path="/settings/*" element={<ModuleLoadBoundary key="settings" name="Settings" component={SettingsPage}><SettingsPage /></ModuleLoadBoundary>} />
+        <Route path="/settings/*" element={<ModuleLoadBoundary key="settings" name="Settings" component={SettingsPage} resetKey={loc.pathname}><SettingsPage /></ModuleLoadBoundary>} />
         <Route path="*" element={<Fallback />} />
       </Routes>
     </>

@@ -14,6 +14,7 @@ import { activePageFor } from './ledgerNavModel';
 import { ToastProvider } from '../ui/Toast';
 import { useEdgeFade } from '../ui/components';
 import BackupReminder from './BackupReminder';
+import { PageErrorBoundary } from './ModuleLoader';
 
 /**
  * The frame around every page. Desktop (900 px and wider, D8): a bar of the five groups under the global header (LedgerNav), then the page's
@@ -67,7 +68,8 @@ export default function Shell({ children }: { children: ReactNode }) {
           </div>
         )}
         <BackupReminder />
-        <Main className="main">{children}</Main>
+        {/* D20: a page that fails while drawing is replaced by a recoverable message here, so Ledger's own navigation around it stays usable. */}
+        <Main className="main"><PageErrorBoundary resetKey={loc.pathname}>{children}</PageErrorBoundary></Main>
       </div>
 
       <nav className="tabbar" aria-label="Sections">

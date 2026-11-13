@@ -32,6 +32,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D18 (2026-11-13, built and tested locally, uncommitted) redesigned the ten Financial Planning pages: Income, Tax planning, Giving, Afford (both views), Paycheck, Projections, Retirement, Goals, Protection and Roth: L-17 to L-26 read `BLT` with the marks actually recorded (section 1.15), IV-27 and IV-28 read `BLT`, and W-21, W-22 and W-23 read `BLT` for the parts section 1.15 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done, and `Kbd` is not recorded for any D18 page (only the in-page jump buttons were driven by script). The native `confirm()` calls on these pages remain (D20).**
 
+**D20 (2026-11-13, approved for release; built and tested locally) restyled the shared Modal and ConfirmDialog and added a recoverable page-error state: S-08 and S-11 read `BLT` with the marks actually recorded (section 1.17), CF-01 reads `BLT`, CF-03 is PENDING the OD-6 owner decision (nothing replaced), and no DL group changed status except where it already read `BLT`: the shared look reaches every dialog by inheritance, but only the representative sites in section 1.17 were looked at, so the other groups stay `NS` until each is checked. Nothing is `ACC`.**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -59,10 +61,10 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-05 | Add box (Quick Add) | `src/shell/AddBox.tsx`, `AddBoxView.tsx`, `addBoxModel.ts`, `sheetBehavior.ts` | D10 | BLT | Y | Y | Y | Y | Y | Y |
 | S-06 | Search dialog | `src/shell/SearchDialog.tsx` | D6, D20 | NS | . | Y | . | Y | Y | . |
 | S-07 | Task creator dialog | `src/modules/tasks/QuickTask.tsx` | D11 | NS | . | . | . | . | . | . |
-| S-08 | Shared Modal and ConfirmDialog | `src/shell/Modal.tsx` | D6 | BLT | . | Y | . | Y | Y | Y |
+| S-08 | Shared Modal and ConfirmDialog | `src/shell/Modal.tsx`, `ConfirmDialog.tsx`, `confirmRun.ts` | D6, D20 | BLT | Y | Y | Y | Y | Y | Y |
 | S-09 | Toasts (Undo) | `src/ui/Toast.tsx` | D6 | BLT | . | Y | . | Y | . | . |
 | S-10 | Backup reminder banner | `src/shell/BackupReminder.tsx` | D6 | NS | . | Y | . | Y | . | . |
-| S-11 | Module loading and load-failed states | `src/shell/ModuleLoader.tsx` | D6 | NS | . | . | . | . | . | . |
+| S-11 | Module loading, load-failed and page-error states | `src/shell/ModuleLoader.tsx` | D6, D20 | BLT | Y | Y | . | Y | . | Y |
 | S-12 | Skip link, route announcer, main focus | `src/shell/SkipAndRoute.tsx` | D7 | NS | . | . | . | . | Y | Y |
 | S-13 | Ledger desktop navigation bar (replaces the 248 px sidebar) | `src/shell/LedgerNav.tsx` | D8 | BLT | Y | Y | . | Y | Y | Y |
 | S-14 | Ledger top bar and breadcrumbs | `src/shell/Shell.tsx` | D8 | BLT | Y | Y | Y | Y | . | Y |
@@ -320,6 +322,16 @@ D18 (2026-11-13) recomposed Income, Paycheck, Tax planning, Giving, Afford (Can 
 - **Not recorded:** Kbd (no Tab walk was done), contrast measurement, forced colors, real devices, screen readers.
 
 
+### 1.17 D20 evidence: dialogs, confirmations and page-error recovery (built, NOT committed; nothing is `ACC`)
+
+D20 (2026-11-13) changed the shared layer only: `Modal` (sticky title bar, sticky form action row, `size`, `description`, `locked`, every dialog follows the visible area above the on-screen keyboard), `ConfirmDialog` (small width, weight accent, optional labelled `kind`, locked while running, logic moved to the tested `confirmRun.ts`), `ModuleLoader` (a page that fails while drawing is shown as a recoverable state instead of taking the app down; a smaller `PageErrorBoundary` keeps Ledger's own navigation up). Pictures: `DocumentsLedger-Design-ConceptsD20-Evidence`.
+
+- **Looked at, in a real browser, Signature light, 1440 and 375 (and 320 captured):** Projects form, Add asset (long form), Contact form, Calendar due-item detail, Calendar New event (phone sheet), Delete account confirmation, Remove contact confirmation (labelled line), page error on a Ledger page, module file that cannot be fetched. Signature Dark: the delete confirmation and the page error. No horizontal page overflow at 1440, 375 or 320 in any of these (measured).
+- **Keyboard (real keys, 1440):** Tab and Shift+Tab wrap inside an ordinary dialog, Escape closes it, focus returned to the button that opened it (Projects, New project); the delete confirmation opened with focus on Cancel and closed on Escape with nothing deleted, focus back on "Delete account".
+- **Final verification (same day):** Tasks editor, Services arrangement (phone), Bills obligation (Classic) and Family member (Signature Dark, and the add form at phone width) were opened and cancelled with no stored change. This does NOT change any DL status (one dialog each is not a group), and about 55 of the 63 sites were never individually exercised.
+- **Dialog groups:** DL-03 was already `BLT`. DL-02, DL-04 to DL-10 and DL-01 stay `NS`: they inherit the shared look, but Search, the Task editor, Services, Bills, Family forms and the Ledger transaction dialogs were NOT opened in D20.
+- **Not recorded:** a real phone keyboard (the keyboard rows are simulated), screen readers, forced colors, Safari and Firefox, contrast measurement, the busy and error states of the confirmation in a browser (unit-tested only).
+
 ### 1.16 D19 evidence: More, documents and Settings (built, NOT committed; nothing is `ACC`)
 
 D19 (2026-11-13) recomposed More (grouped destinations with a backup notice), Year in review (headline panel, kind-of-figure words), If something happens to me (orientation, cards, print text), Tax package (summary, contents, per-section kinds), the Settings frame (page list beside the page, tabs on a phone) and General, Appearance, Data & Backups (create and restore kept apart, restore marked as replacing everything), Sync devices (send versus replace, status, danger zone) and Calendar settings. Seen in headless Chrome on a copy of the fictional demo household extended with invented income, sale, gift, HSA, loan, property, policy and guide records (own address, sync off, an in-browser fake GitHub for the Sync states). Report: `docs/LEDGER-SIGNATURE-D19-REPORT.md`.
@@ -393,9 +405,9 @@ Inline (non-modal) forms in Ledger pages (transaction form, income setup, scenar
 
 | ID | Style | Sites | Phase | Status |
 |---|---|---|---|---|
-| CF-01 | Shared `ConfirmDialog` (`RemoveContact`, `DatesPage`, `ImportantContacts`, `MemberPage`, `BackupPage`, `LedgerPage`, `SyncPage` x2) | 8 in 7 files | D6 | NS |
+| CF-01 | Shared `ConfirmDialog` (`RemoveContact`, `DatesPage`, `ImportantContacts`, `MemberPage`, `BackupPage`, `LedgerPage`, `SyncPage` x2) | 8 in 7 files | D6, D20 | BLT |
 | CF-02 | Bills-local confirm component (`src/modules/bills/LifecycleCard.tsx`) | 1 | D15 | NS |
-| CF-03 | **Browser-native `confirm()`**: cannot be styled; replacing it changes behaviour (decision OD-6, gated, D20) | 37 in 24 files | D20 | NS |
+| CF-03 | **Browser-native `confirm()`**: cannot be styled; replacing it changes behaviour (decision OD-6, gated, D20). **PENDING OWNER DECISION (OD-6 is open); audit and recommendation in `docs/LEDGER-SIGNATURE-D20-REPORT.md` section 9; nothing replaced.** The source has a 38th native call the counting rule does not match (`confirm(msg)` in `TasksPage.tsx`), and native `alert()` calls | 37 in 24 files (the rule counts 37; see the note: 38 real) | D20 | NS |
 
 ### 4.3 Pop-overs and suggestion lists (5)
 

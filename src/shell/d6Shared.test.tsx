@@ -510,7 +510,7 @@ describe('D6 src/ui/components.css follows the rules for the shared stylesheet',
   });
   it('every selector class it defines starts with ui- (or is the dialog sheet pair, which extends the existing .modal classes)', () => {
     const classes = new Set([...code.matchAll(/\.([a-z][a-z0-9-_]*)/g)].map((m) => m[1]));
-    const odd = [...classes].filter((c) => !c.startsWith('ui-') && !['modal-back', 'modal', 'sr-only', 'on', 'active'].includes(c) && !c.startsWith('modal'));
+    const odd = [...classes].filter((c) => !c.startsWith('ui-') && !['modal-back', 'modal', 'sr-only', 'on', 'active', 'row', 'fm-actions'].includes(c) && !c.startsWith('modal'));
     expect(odd).toEqual([]);
   });
   it('is still imported right after the tokens, and defines its two animations only here (reduced motion switches animation off app-wide)', () => {

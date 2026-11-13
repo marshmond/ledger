@@ -469,10 +469,10 @@ describe('D10 the sheet attaches while open and cleans up completely when it clo
   });
 });
 
-describe('D10 the Modal: the sheet behaviour is opt-in', () => {
+describe('D10 the Modal: the sheet behaviour is opt-in (D20: the visible-height part now applies to every dialog; the scroll lock stays sheet-only)', () => {
   const modal = read('src/shell/Modal.tsx');
-  it('only a "sheet" Modal attaches the sheet behaviour; a plain dialog never does', () => {
-    expect(modal).toMatch(/useSheetBehavior\(back, variant === 'sheet'\)/);
+  it('every dialog follows the visible height, but only a "sheet" Modal asks for the page scroll lock (D20)', () => {
+    expect(modal).toMatch(/useSheetBehavior\(back, true, variant === 'sheet'\)/);
     expect(modal).toMatch(/className \? ` \$\{className\}` : ''/);
   });
   it('only the Add box asks for the sheet', () => {

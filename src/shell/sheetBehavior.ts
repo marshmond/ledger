@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 
 /**
- * D10: the phone behaviour of a dialog that uses `Modal variant="sheet"` (only Quick Add does). Opt-in: a plain Modal never calls any of this.
+ * D10: the phone behaviour of a dialog that uses `Modal variant="sheet"`. D20: part 1 (visible height) now also applies to every ordinary dialog; part 2 (scroll lock) stays sheet-only.
  *
  *  1. Visible height. The on-screen keyboard shrinks the VISUAL viewport but not the layout viewport (iPhone Safari, current Android Chrome), so a sheet that is
  *     pinned to the bottom of the layout viewport ends up behind the keyboard. While the sheet is open its backdrop is therefore trimmed to the visible area:
@@ -71,7 +71,8 @@ export interface WindowLike {
 }
 
 /** Attaches the behaviour to the backdrop element and returns the function that removes every listener and puts everything back. */
-export function attachSheet(el: BackdropLike, win: WindowLike, doc: LockTarget): () => void {
+export function attachSheet(el: BackdropLike, win: WindowLike, doc: LockTarget, opts: { lock?: boolean } = {}): () => void {
+  const lock = opts.lock ?? true;
   // 1. Visible height (follows the on-screen keyboard). One animation frame at a time, so a burst of resize events changes the layout once.
   const vv = win.visualViewport ?? null;
   let frame = 0;
@@ -90,7 +91,7 @@ export function attachSheet(el: BackdropLike, win: WindowLike, doc: LockTarget):
   }
 
   // 2. Scroll lock, while a touch screen or a phone-width window is showing the sheet (re-evaluated if the window is resized or turned).
-  const mq = typeof win.matchMedia === 'function' ? win.matchMedia(SHEET_QUERY) : null;
+  const mq = lock && typeof win.matchMedia === 'function' ? win.matchMedia(SHEET_QUERY) : null;
   let release: (() => void) | null = null;
   const sync = () => {
     if (mq?.matches && !release) release = lockScroll(doc);
@@ -110,11 +111,14 @@ export function attachSheet(el: BackdropLike, win: WindowLike, doc: LockTarget):
   };
 }
 
-/** The hook: attaches while the sheet is mounted (and `enabled`), removes everything when it closes. */
-export function useSheetBehavior(backdrop: RefObject<HTMLElement | null>, enabled: boolean): void {
+/**
+ * The hook: attaches while the dialog is mounted (and `enabled`), removes everything when it closes. `lock` (default true) is the page scroll lock; D20 attaches every
+ * dialog for the visible-height part only (`lock` false), so a plain dialog follows the on-screen keyboard but never freezes the page behind it.
+ */
+export function useSheetBehavior(backdrop: RefObject<HTMLElement | null>, enabled: boolean, lock = true): void {
   useEffect(() => {
     const el = backdrop.current;
     if (!enabled || !el || typeof window === 'undefined') return;
-    return attachSheet(el, window as unknown as WindowLike, document);
-  }, [backdrop, enabled]);
+    return attachSheet(el, window as unknown as WindowLike, document, { lock });
+  }, [backdrop, enabled, lock]);
 }

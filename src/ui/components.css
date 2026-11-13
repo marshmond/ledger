@@ -155,9 +155,35 @@ button.ui-row:last-child { border-bottom: none; }
 .modal-back.modal-back--sheet { top: var(--sheet-top, 0px); bottom: var(--sheet-bottom, 0px); overscroll-behavior: contain; }
 @media (max-width: 640px) {
   .modal-back.modal-back--sheet { align-items: flex-end; padding: 0; }
-  .modal.modal--sheet { width: 100%; max-height: 92%; border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; padding-bottom: calc(var(--sp-4) + env(safe-area-inset-bottom)); }
-  .modal.modal--sheet::before { content: ''; display: block; width: 36px; height: 4px; margin: 0 auto var(--sp-3); border-radius: 2px; background: var(--line-strong); }
+  .modal.modal--sheet { --modal-pad-b: calc(var(--sp-4) + env(safe-area-inset-bottom)); width: 100%; max-height: 92%; border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; }
+  .modal.modal--sheet .modal-head { border-radius: 0; }
+  .modal.modal--sheet form > .row[class*="-actions"]:not(.fm-actions) { padding-bottom: calc(var(--sp-3) + env(safe-area-inset-bottom)); } /* buttons stay clear of the home indicator while the bar is stuck to the screen edge */
+  .modal.modal--sheet::before { content: ''; display: block; width: 36px; height: 4px; margin: var(--sp-2) auto 0; border-radius: 2px; background: var(--line-strong); }
 }
+
+/* ---------- D20: dialog content and recoverable states ---------- */
+/* One supporting line under a dialog title (Modal's `description`). */
+.ui-modal-desc { margin: calc(-1 * var(--sp-1)) 0 var(--sp-3); color: var(--fg-2); }
+/* An error that belongs to a dialog: read first, never only colour (the text itself says what went wrong), and announced (role="alert" is on the element). */
+.ui-dialog-error { padding: var(--sp-2) var(--sp-3); border-left: 3px solid var(--neg); border-radius: var(--r-sm); background: var(--neg-soft); color: var(--neg-text); font-weight: 600; overflow-wrap: anywhere; }
+/* A confirmation: small, the question first, its actions at the right with Cancel before the action. The accent says how weighty the action is; the words in .ui-confirm-kind say it too. */
+.modal.modal--danger { border-top: 3px solid var(--neg); }
+.modal.modal--replace { border-top: 3px solid var(--warn); }
+.modal.modal--linked { border-top: 3px solid var(--info); }
+.ui-confirm-kind { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 650; color: var(--fg-2); }
+.modal--replace .ui-confirm-kind { color: var(--warn-text); }
+
+/* A failed or unavailable page: a calm panel with an icon and words, then the ways out. */
+.ui-state { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md); border: 1px solid var(--line); border-left-width: 4px; background: var(--surface-soft, var(--hover)); }
+.ui-state > .ui-icon { flex: none; width: 20px; height: 20px; margin-top: 2px; }
+.ui-state p { margin: 0; }
+.ui-state p + p { margin-top: var(--sp-2); }
+.ui-state--bad { border-left-color: var(--neg); background: var(--neg-soft); color: var(--neg-text); }
+.ui-state--bad p + p { color: var(--fg-2); }
+.ui-state-title { scroll-margin-top: 140px; }
+.ui-state-title:focus { outline: none; } /* focus lands here to announce the problem; the heading is not a control */
+.ui-state-page { max-width: 62ch; }
+.ui-state-loading { padding: var(--sp-4) 0; }
 
 /* ---------- forced colours (Windows high contrast): keep selected and status states visible without fills ---------- */
 @media (forced-colors: active) {

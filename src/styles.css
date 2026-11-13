@@ -269,10 +269,19 @@ kbd { font: inherit; font-size: var(--fs-xs); border: 1px solid var(--line-stron
 .qa-menu button { border: none; justify-content: flex-start; text-align: left; padding: 0 var(--sp-3); background: none; }
 .qa-menu button:hover { background: var(--hover) !important; }
 .qa-menu .qa-sep { height: 1px; background: var(--line); margin: var(--sp-1) 0; }
-.modal-back { position: fixed; inset: 0; z-index: 100; display: flex; justify-content: center; align-items: flex-start; padding: 8vh var(--sp-3) var(--sp-3); overflow: auto; background: var(--scrim); }
-.modal { width: min(480px, 100%); max-height: 84vh; overflow: auto; padding: var(--sp-4); background: var(--surface-raised); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-modal); box-shadow: var(--shadow-3); outline: none; }
+/* D20 dialogs. The backdrop follows the VISIBLE area (sheetBehavior.ts sets --sheet-top / --sheet-bottom while a dialog is open; without them these are 0 and it fills the window), so the on-screen keyboard
+   never covers the end of a long form. The box is capped at the backdrop's own height, so it scrolls inside itself (one scroll region) and its title bar stays in view. */
+.modal-back { --modal-top: clamp(var(--sp-3), 7vh, 72px); position: fixed; inset: 0; top: var(--sheet-top, 0px); bottom: var(--sheet-bottom, 0px); z-index: 100; display: flex; justify-content: center; align-items: flex-start; padding: var(--modal-top) var(--sp-3) calc(var(--sp-4) + env(safe-area-inset-bottom)); overscroll-behavior: contain; overflow: auto; background: var(--scrim); }
+.modal-back[data-keyboard] { padding-bottom: var(--sp-3); } /* the keyboard covers the home indicator */
+.modal { --modal-pad: var(--sp-4); --modal-pad-b: var(--sp-4); width: min(480px, 100%); max-height: 100%; overflow: auto; overscroll-behavior: contain; scroll-padding-top: 64px; scroll-padding-bottom: 88px; padding: 0 var(--modal-pad) var(--modal-pad-b); background: var(--surface-raised); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-modal); box-shadow: var(--shadow-3); outline: none; }
 .modal.wide { width: min(680px, 100%); }
-.modal-head { margin-bottom: var(--sp-3); font-size: var(--fs-lg); }
+.modal.modal--sm { width: min(420px, 100%); } /* a short question */
+/* The title bar stays at the top while a long form scrolls, with the close button inside it. The box has no top padding (the bar supplies it), so the bar is not pushed down by its own container; the side margins pull it out to the box's edges. */
+.modal-head { position: sticky; top: 0; z-index: 2; flex-wrap: nowrap; align-items: center; gap: var(--sp-3); margin: 0 calc(-1 * var(--modal-pad)) var(--sp-3); padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--modal-pad); background: var(--surface-raised); border-bottom: 1px solid var(--line); border-radius: var(--r-modal) var(--r-modal) 0 0; font-size: var(--fs-lg); font-weight: 650; letter-spacing: -0.01em; }
+.modal-head strong { min-width: 0; overflow-wrap: anywhere; }
+.modal-head button.link { flex: none; min-width: 36px; min-height: 36px; color: var(--fg-2); }
+/* The action row of a form (Cancel, Save) stays at the bottom of a long form. (A sticky box is held inside the scroll box's padding, so the negative offset lets it reach the real edge.) Every module names its row "<prefix>-actions"; Family keeps its own identical rule. */
+.modal form > .row[class*="-actions"]:not(.fm-actions) { position: sticky; bottom: calc(-1 * var(--modal-pad-b)); z-index: 1; margin: var(--sp-3) calc(-1 * var(--modal-pad)) 0; padding: var(--sp-3) var(--modal-pad); border-top: 1px solid var(--line); background: var(--surface-raised); }
 .searchinput { width: 100%; padding: 0 var(--sp-3); font-size: var(--fs-base); }
 .hits { list-style: none; margin: var(--sp-2) 0 0; padding: 0; max-height: 50vh; overflow: auto; }
 .hits li { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); min-height: 44px; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); cursor: pointer; }
@@ -745,7 +754,7 @@ details.pick label.chk:hover { background: var(--hover); }
    Colors come from tokens only, so every palette reads well (Signature gets its navy and teal from the tokens). On a phone the dialog is a bottom sheet
    (Modal variant="sheet"): the groups fold behind an "All types" button, the body scrolls and the footer stays in view. */
 .modal.ab-modal { width: min(720px, 100%); max-height: 88vh; max-height: min(88dvh, 100%); padding: 0; display: flex; flex-direction: column; border-radius: var(--r-xl); }
-.ab-modal .modal-head { flex: none; margin: 0; padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-5); font-weight: 700; letter-spacing: -0.01em; }
+.ab-modal .modal-head { position: static; flex: none; margin: 0; border-bottom: 0; border-radius: 0; background: none; padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-5); font-weight: 700; letter-spacing: -0.01em; }
 .ab-modal .modal-head button.link { color: var(--fg-2); font-size: var(--fs-lg); min-width: 40px; min-height: 40px; }
 .ab { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
@@ -909,6 +918,14 @@ button.ab-chip--go:hover:not(:disabled) { background: var(--surface-soft); }
 #main-content:focus { outline: none; }
 .confirm-actions { justify-content: flex-end; margin-top: var(--sp-3); }
 .confirm-body > p { margin: var(--sp-2) 0; }
+.modal--confirm .confirm-body > p:first-child { margin-top: 0; }
+/* D20: the action button of a destructive confirmation is the one place a destructive action is filled (D4 rule OD-10), in the soft status pair so contrast holds in both themes. */
+.confirm-actions button.danger:not(:disabled) { background: var(--neg-soft); color: var(--neg-text); border-color: var(--neg); font-weight: 650; }
+.confirm-actions button.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--neg) 22%, var(--bg)); }
+@media (max-width: 640px) {
+  /* Two equal, easy-to-hit buttons side by side; Cancel stays first in reading order and focused. */
+  .confirm-actions button { flex: 1 1 0; min-height: 48px; }
+}
 
 @media (max-width: 640px), (pointer: coarse) {
   :root { --bar-h: calc(var(--hdr-h-touch) + env(safe-area-inset-top)); }

@@ -129,10 +129,13 @@ describe('the boundary around a module', () => {
     expect(draw(C)).toBe('<p>the screens</p>');
   });
 
-  it('a genuine bug in a screen is passed on untouched, as it always was (not dressed up as a loading problem)', () => {
+  it('D20: a genuine bug in a screen is no longer passed up to take the whole app down; it becomes a recoverable page message (the chunk-load message is not used for it)', () => {
     const b = new ModuleLoadBoundary({ name: 'Bills', component: Hello, children: null });
     b.state = { error: new TypeError("Cannot read properties of undefined (reading 'x')"), attempt: 0 };
-    expect(() => b.render()).toThrow("Cannot read properties of undefined (reading 'x')");
+    const html = renderToStaticMarkup(b.render() as never);
+    expect(html).toContain('This page ran into a problem.');
+    expect(html).not.toContain('did not load');
+    expect(html).not.toContain('Cannot read properties'); // the technical text is never put on screen
   });
 
   it('records whatever error reached it; render() then decides which kind it is (above)', () => {

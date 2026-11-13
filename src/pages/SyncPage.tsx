@@ -148,6 +148,7 @@ export default function SyncPage() {
         <ConfirmDialog
           title={`Remove ${clearKeys.length === 1 ? 'this saved version' : `all ${clearKeys.length} saved versions`}?`}
           confirmLabel={clearKeys.length === 1 ? 'Remove it for good' : 'Remove them for good'}
+          kind="irreversible"
           busyLabel="Removing…"
           onCancel={() => setClearKeys(null)}
           onConfirm={() => clearConflicts(clearKeys)}
