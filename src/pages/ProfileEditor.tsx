@@ -53,6 +53,7 @@ export default function ProfileEditor({
   onDelete,
   deleteLabel = 'remove this year',
   live = false,
+  embedded = false,
 }: {
   person: Person;
   profile: IncomeProfile;
@@ -62,6 +63,8 @@ export default function ProfileEditor({
   deleteLabel?: string;
   /** Apply every change at once (no Save button): used by the paycheck calculator. */
   live?: boolean;
+  /** D18.1: shown inside a person's own workspace, which already names the person and folds: no second fold button, the setup is always shown. */
+  embedded?: boolean;
 }) {
   const [d, setD] = useState<IncomeProfile>(profile);
   const dirty = JSON.stringify(d) !== JSON.stringify(profile);
@@ -96,17 +99,21 @@ export default function ProfileEditor({
   return (
     <div className="card">
       <div className="row spread">
-        <button className="collapse-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{person.name}: {d.year}</strong>
-          {dirty && !live && <span className="badge pending">unsaved</span>}
-        </button>
+        {embedded ? (
+          <span><strong>Pay setup for {d.year}</strong>{dirty && !live && <span className="badge pending">unsaved</span>}</span>
+        ) : (
+          <button className="collapse-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+            <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{person.name}: {d.year}</strong>
+            {dirty && !live && <span className="badge pending">unsaved</span>}
+          </button>
+        )}
         <div className="row">
           {onCopyPrev && <button className="link" onClick={onCopyPrev}>copy from {d.year - 1}</button>}
           <button className="link danger" onClick={onDelete}>{deleteLabel}</button>
         </div>
       </div>
 
-      <div hidden={!open}>
+      <div hidden={!embedded && !open}>
         <Collapsible id={`income.p${person.id}.pay`} level={3} title="Pay schedule">
           <div className="grid">
             <label className="f">How should I model your pay?

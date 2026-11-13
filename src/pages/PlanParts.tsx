@@ -84,8 +84,9 @@ export function PlanSection({ id, title, kind, aside, children, className = '', 
 }
 
 /** A short list of places on this page, for a long page. Buttons scroll to a section; the address bar is not touched (the app uses hash routes). */
-export function PlanJump({ items, label = 'On this page' }: { items: { id: string; label: string }[]; label?: string }) {
-  const go = (id: string) => {
+export function PlanJump({ items, label = 'On this page' }: { items: { id: string; label: string; /** Runs first, e.g. to open a folded section so the jump never lands on hidden content. */ onJump?: () => void }[]; label?: string }) {
+  const go = (id: string, onJump?: () => void) => {
+    onJump?.();
     const el = document.getElementById(id);
     if (!el) return;
     const calm = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -96,7 +97,7 @@ export function PlanJump({ items, label = 'On this page' }: { items: { id: strin
     <nav className="pl-jump" aria-label={label}>
       <span className="pl-jump-label" aria-hidden="true">{label}</span>
       <ul>
-        {items.map((it) => <li key={it.id}><button type="button" onClick={() => go(it.id)}>{it.label}</button></li>)}
+        {items.map((it) => <li key={it.id}><button type="button" onClick={() => go(it.id, it.onJump)}>{it.label}</button></li>)}
       </ul>
     </nav>
   );

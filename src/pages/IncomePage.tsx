@@ -2,15 +2,16 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { TAX_2026 } from '../data/taxYears';
-import type { Bonus, IncomeProfile, TaxSettings } from '../types';
+import type { IncomeProfile, TaxSettings } from '../types';
 import { formatCents, todayISO } from '../lib/money';
-import { monthLabel } from '../lib/dates';
 import { buildIncomeModel, DEFAULT_SETTINGS, newProfile, parseTablesJson, resolveTables, rollForward } from '../lib/income';
 import { monthlyNet, type PersonYear } from '../lib/payroll';
 import ProfileEditor from './ProfileEditor';
 import { MoneyField, NumField } from './fields';
 import Collapsible from './Collapsible';
 import RsuSection from './RsuSection';
+import { PersonBonuses, PersonPaycheckDetail, PersonWorkspace, UnassignedBonuses } from './PersonWorkspace';
+import { MONTHS, monthName, personAnchorId, personSummary, scopeRows } from './incomeOwners';
 import { hsaYearImpact } from '../lib/hsa';
 import { netForTax, realizedFor } from '../lib/lots';
 import { PageHeader } from '../ui/components';
@@ -18,8 +19,6 @@ import { Kind, Lines, PlanHero, PlanJump } from './PlanParts';
 import './analysis.css';
 import './plan.css';
 
-const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-const monthName = (m: number) => monthLabel(`2026-${String(m).padStart(2, '0')}`).split(' ')[0];
 const fmtDate = (d: string | null) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '—');
 
 function Milestones({ y, name }: { y: PersonYear; name: string }) {
@@ -45,11 +44,13 @@ function Milestones({ y, name }: { y: PersonYear; name: string }) {
 export default function IncomePage() {
   const thisYear = Number(todayISO().slice(0, 4));
   const [year, setYear] = useState(thisYear);
-  const people = useLiveQuery(() => db.people.toArray(), []) ?? [];
+  const peopleQuery = useLiveQuery(() => db.people.toArray(), []);
+  const people = peopleQuery ?? [];
   const profiles = useLiveQuery(() => db.incomeProfiles.toArray(), []) ?? [];
   const bonuses = useLiveQuery(() => db.bonuses.toArray(), []) ?? [];
   const allSettings = useLiveQuery(() => db.taxSettings.toArray(), []) ?? [];
   const rsuVests = useLiveQuery(() => db.rsuVests.toArray(), []) ?? [];
+  const rsuGrants = useLiveQuery(() => db.rsuGrants.toArray(), []) ?? [];
   const securities = useLiveQuery(() => db.securities.toArray(), []) ?? [];
   const invAccounts = useLiveQuery(() => db.invAccounts.toArray(), []) ?? [];
   const hsaWithdrawals = useLiveQuery(() => db.hsaWithdrawals.toArray(), []) ?? [];
@@ -67,10 +68,8 @@ export default function IncomePage() {
 
   const [newName, setNewName] = useState('');
   const [newBirth, setNewBirth] = useState('');
-  const [bPerson, setBPerson] = useState('');
-  const [bMonth, setBMonth] = useState(String(new Date().getMonth() + 1));
-  const [bAmt, setBAmt] = useState(0);
-  const [bLabel, setBLabel] = useState('');
+  /** Bumped when the jump list asks for a person, so that person's folded workspace opens before the page scrolls to it. */
+  const [openSignals, setOpenSignals] = useState<Record<number, number>>({});
   const [tablesText, setTablesText] = useState<string | null>(null);
   const [tablesMsg, setTablesMsg] = useState('');
 
@@ -83,9 +82,14 @@ export default function IncomePage() {
     await db.taxSettings.put({ ...cur, ...patch, year });
   };
   const monthly = monthlyNet(model.years);
-  const yearBonuses = bonuses.filter((b) => b.year === year);
   const personName = (id: number) => people.find((p) => p.id === id)?.name ?? '?';
   const hh = model.household;
+  // Records whose person is not on the page (only judged once the people list has loaded). They are shown for review, never changed or hidden.
+  const noPerson = { unassigned: true };
+  const orphanBonuses = peopleQuery ? scopeRows(bonuses, noPerson, people) : [];
+  const orphanVests = peopleQuery ? scopeRows(rsuVests, noPerson, people) : [];
+  const orphanGrants = peopleQuery ? scopeRows(rsuGrants, noPerson, people) : [];
+  const needsReview = orphanBonuses.length + orphanVests.length + orphanGrants.length > 0;
 
   const tablesForEdit = () => {
     const r = resolveTables(year, settings);
@@ -159,43 +163,20 @@ export default function IncomePage() {
               { label: `Massachusetts: ${hh.ma.balance >= 0 ? 'expected refund' : 'expected amount due'}`, value: formatCents(Math.abs(hh.ma.balance)) },
             ]}
           />
-
-          <section aria-label={`Income by person, ${year}`} className="an-props pl-people">
-            {model.years.map((y) => (
-              <article className="an-card an-prop" key={y.personId}>
-                <div className="an-prop-head">
-                  <h2 className="an-h2">{personName(y.personId)} <Kind k="estimate">Estimate</Kind></h2>
-                </div>
-                <Lines
-                  rows={[
-                    { label: 'Gross pay', value: formatCents(y.totals.gross), strong: true },
-                    ...(y.totals.bonusGross > 0 ? [{ label: 'of which bonus', value: formatCents(y.totals.bonusGross), muted: true }] : []),
-                    ...(y.totals.rsuGross > 0 ? [{ label: 'of which stock awards (counted when they vest)', value: formatCents(y.totals.rsuGross), muted: true }] : []),
-                    { label: 'Take-home', value: formatCents(y.totals.net), strong: true },
-                    { label: '401(k) pre-tax + Roth', value: `${formatCents(y.contributions.k401Pretax)} + ${formatCents(y.contributions.k401Roth)}`, muted: true },
-                    ...(y.contributions.employerMatch > 0 ? [{ label: 'Employer 401(k) match', value: formatCents(y.contributions.employerMatch), muted: true }] : []),
-                    ...(y.contributions.hsa > 0 || y.contributions.employerHsa > 0 ? [{ label: 'HSA (you + employer)', value: formatCents(y.contributions.hsa + y.contributions.employerHsa), muted: true }] : []),
-                    ...(y.contributions.espp > 0 ? [{ label: 'ESPP', value: formatCents(y.contributions.espp), muted: true }] : []),
-                  ]}
-                />
-                {y.warnings.map((w) => <p key={w} className="warn pl-warn">{w}</p>)}
-              </article>
-            ))}
-          </section>
         </>
       )}
 
       <PlanJump items={[
         { id: 'income-people', label: 'People' },
-        { id: 'income-pay', label: 'Pay setup' },
-        { id: 'income-bonuses', label: 'Bonuses' },
-        { id: 'income-rsu', label: 'Stock awards (RSU)' },
+        ...people.map((p) => ({ id: personAnchorId(p.id!), label: p.name, onJump: () => setOpenSignals((o) => ({ ...o, [p.id!]: (o[p.id!] ?? 0) + 1 })) })),
+        ...(needsReview ? [{ id: 'income-review', label: 'Needs review' }] : []),
         { id: 'income-tax', label: 'Household tax settings' },
         ...(showResults ? [{ id: 'income-results', label: `${year} results` }] : []),
       ]} />
 
       <div id="income-people" className="pl-anchor" tabIndex={-1}>
         <Collapsible id="income.people" title="People">
+          <p className="an-note pw-note">These are the people Income is set up for. They are kept separate from the people in Family and are not matched to them.</p>
           <div className="an-form an-form--wide">
             <label className="f">Name<input value={newName} onChange={(e) => setNewName(e.target.value)} /></label>
             <label className="f">Birth year<input inputMode="numeric" value={newBirth} onChange={(e) => setNewBirth(e.target.value)} /></label>
@@ -216,92 +197,85 @@ export default function IncomePage() {
         </Collapsible>
       </div>
 
-      <div id="income-pay" className="pl-anchor" tabIndex={-1}>
-        {people.length > 0 && <h2 className="an-h2 pl-subhead">Pay setup for {year} <Kind k="input">Your inputs</Kind></h2>}
-        <div className="pl-stack">
-          {people.map((p) => {
+      {people.length > 0 && (
+        <section className="pw-list" aria-label={`Compensation by person, ${year}`}>
+          <p className="pw-eyebrow">Each person’s pay, bonuses and stock awards for {year}. Open as many as you like; opening one changes nothing.</p>
+          {people.map((p, i) => {
             const prof = profiles.find((x) => x.personId === p.id && x.year === year);
             const prev = profiles.find((x) => x.personId === p.id && x.year === year - 1);
-            if (!prof) {
-              return (
-                <div className="an-card pl-setup" key={p.id}>
-                  <span>{p.name}: no income set up for {year}</span>
-                  <div className="an-actions" style={{ margin: 0 }}>
-                    <button className="primary" onClick={() => save(newProfile(p.id!, year))}>Set up {year}</button>
-                    {prev && <button onClick={() => save(rollForward(prev, year))}>Copy from {year - 1}</button>}
-                  </div>
-                </div>
-              );
-            }
+            const py = model.years.find((y) => y.personId === p.id);
+            const summary = personSummary(year, prof, py, !!model.tables);
             return (
-              <ProfileEditor
-                key={`${prof.id}`}
-                person={p}
-                profile={prof}
-                onSave={save}
-                onCopyPrev={prev ? () => confirm(`Replace ${p.name}'s ${year} setup with ${year - 1}'s?`) && save({ ...rollForward(prev, year), id: prof.id }) : undefined}
-                onDelete={() => confirm(`Remove ${p.name}'s ${year} income setup?`) && db.incomeProfiles.delete(prof.id!)}
-              />
+              <div id={personAnchorId(p.id!)} className="pl-anchor" tabIndex={-1} key={p.id}>
+                <PersonWorkspace person={p} index={i} year={year} summary={summary} openSignal={openSignals[p.id!]}>
+                  {py && (
+                    <section className="pw-section" aria-label={`${p.name}: ${year} at a glance`}>
+                      <h3 className="pw-h3">{year} at a glance <Kind k="estimate">Estimate</Kind></h3>
+                      <Lines
+                        rows={[
+                          { label: 'Gross pay', value: formatCents(py.totals.gross), strong: true },
+                          ...(py.totals.bonusGross > 0 ? [{ label: 'of which bonus', value: formatCents(py.totals.bonusGross), muted: true }] : []),
+                          ...(py.totals.rsuGross > 0 ? [{ label: 'of which stock awards (counted when they vest)', value: formatCents(py.totals.rsuGross), muted: true }] : []),
+                          { label: 'Take-home', value: formatCents(py.totals.net), strong: true },
+                          { label: '401(k) pre-tax + Roth', value: `${formatCents(py.contributions.k401Pretax)} + ${formatCents(py.contributions.k401Roth)}`, muted: true },
+                          ...(py.contributions.employerMatch > 0 ? [{ label: 'Employer 401(k) match', value: formatCents(py.contributions.employerMatch), muted: true }] : []),
+                          ...(py.contributions.hsa > 0 || py.contributions.employerHsa > 0 ? [{ label: 'HSA (you + employer)', value: formatCents(py.contributions.hsa + py.contributions.employerHsa), muted: true }] : []),
+                          ...(py.contributions.espp > 0 ? [{ label: 'ESPP', value: formatCents(py.contributions.espp), muted: true }] : []),
+                        ]}
+                      />
+                      {py.warnings.map((w) => <p key={w} className="warn pl-warn">{w}</p>)}
+                    </section>
+                  )}
+
+                  <section className="pw-section" aria-label={`Pay setup for ${p.name}, ${year}`}>
+                    {!prof ? (
+                      <div className="pl-setup pw-setup">
+                        <span><strong>Pay setup:</strong> no income set up for {p.name} in {year}. Bonuses and stock awards below are still kept.</span>
+                        <div className="an-actions" style={{ margin: 0 }}>
+                          <button className="primary" onClick={() => save(newProfile(p.id!, year))}>Set up {year}</button>
+                          {prev && <button onClick={() => save(rollForward(prev, year))}>Copy from {year - 1}</button>}
+                        </div>
+                      </div>
+                    ) : (
+                      <ProfileEditor
+                        key={`${prof.id}`}
+                        embedded
+                        person={p}
+                        profile={prof}
+                        onSave={save}
+                        onCopyPrev={prev ? () => confirm(`Replace ${p.name}'s ${year} setup with ${year - 1}'s?`) && save({ ...rollForward(prev, year), id: prof.id }) : undefined}
+                        onDelete={() => confirm(`Remove ${p.name}'s ${year} income setup?`) && db.incomeProfiles.delete(prof.id!)}
+                      />
+                    )}
+                  </section>
+
+                  <PersonBonuses person={p} year={year} bonuses={bonuses} />
+
+                  <section className="pw-section" aria-label={`Stock awards for ${p.name}`}>
+                    <p className="an-note pl-equity"><Kind k="projected">Equity</Kind> Stock awards are income on the day each vest happens. They are kept apart from salary and bonus, and the vest schedule feeds {p.name}’s take-home and the household tax figures.</p>
+                    <RsuSection personId={p.id} year={year} people={people} profiles={profiles} model={model} vests={rsuVests} securities={securities} invAccounts={invAccounts} tables={model.tables} />
+                  </section>
+
+                  {py && prof && <PersonPaycheckDetail py={py} profile={prof} name={p.name} />}
+                </PersonWorkspace>
+              </div>
             );
           })}
+        </section>
+      )}
+
+      {needsReview && (
+        <div id="income-review" className="pl-anchor" tabIndex={-1}>
+          <section className="an-card pl-alert pw-review" aria-labelledby="income-review-h">
+            <h2 className="an-h2" id="income-review-h">Needs review: records with no matching person</h2>
+            <p>These records point to a person who is not in the People list above, so they are not counted in anyone’s figures. Nothing was changed or moved. Editing a grant or a vest lets you choose its person; a bonus can only be deleted.</p>
+            <UnassignedBonuses bonuses={orphanBonuses} />
+            {(orphanVests.length > 0 || orphanGrants.length > 0) && (
+              <RsuSection unassigned year={year} people={people} profiles={profiles} model={model} vests={rsuVests} securities={securities} invAccounts={invAccounts} tables={model.tables} />
+            )}
+          </section>
         </div>
-      </div>
-
-      <div id="income-bonuses" className="pl-anchor" tabIndex={-1}>
-        <Collapsible id="income.bonuses" title="Bonuses">
-          <p className="an-note" style={{ marginTop: 0 }}>Enter each bonus by the month it is paid (assumed mid-month). Add, change, or remove them whenever the timing changes; everything below updates.</p>
-          <div className="an-form an-form--wide">
-            <label className="f">Person
-              <select value={bPerson} onChange={(e) => setBPerson(e.target.value)}>
-                <option value="">Choose…</option>
-                {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label>
-            <label className="f">Month
-              <select value={bMonth} onChange={(e) => setBMonth(e.target.value)}>
-                {MONTHS.map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
-              </select>
-            </label>
-            <MoneyField label="Gross amount" cents={bAmt} onChange={setBAmt} />
-            <label className="f">Label<input value={bLabel} onChange={(e) => setBLabel(e.target.value)} placeholder="Annual, commission, retention…" /></label>
-            <div className="pl-formbtn">
-              <button
-                className="primary"
-                disabled={!bPerson || bAmt <= 0}
-                onClick={async () => {
-                  const b: Bonus = { personId: Number(bPerson), year, month: Number(bMonth), grossCents: bAmt, label: bLabel.trim() || 'Bonus' };
-                  await db.bonuses.add(b);
-                  setBAmt(0);
-                  setBLabel('');
-                }}
-              >Add bonus</button>
-            </div>
-          </div>
-          {yearBonuses.length > 0 && (
-            <div className="an-tablewrap" style={{ marginTop: 'var(--sp-3)' }}>
-              <table className="an-table an-stack" aria-label={`Bonuses entered for ${year}`}>
-                <thead><tr><th>Month</th><th>Person</th><th>Label</th><th className="num">Gross</th><th /></tr></thead>
-                <tbody>
-                  {[...yearBonuses].sort((a, b) => a.month - b.month).map((b) => (
-                    <tr key={b.id}>
-                      <td data-label="Month">{monthName(b.month)} {b.year}</td>
-                      <td data-label="Person">{personName(b.personId)}</td>
-                      <td data-label="Label">{b.label}</td>
-                      <td className="num" data-label="Gross">{formatCents(b.grossCents)}</td>
-                      <td className="an-cell-act"><button className="link danger" aria-label={`Delete bonus ${b.label}, ${monthName(b.month)} ${b.year}`} onClick={() => db.bonuses.delete(b.id!)}>delete</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Collapsible>
-      </div>
-
-      <div id="income-rsu" className="pl-anchor" tabIndex={-1}>
-        <p className="an-note pl-equity"><Kind k="projected">Equity</Kind> Stock awards are income on the day each vest happens. They are kept apart from salary and bonus here, and the vest schedule below feeds the take-home and tax figures above.</p>
-        <RsuSection year={year} people={people} profiles={profiles} model={model} vests={rsuVests} securities={securities} invAccounts={invAccounts} tables={model.tables} />
-      </div>
+      )}
 
       <div id="income-tax" className="pl-anchor" tabIndex={-1}>
         <Collapsible id="income.household" title="Household tax settings">
@@ -384,47 +358,7 @@ export default function IncomePage() {
               <p className="an-note">Numbers in parentheses are paychecks received that month (including bonuses). Months with an extra paycheck stand out.</p>
             </Collapsible>
 
-            <div className="pl-stack" style={{ marginTop: 'var(--sp-3)' }}>
-              {model.years.map((y) => {
-                const prof = profiles.find((p) => p.personId === y.personId && p.year === year)!;
-                return (
-                  <details key={y.personId} className="pl-detail">
-                    <summary><strong>{personName(y.personId)}: paycheck detail</strong> <span className="muted">(estimated, one row per paycheck)</span></summary>
-                    <div className="an-tablewrap">
-                      <table className="an-table an-matrix">
-                        <thead>
-                          <tr><th>Date</th><th className="num">Gross</th><th className="num">Deductions</th><th className="num">Fed tax</th><th className="num">SS</th><th className="num">Medicare</th><th className="num">MA tax</th><th className="num">PFML</th><th className="num">Net</th></tr>
-                        </thead>
-                        <tbody>
-                          {y.events.map((e, i) => {
-                            const dedTotal = Object.values(e.deductions).reduce((a, b) => a + b, 0);
-                            return (
-                              <tr key={i}>
-                                <td>{e.date}{e.kind !== 'regular' && <span className="badge"> {e.label}</span>}{e.notes.length > 0 && <div className="warn" style={{ whiteSpace: 'normal' }}>{e.notes.join('; ')}</div>}</td>
-                                <td className="num">{formatCents(e.gross)}</td>
-                                <td className="num">{formatCents(dedTotal)}</td>
-                                <td className="num">{formatCents(e.fedWithholding)}</td>
-                                <td className="num">{formatCents(e.socialSecurity)}</td>
-                                <td className="num">{formatCents(e.medicare + e.addlMedicare)}</td>
-                                <td className="num">{formatCents(e.stateWithholding)}</td>
-                                <td className="num">{formatCents(e.pfml)}</td>
-                                <td className="num">
-                                  <strong>{formatCents(e.net)}</strong>
-                                  {e.keptValue !== undefined && <div className="muted" style={{ fontSize: '0.75rem' }}>{formatCents(e.keptValue)} kept as shares</div>}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="an-note">
-                      Deductions: {prof.deductions.map((d) => `${d.name} ${formatCents(y.totals.deductions[d.id] ?? 0)}`).join(' · ') || 'none'}
-                    </p>
-                  </details>
-                );
-              })}
-            </div>
+            <p className="an-note" style={{ marginTop: 'var(--sp-3)' }}>Each person’s paycheck-by-paycheck detail is in that person’s workspace above.</p>
 
             <section className="an-card an-card--soft" style={{ marginTop: 'var(--sp-4)' }} aria-labelledby="inc-about">
               <h3 className="an-h2" id="inc-about" style={{ fontSize: 'var(--fs-base)' }}>About these numbers</h3>

@@ -27,11 +27,12 @@ export function readCollapsed(id: string, storage?: StorageLike): boolean | unde
   }
 }
 
-export function writeCollapsed(id: string, collapsed: boolean, storage?: StorageLike): void {
+export function writeCollapsed(id: string, collapsed: boolean, storage?: StorageLike, explicit = false): void {
   try {
     const s = storage ?? localStorage;
     const all = parseCollapsed(s.getItem(COLLAPSE_KEY));
-    if (collapsed) all[id] = true;
+    if (explicit) all[id] = collapsed; // D18.1: a section that starts closed must remember that it was opened, so both choices are stored
+    else if (collapsed) all[id] = true;
     else delete all[id]; // open is the default, so there is nothing to remember
     s.setItem(COLLAPSE_KEY, JSON.stringify(all));
   } catch {
@@ -47,9 +48,9 @@ export function useCollapsed(id: string, defaultOpen = true): [boolean, (open: b
   const setOpen = useCallback(
     (v: boolean) => {
       setOpenState(v);
-      writeCollapsed(id, !v);
+      writeCollapsed(id, !v, undefined, !defaultOpen);
     },
-    [id],
+    [id, defaultOpen],
   );
   return [open, setOpen];
 }

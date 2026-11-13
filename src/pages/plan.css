@@ -159,3 +159,41 @@
 .pl-page .an-stack-col > *, .pl-page .pl-stack > * { min-width: 0; }
 .pl-strats { align-items: start; }
 .an-title + .an-kind { margin-left: var(--sp-2); }
+
+/* ---- D18.1: a workspace for each person on Income ----
+   One expandable card per person holds that person's pay setup, bonuses, stock awards and paycheck detail. The folded header names the person and carries a short
+   summary (the income model's own figures). Presentation only; colors and sizes come from tokens. New classes use the "pw-" prefix. */
+.pw-list { display: grid; gap: var(--sp-4); min-width: 0; }
+.pw-list > * { min-width: 0; margin: 0; }
+.pw-eyebrow { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
+.pw-note { margin-top: 0; }
+.pw { padding: 0; min-width: 0; border-left: 4px solid var(--accent); }
+.pw-head { margin: 0; font-size: inherit; line-height: inherit; }
+.pw-toggle { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--sp-1) var(--sp-4); width: 100%; min-height: 56px; padding: var(--sp-3) var(--sp-5); border: none; border-radius: var(--r-lg); background: transparent; color: inherit; font: inherit; text-align: left; letter-spacing: 0; cursor: pointer; }
+.pw-toggle:hover:not(:disabled) { background: var(--surface-soft); }
+.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pw-toggle .chev { color: var(--muted); width: 1em; text-align: center; }
+.pw-id { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); min-width: 0; }
+.pw-name { font-size: var(--fs-lg); font-weight: 700; overflow-wrap: anywhere; }
+.pw-year { font-size: var(--fs-sm); font-weight: 500; color: var(--muted); }
+.pw-sum { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start; gap: var(--sp-1) var(--sp-5); min-width: 0; font-weight: 400; }
+.pw-fig { display: inline-flex; flex-direction: column; min-width: 0; }
+.pw-fig-l, .pw-fig-n { font-size: var(--fs-xs); color: var(--muted); }
+.pw-fig-v { font-weight: 650; font-variant-numeric: tabular-nums; }
+.pw-state { color: var(--muted); }
+.pw-flag { align-self: center; padding: 1px 8px; border: 1px solid var(--warn); border-radius: var(--r-xs); background: var(--warn-soft); color: var(--warn-text); font-size: var(--fs-sm); font-weight: 650; }
+.pw-body { display: grid; gap: var(--sp-5); min-width: 0; padding: var(--sp-4) var(--sp-5) var(--sp-5); border-top: 1px solid var(--line); }
+.pw-body[hidden] { display: none; }
+.pw-section { display: grid; gap: var(--sp-3); min-width: 0; margin: 0; }
+.pw-section > * { margin: 0; min-width: 0; }
+.pw-h3 { margin: 0; font-size: var(--fs-md); font-weight: 650; }
+.pw-owner { display: flex; align-items: center; min-height: var(--control-h); font-weight: 650; }
+.pw-setup { border: 1px dashed var(--control-line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); }
+.pw-detail { min-width: 0; }
+.pw-review .pw-section { margin-top: var(--sp-3); }
+@media (max-width: 760px) {
+  .pw-toggle { grid-template-columns: auto minmax(0, 1fr); padding: var(--sp-3) var(--sp-4); }
+  .pw-sum { grid-column: 2; justify-content: flex-start; gap: var(--sp-1) var(--sp-4); }
+  .pw-body { padding: var(--sp-4); }
+}
+@media (forced-colors: active) { .pw-flag, .pw-setup { border-color: CanvasText; } }

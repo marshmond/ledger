@@ -1,10 +1,11 @@
 import PayeeInput from '../ui/PayeeInput';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { InvAccount, Person, RsuGrant, RsuVest, Security, VestFrequency } from '../types';
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { resolveVest } from '../lib/rsu';
+import { inScope } from './incomeOwners';
 import {
   FREQUENCY_LABELS, deleteGrant, fillEvenly, grantProblem, refreshSecurityPrice, saveGrant, scheduleChange, securityForTicker, setVestShares, vestDates,
 } from '../lib/rsuGrant';
@@ -125,11 +126,21 @@ function Worksheet({ grant, vests, security }: { grant: RsuGrant; vests: RsuVest
   );
 }
 
-export default function RsuGrants({ people, vests, securities, invAccounts }: { people: Person[]; vests: RsuVest[]; securities: Security[]; invAccounts: InvAccount[] }) {
-  const grants = useLiveQuery(() => db.rsuGrants.toArray(), []) ?? [];
+export default function RsuGrants({ people, vests, securities, invAccounts, personId, unassigned }: {
+  people: Person[]; vests: RsuVest[]; securities: Security[]; invAccounts: InvAccount[];
+  /** D18.1: show only this person's grants (by stored person id). A new grant starts with this person and the person cannot be changed on a new grant. */
+  personId?: number;
+  /** D18.1: show only the grants whose person is no longer on the page. Nothing is created or reassigned automatically. */
+  unassigned?: boolean;
+}) {
+  const allGrants = useLiveQuery(() => db.rsuGrants.toArray(), []) ?? [];
+  const grants = allGrants.filter((g) => inScope(g.personId, { personId, unassigned }, people));
+  const scoped = personId !== undefined;
+  const uid = useId(); // radio groups need a name of their own when several people's forms are on one page
+  const startPerson = scoped ? personId : unassigned ? undefined : people[0]?.id;
   const classes = useLiveQuery(() => db.assetClasses.toArray(), []) ?? [];
   const hasKey = !!(useLiveQuery(() => db.settings.get('priceApiKey'), []) as { value?: string } | undefined)?.value;
-  const [draft, setDraft] = useState<Partial<RsuGrant>>(() => blank(people[0]?.id));
+  const [draft, setDraft] = useState<Partial<RsuGrant>>(() => blank(startPerson));
   const [ticker, setTicker] = useState('');
   const [priceText, setPriceText] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
@@ -155,7 +166,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
   function reset() {
     setEditing(null);
     setAdding(false);
-    setDraft(blank(people[0]?.id));
+    setDraft(blank(startPerson));
     setTicker('');
     setPriceText('');
   }
@@ -170,7 +181,8 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
       if (!defaultClass) return setMsg('Add an asset class on the Investments tab first');
       security = await securityForTicker(db, ticker, defaultClass.id!);
     }
-    const g = { ...draft, personId: draft.personId ?? (people.length === 1 ? people[0].id : undefined), priceCents, securityId: security?.id ?? null, years: Number(draft.years), cliffMonths: draft.cliffMonths || null } as Partial<RsuGrant>;
+    // A new grant in one person's workspace always belongs to that person; only editing an existing grant can deliberately move it to someone else.
+    const g = { ...draft, personId: scoped && !editing ? personId : draft.personId ?? (people.length === 1 ? people[0].id : undefined), priceCents, securityId: security?.id ?? null, years: Number(draft.years), cliffMonths: draft.cliffMonths || null } as Partial<RsuGrant>;
     const problem = grantProblem(g);
     if (problem) return setMsg(problem);
     const full = { ...g, ...(editing ? { id: editing } : {}) } as RsuGrant;
@@ -190,7 +202,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
     setOpen(id);
     setEditing(null);
     setAdding(false);
-    setDraft(blank(people[0]?.id));
+    setDraft(blank(startPerson));
     setTicker('');
     setPriceText('');
   }
@@ -201,7 +213,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
     <div className="card">
       <div className="row spread">
         <strong>Grants with a vesting schedule</strong>
-        {!adding && <button onClick={() => { setAdding(true); setMsg(''); }}>New grant</button>}
+        {!adding && !unassigned && <button onClick={() => { setAdding(true); setMsg(''); }}>{scoped ? `New grant for ${personName(personId!)}` : 'New grant'}</button>}
       </div>
       <p className="muted">
         Enter the grant once: its start date, how often it vests, and how many years it runs. The app works out every vest date; then you fill in the shares for each
@@ -210,14 +222,18 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
 
       {adding && (
         <div className="card">
-          <strong>{editing ? 'Edit grant' : 'New grant'}</strong>
+          <strong>{editing ? 'Edit grant' : scoped ? `New grant for ${personName(personId!)}` : 'New grant'}</strong>
           <div className="row" style={{ marginTop: 6 }}>
-            <label className="f">Person
-              <select value={draft.personId ?? (people.length === 1 ? people[0].id : '')} onChange={(e) => set({ personId: Number(e.target.value) })}>
-                <option value="">Choose…</option>
-                {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label>
+            {scoped && !editing ? (
+              <div className="f">Person<span className="pw-owner">{personName(personId!)}</span></div>
+            ) : (
+              <label className="f">Person
+                <select value={draft.personId ?? (people.length === 1 ? people[0].id : '')} onChange={(e) => set({ personId: Number(e.target.value) })}>
+                  <option value="">Choose…</option>
+                  {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </label>
+            )}
             <label className="f">Grant name<input value={draft.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="2026 new-hire grant" /></label>
             <label className="f">Start date<input type="date" value={draft.startDate ?? ''} onChange={(e) => set({ startDate: e.target.value })} /></label>
           </div>
@@ -234,8 +250,8 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
 
           <fieldset className="checks" style={{ border: 0, padding: 0, margin: '8px 0' }}>
             <legend className="muted">How does this grant pay out?</legend>
-            <label className="chk"><input type="radio" name="grantkind" checked={draft.kind === 'cash'} onChange={() => set({ kind: 'cash' })} /> Vests as cash</label>
-            <label className="chk"><input type="radio" name="grantkind" checked={draft.kind === 'stock'} onChange={() => set({ kind: 'stock' })} /> Tied to common stock</label>
+            <label className="chk"><input type="radio" name={`grantkind${uid}`} checked={draft.kind === 'cash'} onChange={() => set({ kind: 'cash' })} /> Vests as cash</label>
+            <label className="chk"><input type="radio" name={`grantkind${uid}`} checked={draft.kind === 'stock'} onChange={() => set({ kind: 'stock' })} /> Tied to common stock</label>
           </fieldset>
           {draft.kind === 'cash' ? (
             <div className="row">
@@ -254,8 +270,8 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
               </div>
               <fieldset className="checks" style={{ border: 0, padding: 0, margin: '8px 0' }}>
                 <legend className="muted">After each vest</legend>
-                <label className="chk"><input type="radio" name="grantafter" checked={draft.afterVest !== 'held'} onChange={() => set({ afterVest: 'sold' })} /> Sold immediately (cash income)</label>
-                <label className="chk"><input type="radio" name="grantafter" checked={draft.afterVest === 'held'} onChange={() => set({ afterVest: 'held' })} /> Held in a brokerage account</label>
+                <label className="chk"><input type="radio" name={`grantafter${uid}`} checked={draft.afterVest !== 'held'} onChange={() => set({ afterVest: 'sold' })} /> Sold immediately (cash income)</label>
+                <label className="chk"><input type="radio" name={`grantafter${uid}`} checked={draft.afterVest === 'held'} onChange={() => set({ afterVest: 'held' })} /> Held in a brokerage account</label>
               </fieldset>
               {draft.afterVest === 'held' && (
                 <label className="f">Brokerage account
@@ -272,11 +288,12 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
             <button className="primary" disabled={busy} onClick={save}>{busy ? 'Saving…' : editing ? 'Save changes' : 'Create grant'}</button>
             <button onClick={reset}>Cancel</button>
           </div>
+          {editing && (scoped || unassigned) && <p className="muted" style={{ marginBottom: 0 }}>Choosing a different person moves this grant, and every vest it has produced, to that person.</p>}
         </div>
       )}
       {msg && <p className={msg.startsWith('Saved') || msg.startsWith('Split') ? 'ok' : 'error'} role="status">{msg}</p>}
 
-      {grants.length === 0 && !adding && <p className="muted">No grants yet.</p>}
+      {grants.length === 0 && !adding && <p className="muted">{unassigned ? 'No grants without a matching person.' : scoped ? `No grants for ${personName(personId!)} yet.` : 'No grants yet.'}</p>}
       {grants.map((g) => {
         const sec = secOf(g.securityId);
         const mine = vests.filter((v) => v.grantId === g.id);
@@ -285,7 +302,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts }: { 
           <div className="card" key={g.id}>
             <div className="row spread">
               <div>
-                <strong>{g.name}</strong> <span className="muted">· {personName(g.personId)}</span>
+                <strong>{g.name}</strong> {(!scoped) && <span className={unassigned ? 'warn' : 'muted'}>· {unassigned ? 'no matching person' : personName(g.personId)}</span>}
                 <div className="muted">
                   {FREQUENCY_LABELS[g.frequency]} for {g.years} year{g.years === 1 ? '' : 's'} from {g.startDate}{g.cliffMonths ? `, ${g.cliffMonths}-month cliff` : ''} ·{' '}
                   {g.kind === 'cash' ? `cash at ${g.priceCents ? formatCents(g.priceCents) : '—'} a share` : `stock ${sec?.ticker ?? '?'}${sec?.priceCents ? ` at ${formatCents(sec.priceCents)}${sec.priceDate ? ` (${sec.priceDate})` : ''}` : ' (no price yet)'}, ${g.afterVest === 'held' ? `held in ${invAccounts.find((a) => a.id === g.accountId)?.name ?? '?'}` : 'sold at vest'}`}

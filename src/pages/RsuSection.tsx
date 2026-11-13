@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { db } from '../db';
 import type { IncomeProfile, InvAccount, Person, RsuVest, Security } from '../types';
 import type { TaxTables } from '../data/taxYears';
@@ -8,6 +8,7 @@ import { recordHeldVest, vestOutcome, vestProblem, type ResolvedVest } from '../
 import { NumField } from './fields';
 import Collapsible from './Collapsible';
 import RsuGrants from './RsuGrants';
+import { inScope } from './incomeOwners';
 
 const SOURCE_TEXT = { deal: 'deal price', actual: 'actual vest price', current: 'current price', none: 'no price' } as const;
 
@@ -50,7 +51,7 @@ function VestPrice({ r }: { r: ResolvedVest }) {
 }
 
 export default function RsuSection({
-  year, people, profiles, model, vests, securities, invAccounts, tables,
+  year, people, profiles, model, vests, securities, invAccounts, tables, personId, unassigned,
 }: {
   year: number;
   people: Person[];
@@ -60,20 +61,32 @@ export default function RsuSection({
   securities: Security[];
   invAccounts: InvAccount[];
   tables: TaxTables | null;
+  /**
+   * D18.1: show only this person's grants and vests (found by the stored person id, never by name). New grants and vests start with this person, and the
+   * person cannot be changed on a new record. Left out, everyone's records show as before.
+   */
+  personId?: number;
+  /** D18.1: show only the records whose person is no longer on the page (a "needs review" list). Nothing is created or reassigned automatically. */
+  unassigned?: boolean;
 }) {
-  const [draft, setDraft] = useState<Partial<RsuVest>>(() => blank(people[0]?.id));
+  const scope = { personId, unassigned };
+  const scoped = personId !== undefined;
+  const startPerson = scoped ? personId : unassigned ? undefined : people[0]?.id;
+  const uid = useId(); // radio groups need a name of their own, or two people's forms on one page would share one group
+  const [draft, setDraft] = useState<Partial<RsuVest>>(() => blank(startPerson));
   const [editing, setEditing] = useState<number | null>(null);
   const [sharesText, setSharesText] = useState('');
   const [priceText, setPriceText] = useState('');
   const [msg, setMsg] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(!!unassigned); // a record with no person can be in any year, so the review list starts with every year
 
   const personName = (id: number) => people.find((p) => p.id === id)?.name ?? '?';
   const secName = (id?: number | null) => securities.find((s) => s.id === id)?.ticker ?? '';
   const brokerage = invAccounts.filter((a) => !a.closed && a.kind === 'brokerage');
   const set = (patch: Partial<RsuVest>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const shown = model.vests
+  const mine = model.vests.filter((r) => inScope(r.vest.personId, scope, people));
+  const shown = mine
     .filter((r) => showAll || r.vest.date.startsWith(`${year}-`))
     .sort((a, b) => a.vest.date.localeCompare(b.vest.date) || a.vest.personId - b.vest.personId);
   const missingProfile = (r: ResolvedVest) => !profiles.some((p) => p.personId === r.vest.personId && r.vest.date.startsWith(`${p.year}-`));
@@ -88,7 +101,7 @@ export default function RsuSection({
   }
   function reset() {
     setEditing(null);
-    setDraft(blank(people[0]?.id));
+    setDraft(blank(startPerson));
     setSharesText('');
     setPriceText('');
   }
@@ -96,7 +109,8 @@ export default function RsuSection({
     const shares = Number(sharesText);
     const priceCents = priceText.trim() === '' ? null : parseAmountToCents(priceText);
     if (priceText.trim() !== '' && (priceCents === null || priceCents <= 0)) return setMsg('The price is not a valid amount');
-    const v = { ...draft, shares: Number.isFinite(shares) ? shares : 0, priceCents } as Partial<RsuVest>;
+    // A new vest in one person's workspace always belongs to that person; only editing an existing vest can deliberately move it to someone else.
+    const v = { ...draft, ...(scoped && !editing ? { personId } : {}), shares: Number.isFinite(shares) ? shares : 0, priceCents } as Partial<RsuVest>;
     const problem = vestProblem(v);
     if (problem) return setMsg(problem);
     const clean: RsuVest = {
@@ -119,26 +133,31 @@ export default function RsuSection({
 
   const fedDefault = tables ? +(tables.supplementalFedRate * 100).toFixed(2) : 22;
   const stateDefault = tables ? +(tables.ma.withholdingRate * 100).toFixed(2) : 5;
-  const yearProfiles = profiles.filter((p) => p.year === year);
+  const yearProfiles = unassigned ? [] : profiles.filter((p) => p.year === year && (!scoped || p.personId === personId));
 
   return (
-    <Collapsible id="income.rsu" title="Stock awards (RSUs)">
+    <Collapsible id={scoped ? `income.person.${personId}.rsu` : unassigned ? 'income.review.rsu' : 'income.rsu'} level={scoped || unassigned ? 3 : 2} title={unassigned ? 'Stock awards with no matching person' : scoped ? `Stock awards (RSUs): ${personName(personId!)}` : 'Stock awards (RSUs)'}>
       <p className="muted">
         Enter each vest date. A vest is taxed as wages on its date: Social Security, Medicare, and the income-tax estimates all include it.
         Choose <strong>cash</strong> if the award pays out in cash at a set price per share, or <strong>common stock</strong> if it vests as shares.
       </p>
 
-      <RsuGrants people={people} vests={vests} securities={securities} invAccounts={invAccounts} />
+      <RsuGrants people={people} vests={vests} securities={securities} invAccounts={invAccounts} personId={personId} unassigned={unassigned} />
 
+      {(!unassigned || editing) && (
       <div className="card">
-        <strong>{editing ? 'Edit vest' : 'Add a single vest (one-off or already vested)'}</strong>
+        <strong>{editing ? 'Edit vest' : scoped ? `Add a single vest for ${personName(personId!)} (one-off or already vested)` : 'Add a single vest (one-off or already vested)'}</strong>
         <div className="row" style={{ marginTop: 6 }}>
-          <label className="f">Person
-            <select value={draft.personId ?? ''} onChange={(e) => set({ personId: Number(e.target.value) })}>
-              <option value="">Choose…</option>
-              {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </label>
+          {scoped && !editing ? (
+            <div className="f">Person<span className="pw-owner">{personName(personId!)}</span></div>
+          ) : (
+            <label className="f">Person
+              <select value={draft.personId ?? ''} onChange={(e) => set({ personId: Number(e.target.value) })}>
+                <option value="">Choose…</option>
+                {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+          )}
           <label className="f">Vest date<input type="date" value={draft.date ?? ''} onChange={(e) => set({ date: e.target.value })} /></label>
           <label className="f">Grant (optional)<input value={draft.grant ?? ''} onChange={(e) => set({ grant: e.target.value })} placeholder="2024 new-hire grant" /></label>
           <label className="f">Shares<input inputMode="decimal" style={{ width: 90 }} value={sharesText} onChange={(e) => setSharesText(e.target.value)} placeholder="0" /></label>
@@ -146,8 +165,8 @@ export default function RsuSection({
 
         <fieldset className="checks" style={{ border: 0, padding: 0, margin: '8px 0' }}>
           <legend className="muted">How does this award pay out?</legend>
-          <label className="chk"><input type="radio" name="rsukind" checked={draft.kind === 'cash'} onChange={() => set({ kind: 'cash' })} /> Vests as cash</label>
-          <label className="chk"><input type="radio" name="rsukind" checked={draft.kind === 'stock'} onChange={() => set({ kind: 'stock' })} /> Tied to common stock</label>
+          <label className="chk"><input type="radio" name={`rsukind${uid}`} checked={draft.kind === 'cash'} onChange={() => set({ kind: 'cash' })} /> Vests as cash</label>
+          <label className="chk"><input type="radio" name={`rsukind${uid}`} checked={draft.kind === 'stock'} onChange={() => set({ kind: 'stock' })} /> Tied to common stock</label>
         </fieldset>
 
         {draft.kind === 'cash' ? (
@@ -170,8 +189,8 @@ export default function RsuSection({
             <p className="muted">Until you enter the actual vest price, future vests are valued at the stock’s current price. The actual price also becomes the cost basis of any shares you keep.</p>
             <fieldset className="checks" style={{ border: 0, padding: 0, margin: '8px 0' }}>
               <legend className="muted">After it vests</legend>
-              <label className="chk"><input type="radio" name="rsuafter" checked={draft.afterVest !== 'held'} onChange={() => set({ afterVest: 'sold' })} /> Sold immediately (cash income)</label>
-              <label className="chk"><input type="radio" name="rsuafter" checked={draft.afterVest === 'held'} onChange={() => set({ afterVest: 'held' })} /> Held in a brokerage account</label>
+              <label className="chk"><input type="radio" name={`rsuafter${uid}`} checked={draft.afterVest !== 'held'} onChange={() => set({ afterVest: 'sold' })} /> Sold immediately (cash income)</label>
+              <label className="chk"><input type="radio" name={`rsuafter${uid}`} checked={draft.afterVest === 'held'} onChange={() => set({ afterVest: 'held' })} /> Held in a brokerage account</label>
             </fieldset>
             {draft.afterVest === 'held' && (
               <label className="f">Brokerage account
@@ -190,7 +209,9 @@ export default function RsuSection({
           {editing && <button onClick={reset}>Cancel</button>}
           {msg && <span className={msg === 'Saved' ? 'ok' : 'error'} role="status">{msg}</span>}
         </div>
+        {editing && (scoped || unassigned) && <p className="muted" style={{ marginBottom: 0 }}>Choosing a different person moves this vest to that person; it then appears in their workspace instead of this one.</p>}
       </div>
+      )}
 
       {yearProfiles.length > 0 && (
         <details style={{ margin: '8px 0' }}>
@@ -221,7 +242,7 @@ export default function RsuSection({
         <div className="scroll-x">
           <table>
             <thead>
-              <tr><th>Date</th><th>Person</th><th>Award</th><th className="num">Shares</th><th className="num">Price</th><th className="num">Value</th><th className="num">After tax</th><th>After vest</th><th /></tr>
+              <tr><th>Date</th>{!scoped && <th>Person</th>}<th>Award</th><th className="num">Shares</th><th className="num">Price</th><th className="num">Value</th><th className="num">After tax</th><th>After vest</th><th /></tr>
             </thead>
             <tbody>
               {shown.map((r) => {
@@ -233,7 +254,7 @@ export default function RsuSection({
                 return (
                   <tr key={v.id}>
                     <td>{v.date}{v.date > todayISO() && <span className="badge"> upcoming</span>}</td>
-                    <td>{personName(v.personId)}</td>
+                    {!scoped && <td>{unassigned ? <span className="warn">no matching person</span> : personName(v.personId)}</td>}
                     <td>{v.grant || '—'}<div className="muted" style={{ fontSize: '0.75rem' }}>{v.kind === 'cash' ? 'Cash' : `Stock · ${secName(v.securityId)}`}</div></td>
                     <td className="num">{v.shares}</td>
                     <td className="num"><VestPrice key={`${v.id}-${v.priceCents}`} r={r} /></td>
@@ -273,7 +294,7 @@ export default function RsuSection({
           </table>
         </div>
       )}
-      {model.vests.some((r) => r.warning) && <p className="warn">Vests with no price are left out of your income until they have one.</p>}
+      {mine.some((r) => r.warning) && <p className="warn">Vests with no price are left out of your income until they have one.</p>}
       <p className="muted">
         Held stock: the tax is assumed to be covered by selling shares on the vest date. You keep the net value, shown in dollars here and in the paycheck
         detail (it is not counted as spendable cash). “Add to holdings” puts the whole shares in the account, with the vest price as their cost basis, and the
