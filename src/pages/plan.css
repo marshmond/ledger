@@ -197,3 +197,88 @@
   .pw-body { padding: var(--sp-4); }
 }
 @media (forced-colors: active) { .pw-flag, .pw-setup { border-color: CanvasText; } }
+
+/* ---- D18.2: gross-to-net statement and household comparison on Income ----
+   Presentation only. Every person is drawn from one shared column list, so a category is always in the same place: a missing item leaves an empty cell of the same size
+   (never a "$0", never a shifted neighbor). Colors, sizes and radii come from tokens. New classes use the "is-" prefix. */
+.is-statement { gap: var(--sp-4); }
+.is-banner { margin: 0; padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--control-line); border-radius: var(--r-md); color: var(--muted); }
+.is-stmt { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1.25fr) minmax(0, 1.2fr) minmax(0, 1fr); gap: 0; min-width: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.is-col { display: flex; flex-direction: column; gap: var(--sp-2); min-width: 0; margin: 0; padding: var(--sp-4); border-left: 1px solid var(--line); }
+.is-col:first-child { border-left: none; }
+.is-colhead { display: flex; align-items: baseline; gap: var(--sp-2); min-height: 2.6em; margin: 0; font-size: var(--fs-sm); font-weight: 650; color: var(--muted); }
+.is-op { flex: none; width: 1em; font-size: var(--fs-md, var(--fs-lg)); font-weight: 650; color: var(--muted); }
+.is-colhead--quiet { min-height: 0; margin-bottom: var(--sp-1); }
+.is-lines { display: grid; margin: 0; }
+.is-line { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); min-height: 2.6rem; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.is-lines > .is-line:last-child { border-bottom: none; }
+.is-line dt { min-width: 0; color: var(--fg-2, var(--fg)); overflow-wrap: anywhere; }
+.is-line dd { flex: none; min-width: 5.5em; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.is-help { display: block; font-size: var(--fs-xs); color: var(--muted); font-weight: 400; }
+.is-line--strong { border-top: 1px solid var(--line-strong); border-bottom: none; }
+.is-line--strong dt { color: var(--fg); font-weight: 650; }
+.is-line--strong dd { font-weight: 700; }
+.is-lines--total { margin-top: auto; }
+.is-lines--kept { margin-top: var(--sp-3); }
+.is-lines--kept .is-line { border-top: 1px dashed var(--control-line); border-bottom: none; }
+.is-big { display: grid; gap: var(--sp-1); }
+.is-big-v { font-size: var(--fs-xl); font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.is-big-c { font-size: var(--fs-xs); color: var(--muted); }
+.is-col--net { background: var(--accent-soft); }
+.is-col--net .is-colhead { color: var(--accent-text); }
+.is-col--net .is-big-v { font-size: var(--fs-metric); color: var(--accent-text); }
+.is-status { font-size: var(--fs-base); font-weight: 600; color: var(--muted); }
+.is-blank { display: inline-block; min-height: 1em; }
+.is-fine { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); color: var(--muted); }
+.is-employer { display: grid; gap: var(--sp-1); min-width: 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-soft); }
+.is-employer > * { margin: 0; }
+.is-lines--row { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-5); }
+.is-lines--row .is-line { min-height: 0; border-bottom: none; }
+@media (max-width: 1180px) {
+  .is-stmt { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .is-col { border-top: 1px solid var(--line); }
+  .is-col:nth-child(-n+2) { border-top: none; }
+  .is-col:nth-child(odd) { border-left: none; }
+}
+@media (max-width: 640px) {
+  .is-stmt { grid-template-columns: minmax(0, 1fr); }
+  .is-col, .is-col:nth-child(-n+2) { border-left: none; border-top: 1px solid var(--line); }
+  .is-col:first-child { border-top: none; }
+  .is-colhead { min-height: 0; }
+  .is-lines--row { grid-template-columns: minmax(0, 1fr); }
+}
+
+.is-compare .is-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.is-table { width: 100%; table-layout: fixed; min-width: 62rem; border-collapse: separate; border-spacing: 0; }
+.is-table th, .is-table td { padding-inline: var(--sp-2); }
+.is-table .is-c-person { width: 11%; }
+.is-table .is-c-detail { width: 11%; }
+.is-table .is-c-total { width: 11.1%; }
+.is-table th, .is-table td { white-space: normal; }
+.is-table td.num { text-align: right; white-space: nowrap; }
+.an-table.is-table th.num { text-align: right; white-space: normal; }
+.is-table thead th { vertical-align: bottom; }
+.is-table .is-h-group { text-align: center; border-bottom: 1px solid var(--line); }
+.is-table .is-h-sub { font-weight: 500; }
+.is-table td.is-total, .is-table th.is-h-total { box-shadow: inset 1px 0 0 var(--line); }
+.is-table td.is-total + td.is-total, .is-table th.is-h-total + th.is-h-total { box-shadow: none; }
+.is-table td[data-col='net'] { font-weight: 700; color: var(--accent-text); background: var(--accent-soft); }
+.is-table th.is-h-net { color: var(--accent-text); }
+.is-rowhead { font-weight: 650; overflow-wrap: anywhere; }
+.is-state { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--muted); }
+.is-hhrow th, .is-hhrow td { border-top: 1px solid var(--line-strong); font-weight: 700; }
+@media (max-width: 640px) {
+  .is-table { min-width: 0; table-layout: auto; }
+  .is-table colgroup { display: none; }
+  /* a phone shows each person as one labeled list in the same order; an empty item keeps its row (label, no amount) */
+  .an-table.is-table tr { grid-template-columns: minmax(0, 1fr); gap: 0; padding: var(--sp-2) 0 var(--sp-3); }
+  .an-table.is-table td, .an-table.is-table td.num { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); min-height: 2rem; padding: var(--sp-1) 0; text-align: right; white-space: normal; box-shadow: none; }
+  .an-table.is-table td[data-label]::before { flex: 1; min-width: 0; text-align: left; font-weight: 500; color: var(--fg-2, var(--fg)); }
+  .is-table td.is-total { font-weight: 650; }
+  .is-table td[data-col='gross'] { border-top: 1px solid var(--line); margin-top: var(--sp-1); }
+  .is-table tbody th.is-rowhead { grid-column: 1 / -1; padding: var(--sp-1) 0; background: transparent; font-size: var(--fs-md, var(--fs-lg)); text-align: left; }
+  .is-table td[data-col='net'] { border-radius: var(--r-md); padding-inline: var(--sp-2); }
+  .is-compare .an-scrollhint { display: none; }
+}
+@media (forced-colors: active) { .is-stmt, .is-col, .is-employer, .is-banner { border-color: CanvasText; } }
+@media print { .is-stmt { break-inside: avoid; } }

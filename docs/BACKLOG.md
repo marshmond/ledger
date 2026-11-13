@@ -4,9 +4,27 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## PROPOSED (not implemented), recorded 2026-11-13: D18.2 Personal Income Gross-to-Net Breakdown
+## STATUS 2026-11-13 (newest): D18.2 PERSON-LEVEL GROSS-TO-NET BREAKDOWN APPROVED BY OWNER AND CHATGPT (visual and functional review); RELEASE AUTHORIZED AS `feat(ui): add person-level gross-to-net income breakdown` (SHA, CI and Pages result are recorded in the release summary, not verified when this line was written); D20 AND D21 NOT STARTED
 
-**Proposed sequence:** D19 -> T2027 -> D18.2 -> D20 -> D21. D18.2 is NOT started and is not part of the D19 release.
+**What was asked:** inside each Income person workspace, replace the basic "At a glance" summary with a gross-to-net statement (income sources, gross, employee deductions, taxes withheld, cash take-home), plus a household comparison under the hero, using one shared set of columns so two people line up position for position; blank cells where a person has no item. **Gate:** T2027 is committed and deployed as `fa5deb7` (Actions run #109 success; `github-pages` deployment `7774563284` success; read from the public GitHub API); `main` = `origin/main`. Report: `docs/LEDGER-SIGNATURE-D18.2-REPORT.md`.
+
+**What was built:** `incomeStatementModel.ts` (the shared column schema and a pure builder that only reads the income model's own `PersonYear` totals), `IncomeStatement.tsx` (`HouseholdComparison`, `PersonStatementView`, read-only), changes to `IncomePage.tsx` and appended `is-` styles in `plan.css`. Cells are `value`, `blank` (empty space with a spoken label, never `$0`) or `unavailable` (Not set up / Not calculated). Deduction categories come from the stored deduction type, not labels. Employer contributions are a separate strip; equity kept as shares is separate from cash. Paycheck detail, forms, RSU and bonus editors are unchanged. **No file in `src/lib`, `src/db.ts`, `src/types.ts`, sync, backup, Search, Quick Add or navigation changed; no dependency added.**
+
+**Tests:** 30 new (`d182IncomeStatement.test.tsx`); 12 files / 199 related tests pass; `tsc` and `npm run build` clean; full suite NOT run locally (CI will). Browser (invented household, own ports, throwaway profile): 1440, 375, 320 in Signature Light, Dark and Classic, no page overflow; statement cell positions (left, top, width) identical across three people; independent expand/collapse; year switch. Pictures: `Documents\Ledger-Design-Concepts\D18.2-Evidence`.
+
+**Judgment calls (please review):**
+1. No "Other income" column: the model has no person-owned other income (household Other taxable income stays household-level). An "Other modeled earnings" column appears automatically, in the same place for everyone, only if the model ever produces one.
+2. Insurance premiums are one slot (health + dental + vision); FSA is labeled "Health care FSA"; a dependent-care FSA would sit under Other deductions.
+3. Withholding categories always show real values once calculated, so Additional Medicare shows `$0.00` for most people.
+4. The comparison has nine columns plus a household row; on a phone it becomes labeled lists.
+5. Equity kept as shares is shown only when a kept vest exists, under Cash take-home.
+6. A kept vest that would be negative loses its shortfall inside the model; the statement would report the difference rather than balance it (not changed, no such case in fixtures). The `keptValue` comment in `payroll.ts` says "dollars" but the value is cents (not changed).
+
+**NOT built / not done:** an Annual / Paycheck switch, a "typical paycheck", editing inside the summary, keyboard Tab walk, screen reader, real phone, forced colors, print, the full local suite. `docs/UI-COVERAGE.md` unchanged (L-17 stays `BLT`). Not released.
+
+## SUPERSEDED (D18.2 is now built, see the status above), recorded 2026-11-13: D18.2 Personal Income Gross-to-Net Breakdown (original proposal)
+
+**Proposed sequence:** D19 -> T2027 -> D18.2 -> D20 -> D21.
 
 **Objective:** inside each existing person-centric Income workspace, present a clear left-to-right breakdown of gross compensation sources, payroll deductions, taxes withheld and estimated cash take-home.
 
@@ -23,7 +41,7 @@ Status key: `[ ]` not started, `[x]` built.
 
 **Pending owner confirmation:** whether the default presentation is annual or per paycheck.
 
-## STATUS 2026-11-13 (newest): T2027 2027 TAX TABLES APPROVED; RELEASE AUTHORIZED AS `feat(tax): add verified 2027 tax tables and year-aware rules` (SHA and CI result in the release summary); Paycheck 2027 browser check passed on fictional data; D18.2, D20 AND D21 NOT STARTED
+## STATUS 2026-11-13 (superseded by D18.2 above; T2027 is committed and deployed `fa5deb7`, run #109 success, Pages deployment `7774563284` success): T2027 2027 TAX TABLES APPROVED; RELEASE AUTHORIZED AS `feat(tax): add verified 2027 tax tables and year-aware rules` (SHA and CI result in the release summary); Paycheck 2027 browser check passed on fictional data; D18.2, D20 AND D21 NOT STARTED
 
 **What was asked:** research the published 2027 federal and Massachusetts rules and add built-in 2027 tax tables to Income and Financial Planning, using only official sources, without inventing or silently reusing 2026 values. **Gate:** D19 is committed and deployed as `bc353319` (Actions run #108 success; Pages deployment success for the same SHA; read from the public GitHub API); `main` = `origin/main`. Report: `docs/TAX-2027-UPDATE-REPORT.md` (field-by-field table with sources, before and after examples, limitations).
 

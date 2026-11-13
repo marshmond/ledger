@@ -16,7 +16,9 @@ import { hsaYearImpact } from '../lib/hsa';
 import { netForTax, realizedFor } from '../lib/lots';
 import { PageHeader } from '../ui/components';
 import TaxProvenanceNote, { CustomTableNotice, customTableDifferences } from './TaxProvenance';
-import { Kind, Lines, PlanHero, PlanJump } from './PlanParts';
+import { Kind, PlanHero, PlanJump } from './PlanParts';
+import { HouseholdComparison, PersonStatementView } from './IncomeStatement';
+import { buildHouseholdStatements } from './incomeStatementModel';
 import './analysis.css';
 import './plan.css';
 
@@ -65,7 +67,9 @@ export default function IncomePage() {
     () => buildIncomeModel(year, people, profiles, bonuses, settings, { vests: rsuVests, securities }, { taxableCents: hsaImpact.taxableCents, penaltyCents: hsaImpact.penaltyCents }, gains),
     [year, people, profiles, bonuses, settings, rsuVests, securities, hsaImpact, gains],
   );
-  const yearsWithData = [...new Set([...profiles.map((p) => p.year), thisYear, thisYear + 1])].sort();
+  // D18.2: one shared column layout for every person (presentation only; reads the model's own totals).
+  const statementSet = useMemo(() => buildHouseholdStatements(year, people, profiles, model.years, !!model.tables), [year, people, profiles, model.years, model.tables]);
+  const yearsWithData =[...new Set([...profiles.map((p) => p.year), thisYear, thisYear + 1])].sort();
 
   const [newName, setNewName] = useState('');
   const [newBirth, setNewBirth] = useState('');
@@ -177,6 +181,8 @@ export default function IncomePage() {
         </>
       )}
 
+      {people.length > 0 && <HouseholdComparison year={year} people={people} schema={statementSet.schema} statements={statementSet.statements} />}
+
       <PlanJump items={[
         { id: 'income-people', label: 'People' },
         ...people.map((p) => ({ id: personAnchorId(p.id!), label: p.name, onJump: () => setOpenSignals((o) => ({ ...o, [p.id!]: (o[p.id!] ?? 0) + 1 })) })),
@@ -219,24 +225,8 @@ export default function IncomePage() {
             return (
               <div id={personAnchorId(p.id!)} className="pl-anchor" tabIndex={-1} key={p.id}>
                 <PersonWorkspace person={p} index={i} year={year} summary={summary} openSignal={openSignals[p.id!]}>
-                  {py && (
-                    <section className="pw-section" aria-label={`${p.name}: ${year} at a glance`}>
-                      <h3 className="pw-h3">{year} at a glance <Kind k="estimate">Estimate</Kind></h3>
-                      <Lines
-                        rows={[
-                          { label: 'Gross pay', value: formatCents(py.totals.gross), strong: true },
-                          ...(py.totals.bonusGross > 0 ? [{ label: 'of which bonus', value: formatCents(py.totals.bonusGross), muted: true }] : []),
-                          ...(py.totals.rsuGross > 0 ? [{ label: 'of which stock awards (counted when they vest)', value: formatCents(py.totals.rsuGross), muted: true }] : []),
-                          { label: 'Take-home', value: formatCents(py.totals.net), strong: true },
-                          { label: '401(k) pre-tax + Roth', value: `${formatCents(py.contributions.k401Pretax)} + ${formatCents(py.contributions.k401Roth)}`, muted: true },
-                          ...(py.contributions.employerMatch > 0 ? [{ label: 'Employer 401(k) match', value: formatCents(py.contributions.employerMatch), muted: true }] : []),
-                          ...(py.contributions.hsa > 0 || py.contributions.employerHsa > 0 ? [{ label: 'HSA (you + employer)', value: formatCents(py.contributions.hsa + py.contributions.employerHsa), muted: true }] : []),
-                          ...(py.contributions.espp > 0 ? [{ label: 'ESPP', value: formatCents(py.contributions.espp), muted: true }] : []),
-                        ]}
-                      />
-                      {py.warnings.map((w) => <p key={w} className="warn pl-warn">{w}</p>)}
-                    </section>
-                  )}
+                  <PersonStatementView person={p} year={year} schema={statementSet.schema} statement={statementSet.statements[i]} />
+                  {py && py.warnings.length > 0 && <section className="pw-section" aria-label={`Notes about ${p.name}'s ${year} estimate`}>{py.warnings.map((w) => <p key={w} className="warn pl-warn">{w}</p>)}</section>}
 
                   <section className="pw-section" aria-label={`Pay setup for ${p.name}, ${year}`}>
                     {!prof ? (
