@@ -26,6 +26,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D16 (2026-11-12, built and tested locally, uncommitted) redesigned the nine core Money pages: L-02, L-03, L-04, L-05, L-06, L-07, L-10, L-11 and L-12 read `BLT` with the marks actually recorded (section 1.13; `Kbd` is recorded only for L-04, L-05 and L-07 after the 2026-11-13 keyboard walk; the other six D16 pages have no keyboard mark), and W-14 to W-19 read `BLT`. DL-10 (the three Ledger dialog call sites) is untouched and stays `NS`. D15 is committed and deployed as `8e01e61`. Nothing reads `ACC`; no owner review, real-device or screen-reader pass has happened.**
 
+**D17 (2026-11-13, built and tested locally, uncommitted) redesigned Forecast, Reports (Trends and Flow diagram), Net worth, Investments (three views), Debt and Payoff: L-08, L-09, L-13, L-14, L-15 and L-16 read `BLT` with the marks actually recorded (section 1.14), the in-page views IV-24, IV-25, IV-26, IV-29 and IV-30 read `BLT`, and W-20, W-24 and W-25 read `BLT` for the parts section 1.14 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done. `Kbd` is recorded only for L-08, L-14 and L-15 (Tab walk and chart arrow keys in headless Chrome); the native `confirm()` calls on these pages remain (D20).**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -263,15 +265,15 @@ Ledger has 32 route entries and 31 pages. `/ledger/backup` is a redirect to `/se
 | L-05 | `/ledger/transactions` | `src/pages/TransactionsPage.tsx` | D16 | BLT | Y | Y | Y | Y | Y | Y |
 | L-06 | `/ledger/budget` | `src/pages/BudgetPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
 | L-07 | `/ledger/scheduled` | `src/pages/ScheduledPage.tsx` | D16 | BLT | Y | Y | Y | Y | Y | Y |
-| L-08 | `/ledger/forecast` | `src/pages/ForecastPage.tsx` | D17 | NS | . | . | . | . | . | . |
-| L-09 | `/ledger/reports` | `src/pages/ReportsPage.tsx` | D17 | NS | . | . | . | . | . | . |
+| L-08 | `/ledger/forecast` | `src/pages/ForecastPage.tsx` | D17 | BLT | Y | Y | Y | Y | Y | Y |
+| L-09 | `/ledger/reports` | `src/pages/ReportsPage.tsx` | D17 | BLT | Y | Y | Y | Y | . | Y |
 | L-10 | `/ledger/rules` | `src/pages/RulesPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
 | L-11 | `/ledger/import` | `src/pages/ImportPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
 | L-12 | `/ledger/categories` | `src/pages/CategoriesPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
-| L-13 | `/ledger/networth` | `src/pages/NetWorthPage.tsx` | D17 | NS | . | . | . | . | . | . |
-| L-14 | `/ledger/investments` | `src/pages/InvestmentsPage.tsx` | D17 | NS | . | . | . | . | . | . |
-| L-15 | `/ledger/payoff` | `src/pages/PayoffPage.tsx` | D17 | NS | . | . | . | . | . | . |
-| L-16 | `/ledger/debt` | `src/pages/DebtPage.tsx` | D17 | NS | . | . | . | . | . | . |
+| L-13 | `/ledger/networth` | `src/pages/NetWorthPage.tsx` | D17 | BLT | Y | Y | Y | Y | . | Y |
+| L-14 | `/ledger/investments` | `src/pages/InvestmentsPage.tsx` | D17 | BLT | Y | Y | Y | Y | Y | Y |
+| L-15 | `/ledger/payoff` | `src/pages/PayoffPage.tsx` | D17 | BLT | Y | Y | Y | Y | Y | Y |
+| L-16 | `/ledger/debt` | `src/pages/DebtPage.tsx` | D17 | BLT | Y | . | Y | Y | . | Y |
 | L-17 | `/ledger/income` | `src/pages/IncomePage.tsx` | D18 | NS | . | . | . | . | . | . |
 | L-18 | `/ledger/taxplan` | `src/pages/TaxPlanPage.tsx` | D18 | NS | . | . | . | . | . | . |
 | L-19 | `/ledger/giving` | `src/pages/GivingPage.tsx` | D18 | NS | . | . | . | . | . | . |
@@ -294,6 +296,16 @@ Dashboard cards (Today 11, Ledger Home 12) are tracked inside T-01 and L-01.
 ### 1.13 D16 evidence: the nine core Money pages (built, NOT committed; nothing is `ACC`)
 
 D16 (2026-11-12) recomposed Check-in, Accounts, the account page, Transactions, Budget, Scheduled, Rules, Import and Categories. Seen in headless Chrome on throwaway copies of the fictional demo household (own address, sync off). Marks recorded: **L, D, 375 and 1440** (Signature light and dark at 1440 and 375, plus Classic light; the 200-cell sweep also covered 1024, 800 and 320 and a fourth look, Slate), **Func** (the existing suites, 27 new tests, 47 of 47 scripted browser workflows, and an engine snapshot identical before and after). **Kbd** was added on 2026-11-13 for L-04, L-05 and L-07 only (30 synthetic-key checks in headless Chrome, see report section 16.8); the other six pages have none. Not real-device, screen-reader or forced-colors tested. Pictures: `Documents\Ledger-Design-Concepts\D16-Evidence`. Report: `docs/LEDGER-SIGNATURE-D16-REPORT.md`.
+
+### 1.14 D17 evidence: Forecast, Reports, Net worth, Investments, Debt and Payoff (built, NOT committed; nothing is `ACC`)
+
+D17 (2026-11-13) recomposed the six pages with a shared hero, figures band, kind-of-figure tags (actual, projected, your assumption, not known) and labeled rows. Seen in headless Chrome on a throwaway copy of the fictional demo household extended with invented investment, loan, snapshot and property records (own address, sync off). Report: `docs/LEDGER-SIGNATURE-D17-REPORT.md`. Pictures (outside the repository): `Documents\Ledger-Design-Concepts\D17-Evidence`.
+
+- **L and D, 375 and 1440:** the nine views (Forecast, Reports Trends and Flow, Net worth, Investments three views, Debt, Payoff) were captured at 1440 and 375 in Signature light; Signature dark for Forecast, Trends, Net worth, Investments Accounts and Payoff at 1440 and Net worth and Investments Accounts at 375. D is therefore `Y` for L-08, L-09, L-13, L-14, L-15, L-16, IV-24 and IV-29 only (the Realized gains, Prices and Flow views, were measured in dark by the sweep but their dark pictures were not made, so IV-25, IV-26 and IV-30 have no D mark). L-16 and L-15 dark was only measured, not pictured: L-15 has a dark picture, L-16 does not (its `D` rests on the sweep and the shared look).
+- **Sweep:** 9 views x 4 widths (1440, 800, 375, 320) x 3 looks (Signature light, Signature dark, Classic light) = 108 cells: no horizontal overflow, one h1, no skipped heading level and every control named after the final fixes (the first pass found a skipped level on Investments, unnamed number fields in Prices and Payoff, and an 11 px overflow at 320 in Payoff, all fixed). Contrast was not measured; small targets: at most 2 controls under 24 px in a view.
+- **Kbd (L-08, L-14, L-15):** Tab walk (21, 22 and 25 stops in the page) and chart arrow keys on the Forecast chart (readout shows the exact amounts); the tab list moves with the arrow key. The allocation bar's segments had no visible ring; one was added. Not a screen-reader test.
+- **Func:** every exact-cents amount and every input value on all nine views is the same before and after (331 amounts and 130 input values compared, 0 missing); Forecast look-ahead 12 to 6 and back; Trends month and Flow period; Net worth figures and the missing-month note; Investments account open, lots, Buy panel opened (nothing logged), Realized gains figures, Prices tab; Debt loans opened; Payoff extra 0 to 100 to 0 with the strategy cards. Trades were not entered, sold or undone; values were not edited.
+
 
 ## 3. In-page views (31)
 
@@ -324,13 +336,13 @@ Views share their page's address. Each needs its page's checks plus its own empt
 | IV-21 | A-02 Assets list | Past (with sold, disposed, replaced sub-filter) | D14 | BLT | . | . | . | . | . | Y |
 | IV-22 | A-02 Assets list | Archived | D14 | BLT | . | . | . | . | . | Y |
 | IV-23 | A-02 Assets list | All | D14 | BLT | . | . | . | . | . | Y |
-| IV-24 | L-14 Investments | Accounts | D17 | NS | . | . | . | . | . | . |
-| IV-25 | L-14 Investments | Realized gains | D17 | NS | . | . | . | . | . | . |
-| IV-26 | L-14 Investments | Prices and assumptions | D17 | NS | . | . | . | . | . | . |
+| IV-24 | L-14 Investments | Accounts | D17 | BLT | Y | Y | Y | Y | . | Y |
+| IV-25 | L-14 Investments | Realized gains | D17 | BLT | Y | . | Y | Y | . | Y |
+| IV-26 | L-14 Investments | Prices and assumptions | D17 | BLT | Y | . | Y | Y | . | Y |
 | IV-27 | L-20 Afford | Can I afford it? | D18 | NS | . | . | . | . | . | . |
 | IV-28 | L-20 Afford | Rent or buy? | D18 | NS | . | . | . | . | . | . |
-| IV-29 | L-09 Reports | Trends | D17 | NS | . | . | . | . | . | . |
-| IV-30 | L-09 Reports | Flow diagram | D17 | NS | . | . | . | . | . | . |
+| IV-29 | L-09 Reports | Trends | D17 | BLT | Y | Y | Y | Y | . | Y |
+| IV-30 | L-09 Reports | Flow diagram | D17 | BLT | Y | . | Y | Y | . | Y |
 | IV-31 | P-02 Project detail | Task filter groups | D14 | NS | . | . | . | . | . | . |
 
 ## 4. Dialogs and confirmations
@@ -392,12 +404,12 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-17 | Scheduled items: create, post, skip, delete recurring | D16 | BLT |
 | W-18 | Rules and detect-recurring | D16 | BLT |
 | W-19 | Budget assign, targets, reorder | D16 | BLT |
-| W-20 | Trades, lots, prices, realized gains | D17 | NS |
+| W-20 | Trades, lots, prices, realized gains | D17 | BLT |
 | W-21 | RSU grants and vest schedule | D18 | NS |
 | W-22 | Income setup per person, HSA log, paycheck scenarios | D18 | NS |
 | W-23 | Planning calculators: tax plan, afford, projections, retirement, Roth, giving, protection, goals | D18 | NS |
-| W-24 | Loans and payoff | D17 | NS |
-| W-25 | Net-worth valuations and snapshots | D17 | NS |
+| W-24 | Loans and payoff | D17 | BLT |
+| W-25 | Net-worth valuations and snapshots | D17 | BLT |
 | W-26 | Documents: Year in review, If something happens guide, Tax package (print and export) | D19 | NS |
 | W-27 | Backup and restore (plain and encrypted), auto-backup | D19 | NS |
 | W-28 | Device sync set-up and conflicts | D19 | NS |

@@ -4,7 +4,26 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest): LEDGER SIGNATURE D16 FINAL MOBILE REFINEMENT AND FINANCIAL WORKFLOW VERIFICATION BUILT AND TESTED LOCALLY; STILL UNCOMMITTED WITH THE REST OF D16, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D17 NOT STARTED
+## STATUS 2026-11-13 (newest): LEDGER SIGNATURE D17 (FORECAST, REPORTS, NET WORTH, INVESTMENTS, DEBT, PAYOFF) BUILT, TESTED, VISUALLY APPROVED BY CHATGPT AND RELEASED IN THE D17 COMMIT (SHA and CI result in the release report); D18 NOT STARTED
+
+**Asked:** redesign the six analysis, investing and debt screens in the Ledger Signature look without changing any calculation, assumption, trade, lot, price or valuation.
+
+**Release gate:** D16 is committed and deployed as `3bd981b` (Actions run #103 and Pages deployment `7758245307` success).
+
+**Built:** report `docs/LEDGER-SIGNATURE-D17-REPORT.md`. Hero and figures bands, Actual/Projected/assumption tags, phone labeled rows, a phone list for the Flow diagram, a Net worth missing-month note, price-kind tags; shared `LinesChart` gained opt-in options. New: `analysis.css`, `analysisPresentation.ts`, `d17Analysis.test.tsx`. **Tests:** `tsc` and build clean; 13 new tests; 467 targeted tests pass; full suite not run locally (CI will run it). 331 amounts and 130 input values identical before and after; sweep 108 cells, 0 problems.
+
+**Judgment calls (please review):**
+1. Forecast chart draws the true negative balance (it used to draw $0 for those months).
+2. Red and green by direction were removed from Reports comparisons and Investments gain or loss; words and signs carry the meaning.
+3. Investments totals by type and loan interest now show full cents instead of K and M.
+4. Investments "Add account" is a collapsed section unless there are no accounts.
+5. On a phone the Flow diagram opens as a readable list with a List or Diagram switch.
+6. Phone pages are taller (Payoff +63%, Net worth +60%, Prices +73%); not reduced yet.
+7. Hide amounts was not extended to these pages (documented scope).
+
+**NOT built / not done:** any new calculation, metric, payoff method, market-data link or brokerage link; real-phone, screen-reader, forced-colors or color-vision checks; keyboard walks of Reports, Net worth and Debt; the `confirm()` dialogs (D20); D18 planning pages.
+
+## STATUS 2026-11-13 (previous): LEDGER SIGNATURE D16 FINAL MOBILE REFINEMENT AND FINANCIAL WORKFLOW VERIFICATION BUILT AND TESTED LOCALLY; STILL UNCOMMITTED WITH THE REST OF D16, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D17 NOT STARTED
 
 **Asked (after the ChatGPT visual review):** denser, more reachable phone transaction rows; fix the misleading "Next scheduled" label; browser-test the split, transfer, account-move, bulk-status, saved-filter and related workflows; a keyboard check.
 

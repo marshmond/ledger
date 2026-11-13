@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCents } from '../lib/money';
 
 /** $1.2M / $850K / $900 from cents. */
@@ -258,12 +258,28 @@ export interface LineSeries {
   dashed?: boolean;
 }
 
+/** Short month names for a month-by-month axis (`axis="month"`). */
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * A line chart. By default it is drawn on a fixed 720 by 320 canvas that scales with its box (every older caller keeps that look).
+ * D17 options, all opt-in so other pages are untouched:
+ *  - fit: draw at the box's real width, so labels keep a readable 12px size on a phone instead of shrinking with the canvas;
+ *  - allowNegative: draw values below zero under a zero line (otherwise the chart starts at zero, as before);
+ *  - precise: the hover or focus readout shows the exact amount (cents) instead of a rounded K/M figure;
+ *  - axis="month": label the months along the bottom (default labels only the January years).
+ * Nothing is added, averaged or smoothed: every plotted point is a value the caller passed.
+ */
 export function LinesChart({
   title,
   subtitle,
   series,
   xLabels,
   marker,
+  fit = false,
+  allowNegative = false,
+  precise = false,
+  axis = 'year',
 }: {
   title: string;
   subtitle?: string;
@@ -271,16 +287,41 @@ export function LinesChart({
   /** One label per x position (e.g. the payment date). The axis shows the year of January positions. */
   xLabels: string[];
   marker?: { index: number; label: string };
+  fit?: boolean;
+  allowNegative?: boolean;
+  precise?: boolean;
+  axis?: 'year' | 'month';
 }) {
   const n = Math.max(1, ...series.map((s) => s.values.length)) - 1;
   const [idx, setIdx] = useState<number | null>(null);
   const svg = useRef<SVGSVGElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const [fitW, setFitW] = useState(640);
+  useEffect(() => {
+    const el = box.current;
+    if (!fit || !el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setFitW(Math.max(260, Math.round(el.clientWidth - 2)));
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, [fit]);
+  const Wd = fit ? fitW : W;
+  const Hd = fit ? (fitW < 480 ? 250 : 300) : H;
+  const Md = fit ? { l: fitW < 480 ? 54 : 60, r: 14, t: 14, b: 32 } : M;
+  const fs = fit ? 12 : 11;
+  const fmt = (v: number) => (precise ? formatCents(Math.round(v)) : compactUSD(v));
   const val = (s: LineSeries, i: number) => s.values[i] ?? 0;
-  const max = Math.max(1, ...series.flatMap((s) => s.values));
-  const ticks = niceTicks(max / 100, 5).map((v) => v * 100);
-  const top = ticks[ticks.length - 1] || 1;
-  const x = (i: number) => M.l + (i / Math.max(n, 1)) * (W - M.l - M.r);
-  const y = (v: number) => M.t + (1 - v / top) * (H - M.t - M.b);
+  const every = series.flatMap((s) => s.values);
+  const max = Math.max(1, ...every);
+  const min = allowNegative ? Math.min(0, ...every) : 0;
+  const upTicks = niceTicks(max / 100, 5).map((v) => v * 100);
+  const downTicks = min < 0 ? niceTicks(-min / 100, 2).map((v) => -v * 100).filter((v) => v < 0) : [];
+  const ticks = [...upTicks, ...downTicks];
+  const top = upTicks[upTicks.length - 1] || 1;
+  const bottom = downTicks.length ? downTicks[downTicks.length - 1] : 0;
+  const x = (i: number) => Md.l + (i / Math.max(n, 1)) * (Wd - Md.l - Md.r);
+  const y = (v: number) => Md.t + ((top - v) / (top - bottom)) * (Hd - Md.t - Md.b);
   const path = (s: LineSeries) => {
     const pts: string[] = [];
     for (let i = 0; i <= Math.min(n, s.values.length); i++) pts.push(`${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(val(s, i)).toFixed(1)}`);
@@ -289,18 +330,29 @@ export function LinesChart({
   const yearTicks: number[] = [];
   const yearOf = (i: number) => xLabels[i]?.slice(0, 4);
   const stepYears = n > 240 ? 10 : n > 120 ? 5 : n > 48 ? 2 : 1;
-  for (let i = 0; i <= n; i++) {
-    const yr = Number(yearOf(i));
-    if (yr && (i === 0 || (xLabels[i].slice(5, 7) === '01' && yr % stepYears === 0))) yearTicks.push(i);
+  const monthText = (i: number) => {
+    const m = Number(xLabels[i]?.slice(5, 7));
+    if (!m) return '';
+    return i === 0 || m === 1 ? `${MONTH_ABBR[m - 1]} ’${xLabels[i].slice(2, 4)}` : MONTH_ABBR[m - 1];
+  };
+  const monthStep = Math.max(1, Math.ceil(58 / Math.max(1, (Wd - Md.l - Md.r) / Math.max(n, 1))));
+  if (axis === 'month') {
+    for (let i = 0; i <= n; i += monthStep) yearTicks.push(i);
+  } else {
+    for (let i = 0; i <= n; i++) {
+      const yr = Number(yearOf(i));
+      if (yr && (i === 0 || (xLabels[i].slice(5, 7) === '01' && yr % stepYears === 0))) yearTicks.push(i);
+    }
   }
   const locate = (clientX: number) => {
     const r = svg.current!.getBoundingClientRect();
-    const px = ((clientX - r.left) / r.width) * W;
-    setIdx(Math.min(n, Math.max(0, Math.round(((px - M.l) / (W - M.l - M.r)) * n))));
+    const px = ((clientX - r.left) / r.width) * Wd;
+    setIdx(Math.min(n, Math.max(0, Math.round(((px - Md.l) / (Wd - Md.l - Md.r)) * n))));
   };
+  const rowsShown = Array.from({ length: n + 1 }, (_, i) => i).filter((i) => (fit && axis === 'month' && n <= 60) || i % 12 === 0 || i === n);
 
   return (
-    <div className="viz">
+    <div className={fit ? 'viz viz-fit' : 'viz'} ref={box}>
       <h3>{title}</h3>
       {subtitle && <div className="sub">{subtitle}</div>}
       {series.length > 1 && (
@@ -314,9 +366,10 @@ export function LinesChart({
       )}
       <svg
         ref={svg}
-        viewBox={`0 0 ${W} ${H}`}
+        viewBox={`0 0 ${Wd} ${Hd}`}
+        style={fit ? { height: Hd } : undefined}
         role="img"
-        aria-label={`${title}. ${series.map((s) => `${s.label}: starts ${compactUSD(s.values[0] ?? 0)}`).join('; ')}.`}
+        aria-label={`${title}. ${series.map((s) => `${s.label}: starts ${fmt(s.values[0] ?? 0)}${precise ? `, ends ${fmt(s.values[s.values.length - 1] ?? 0)}` : ''}`).join('; ')}.`}
         tabIndex={0}
         onPointerMove={(e) => locate(e.clientX)}
         onPointerLeave={() => setIdx(null)}
@@ -329,18 +382,18 @@ export function LinesChart({
       >
         {ticks.map((v) => (
           <g key={v}>
-            <line x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} stroke="var(--grid)" strokeWidth={1} />
-            <text x={M.l - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fill="var(--ink-3)">{compactUSD(v)}</text>
+            <line x1={Md.l} x2={Wd - Md.r} y1={y(v)} y2={y(v)} stroke="var(--grid)" strokeWidth={1} />
+            <text x={Md.l - 8} y={y(v) + 4} textAnchor="end" fontSize={fs} fill="var(--ink-3)">{compactUSD(v)}</text>
           </g>
         ))}
-        <line x1={M.l} x2={W - M.r} y1={y(0)} y2={y(0)} stroke="var(--axis)" strokeWidth={1} />
+        <line x1={Md.l} x2={Wd - Md.r} y1={y(0)} y2={y(0)} stroke="var(--axis)" strokeWidth={1} />
         {yearTicks.map((i) => (
-          <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="var(--ink-3)">{yearOf(i)}</text>
+          <text key={i} x={x(i)} y={Hd - 8} textAnchor={axis === 'month' && i === 0 ? 'start' : 'middle'} fontSize={fs} fill="var(--ink-3)">{axis === 'month' ? monthText(i) : yearOf(i)}</text>
         ))}
         {marker && marker.index >= 0 && marker.index <= n && (
           <g>
-            <line x1={x(marker.index)} x2={x(marker.index)} y1={M.t} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} />
-            <text x={x(marker.index) + 4} y={M.t + 11} fontSize={11} fill="var(--ink-2)">{marker.label}</text>
+            <line x1={x(marker.index)} x2={x(marker.index)} y1={Md.t} y2={y(bottom)} stroke="var(--ink-3)" strokeWidth={1} />
+            <text x={x(marker.index) + 4} y={Md.t + 11} fontSize={fs} fill="var(--ink-2)">{marker.label}</text>
           </g>
         )}
         {series.map((s) => (
@@ -348,18 +401,18 @@ export function LinesChart({
         ))}
         {idx !== null && (
           <g>
-            <line x1={x(idx)} x2={x(idx)} y1={M.t} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} />
+            <line x1={x(idx)} x2={x(idx)} y1={Md.t} y2={y(bottom)} stroke="var(--ink-3)" strokeWidth={1} />
             {series.map((s) => <circle key={s.label} cx={x(idx)} cy={y(val(s, idx))} r={4} fill={s.color} stroke="var(--surface-1)" strokeWidth={2} />)}
           </g>
         )}
       </svg>
       {idx !== null && (
-        <div className="tip" style={{ left: `clamp(8px, calc(${(x(idx) / W) * 100}% - 70px), calc(100% - 210px))`, top: series.length > 1 ? 92 : 64 }}>
+        <div className="tip" style={{ left: `clamp(8px, calc(${(x(idx) / Wd) * 100}% - 70px), calc(100% - ${precise ? 230 : 210}px))`, top: series.length > 1 ? 92 : 64 }}>
           <div style={{ marginBottom: 4 }}><strong>{xLabels[idx] ?? ''}</strong></div>
           {series.map((s) => (
             <div className="row2" key={s.label}>
               <span className="k"><i style={{ borderColor: s.color }} />{s.label}</span>
-              <strong>{compactUSD(val(s, idx))}</strong>
+              <strong>{fmt(val(s, idx))}</strong>
             </div>
           ))}
         </div>
@@ -370,11 +423,9 @@ export function LinesChart({
           <table>
             <thead><tr><th>Date</th>{series.map((s) => <th className="num" key={s.label}>{s.label}</th>)}</tr></thead>
             <tbody>
-              {Array.from({ length: n + 1 }, (_, i) => i)
-                .filter((i) => i % 12 === 0 || i === n)
-                .map((i) => (
-                  <tr key={i}><td>{xLabels[i] ?? ''}</td>{series.map((s) => <td className="num" key={s.label}>{formatCents(Math.round(val(s, i)))}</td>)}</tr>
-                ))}
+              {rowsShown.map((i) => (
+                <tr key={i}><td>{xLabels[i] ?? ''}</td>{series.map((s) => <td className="num" key={s.label}>{formatCents(Math.round(val(s, i)))}</td>)}</tr>
+              ))}
             </tbody>
           </table>
         </div>

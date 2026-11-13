@@ -11,6 +11,7 @@ import { propertyTotal } from '../lib/property';
 import Collapsible from './Collapsible';
 import LoanCard, { KIND_NAMES } from './LoanCard';
 import { PageHeader } from '../ui/components';
+import './analysis.css';
 
 function defaultLoan(name: string, kind: LoanKind, scenario: boolean): Loan {
   const today = todayISO();
@@ -86,36 +87,41 @@ export default function DebtPage() {
   }
 
   return (
-    <>
-      <PageHeader title="Debt" description="Mortgage, HELOC, and other loans, with schedules and what-ifs." about={<>Track your mortgage and HELOC, see the full amortization schedule, and model extra payments and rate changes. Tie a loan to your ledger and
+    <div className="an-page">
+      <PageHeader eyebrow="Invest" title="Debt" description="Mortgage, HELOC, and other loans, with schedules and what-ifs." about={<>Track your mortgage and HELOC, see the full amortization schedule, and model extra payments and rate changes. Tie a loan to your ledger and
         its payments split into principal and interest automatically.</>} />
 
       {actual.length > 0 && (
-        <div className="viz">
-          <div className="muted">You owe on your loans</div>
-          <div className="hero">{formatCents(owedTotal)}</div>
-          <div className="tiles">
-            <div className="tile"><div className="muted">Due this month</div><div className="v">{formatCents(dueThisMonth)}</div></div>
-            <div className="tile"><div className="muted">Interest in {thisYear}</div><div className="v">{formatCents(interestThisYear)}</div></div>
-            <div className="tile"><div className="muted">Loans</div><div className="v">{actual.length}</div></div>
+        <section className="an-hero" aria-label="What you owe on your loans">
+          <div>
+            <div className="an-hero-label">You owe on your loans <span className="an-kind">From each loan’s schedule</span></div>
+            <div className="an-hero-amt">{formatCents(owedTotal)}</div>
+            <p className="an-hero-msg">The balance each loan’s schedule reaches today. Later months in the schedules are projections from the rates and payments you entered, not guarantees.</p>
           </div>
-        </div>
+          <dl className="an-hero-figs">
+            <div><dt>Due this month</dt><dd>{formatCents(dueThisMonth)}</dd></div>
+            <div><dt>Interest in {thisYear} <span className="an-kind an-kind--projected">Scheduled</span></dt><dd>{formatCents(interestThisYear)}</dd></div>
+            <div><dt>Loans</dt><dd>{actual.length}</dd></div>
+          </dl>
+        </section>
       )}
 
       <Collapsible id="debt.networth" title="Net worth">
-        <table>
+        <table className="an-table">
           <tbody>
             <tr><td>Cash (checking and savings)</td><td className="num">{formatCents(net.cash)}</td></tr>
             <tr><td>Investments</td><td className="num">{formatCents(net.investments)}</td></tr>
-            <tr><td>Credit cards</td><td className={`num ${net.cards < 0 ? 'neg' : ''}`}>{formatCents(net.cards)}</td></tr>
-            <tr><td>Loans</td><td className={`num ${net.loans < 0 ? 'neg' : ''}`}>{formatCents(net.loans)}</td></tr>
-            <tr><td><strong>Net worth</strong></td><td className={`num ${net.total < 0 ? 'neg' : 'pos'}`}><strong>{formatCents(net.total)}</strong></td></tr>
+            <tr><td>Credit cards</td><td className="num">{formatCents(net.cards)}</td></tr>
+            <tr><td>Loans</td><td className="num">{formatCents(net.loans)}</td></tr>
+            <tr><td><strong>Net worth</strong></td><td className="num"><strong>{formatCents(net.total)}</strong></td></tr>
           </tbody>
         </table>
-        <p className="muted">Counts what the app knows about: your accounts, investments, and loans. Property value and other assets are not included.</p>
+        <p className="an-note">Counts what the app knows about: your accounts, investments, and loans. Property value and other assets are not included. Amounts owed are negative because they lower net worth.</p>
       </Collapsible>
 
-      <h2>Loans</h2>
+      <div className="an-head" style={{ marginBottom: 0 }}>
+        <h2 className="an-h2">Loans <span className="an-small muted">{loans.length}</span></h2>
+      </div>
       {loans.length === 0 && <p className="muted">No loans yet. Add your mortgage or HELOC below.</p>}
       {views.map(({ loan }) => (
         <LoanCard
@@ -129,9 +135,9 @@ export default function DebtPage() {
         />
       ))}
 
-      <div className="card">
-        <strong>Add a loan</strong>
-        <div className="grid" style={{ marginTop: 6 }}>
+      <section className="an-card an-stack-col" aria-label="Add a loan">
+        <h2 className="an-h2" style={{ fontSize: 'var(--fs-base)' }}>Add a loan</h2>
+        <div className="an-form">
           <label className="f">Name<input value={name} onChange={(e) => setName(e.target.value)} placeholder={KIND_NAMES[kind]} /></label>
           <label className="f">Type
             <select value={kind} onChange={(e) => setKind(e.target.value as LoanKind)}>
@@ -139,15 +145,15 @@ export default function DebtPage() {
             </select>
           </label>
         </div>
-        <label className="chk" style={{ marginTop: 6 }}>
+        <label className="chk">
           <input type="checkbox" checked={scenario} onChange={(e) => setScenario(e.target.checked)} />
           New or what-if loan (compare a refinance or a loan you are considering; not counted in your debt)
         </label>
-        <div className="row" style={{ marginTop: 6 }}>
+        <div className="an-actions" style={{ marginTop: 0 }}>
           <button className="primary" onClick={add}>Add loan</button>
           <span className="muted">You will fill in its details next.</span>
         </div>
-      </div>
-    </>
+      </section>
+    </div>
   );
 }

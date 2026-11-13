@@ -5,6 +5,8 @@ import type { Holding, InvAccount, Sale, SaleMethod, Security, TaxLot } from '..
 import { formatCents, todayISO } from '../lib/money';
 import { addLot, deleteLot, isLongTerm, isTaxable, netForTax, previewSale, realizedFor, recordBuy, recordSale, undoSale, updateLot } from '../lib/lots';
 import { MoneyField } from './fields';
+import { signedWords } from './analysisPresentation';
+import './analysis.css';
 
 const METHOD_LABEL: Record<SaleMethod, string> = {
   fifo: 'First in, first out (oldest shares)',
@@ -34,14 +36,14 @@ export function LotsPanel({ holding, security, onClose }: { holding: Holding; se
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="card">
-      <div className="row spread">
+    <div className="an-card an-card--soft an-lots an-stack-col">
+      <div className="an-head" style={{ marginBottom: 0 }}>
         <strong>{security?.ticker}: tax lots</strong>
         <button className="link" onClick={onClose}>close</button>
       </div>
       <p className="muted">Each purchase is a lot. Edit a lot’s purchase date (it decides short- vs long-term), share count, or total cost. The holding’s totals follow the lots.</p>
-      <div className="scroll-x">
-        <table>
+      <div className="an-tablewrap">
+        <table className="an-table an-stack">
           <thead><tr><th>Bought</th><th className="num">Shares</th><th className="num">Total cost</th><th className="num">Per share</th><th className="num">Gain / loss</th><th>Term</th><th /></tr></thead>
           <tbody>
             {sorted.map((l) => {
@@ -49,23 +51,23 @@ export function LotsPanel({ holding, security, onClose }: { holding: Holding; se
               const gl = value === null ? null : value - l.costBasisCents;
               return (
                 <tr key={`${l.id}-${l.shares}-${l.costBasisCents}-${l.acquiredDate}`}>
-                  <td>
+                  <td className="an-lead">
                     <input type="date" value={l.acquiredDate ?? ''} aria-label="Purchase date" onChange={(e) => updateLot(db, l.id!, { acquiredDate: e.target.value || null })} />
                     {!l.acquiredDate && <div className="warn" style={{ fontSize: '0.75rem' }}>date unknown: counted as long-term</div>}
                     {l.source !== 'buy' && l.source !== 'manual' && <div className="muted" style={{ fontSize: '0.75rem' }}>{l.source === 'opening' ? 'opening balance' : l.source}</div>}
                   </td>
-                  <td className="num">
+                  <td className="num" data-label="Shares">
                     <input style={{ width: 90, textAlign: 'right' }} inputMode="decimal" defaultValue={shortShares(l.shares)} aria-label="Lot shares"
                       onBlur={(e) => { const n = Number(e.target.value); if (n > 0 && n !== l.shares) updateLot(db, l.id!, { shares: n, costBasisCents: l.costBasisCents }); else e.target.value = shortShares(l.shares); }} />
                   </td>
-                  <td className="num">
+                  <td className="num" data-label="Total cost">
                     <MoneyField cents={l.costBasisCents} width={100} onChange={(c) => updateLot(db, l.id!, { costBasisCents: c })} />
                     {l.costBasisCents === 0 && <div className="warn" style={{ fontSize: '0.75rem' }}>enter the cost</div>}
                   </td>
-                  <td className="num">{perShare(l.costBasisCents, l.shares)}</td>
-                  <td className={`num ${gl === null ? 'muted' : gl < 0 ? 'neg' : 'pos'}`}>{gl === null ? '—' : formatCents(gl)}</td>
-                  <td>{isLongTerm(l.acquiredDate, today) ? 'long' : 'short'}</td>
-                  <td><button className="link danger" onClick={() => confirm('Remove this lot? The holding shrinks by its shares. (To record a sale, use Sell instead.)') && deleteLot(db, l.id!)}>remove</button></td>
+                  <td className="num" data-label="Per share">{perShare(l.costBasisCents, l.shares)}</td>
+                  <td className="num" data-label="Gain / loss">{gl === null ? '—' : `${gl > 0 ? '+' : ''}${formatCents(gl)}`}</td>
+                  <td data-label="Term">{isLongTerm(l.acquiredDate, today) ? 'long' : 'short'}</td>
+                  <td className="an-cell-act"><button className="link danger" onClick={() => confirm('Remove this lot? The holding shrinks by its shares. (To record a sale, use Sell instead.)') && deleteLot(db, l.id!)}>remove</button></td>
                 </tr>
               );
             })}
@@ -88,7 +90,7 @@ function AddLot({ holding, onDone }: { holding: Holding; onDone: () => void }) {
     onDone();
   };
   return (
-    <div className="row" style={{ marginTop: 6 }}>
+    <div className="an-form an-form--wide" style={{ marginTop: 6 }}>
       <label className="f">Bought<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
       <label className="f">Shares<input style={{ width: 90 }} inputMode="decimal" value={shares} onChange={(e) => setShares(e.target.value)} /></label>
       <MoneyField label="Total cost" cents={cost} onChange={setCost} width={110} />
@@ -141,13 +143,13 @@ export function TradePanel({ mode, account, holding, security, onClose }: { mode
   const sellAll = () => setShares(shortShares(holding.shares));
 
   return (
-    <div className="card">
-      <div className="row spread">
+    <div className="an-card an-card--soft an-stack-col">
+      <div className="an-head" style={{ marginBottom: 0 }}>
         <strong>{mode === 'sell' ? 'Sell' : 'Buy'} {security?.ticker}</strong>
         <button className="link" onClick={onClose}>close</button>
       </div>
       {mode === 'sell' && !taxable && <p className="muted">This is a tax-sheltered account, so a sale just lowers the holding. No gain or tax is calculated.</p>}
-      <div className="row">
+      <div className="an-form">
         <label className="f">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
         <label className="f">Shares<input style={{ width: 100 }} inputMode="decimal" value={shares} onChange={(e) => setShares(e.target.value)} placeholder="0" /></label>
         {mode === 'sell' && <button className="link" onClick={sellAll}>all {shortShares(holding.shares)}</button>}
@@ -164,14 +166,14 @@ export function TradePanel({ mode, account, holding, security, onClose }: { mode
         </div>
       )}
       {mode === 'sell' && taxable && method === 'specific' && (
-        <div className="scroll-x">
-          <table>
+        <div className="an-tablewrap">
+          <table className="an-table an-stack">
             <thead><tr><th>Bought</th><th className="num">Shares in lot</th><th className="num">Cost per share</th><th className="num">Sell</th></tr></thead>
             <tbody>
               {[...lots].sort((a, b) => (a.acquiredDate ?? '').localeCompare(b.acquiredDate ?? '')).map((l: TaxLot) => (
                 <tr key={l.id}>
-                  <td>{l.acquiredDate ?? 'unknown'}</td><td className="num">{shortShares(l.shares)}</td><td className="num">{perShare(l.costBasisCents, l.shares)}</td>
-                  <td className="num"><input style={{ width: 90, textAlign: 'right' }} inputMode="decimal" value={pick[l.id!] ?? ''} onChange={(e) => setPick({ ...pick, [l.id!]: e.target.value })} placeholder="0" /></td>
+                  <td className="an-lead">{l.acquiredDate ?? 'unknown'}</td><td className="num" data-label="Shares in lot">{shortShares(l.shares)}</td><td className="num" data-label="Cost per share">{perShare(l.costBasisCents, l.shares)}</td>
+                  <td className="num" data-label="Sell"><input aria-label="Shares to sell from this lot" style={{ width: 90, textAlign: 'right' }} inputMode="decimal" value={pick[l.id!] ?? ''} onChange={(e) => setPick({ ...pick, [l.id!]: e.target.value })} placeholder="0" /></td>
                 </tr>
               ))}
             </tbody>
@@ -185,12 +187,12 @@ export function TradePanel({ mode, account, holding, security, onClose }: { mode
         {mode === 'buy' && <label className="chk"><input type="checkbox" checked={reinvest} onChange={(e) => setReinvest(e.target.checked)} /> This is a reinvested dividend or distribution</label>}
       </div>
       {preview && (
-        <div className="card">
-          <strong>If you sell</strong>
-          <table><tbody>
+        <div className="an-result">
+          <strong>If you sell <span className="an-kind an-kind--projected">Preview, not yet logged</span></strong>
+          <table className="an-table"><tbody>
             <tr><td>Proceeds (after fees)</td><td className="num">{formatCents(preview.proceedsCents)}</td></tr>
             <tr><td>Cost basis of the shares sold</td><td className="num">{formatCents(preview.basisCents)}</td></tr>
-            <tr><td><strong>{preview.gainCents >= 0 ? 'Gain' : 'Loss'}</strong></td><td className={`num ${preview.gainCents < 0 ? 'neg' : 'pos'}`}><strong>{formatCents(preview.gainCents)}</strong></td></tr>
+            <tr><td><strong>{preview.gainCents >= 0 ? 'Gain' : 'Loss'}</strong></td><td className="num"><strong>{formatCents(preview.gainCents)}</strong></td></tr>
             <tr><td className="muted">Short-term (held a year or less)</td><td className="num">{formatCents(preview.shortTermCents)}</td></tr>
             <tr><td className="muted">Long-term</td><td className="num">{formatCents(preview.longTermCents)}</td></tr>
           </tbody></table>
@@ -218,45 +220,45 @@ export function RealizedSection({ accounts, securities }: { accounts: InvAccount
   const list = sales.filter((s) => s.date.startsWith(`${year}-`)).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0));
   const acct = (id: number) => accounts.find((a) => a.id === id)?.name ?? '?';
   const tick = (id: number) => securities.find((s) => s.id === id)?.ticker ?? '?';
-  const cls = (v: number) => (v < 0 ? 'neg' : 'pos');
 
   return (
     <>
-      <div className="row spread">
-        <h2>Realized gains</h2>
-        <label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
+      <div className="an-tools">
+        <h2 className="an-h2">Realized gains <span className="an-kind">Recorded sales</span></h2>
+        <label className="an-ctl-inline an-tools-end">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
       </div>
-      <p className="muted">Sales in taxable accounts only. Sales in IRAs, 401(k)s, Roths, HSAs, and 529s are logged but never taxed. These gains feed the tax estimate on the Income tab and the Roth planner.</p>
-      <div className="tiles">
-        <div className="tile"><div className="muted">Short-term</div><div className={`v ${cls(r.shortTermCents)}`}>{formatCents(r.shortTermCents)}</div></div>
-        <div className="tile"><div className="muted">Long-term</div><div className={`v ${cls(r.longTermCents)}`}>{formatCents(r.longTermCents)}</div></div>
-        <div className="tile"><div className="muted">Net realized, {year}</div><div className={`v ${cls(r.netCents)}`}>{formatCents(r.netCents)}</div></div>
-        <div className="tile"><div className="muted">Sales</div><div className="v">{r.count}</div></div>
-      </div>
-      {tax.lossDeductionCents > 0 && <p className="muted">A net loss lowers income by up to $3,000 a year ({formatCents(tax.lossDeductionCents)} here); any more carries to later years, which is not tracked.</p>}
-      {list.length === 0 ? <p className="muted">No sales logged for {year}.</p> : (
-        <div className="scroll-x">
-          <table>
-            <thead><tr><th>Date</th><th>Account</th><th>Security</th><th className="num">Shares</th><th className="num">Proceeds</th><th className="num">Cost</th><th className="num">Gain / loss</th><th /></tr></thead>
-            <tbody>
-              {list.map((s: Sale) => (
-                <tr key={s.id}>
-                  <td>{s.date}</td><td>{acct(s.accountId)}</td><td>{tick(s.securityId)}</td>
-                  <td className="num">{shortShares(s.shares)}</td><td className="num">{formatCents(s.proceedsCents)}</td>
-                  <td className="num">{s.taxable ? formatCents(s.basisCents) : '—'}</td>
-                  <td className={`num ${s.taxable ? cls(s.gainCents) : 'muted'}`}>
-                    {s.taxable ? formatCents(s.gainCents) : 'not taxed'}
-                    {s.taxable && <div className="muted" style={{ fontSize: '0.75rem' }}>{formatCents(s.shortTermCents)} short · {formatCents(s.longTermCents)} long</div>}
-                  </td>
-                  <td><button className="link danger" onClick={() => confirm('Undo this sale? The shares go back into their lots.') && undoSale(db, s.id!)}>undo</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p className="muted">Wash sales (rebuying within 30 days of a loss) are not tracked. Check your broker’s 1099-B for the official figures.</p>
+      <p className="an-note" style={{ margin: 0 }}>Sales in taxable accounts only. Sales in IRAs, 401(k)s, Roths, HSAs, and 529s are logged but never taxed. These gains feed the tax estimate on the Income tab and the Roth planner.</p>
+      <dl className="an-figs" aria-label={`Realized gains and losses, ${year}`}>
+        <div className="an-fig"><dt>Short-term</dt><dd>{formatCents(r.shortTermCents)}</dd></div>
+        <div className="an-fig"><dt>Long-term</dt><dd>{formatCents(r.longTermCents)}</dd></div>
+        <div className="an-fig"><dt>Net realized, {year}</dt><dd>{formatCents(r.netCents)}</dd></div>
+        <div className="an-fig"><dt>Sales</dt><dd>{r.count}</dd></div>
+      </dl>
+      {tax.lossDeductionCents > 0 && <p className="an-note" style={{ margin: 0 }}>A net loss lowers income by up to $3,000 a year ({formatCents(tax.lossDeductionCents)} here); any more carries to later years, which is not tracked.</p>}
+      <section className="an-card" aria-label={`Sales logged in ${year}`}>
+        {list.length === 0 ? <p className="muted" style={{ margin: 0 }}>No sales logged for {year}.</p> : (
+          <div className="an-tablewrap">
+            <table className="an-table an-stack">
+              <thead><tr><th>Date</th><th>Account</th><th>Security</th><th className="num">Shares</th><th className="num">Proceeds</th><th className="num">Cost</th><th className="num">Gain / loss</th><th /></tr></thead>
+              <tbody>
+                {list.map((s: Sale) => (
+                  <tr key={s.id}>
+                    <td className="an-lead"><strong>{s.date}</strong></td><td data-label="Account" className="an-wrap">{acct(s.accountId)}</td><td data-label="Security"><span className="an-hold-name">{tick(s.securityId)}</span></td>
+                    <td className="num" data-label="Shares">{shortShares(s.shares)}</td><td className="num" data-label="Proceeds">{formatCents(s.proceedsCents)}</td>
+                    <td className="num" data-label="Cost">{s.taxable ? formatCents(s.basisCents) : '—'}</td>
+                    <td className="num" data-label="Gain / loss">
+                      {s.taxable ? signedWords(s.gainCents) : <span className="an-kind">Not taxed</span>}
+                      {s.taxable && <span className="an-sub">{formatCents(s.shortTermCents)} short · {formatCents(s.longTermCents)} long</span>}
+                    </td>
+                    <td className="an-cell-act"><button className="link danger" aria-label={`Undo the ${tick(s.securityId)} sale of ${s.date}`} onClick={() => confirm('Undo this sale? The shares go back into their lots.') && undoSale(db, s.id!)}>undo</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+      <p className="an-note" style={{ margin: 0 }}>Wash sales (rebuying within 30 days of a loss) are not tracked. Check your broker’s 1099-B for the official figures.</p>
     </>
   );
 }
-

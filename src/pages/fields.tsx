@@ -85,12 +85,15 @@ export function MoneyField({
 
 export function NumField({
   label,
+  ariaLabel,
   value,
   onChange,
   step,
   width,
 }: {
   label?: string;
+  /** The spoken name of a field that has no visible label (a cell in a table). */
+  ariaLabel?: string;
   value: number;
   onChange: (n: number) => void;
   step?: number;
@@ -100,6 +103,7 @@ export function NumField({
     <input
       style={{ width }}
       type="number"
+      aria-label={label ? undefined : ariaLabel}
       step={step ?? 'any'}
       value={Number.isFinite(value) ? value : ''}
       onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}

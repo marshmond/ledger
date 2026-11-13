@@ -10,6 +10,8 @@ import { loadIncomeModel } from '../lib/income';
 import Collapsible from './Collapsible';
 import FlowViews from './FlowViews';
 import { accountsFromOff, parseLast, type FlowViewState } from '../lib/flowViews';
+import { useMediaQuery } from '../ui/useMediaQuery';
+import './analysis.css';
 
 const usd0 = (c: number) => `${c < 0 ? '-' : ''}$${Math.round(Math.abs(c) / 100).toLocaleString('en-US')}`;
 const PRESETS = Object.keys(RANGE_LABELS) as RangePreset[];
@@ -51,6 +53,10 @@ export default function FlowPanel() {
   const [activeId, setActiveId] = useState<string | null>(last?.activeId ?? null);
   const [includeSetup, setIncludeSetup] = useState(!!last?.includeSetup);
   const [sel, setSel] = useState<{ kind: 'node' | 'link'; id: string } | null>(null);
+  // On a phone the diagram is wider than the screen, so the same flows are offered as a readable list first (the diagram is one tap away).
+  const narrow = useMediaQuery('(max-width: 640px)');
+  const [phoneView, setPhoneView] = useState<'list' | 'diagram'>('list');
+  const showList = narrow && phoneView === 'list';
 
   useEffect(() => {
     try {
@@ -122,14 +128,14 @@ export default function FlowPanel() {
   const inLabel = graph.mode === 'gross' ? 'Take-home pay' : 'Income';
 
   return (
-    <>
-      <p className="muted">
+    <div className="an-page">
+      <p className="an-note" style={{ margin: 0 }}>
         How money moved through the period. Bands are as wide as the dollars. Credit card payments and moves to savings or investments are left out (card spending is already counted); loan, mortgage, and HELOC payments are included.
       </p>
 
-      <div className="card">
+      <div className="an-card an-stack-col">
         <FlowViews current={current} activeId={activeId} setActiveId={setActiveId} apply={applyView} />
-        <div className="row" style={{ marginTop: 10 }}>
+        <div className="row">
           <div className="seg" role="group" aria-label="Income shown">
             <button className={view === 'net' ? 'on' : ''} onClick={() => setView('net')}>Net (deposits)</button>
             <button className={view === 'gross' ? 'on' : ''} onClick={() => setView('gross')}>Gross (paycheck)</button>
@@ -148,14 +154,14 @@ export default function FlowPanel() {
             <button className={detail === 'categories' ? 'on' : ''} onClick={() => setDetail('categories')}>All categories</button>
           </div>
         </div>
-        <div className="muted" style={{ marginTop: 6 }}>{rangeText(range)}.{view === 'gross' && ' Pay comes from your Income setup, not from deposits; spending comes from your accounts.'}</div>
+        <div className="an-note" style={{ margin: 0 }}>{rangeText(range)}.{view === 'gross' && ' Pay comes from your Income setup, not from deposits; spending comes from your accounts.'}</div>
       </div>
 
-      <div className="tiles">
-        <div className="tile"><div className="muted">{inLabel}</div><div className="v">{usd0(graph.income)}</div></div>
-        <div className="tile"><div className="muted">Spending</div><div className="v">{usd0(graph.spending)}</div></div>
-        <div className="tile"><div className="muted">{graph.left < 0 ? 'Drawn from savings' : graph.filtered ? 'Left over' : 'Saved'}</div><div className={`v ${graph.left < 0 ? 'neg' : ''}`}>{usd0(Math.abs(graph.left))}</div>{graph.income > 0 && graph.left > 0 && <div className="muted" style={{ fontSize: '0.8rem' }}>{Math.round((graph.left / graph.income) * 100)}% of {inLabel.toLowerCase()}</div>}</div>
-      </div>
+      <dl className="an-figs" aria-label="Totals for the period">
+        <div className="an-fig"><dt>{inLabel}</dt><dd>{usd0(graph.income)}</dd></div>
+        <div className="an-fig"><dt>Spending</dt><dd>{usd0(graph.spending)}</dd></div>
+        <div className="an-fig"><dt>{graph.left < 0 ? 'Drawn from savings' : graph.filtered ? 'Left over' : 'Saved'}</dt><dd>{usd0(Math.abs(graph.left))}{graph.income > 0 && graph.left > 0 && <span className="an-sub">{Math.round((graph.left / graph.income) * 100)}% of {inLabel.toLowerCase()}</span>}</dd></div>
+      </dl>
       {filtering && (
         <div className="row" role="status">
           <span className="warn">Some accounts or categories are switched off, so “left over” is not your true savings.</span>
@@ -163,14 +169,34 @@ export default function FlowPanel() {
         </div>
       )}
 
-      <div className="card viz" ref={box}>
+      <div className="an-card viz an-flowbox" ref={box}>
         {noPay ? (
           <p className="muted">No pay is set up for this period. Add your salary on the <Link to="/income">Income</Link> page to see the gross view.</p>
         ) : graph.empty ? (
           <p className="muted">Nothing to show for this period{filtering ? ' with these switches' : ''}. Try a longer period.</p>
         ) : (
           <>
-            <div className="scroll-x">
+            {narrow && (
+              <div className="an-head">
+                <div className="seg" role="group" aria-label="How to show the flows">
+                  <button className={phoneView === 'list' ? 'on' : ''} aria-pressed={phoneView === 'list'} onClick={() => setPhoneView('list')}>List</button>
+                  <button className={phoneView === 'diagram' ? 'on' : ''} aria-pressed={phoneView === 'diagram'} onClick={() => setPhoneView('diagram')}>Diagram</button>
+                </div>
+              </div>
+            )}
+            {showList && (
+              <ul className="an-flowlist" aria-label="Every flow in the period">
+                {rows.map((r, i) => (
+                  <li className="an-flowrow" key={i}>
+                    <span className="an-flowrow-name">{r.from} → {r.to}</span>
+                    <span className="an-flowrow-amt">{formatCents(r.cents)}</span>
+                    <span className="an-flowrow-bar" aria-hidden="true"><span style={{ width: `${Math.min(100, Math.max(0, Math.round(r.share * 100)))}%` }} /></span>
+                    <span className="an-flowrow-share">{Math.round(r.share * 100)}% of {inLabel.toLowerCase()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="scroll-x" hidden={showList}>
               <svg width={lay.width} height={lay.height} style={{ width: lay.width, height: lay.height, maxWidth: 'none' }} viewBox={`0 0 ${lay.width} ${lay.height}`} role="img" aria-label={`Flow of money, ${rangeText(range)}. Income ${usd0(graph.income)}, spending ${usd0(graph.spending)}. The table below lists every flow.`}>
                 {lay.links.map((l, i) => (
                   <path key={i} d={l.path} fill="none" stroke={l.color} strokeWidth={Math.max(1, l.width)} strokeOpacity={sel?.kind === 'link' && sel.id === String(i) ? 0.7 : 0.35} style={{ cursor: 'pointer' }}
@@ -188,8 +214,8 @@ export default function FlowPanel() {
                 ))}
               </svg>
             </div>
-            {lay.width > boxW + 4 && <div className="muted" style={{ fontSize: '0.85rem' }}>Swipe sideways to see the whole diagram.</div>}
-            <div className="muted" aria-live="polite">{readout}</div>
+            {!showList && lay.width > boxW + 4 && <div className="an-note">Swipe sideways to see the whole diagram.</div>}
+            {!showList && <div className="an-readout" aria-live="polite">{readout}</div>}
           </>
         )}
       </div>
@@ -222,17 +248,17 @@ export default function FlowPanel() {
         ))}
       </Collapsible>
 
-      {!graph.empty && !noPay && (
-        <details className="card">
+      {!graph.empty && !noPay && !showList && (
+        <details className="an-card">
           <summary>Show as table</summary>
-          <div className="scroll-x">
-            <table>
+          <div className="an-tablewrap">
+            <table className="an-table">
               <thead><tr><th>From</th><th>To</th><th className="num">Amount</th><th className="num">% of {inLabel.toLowerCase()}</th></tr></thead>
               <tbody>{rows.map((r, i) => <tr key={i}><td>{r.from}</td><td>{r.to}</td><td className="num">{formatCents(r.cents)}</td><td className="num">{Math.round(r.share * 100)}%</td></tr>)}</tbody>
             </table>
           </div>
         </details>
       )}
-    </>
+    </div>
   );
 }

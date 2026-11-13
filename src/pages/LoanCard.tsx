@@ -8,7 +8,8 @@ import { addMonths } from '../lib/dates';
 import { balanceAt, loanView, monthlyTotal, nextRow, scheduleToCsv, yearlySummary, type Schedule } from '../lib/loanSchedule';
 import { createLoanLedgerAccount, ledgerOwed, recordLoanPayment } from '../lib/loanLedger';
 import Collapsible, { useCollapsed } from './Collapsible';
-import { LinesChart, compactUSD, type LineSeries } from './charts';
+import { LinesChart, type LineSeries } from './charts';
+import './analysis.css';
 import { MoneyField, NumField } from './fields';
 
 export const KIND_NAMES: Record<LoanKind, string> = {
@@ -175,17 +176,30 @@ export default function LoanCard({
     });
   }
 
+  const rateNow = (next?.ratePct ?? loan.annualRatePct).toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
   return (
-    <div className="card">
-      <div className="row spread">
-        <button className="collapse-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{loan.name}</strong>
-          <span className="badge">{KIND_NAMES[loan.kind]}</span>
-          {loan.scenario && <span className="badge scheduled">what-if</span>}
-          {dirty && <span className="badge pending">unsaved</span>}
-        </button>
-        <div className="row">
-          <strong>{formatCents(balanceNow)}</strong>
+    <div className="an-card an-acct">
+      <div className="an-acct-head">
+        <div className="an-acct-id">
+          <button className="collapse-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+            <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{loan.name}</strong>
+            <span className="badge">{KIND_NAMES[loan.kind]}</span>
+            {loan.scenario && <span className="badge scheduled">what-if</span>}
+            {dirty && <span className="badge pending">unsaved</span>}
+          </button>
+          <div className="an-acct-meta">
+            <span>Rate now {rateNow}%</span>
+            {next && <span>Next payment {formatCents(next.payment)} on {next.date}</span>}
+            {s.payoffDate && <span>Paid off {monthYear(s.payoffDate)}</span>}
+            {loan.scenario && <span className="an-kind an-kind--assumption">What-if: not counted in your debt</span>}
+            {loan.ledgerAccountId ? <span className="an-kind an-kind--manual">Linked to a ledger account</span> : null}
+          </div>
+        </div>
+        <div className="an-acct-val">
+          <span className="an-stack-col" style={{ gap: 0, textAlign: 'right' }}>
+            <span className="an-small muted" style={{ fontWeight: 500, letterSpacing: 0 }}>{loan.scenario ? 'Balance (what-if)' : 'Owed now'}</span>
+            <strong>{formatCents(balanceNow)}</strong>
+          </span>
           <button
             className="link danger"
             onClick={async () => {
@@ -200,42 +214,42 @@ export default function LoanCard({
         </div>
       </div>
 
-      <div hidden={!open}>
+      <div hidden={!open} className="an-acct-body">
         {s.warnings.map((w) => <p key={w} className="warn">{w}</p>)}
 
         {s.rows.length > 0 && (
-          <div className="viz" style={{ marginTop: 8 }}>
-            <div className="tiles">
-              <div className="tile">
-                <div className="muted">{isHeloc && next?.phase === 'draw' ? 'Interest-only payment' : 'Payment now'}</div>
-                <div className="v">{formatCents(next?.payment ?? 0)}</div>
-                {(loan.escrowMonthlyCents || loan.pmiMonthlyCents) ? <div className="muted">{formatCents(monthlyTotal(loan, next?.payment ?? 0))} with escrow/PMI</div> : null}
+          <div className="an-stack-col">
+            <dl className="an-figs" aria-label={`${loan.name}: payment, rate and payoff`}>
+              <div className="an-fig">
+                <dt>{isHeloc && next?.phase === 'draw' ? 'Interest-only payment' : 'Payment now'}</dt>
+                <dd>{formatCents(next?.payment ?? 0)}
+                  {(loan.escrowMonthlyCents || loan.pmiMonthlyCents) ? <span className="an-sub">{formatCents(monthlyTotal(loan, next?.payment ?? 0))} with escrow/PMI</span> : null}
+                </dd>
               </div>
-              <div className="tile"><div className="muted">Rate now</div><div className="v">{(next?.ratePct ?? loan.annualRatePct).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}%</div></div>
-              <div className="tile"><div className="muted">Paid off</div><div className="v">{monthYear(s.payoffDate)}</div></div>
-              <div className="tile"><div className="muted">Interest, rest of loan</div><div className="v">{compactUSD(s.totalInterest)}</div></div>
+              <div className="an-fig"><dt>Rate now</dt><dd>{rateNow}%</dd></div>
+              <div className="an-fig"><dt>Paid off <span className="an-kind an-kind--projected">Projected</span></dt><dd>{monthYear(s.payoffDate)}</dd></div>
+              <div className="an-fig"><dt>Interest, rest of loan <span className="an-kind an-kind--projected">Projected</span></dt><dd>{formatCents(s.totalInterest)}</dd></div>
               {s.totalExtra > 0 && (
-                <div className="tile"><div className="muted">Saved by extra payments</div><div className="v pos">{compactUSD(view.interestSaved)}</div><div className="muted">{view.monthsSaved} month(s) sooner</div></div>
+                <div className="an-fig"><dt>Saved by extra payments</dt><dd>{formatCents(view.interestSaved)}<span className="an-sub">{view.monthsSaved} month(s) sooner</span></dd></div>
               )}
               {isHeloc && s.conversion && (
-                <div className="tile">
-                  <div className="muted">Payback starts {monthYear(s.conversion.date)}</div>
-                  <div className="v">{formatCents(s.conversion.payment)}</div>
-                  <div className="muted">on {formatCents(s.conversion.balance)}</div>
+                <div className="an-fig">
+                  <dt>Payback starts {monthYear(s.conversion.date)}</dt>
+                  <dd>{formatCents(s.conversion.payment)}<span className="an-sub">on {formatCents(s.conversion.balance)}</span></dd>
                 </div>
               )}
-            </div>
+            </dl>
             {isHeloc && s.conversion && (
-              <p className="muted">
+              <p className="an-note" style={{ margin: 0 }}>
                 Payments step from interest-only to principal-and-interest when the draw period ends: roughly{' '}
                 <strong>{formatCents(Math.max(0, s.conversion.payment - (s.rows[lastDrawIdx - 1]?.payment ?? 0)))}</strong> more per month than the last interest-only payment.
               </p>
             )}
             {view.shocked && (
-              <p>
+              <p style={{ margin: 0 }}>
                 <strong>What if rates are {loan.shockPct! > 0 ? 'up' : 'down'} {Math.abs(loan.shockPct!)}% from {loan.shockFrom || 'the first payment'}?</strong>{' '}
                 Highest payment {formatCents(view.shocked.peakPayment)} ({view.shocked.peakPayment >= s.peakPayment ? '+' : '−'}{formatCents(Math.abs(view.shocked.peakPayment - s.peakPayment))}),
-                total interest {compactUSD(view.shocked.totalInterest)} ({view.shocked.totalInterest >= s.totalInterest ? '+' : '−'}{compactUSD(Math.abs(view.shocked.totalInterest - s.totalInterest))}),
+                total interest {formatCents(view.shocked.totalInterest)} ({view.shocked.totalInterest >= s.totalInterest ? '+' : '−'}{formatCents(Math.abs(view.shocked.totalInterest - s.totalInterest))}),
                 paid off {monthYear(view.shocked.payoffDate)}.
               </p>
             )}
@@ -247,6 +261,8 @@ export default function LoanCard({
             title="Balance over time"
             subtitle="What you owe after each payment"
             series={series}
+            fit
+            precise
             xLabels={longestLabels}
             marker={isHeloc && lastDrawIdx > 0 ? { index: lastDrawIdx + 1, label: 'Payback starts' } : undefined}
           />

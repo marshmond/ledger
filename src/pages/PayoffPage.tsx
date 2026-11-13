@@ -10,6 +10,7 @@ import { LinesChart } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
 import { PageHeader } from '../ui/components';
+import './analysis.css';
 
 interface PayoffSettings {
   cardTerms: Record<string, { aprPct: number; minPaymentCents: number }>;
@@ -97,28 +98,32 @@ export default function PayoffPage() {
   const xv = tool ? extraVsInvest({ balanceCents: tool.balanceCents, aprPct: tool.aprPct, remainingMonths: remaining, extraMonthlyCents: extraMo, returnPct: s.returnPct, taxDragPct: s.taxDragPct }) : null;
 
   return (
-    <>
-      <PageHeader title="Debt payoff planner" description="Compare ways to pay down debt, refinance, or invest instead." about={<>Compare ways of paying down your debts, see whether a refinance would pay for itself, and weigh extra payments on a loan against investing the money. Mortgage and HELOC
+    <div className="an-page">
+      <PageHeader eyebrow="Invest" title="Debt payoff planner" description="Compare ways to pay down debt, refinance, or invest instead." about={<>Compare ways of paying down your debts, see whether a refinance would pay for itself, and weigh extra payments on a loan against investing the money. Mortgage and HELOC
         schedules are on the <Link to="/debt">Debt</Link> page.</>} />
 
       <Collapsible id="payoff.debts" title="Your debts">
+        <p className="an-note" style={{ marginTop: 0 }}>
+          <span className="an-kind">Current</span> balances come from your accounts and loans. <span className="an-kind an-kind--assumption">Your inputs</span> are the rates and minimums you type for cards and for debts you add by hand.
+        </p>
         {all.length === 0 && <p className="muted">No debts found. Credit cards with a balance, loans on the Debt page, and anything you add below appear here.</p>}
         {all.length > 0 && (
-          <div className="scroll-x">
-            <table>
+          <div className="an-tablewrap" style={{ marginTop: 'var(--sp-3)' }}>
+            <table className="an-table an-stack">
               <thead><tr><th>Include</th><th>Debt</th><th className="num">Balance</th><th className="num">Rate %</th><th className="num">Minimum / month</th><th /></tr></thead>
               <tbody>
                 {all.map((d) => {
                   const cardId = d.id.startsWith('card-') ? d.id.slice(5) : null;
                   const t = cardId ? s.cardTerms[cardId] : undefined;
+                  const noRate = d.editable && !t?.aprPct;
                   return (
                     <tr key={d.id}>
-                      <td><input type="checkbox" aria-label={`Include ${d.name}`} checked={isIn(d)} onChange={() => toggle(d)} /></td>
-                      <td>{d.name}<div className="muted" style={{ fontSize: '0.75rem' }}>{d.source}{d.source === 'Mortgage' && ' (left out by default)'}</div></td>
-                      <td className="num">{formatCents(d.balanceCents)}</td>
-                      <td className="num">{d.editable ? <NumField value={capApr(t?.aprPct ?? 0)} step={0.1} width={70} onChange={(n) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: capApr(n), minPaymentCents: t?.minPaymentCents ?? d.minPaymentCents } } })} /> : d.aprPct.toFixed(2)}</td>
-                      <td className="num">{d.editable ? <MoneyField key={`${cardId}-${t?.minPaymentCents}`} cents={t?.minPaymentCents ?? d.minPaymentCents} width={90} onChange={(c) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: t?.aprPct ?? 0, minPaymentCents: c } } })} /> : formatCents(d.minPaymentCents)}</td>
-                      <td>{d.source === 'Entered by hand' && <button className="link danger" onClick={() => setS({ manual: s.manual.filter((x) => x.id !== d.id) })}>remove</button>}</td>
+                      <td data-label="Include" className="an-lead"><input type="checkbox" aria-label={`Include ${d.name}`} checked={isIn(d)} onChange={() => toggle(d)} /></td>
+                      <td className="an-full"><span className="an-title">{d.name}</span><span className="an-sub">{d.source}{d.source === 'Mortgage' && ' (left out by default)'}</span></td>
+                      <td className="num" data-label="Balance">{formatCents(d.balanceCents)}</td>
+                      <td className="num" data-label="Rate %">{d.editable ? <NumField ariaLabel={`Rate % for ${d.name}`} value={capApr(t?.aprPct ?? 0)} step={0.1} width={70} onChange={(n) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: capApr(n), minPaymentCents: t?.minPaymentCents ?? d.minPaymentCents } } })} /> : d.aprPct.toFixed(2)}{noRate && <span className="an-kind an-kind--unknown" style={{ marginTop: 4 }}>Rate not entered</span>}</td>
+                      <td className="num" data-label="Minimum / month">{d.editable ? <MoneyField key={`${cardId}-${t?.minPaymentCents}`} cents={t?.minPaymentCents ?? d.minPaymentCents} width={90} onChange={(c) => setS({ cardTerms: { ...s.cardTerms, [cardId!]: { aprPct: t?.aprPct ?? 0, minPaymentCents: c } } })} /> : formatCents(d.minPaymentCents)}</td>
+                      <td className="an-cell-act">{d.source === 'Entered by hand' && <button className="link danger" aria-label={`Remove ${d.name}`} onClick={() => setS({ manual: s.manual.filter((x) => x.id !== d.id) })}>remove</button>}</td>
                     </tr>
                   );
                 })}
@@ -127,109 +132,122 @@ export default function PayoffPage() {
           </div>
         )}
         {all.some((d) => d.editable && !(s.cardTerms[d.id.slice(5)]?.aprPct)) && <p className="warn">Enter each card’s interest rate (APR) from your statement. A rate of 0 makes the card look free.</p>}
-        <details>
+        <details style={{ marginTop: 'var(--sp-3)' }}>
           <summary>Add a debt by hand (student loan, car loan, medical bill…)</summary>
-          <div className="row" style={{ marginTop: 6 }}>
+          <div className="an-form an-form--wide" style={{ marginTop: 'var(--sp-3)' }}>
             <label className="f">Name<input value={mName} onChange={(e) => setMName(e.target.value)} /></label>
             <MoneyField key={`b${s.manual.length}`} label="Balance" cents={mBal} onChange={setMBal} width={110} />
             <NumField label="Rate %" value={mApr} step={0.1} width={80} onChange={setMApr} />
             <MoneyField key={`m${s.manual.length}`} label="Minimum / month" cents={mMin} onChange={setMMin} width={110} />
-            <button disabled={!mName.trim() || mBal <= 0 || mMin <= 0} onClick={() => { setS({ manual: [...s.manual, { id: `manual-${Date.now()}`, name: mName.trim(), balanceCents: mBal, aprPct: mApr, minPaymentCents: mMin }] }); setMName(''); setMBal(0); setMMin(0); setMApr(0); }}>Add</button>
           </div>
+          <div className="an-actions"><button disabled={!mName.trim() || mBal <= 0 || mMin <= 0} onClick={() => { setS({ manual: [...s.manual, { id: `manual-${Date.now()}`, name: mName.trim(), balanceCents: mBal, aprPct: mApr, minPaymentCents: mMin }] }); setMName(''); setMBal(0); setMMin(0); setMApr(0); }}>Add</button></div>
         </details>
       </Collapsible>
 
       <Collapsible id="payoff.compare" title="Pay them off">
-        <div className="row">
+        <div className="an-tools">
           <MoneyField key={`x${s.extraCents}`} label="Extra to put toward debt each month" cents={s.extraCents} onChange={(c) => setS({ extraCents: c })} width={130} />
-          <span className="muted">On top of all the minimums. Minimums freed up by a finished debt roll into the next one.</span>
+          <span className="an-kind an-kind--assumption">Your input</span>
+          <span className="an-note" style={{ margin: 0, flex: '1 1 260px' }}>On top of all the minimums. Minimums freed up by a finished debt roll into the next one.</span>
         </div>
         {used.length === 0 ? <p className="muted">Include at least one debt above.</p> : (
-          <>
+          <div className="an-stack-col" style={{ marginTop: 'var(--sp-4)' }}>
             {picked.notCovering.length > 0 && <p className="warn">The minimum payment on {picked.notCovering.join(', ')} does not cover its interest, so it only shrinks once extra money reaches it.</p>}
-            <div className="scroll-x">
-              <table>
-                <thead><tr><th>Plan</th><th className="num">Debt-free in</th><th className="num">Interest paid</th><th className="num">Interest saved</th></tr></thead>
-                <tbody>
-                  {(['minimum', 'avalanche', 'snowball'] as PayoffStrategy[]).map((k) => (
-                    <tr key={k} className={s.pick === k ? 'sel' : ''}>
-                      <td><button className="link" onClick={() => setS({ pick: k })}>{NAME[k]}</button></td>
-                      <td className="num">{monthsText(cmp[k].months)}</td>
-                      <td className="num">{formatCents(cmp[k].totalInterestCents)}</td>
-                      <td className="num pos">{k === 'minimum' ? '—' : formatCents(cmp.savings[k as 'avalanche' | 'snowball'].interestCents)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="an-head" style={{ marginBottom: 0 }}>
+              <h3 className="an-h2" style={{ fontSize: 'var(--fs-base)' }}>Compare plans <span className="an-kind an-kind--projected">Projected</span></h3>
+              <span className="an-small muted">Choose one to see its order and chart.</span>
+            </div>
+            <div className="an-scens" role="group" aria-label="Payoff plans">
+              {(['minimum', 'avalanche', 'snowball'] as PayoffStrategy[]).map((k) => (
+                <button key={k} type="button" className="an-scen" aria-pressed={s.pick === k} onClick={() => setS({ pick: k })}>
+                  <span className="an-scen-name">{NAME[k]}{s.pick === k && <span className="an-kind">Selected</span>}</span>
+                  <dl>
+                    <div><dt>Debt-free in</dt><dd>{monthsText(cmp[k].months)}</dd></div>
+                    <div><dt>Interest paid</dt><dd>{formatCents(cmp[k].totalInterestCents)}</dd></div>
+                    <div><dt>Interest saved</dt><dd>{k === 'minimum' ? '—' : formatCents(cmp.savings[k as 'avalanche' | 'snowball'].interestCents)}</dd></div>
+                  </dl>
+                </button>
+              ))}
             </div>
             <LinesChart
               title="Total debt over time"
+              subtitle="Projected from the balances, rates and payments above"
               xLabels={labels}
-              series={(['minimum', 'avalanche', 'snowball'] as PayoffStrategy[]).map((k, i) => ({ label: NAME[k].split(':')[0], color: `var(--s${i + 1})`, values: cmp[k].balances }))}
+              fit
+              precise
+              axis={labels.length <= 61 ? 'month' : 'year'}
+              series={(['minimum', 'avalanche', 'snowball'] as PayoffStrategy[]).map((k, i) => ({ label: NAME[k].split(':')[0], color: `var(--s${i + 1})`, values: cmp[k].balances, dashed: i === 0 }))}
             />
-            <h3>Order for “{NAME[s.pick]}”</h3>
-            <ol>
+            <h3 className="an-h3">Order for “{NAME[s.pick]}”</h3>
+            <ol style={{ margin: 0 }}>
               {picked.order.map((o) => <li key={o.id}>{o.name}: paid off in {monthsText(o.month)}</li>)}
             </ol>
-            <p className="muted">The avalanche pays the least interest. The snowball clears small debts sooner, which some people find easier to stick with. Interest is simple monthly (balance × rate ÷ 12), so it may differ slightly from your statements.</p>
-          </>
+            <p className="an-note" style={{ margin: 0 }}>The avalanche pays the least interest. The snowball clears small debts sooner, which some people find easier to stick with. Interest is simple monthly (balance × rate ÷ 12), so it may differ slightly from your statements. These are projections from what you entered, not guarantees.</p>
+          </div>
         )}
       </Collapsible>
 
       {tool && (
         <Collapsible id="payoff.tools" title="Refinance and extra payments">
-          <div className="row">
+          <div className="an-form an-form--wide">
             <label className="f">Loan
               <select value={tool.id} onChange={(e) => { setToolId(e.target.value); setRemaining(null); setNewApr(null); setNewTerm(null); setClosing(null); }}>{loanOptions.map((d) => <option key={d.id} value={d.id}>{d.name} ({formatCents(d.balanceCents)} at {d.aprPct.toFixed(2)}%)</option>)}</select>
             </label>
             <NumField key={`r${tool.id}`} label="Months left on it" value={remaining} step={1} width={90} onChange={(n) => setRemaining(Math.max(1, Math.round(n)))} />
           </div>
 
-          <div className="card">
-            <strong>Would refinancing pay off?</strong>
-            <div className="row">
-              <NumField key={`n${tool?.id}`} label="New rate %" value={newApr} step={0.125} width={90} onChange={setNewApr} />
-              <NumField key={`t${tool?.id}-${remaining}`} label="New term (months)" value={newTerm} step={12} width={100} onChange={(n) => setNewTerm(Math.max(1, Math.round(n)))} />
-              <MoneyField key={`cc${tool?.id}`} label="Closing costs" cents={closing} onChange={setClosing} width={110} />
+          <div className="an-split an-split--even" style={{ marginTop: 'var(--sp-4)' }}>
+            <section className="an-card an-stack-col" aria-labelledby="po-refi">
+              <h3 className="an-h2" id="po-refi" style={{ fontSize: 'var(--fs-base)' }}>Would refinancing pay off?</h3>
+              <div className="an-form">
+                <NumField key={`n${tool?.id}`} label="New rate %" value={newApr} step={0.125} width={90} onChange={setNewApr} />
+                <NumField key={`t${tool?.id}-${remaining}`} label="New term (months)" value={newTerm} step={12} width={100} onChange={(n) => setNewTerm(Math.max(1, Math.round(n)))} />
+                <MoneyField key={`cc${tool?.id}`} label="Closing costs" cents={closing} onChange={setClosing} width={110} />
+              </div>
               <label className="chk"><input type="checkbox" checked={roll} onChange={(e) => setRoll(e.target.checked)} /> Roll the costs into the loan</label>
-            </div>
-            {refi && (
-              <table><tbody>
-                <tr><td>Payment now → after</td><td className="num">{formatCents(refi.currentPaymentCents)} → {formatCents(refi.newPaymentCents)}</td></tr>
-                <tr><td>Monthly savings</td><td className={`num ${refi.monthlySavingsCents > 0 ? 'pos' : 'neg'}`}>{formatCents(refi.monthlySavingsCents)}</td></tr>
-                <tr><td>Break-even on closing costs</td><td className="num">{refi.breakEvenMonths === null ? 'never' : refi.breakEvenMonths === 0 ? 'none (rolled in)' : `${refi.breakEvenMonths} months`}</td></tr>
-                <tr><td>Interest to pay off: now → after</td><td className="num">{formatCents(refi.currentInterestCents)} → {formatCents(refi.newInterestCents)}</td></tr>
-                <tr><td><strong>Total difference (incl. closing costs)</strong></td><td className={`num ${refi.lifetimeSavingsCents > 0 ? 'pos' : 'neg'}`}><strong>{refi.lifetimeSavingsCents > 0 ? 'saves ' : 'costs '}{formatCents(Math.abs(refi.lifetimeSavingsCents))}</strong></td></tr>
-              </tbody></table>
-            )}
-            {refi?.extendsTerm && <p className="warn">The new loan is longer than what is left on the current one, so a lower payment can still mean more total interest. Compare the last two rows.</p>}
-          </div>
+              {refi && (
+                <div className="an-result">
+                  <strong>What this would mean <span className="an-kind an-kind--projected">Projected</span></strong>
+                  <table className="an-table"><tbody>
+                    <tr><td>Payment now → after</td><td className="num">{formatCents(refi.currentPaymentCents)} → {formatCents(refi.newPaymentCents)}</td></tr>
+                    <tr><td>Monthly savings</td><td className="num">{formatCents(refi.monthlySavingsCents)}</td></tr>
+                    <tr><td>Break-even on closing costs</td><td className="num">{refi.breakEvenMonths === null ? 'never' : refi.breakEvenMonths === 0 ? 'none (rolled in)' : `${refi.breakEvenMonths} months`}</td></tr>
+                    <tr><td>Interest to pay off: now → after</td><td className="num">{formatCents(refi.currentInterestCents)} → {formatCents(refi.newInterestCents)}</td></tr>
+                    <tr><td><strong>Total difference (incl. closing costs)</strong></td><td className="num"><strong>{refi.lifetimeSavingsCents > 0 ? 'saves ' : 'costs '}{formatCents(Math.abs(refi.lifetimeSavingsCents))}</strong></td></tr>
+                  </tbody></table>
+                  {refi.extendsTerm && <p className="warn" style={{ margin: 0 }}>The new loan is longer than what is left on the current one, so a lower payment can still mean more total interest. Compare the last two rows.</p>}
+                </div>
+              )}
+            </section>
 
-          <div className="card">
-            <strong>Extra on this loan, or invest it?</strong>
-            <div className="row">
-              <MoneyField label="Extra per month" cents={extraMo} onChange={setExtraMo} width={110} />
-              <NumField label="Expected investment return %" value={s.returnPct} step={0.5} width={110} onChange={(n) => setS({ returnPct: n })} />
-              <NumField label="Tax on that return %" value={s.taxDragPct} step={5} width={100} onChange={(n) => setS({ taxDragPct: n })} />
-            </div>
-            {xv && (
-              <>
-                <table><tbody>
-                  <tr><td>Paying the extra: loan gone in</td><td className="num">{monthsText(xv.payoffMonths)} (saves {monthsText(xv.monthsSaved)})</td></tr>
-                  <tr><td>Interest saved</td><td className="num pos">{formatCents(xv.interestSavedCents)}</td></tr>
-                  <tr><td>Money at the end of the original term, if you prepay</td><td className="num">{formatCents(xv.wealthIfPrepayCents)}</td></tr>
-                  <tr><td>Money at the end of the original term, if you invest instead</td><td className="num">{formatCents(xv.wealthIfInvestCents)}</td></tr>
-                </tbody></table>
-                <p>
-                  {xv.better === 'even' ? 'About even.' : xv.better === 'prepay' ? <strong>Paying down the loan comes out ahead</strong> : <strong>Investing comes out ahead</strong>}
-                  {xv.better !== 'even' && ` by ${formatCents(Math.abs(xv.wealthIfPrepayCents - xv.wealthIfInvestCents))}`}. Prepaying earns a sure {tool.aprPct.toFixed(2)}% (the loan rate); investing earns an uncertain {xv.afterTaxReturnPct.toFixed(2)}% after tax.
-                  A guaranteed return is worth more than an expected one of the same size.
-                </p>
-              </>
-            )}
+            <section className="an-card an-stack-col" aria-labelledby="po-extra">
+              <h3 className="an-h2" id="po-extra" style={{ fontSize: 'var(--fs-base)' }}>Extra on this loan, or invest it?</h3>
+              <div className="an-form">
+                <MoneyField label="Extra per month" cents={extraMo} onChange={setExtraMo} width={110} />
+                <NumField label="Expected investment return %" value={s.returnPct} step={0.5} width={110} onChange={(n) => setS({ returnPct: n })} />
+                <NumField label="Tax on that return %" value={s.taxDragPct} step={5} width={100} onChange={(n) => setS({ taxDragPct: n })} />
+              </div>
+              <span className="an-kind an-kind--assumption" style={{ width: 'fit-content' }}>The return and tax rate are your assumptions</span>
+              {xv && (
+                <div className="an-result">
+                  <strong>What this would mean <span className="an-kind an-kind--projected">Projected</span></strong>
+                  <table className="an-table"><tbody>
+                    <tr><td>Paying the extra: loan gone in</td><td className="num">{monthsText(xv.payoffMonths)} (saves {monthsText(xv.monthsSaved)})</td></tr>
+                    <tr><td>Interest saved</td><td className="num">{formatCents(xv.interestSavedCents)}</td></tr>
+                    <tr><td>Money at the end of the original term, if you prepay</td><td className="num">{formatCents(xv.wealthIfPrepayCents)}</td></tr>
+                    <tr><td>Money at the end of the original term, if you invest instead</td><td className="num">{formatCents(xv.wealthIfInvestCents)}</td></tr>
+                  </tbody></table>
+                  <p className="an-verdict">
+                    {xv.better === 'even' ? 'About even.' : xv.better === 'prepay' ? <strong>Paying down the loan comes out ahead</strong> : <strong>Investing comes out ahead</strong>}
+                    {xv.better !== 'even' && ` by ${formatCents(Math.abs(xv.wealthIfPrepayCents - xv.wealthIfInvestCents))}`}. Prepaying earns a sure {tool.aprPct.toFixed(2)}% (the loan rate); investing earns an uncertain {xv.afterTaxReturnPct.toFixed(2)}% after tax.
+                    A guaranteed return is worth more than an expected one of the same size.
+                  </p>
+                </div>
+              )}
+            </section>
           </div>
         </Collapsible>
       )}
-    </>
+    </div>
   );
 }
