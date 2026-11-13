@@ -4,7 +4,34 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest): D18.1 PERSON-CENTRIC INCOME ORGANIZATION BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting owner and ChatGPT review; D19 NOT STARTED
+## PROPOSED (not implemented), recorded 2026-11-13: D18.2 Personal Income Gross-to-Net Breakdown
+
+**Proposed sequence:** D19 -> T2027 -> D18.2 -> D20 -> D21. D18.2 is NOT started and is not part of the D19 release.
+
+**Objective:** inside each existing person-centric Income workspace, present a clear left-to-right breakdown of gross compensation sources, payroll deductions, taxes withheld and estimated cash take-home.
+
+**Requirements to carry forward:**
+- Separate regular wages, bonuses and vested RSU compensation without double-counting.
+- Show existing payroll deductions and tax withholding by category.
+- Keep net RSUs retained as shares separate from cash received.
+- Distinguish tax withheld from final household tax liability.
+- Preserve existing calculated amounts and all person associations.
+- Preserve existing person expand/collapse controls.
+- Support responsive desktop and mobile layouts.
+- Do not alter payroll engines or database schemas.
+- Do not automatically assign household-level other income to a person.
+
+**Pending owner confirmation:** whether the default presentation is annual or per paycheck.
+
+## STATUS 2026-11-13 (newest): D19 MORE, SETTINGS AND DOCUMENTS REDESIGN APPROVED BY OWNER AND CHATGPT; RELEASE AUTHORIZED (commit message feat(ui): redesign More, Settings and documents; SHA and CI result recorded in the release handoff); D20 AND D21 NOT STARTED
+
+**What was asked:** redesign More, Year in review, If something happens to me, Tax package, the Settings frame and its five pages (General, Appearance, Data & Backups, Sync devices, Calendar) and the printed documents to the Ledger Signature standard, with every setting, export, backup, restore and Sync safeguard preserved. **What was built:** see `docs/LEDGER-SIGNATURE-D19-REPORT.md`. Gate: D18.1 is committed and deployed as `18f58bd` (Actions run #107 success; Pages deployment success). Checks: 55 test files and 938 tests pass (16 new in `d19Settings.test.tsx`); `tsc` and the build are clean; the full suite was not run locally. Browser checks at 1440, 375 and 320 in Signature Light and Dark and Classic with fictional data; every amount and input value is unchanged; backup and restore were exercised only on a disposable profile and Sync only against an in-browser fake.
+
+**Judgment calls (please review)** are numbered in report section 14 (Settings navigation, titles added to three pages, backup cards keep create and restore together in labeled zones, added explanatory sentences, menu-bar label wording, the More backup notice threshold, the kind-of-figure words on Review and Tax package, guide order kept, print colors forced light, Sync facts layout, inline styles 35 to 4).
+
+**NOT built / not done:** keyboard Tab walk, real-device and screen-reader checks, forced colors, Safari and Firefox, contrast measurement, a PDF page-break review, driving "Put that version back", Update token, the replace-this-device path, configured automatic backup and the plain-backup confirmed restore; the dialog and confirmation redesign (D20, including `window.confirm()`); the default-theme flip (D21). Nothing is `ACC`.
+
+## STATUS 2026-11-13 (superseded by D19 above; D18.1 is committed and deployed `18f58bd`, run #107 success): D18.1 PERSON-CENTRIC INCOME ORGANIZATION BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting owner and ChatGPT review; D19 NOT STARTED
 
 **LEDGER SIGNATURE D18.1 (PERSON-CENTRIC INCOME ORGANIZATION), 2026-11-13: BUILT, TESTED AND VISUALLY REVIEWED; RELEASE AUTHORIZED AND COMMITTED AS `feat(ui): organize Income by person` (SHA and CI result are in the release report and the next change to this file); grant worksheet and Add to holdings smoke-checked; NOT REAL-DEVICE OR SCREEN-READER TESTED; D19 NOT STARTED.** Report: `docs/LEDGER-SIGNATURE-D18.1-REPORT.md`. Release gate: D18 is COMMITTED AND DEPLOYED as `e42361373a4f8fa10bc86417cef1732032e5d24c` (Actions run #106 success; Pages deployment `7770485329` success for the same SHA; read from the public GitHub API because `gh` is not installed; `main` = `origin/main`; the `PercentField` correction is in that commit), so every older "D18 uncommitted" statement is superseded. The Income page is now organized Household, then Person, then Compensation details: the navy household panel stays on top; People stays a compact section (Income people are kept separate from Family and are not matched to it); one independently expandable workspace per Income person holds that person's year summary, pay setup (the existing `ProfileEditor`), bonuses, stock awards (RSU grants, vests, withholding, Add to holdings) and paycheck detail; household tax settings and results stay at household level. The folded header shows the model's own figures (gross, take-home, bonus, stock awards "counted when they vest") or "Not set up for {year}". Fold state is remembered per device under `income.person.<personId>`; first person open by default. `RsuSection` and `RsuGrants` gained optional `personId` and `unassigned` props (records found by stored id only; a new vest or grant starts with the workspace's person; only editing an existing record can deliberately move it). Records whose person is missing are listed in a Needs review section and never repaired automatically. **No engine, schema, sync, backup, Search, Quick Add or navigation file changed; nothing in `src/lib` changed.** One shared change to review: `Collapsible` can now remember an "opened" choice for a section that starts folded. Checks: new `d181PersonIncome.test.tsx` (24 tests); 632 targeted tests in 33 files pass; `tsc` and `npm run build` clean; full suite NOT run locally (CI will); browser checks at 1440, 375 and 320 in Signature Light, Dark and Classic, with real clicks for fold state, jump, add bonus, add vest, add grant, deliberate reassignment, year change, a person with no setup and orphan records; every authoritative amount and input from the D18 page is present after (43 distinct amounts, 71 input values). Not driven: deletes, Add to holdings, worksheets, saving profiles, keyboard Tab walk, screen reader, real phone. Pictures: `Documents\Ledger-Design-Concepts\D18.1-Evidence`.
 

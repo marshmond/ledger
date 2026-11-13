@@ -9,6 +9,21 @@ import { loanView } from '../lib/loanSchedule';
 import { downloadText } from '../lib/download';
 import { buildTaxPackage, displayCell, sectionCsv } from '../lib/taxPackage';
 import { PageHeader } from '../ui/components';
+import { Kind, PlanFigs, PlanJump, PlanSection } from './PlanParts';
+import './analysis.css';
+import './plan.css';
+import './docs.css';
+
+/** What each section is made of, so recorded facts and estimates are told apart. This is wording for the reader; it does not change any number. */
+const KIND: Record<string, { k: 'recorded' | 'estimate'; word: string }> = {
+  wages: { k: 'estimate', word: 'Estimate from Income setup' },
+  rsu: { k: 'estimate', word: 'Recorded vests, estimated values' },
+  sales: { k: 'recorded', word: 'Recorded sales' },
+  hsa: { k: 'recorded', word: 'Recorded and estimated' },
+  loans: { k: 'estimate', word: 'Estimate from loan schedules' },
+  gifts: { k: 'recorded', word: 'Recorded gifts' },
+  estimate: { k: 'estimate', word: 'Planning estimate' },
+};
 
 /** A worksheet for your tax preparer: pay, RSUs, sales by lot, HSA, mortgage interest, and the app's estimate. Print it or download CSVs. */
 export default function TaxPackagePage() {
@@ -40,31 +55,44 @@ export default function TaxPackagePage() {
 
   const years = [...new Set([...profiles.map((p) => p.year), ...sales.map((s) => Number(s.date.slice(0, 4))), thisYear, thisYear - 1])].sort((a, b) => b - a);
   const withRows = sections.filter((s) => s.rows.length > 0);
+  const kindTag = (id: string) => (KIND[id] ? <Kind k={KIND[id].k}>{KIND[id].word}</Kind> : undefined);
 
   return (
-    <>
-      <PageHeader className="no-print" title="Tax package" description="A worksheet for your tax preparer." about={<>Everything your preparer usually asks for, gathered from what you have entered. Official figures come from your W-2, 1099-B, 1099-SA, and 1098, so use this to check
-        them. Print it (choose “Save as PDF” in the print window) or download any table as a spreadsheet file.</>} actions={<><label className="row">Tax year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label></>} />
-      <div className="row no-print">
-        <button className="primary" onClick={() => window.print()}>Print or save as PDF</button>
-        <button
-          disabled={withRows.length === 0}
-          onClick={() => withRows.forEach((s, i) => setTimeout(() => downloadText(`tax-${year}-${s.id}.csv`, 'text/csv', sectionCsv(s)), i * 250))}
-        >Download all tables (CSV)</button>
-      </div>
+    <div className="dc-doc dc-tax">
+      <PageHeader className="no-print" title="Tax package" description="A worksheet for your tax preparer." actions={<><label className="row">Tax year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label></>} />
 
-      <div className="printable">
+      <section className="an-card dc-tax-top no-print" aria-label="Worksheet summary">
+        <div className="dc-tax-intro">
+          <h2 className="an-h2">Tax worksheet, {year}</h2>
+          <p>Everything your preparer usually asks for, gathered from what you have entered. Official figures come from your W-2, 1099-B, 1099-SA, and 1098, so use this to check
+            them. Print it (choose “Save as PDF” in the print window) or download any table as a spreadsheet file.</p>
+          <p className="an-note">This is a planning worksheet. It is not a tax return and nothing here is filed anywhere. The pay table has many columns: choose Landscape in the print window for larger type.</p>
+          <div className="row">
+            <button className="primary" onClick={() => window.print()}>Print or save as PDF</button>
+            <button
+              disabled={withRows.length === 0}
+              onClick={() => withRows.forEach((s, i) => setTimeout(() => downloadText(`tax-${year}-${s.id}.csv`, 'text/csv', sectionCsv(s)), i * 250))}
+            >Download all tables (CSV)</button>
+          </div>
+        </div>
+        <PlanFigs label="Worksheet contents" figs={[
+          { label: 'Sections', value: String(sections.length), sub: 'in this worksheet' },
+          { label: 'With entries', value: String(withRows.length), sub: `for ${year}` },
+          { label: 'Nothing to report', value: String(sections.length - withRows.length), sub: 'shown as empty, not left out' },
+        ]} />
+      </section>
+
+      <PlanJump label="Sections" items={sections.map((s) => ({ id: `tx-${s.id}`, label: s.title.replace(/ \(.*$/, '') }))} />
+
+      <div className="printable dc-sections">
         <h1 className="print-only">Tax worksheet, {year}</h1>
         {sections.map((s) => (
-          <section key={s.id} className="pkg">
-            <div className="row spread">
-              <h2>{s.title}</h2>
-              {s.rows.length > 0 && <button className="link no-print" onClick={() => downloadText(`tax-${year}-${s.id}.csv`, 'text/csv', sectionCsv(s))}>download CSV</button>}
-            </div>
-            {s.note && <p className="muted">{s.note}</p>}
+          <PlanSection key={s.id} id={`tx-${s.id}`} title={s.title} kind={kindTag(s.id)}
+            aside={s.rows.length > 0 ? <button className="link no-print" onClick={() => downloadText(`tax-${year}-${s.id}.csv`, 'text/csv', sectionCsv(s))}>download CSV</button> : undefined}>
+            {s.note && <p className="muted dc-note">{s.note}</p>}
             {s.rows.length === 0 ? <p className="muted">Nothing to report for {year}.</p> : (
-              <div className="scroll-x">
-                <table>
+              <div className={`an-tablewrap dc-tax-table${s.headers.length > 9 ? ' dc-wide' : ''}`}>
+                <table className="an-table">
                   <thead><tr>{s.headers.map((h, k) => <th key={k} className={s.moneyCols.includes(k) ? 'num' : ''}>{h}</th>)}</tr></thead>
                   <tbody>
                     {s.rows.map((r, i) => (
@@ -74,10 +102,11 @@ export default function TaxPackagePage() {
                 </table>
               </div>
             )}
-          </section>
+            {s.rows.length > 0 && s.headers.length > 5 && <p className="an-scrollhint no-print">Scroll sideways for more columns.</p>}
+          </PlanSection>
         ))}
-        <p className="muted">Prepared {todayISO()} from the data in this browser. This is a planning worksheet, not tax advice or a substitute for your official tax forms.</p>
+        <p className="muted dc-foot">Prepared {todayISO()} from the data in this browser. This is a planning worksheet, not tax advice or a substitute for your official tax forms.</p>
       </div>
-    </>
+    </div>
   );
 }

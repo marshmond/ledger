@@ -15,6 +15,7 @@ import {
   AUTO_BACKUP_KEEP, AUTO_BACKUP_MIN_PASSPHRASE, autoBackupNow, clearAutoBackup, readAutoBackup, readAutoStatus, saveAutoBackup,
 } from '../lib/autoBackup';
 import { BACKUP_DIR as AUTO_BACKUP_DIR } from '../lib/sync/github';
+import { Pill, SettingsSection, SubHeading } from './SettingsParts';
 
 /** Backups older than this trigger a reminder on the Accounts page. */
 export const BACKUP_STALE_DAYS = 30;
@@ -53,13 +54,12 @@ function AutoBackupCard() {
 
   if (!sync) {
     return (
-      <div className="card">
-        <strong>Automatic weekly backup</strong>
+      <SettingsSection id="auto-backup" title="Automatic weekly backup" badge={<Pill tone="quiet">Needs Sync devices first</Pill>}>
         <p className="muted">
           This saves a dated, encrypted copy of your data to the private GitHub repository once a week, so you always have older copies to go back to.
           It needs <Link to="/sync">Sync devices</Link> to be set up first.
         </p>
-      </div>
+      </SettingsSection>
     );
   }
 
@@ -87,8 +87,7 @@ function AutoBackupCard() {
   }
 
   return (
-    <div className="card">
-      <strong>Automatic weekly backup</strong>
+    <SettingsSection id="auto-backup" title="Automatic weekly backup" badge={cfg ? <Pill tone={status.error ? 'bad' : 'ok'}>{status.error ? 'Last try failed' : 'On for this device'}</Pill> : <Pill tone="warn">Off on this device</Pill>}>
       <p className="muted">
         About once a week, when the app is open, an encrypted copy is saved to the <code>{AUTO_BACKUP_DIR}</code> folder of your private GitHub repository ({sync.owner}/{sync.repo}).
         The last {AUTO_BACKUP_KEEP} copies are kept. It uses its own passphrase, saved in this browser only. Write it down: it cannot be recovered, and each device that should back up needs it entered.
@@ -103,7 +102,7 @@ function AutoBackupCard() {
             <button className="primary" disabled={busy} onClick={backUpNow}>{busy ? 'Backing up…' : 'Back up now'}</button>
             <button onClick={() => { clearAutoBackup(); setCfg(null); }}>Turn off on this device</button>
           </div>
-          <details style={{ marginTop: 8 }}>
+          <details className="se-details">
             <summary>Change the passphrase</summary>
             <div className="row">
               <label className="f">New passphrase<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'auto-backup-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
@@ -111,7 +110,7 @@ function AutoBackupCard() {
               <button onClick={turnOn}>Change</button>
             </div>
           </details>
-          <p className="muted" style={{ fontSize: '0.85rem' }}>To restore a copy, download it from the repository on GitHub and use “Restore from backup” above with this passphrase.</p>
+          <p className="muted small">To restore a copy, download it from the repository on GitHub and use “Restore from backup” above with this passphrase.</p>
         </>
       ) : (
         <div className="row">
@@ -132,7 +131,7 @@ function AutoBackupCard() {
           <p>Copies already saved in your repository stay locked with the <strong>old</strong> passphrase, so keep it somewhere safe. New copies will use the new one.</p>
         </ConfirmDialog>
       )}
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -142,10 +141,13 @@ export default function BackupPage() {
   const [err, setErr] = useState('');
   const [storage, setStorage] = useState<StorageStatus | null>(null);
   const last = (useLiveQuery(() => db.settings.get('lastBackup'), []) as { value?: string } | undefined)?.value;
+  // Which half of the encrypted card the last action belongs to, so its message appears beside the button that caused it. Display only.
+  const [zone, setZone] = useState<'create' | 'restore'>('create');
 
   useEffect(() => { storageStatus().then(setStorage); }, []);
 
   async function doExport() {
+    setZone('create');
     setMsg('');
     setErr('');
     if (pass.length < 8) return setErr('Use a passphrase of at least 8 characters. You cannot recover the backup without it.');
@@ -166,6 +168,7 @@ export default function BackupPage() {
   const [fileKey, setFileKey] = useState(0);
 
   async function doImport(f: File | undefined) {
+    setZone('restore');
     setMsg('');
     setErr('');
     setPending(null);
@@ -182,6 +185,7 @@ export default function BackupPage() {
 
   async function replaceFromEncrypted() {
     if (!pending) return;
+    setZone('restore');
     setBusy(true); setErr(''); setMsg('');
     try {
       const saved = await restoreWithSafetyCopy(db, pending.file, { afterCopy: () => new Promise((r) => setTimeout(r, 1200)) });
@@ -196,48 +200,70 @@ export default function BackupPage() {
 
   const days = last ? Math.floor((Date.now() - Date.parse(last)) / 86400000) : null;
 
+  const stale = days === null || days > BACKUP_STALE_DAYS;
+
   return (
     <>
       <PageHeader title="Data & Backups" description="Keep a safe copy: your data lives only in this browser. This page covers all of Ledger, not just Finance." />
-      <PlainBackupCard />
 
-      <div className="card">
-        <strong>Encrypted backup (optional)</strong>
-        <p>
-          Your data lives only in this browser on this device. Clearing site data, uninstalling the browser, or switching browsers erases it, so
-          export a backup regularly. Backups are encrypted with your passphrase; keep the passphrase somewhere safe, because there is no way to recover it.
-        </p>
-        <p className={days === null || days > BACKUP_STALE_DAYS ? 'warn' : 'muted'}>
+      <SettingsSection id="status" title="Backup status" tone={stale ? 'warn' : 'default'}
+        badge={<Pill tone={stale ? 'warn' : 'ok'}>{last ? (stale ? 'Backup is getting old' : 'Backed up recently') : 'No backup yet'}</Pill>}>
+        <p className={stale ? 'warn se-flat' : 'muted se-flat'}>
           {last ? `Last backup: ${new Date(last).toLocaleString()} (${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}).` : 'You have not exported a backup from this device yet.'}
         </p>
-        <div className="row">
-          <label className="f">Passphrase
-            <input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'backup-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" />
-          </label>
-          <button className="primary" onClick={doExport}>Export encrypted backup</button>
+        <p className="muted small">Making a backup never changes your data. <strong>Restoring</strong> a backup does: it replaces everything on this device. The two are kept apart below, on each backup type.</p>
+      </SettingsSection>
+
+      <PlainBackupCard />
+
+      <SettingsSection id="encrypted-backup" title="Encrypted backup (optional)" badge={<Pill tone="ok">Needs your passphrase</Pill>}>
+        <div className="se-zone">
+          <SubHeading>Make an encrypted backup</SubHeading>
+          <p>
+            Your data lives only in this browser on this device. Clearing site data, uninstalling the browser, or switching browsers erases it, so
+            export a backup regularly. Backups are encrypted with your passphrase; keep the passphrase somewhere safe, because there is no way to recover it.
+          </p>
+          <p className={days === null || days > BACKUP_STALE_DAYS ? 'warn' : 'muted'}>
+            {last ? `Last backup: ${new Date(last).toLocaleString()} (${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}).` : 'You have not exported a backup from this device yet.'}
+          </p>
+          <div className="row">
+            <label className="f">Passphrase
+              <input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'backup-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" />
+            </label>
+            <button className="primary" onClick={doExport}>Export encrypted backup</button>
+          </div>
+          {zone === 'create' && msg && <div className="ok" role="status">{msg}</div>}
+          {zone === 'create' && err && <div className="error" id="backup-error" role="alert">{err}</div>}
         </div>
-        <div className="row" style={{ marginTop: 12 }}>
-          <label className="f">Restore an encrypted backup (replaces everything on this device)
-            <input key={fileKey} id="encrypted-restore-file" type="file" accept=".ledgerbackup,application/json" disabled={busy} onChange={(e) => doImport(e.target.files?.[0])} />
-          </label>
+
+        <div className="se-zone se-zone--restore">
+          <div className="se-zone-head">
+            <SubHeading>Restore an encrypted backup</SubHeading>
+            <Pill tone="bad">Replaces everything on this device</Pill>
+          </div>
+          <p className="muted small">Enter the passphrase above first. The file is decrypted and checked, you see what is in it, and nothing changes until you confirm.</p>
+          <div className="row">
+            <label className="f">Restore an encrypted backup (replaces everything on this device)
+              <input key={fileKey} id="encrypted-restore-file" type="file" accept=".ledgerbackup,application/json" disabled={busy} onChange={(e) => doImport(e.target.files?.[0])} />
+            </label>
+          </div>
+          {pending && <RestoreConfirm encrypted pending={pending} busy={busy} onConfirm={replaceFromEncrypted} onCancel={() => { setPending(null); setFileKey((k) => k + 1); setTimeout(() => document.getElementById('encrypted-restore-file')?.focus(), 0); }} />}
+          {zone === 'restore' && msg && <div className="ok" role="status">{msg}</div>}
+          {zone === 'restore' && err && <div className="error" id="backup-error" role="alert">{err}</div>}
         </div>
-        {pending && <RestoreConfirm encrypted pending={pending} busy={busy} onConfirm={replaceFromEncrypted} onCancel={() => { setPending(null); setFileKey((k) => k + 1); setTimeout(() => document.getElementById('encrypted-restore-file')?.focus(), 0); }} />}
-        {msg && <div className="ok" role="status">{msg}</div>}
-        {err && <div className="error" id="backup-error" role="alert">{err}</div>}
-      </div>
+      </SettingsSection>
 
       <AutoBackupCard />
 
-      <div className="card">
-        <strong>Using it on your phone and your computer</strong>
+      <SettingsSection id="devices" title="Using it on your phone and your computer">
         <p className="muted">
           Each device keeps its own copy of your data. To keep them in step automatically, turn on <Link to="/sync">Sync devices</Link>. Without it, move data by exporting a backup
           on one device and restoring it on the other (a restore replaces what is on that device). The price-data key is never included in backups or sync and stays on each device.
         </p>
-      </div>
+      </SettingsSection>
 
-      <div className="card">
-        <strong>Storage protection</strong>
+      <SettingsSection id="storage" title="Storage protection"
+        badge={!storage ? undefined : storage.persisted === true ? <Pill tone="ok">Protected</Pill> : storage.persisted === false ? <Pill tone="warn">Not protected</Pill> : <Pill tone="quiet">Not reported</Pill>}>
         <p className="muted">
           {storage?.persisted === true && 'This browser has agreed to keep your data unless you clear it yourself.'}
           {storage?.persisted === false && 'This browser may clear this site’s data if the device runs low on space. Installing the app to your home screen and keeping regular backups protects you.'}
@@ -247,7 +273,7 @@ export default function BackupPage() {
         {storage?.persisted === false && (
           <button onClick={async () => { await navigator.storage?.persist?.(); setStorage(await storageStatus()); }}>Ask the browser to protect it</button>
         )}
-      </div>
+      </SettingsSection>
     </>
   );
 }

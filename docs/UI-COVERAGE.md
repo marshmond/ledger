@@ -1,4 +1,4 @@
-# Ledger UI coverage tracker (Ledger Signature rollout)
+BLT |BLT |BLT |BLT |BLT |# Ledger UI coverage tracker (Ledger Signature rollout)
 
 Created in **D5** (2026-11-10, uncommitted until the owner approves). Source of the inventory: the D4 blueprint (`D4-APPLICATION-COVERAGE.md`, 2026-11-10, counted at commit `8ab1789`), re-checked against the source in D5. This file holds route names, file names and ticks only. No data, no balances, no screenshots.
 
@@ -27,6 +27,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 **D16 (2026-11-12, built and tested locally, uncommitted) redesigned the nine core Money pages: L-02, L-03, L-04, L-05, L-06, L-07, L-10, L-11 and L-12 read `BLT` with the marks actually recorded (section 1.13; `Kbd` is recorded only for L-04, L-05 and L-07 after the 2026-11-13 keyboard walk; the other six D16 pages have no keyboard mark), and W-14 to W-19 read `BLT`. DL-10 (the three Ledger dialog call sites) is untouched and stays `NS`. D15 is committed and deployed as `8e01e61`. Nothing reads `ACC`; no owner review, real-device or screen-reader pass has happened.**
 
 **D17 (2026-11-13, built and tested locally, uncommitted) redesigned Forecast, Reports (Trends and Flow diagram), Net worth, Investments (three views), Debt and Payoff: L-08, L-09, L-13, L-14, L-15 and L-16 read `BLT` with the marks actually recorded (section 1.14), the in-page views IV-24, IV-25, IV-26, IV-29 and IV-30 read `BLT`, and W-20, W-24 and W-25 read `BLT` for the parts section 1.14 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done. `Kbd` is recorded only for L-08, L-14 and L-15 (Tab walk and chart arrow keys in headless Chrome); the native `confirm()` calls on these pages remain (D20).**
+
+**D19 (2026-11-13, built and tested locally, uncommitted) redesigned More, Year in review, If something happens to me, Tax package, the Settings frame and its five pages (General, Appearance, Data & Backups, Sync devices, Calendar) and the documents' print output: L-27 to L-31 and G-01 to G-05 read `BLT` with the marks actually recorded (section 1.16), W-26 to W-30 read `BLT`, and S-19 (print styles) reads `BLT` with L, D and Func only. S-17 (theme toggle) keeps its existing marks; it was exercised on Appearance. `Kbd` is not recorded for any D19 row. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
 
 **D18 (2026-11-13, built and tested locally, uncommitted) redesigned the ten Financial Planning pages: Income, Tax planning, Giving, Afford (both views), Paycheck, Projections, Retirement, Goals, Protection and Roth: L-17 to L-26 read `BLT` with the marks actually recorded (section 1.15), IV-27 and IV-28 read `BLT`, and W-21, W-22 and W-23 read `BLT` for the parts section 1.15 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done, and `Kbd` is not recorded for any D18 page (only the in-page jump buttons were driven by script). The native `confirm()` calls on these pages remain (D20).**
 
@@ -68,7 +70,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-16 | Ledger bottom tab bar (below 900 px) | `src/shell/Shell.tsx` | D8 | NS | . | . | . | . | . | . |
 | S-17 | Theme toggle (Device, Light, Dark) | `src/pages/ThemeToggle.tsx` | D8, D19 | BLT | Y | Y | . | Y | Y | Y |
 | S-18 | Unknown-address fallback and legacy redirects | `src/core/legacy.ts` | all | NS | . | . | . | . | . | . |
-| S-19 | Print styles | `src/styles.css` | D19 | NS | . | . | . | . | . | . |
+| S-19 | Print styles | `src/styles.css`, `src/pages/docs.css` | D19 | BLT | Y | Y | . | . | . | Y |
 | S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | NS | . | . | . | . | . | . |
 | S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline; member identity mark, dot and chip (D9) | `src/ui/components.tsx`, `src/ui/MemberIdentity.tsx` | D6, D9 | BLT | Y | Y | . | Y | . | Y |
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
@@ -246,13 +248,13 @@ The Settings frame (heading and tab row) is `src/pages/SettingsPage.tsx`; each r
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| G-01 | `/settings/general` | `src/pages/GeneralSettings.tsx` | D19 | NS | . | . | . | . | . | . |
-| G-02 | `/settings/appearance` | `src/pages/AppearanceCard.tsx` | D5, D19 | NS | . | . | . | . | . | . |
-| G-03 | `/settings/backup` | `src/pages/BackupPage.tsx` | D19 | NS | . | . | . | . | . | . |
-| G-04 | `/settings/sync` | `src/pages/SyncPage.tsx` | D19 | NS | . | . | . | . | . | . |
-| G-05 | `/settings/calendar` | `src/modules/calendar/CalendarSettings.tsx` | D19 | NS | . | . | . | . | . | . |
+| G-01 | `/settings/general` | `src/pages/GeneralSettings.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| G-02 | `/settings/appearance` | `src/pages/AppearanceCard.tsx` | D5, D19 | BLT | Y | Y | Y | Y | . | Y |
+| G-03 | `/settings/backup` | `src/pages/BackupPage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| G-04 | `/settings/sync` | `src/pages/SyncPage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| G-05 | `/settings/calendar` | `src/modules/calendar/CalendarSettings.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
 
-G-02 note: D5 added the Ledger Signature choice (labelled preview) to this screen. The row stays `NS` because the screen itself has not been restyled; the palette builder and saved themes are unchanged.
+G-02 note: D5 added the Ledger Signature choice (labelled preview) to this screen. D19 recomposed the screen (section 1.16); the palette builder, saved themes and every stored value are unchanged, and only the three menu-bar color labels were reworded.
 
 ### 2.6 Ledger (31)
 
@@ -286,11 +288,11 @@ Ledger has 32 route entries and 31 pages. `/ledger/backup` is a redirect to `/se
 | L-24 | `/ledger/goals` | `src/pages/GoalsPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
 | L-25 | `/ledger/protection` | `src/pages/ProtectionPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
 | L-26 | `/ledger/roth` | `src/pages/RothPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
-| L-27 | `/ledger/more` | `src/pages/MorePage.tsx` | D19 | NS | . | . | . | . | . | . |
-| L-28 | `/ledger/review` | `src/pages/ReviewPage.tsx` | D19 | NS | . | . | . | . | . | . |
-| L-29 | `/ledger/guide` | `src/pages/GuidePage.tsx` | D19 | NS | . | . | . | . | . | . |
-| L-30 | `/ledger/taxpackage` | `src/pages/TaxPackagePage.tsx` | D19 | NS | . | . | . | . | . | . |
-| L-31 | `/ledger/sync` | `src/pages/SyncPage.tsx` | D19 | NS | . | . | . | . | . | . |
+| L-27 | `/ledger/more` | `src/pages/MorePage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| L-28 | `/ledger/review` | `src/pages/ReviewPage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| L-29 | `/ledger/guide` | `src/pages/GuidePage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| L-30 | `/ledger/taxpackage` | `src/pages/TaxPackagePage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| L-31 | `/ledger/sync` | `src/pages/SyncPage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
 
 Dashboard cards (Today 11, Ledger Home 12) are tracked inside T-01 and L-01.
 
@@ -317,6 +319,15 @@ D18 (2026-11-13) recomposed Income, Paycheck, Tax planning, Giving, Afford (Can 
 - **Func:** every exact-cents amount (2,803 distinct amounts across 33 captured views) and every input value (795) is the same before and after, with two explained exceptions listed in the report; interactions driven through the real controls: Income year 2026 to 2027 and back, RSU section reached from the jump list, Afford both views with price and years changed and restored, Projections dollars toggle and back, Retirement year changed and restored plus Find spending that lasts, Goals settings opened and cost edited and restored plus Calculate, Roth strategy chosen, Giving form fields named (nothing added), Protection years changed and restored, a Paycheck scenario opened and two columns compared. Nothing was created or deleted.
 - **Not recorded:** Kbd (no Tab walk was done), contrast measurement, forced colors, real devices, screen readers.
 
+
+### 1.16 D19 evidence: More, documents and Settings (built, NOT committed; nothing is `ACC`)
+
+D19 (2026-11-13) recomposed More (grouped destinations with a backup notice), Year in review (headline panel, kind-of-figure words), If something happens to me (orientation, cards, print text), Tax package (summary, contents, per-section kinds), the Settings frame (page list beside the page, tabs on a phone) and General, Appearance, Data & Backups (create and restore kept apart, restore marked as replacing everything), Sync devices (send versus replace, status, danger zone) and Calendar settings. Seen in headless Chrome on a copy of the fictional demo household extended with invented income, sale, gift, HSA, loan, property, policy and guide records (own address, sync off, an in-browser fake GitHub for the Sync states). Report: `docs/LEDGER-SIGNATURE-D19-REPORT.md`.
+
+- **L and D, 375 and 1440:** all ten routes in Signature light and dark at 1440 and 375, plus 320 px (light) and Classic light at 1440 and 375: no horizontal overflow in any capture.
+- **Func:** every exact-cents amount (28 distinct on Review, 34 on Tax package) and every input value (16 on Guide, 11 on Calendar settings) is the same before and after; clicked through the real controls: More links and Back, Review year change, Guide edit and persistence and Show balances (screen and print), Tax year change, one CSV (name and header) and Download all (one file per section with rows), General landing change and restore (and no write on open), Appearance preset switch, mode cycle, editor, save, rename and delete of a disposable theme, Calendar settings change and reset, plain and encrypted backup export, short and wrong passphrase refusals, restore preview, Cancel, and one confirmed restore of a disposable file into the disposable profile, Sync not set up, check, send, healthy, conflicts, clear (with Cancel), failed sync, stop (with Cancel).
+- **S-19 (print):** Review, Guide and Tax package printed on white from a dark screen, with no header, menus or buttons; Guide shows typed answers as text and blank lines for empty ones; balances print only when Show balances is on.
+- **Not recorded:** Kbd (no Tab walk), contrast measurement, forced colors, real devices, screen readers, Safari and Firefox, a real PDF page-break review of long documents.
 
 ## 3. In-page views (31)
 
@@ -421,11 +432,11 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-23 | Planning calculators: tax plan, afford, projections, retirement, Roth, giving, protection, goals | D18 | BLT |
 | W-24 | Loans and payoff | D17 | BLT |
 | W-25 | Net-worth valuations and snapshots | D17 | BLT |
-| W-26 | Documents: Year in review, If something happens guide, Tax package (print and export) | D19 | NS |
-| W-27 | Backup and restore (plain and encrypted), auto-backup | D19 | NS |
-| W-28 | Device sync set-up and conflicts | D19 | NS |
-| W-29 | Appearance: palette, custom palette builder, saved themes | D5, D19 | NS |
-| W-30 | General and Calendar settings | D19 | NS |
+| W-26 | Documents: Year in review, If something happens guide, Tax package (print and export) | D19 | BLT |
+| W-27 | Backup and restore (plain and encrypted), auto-backup | D19 | BLT |
+| W-28 | Device sync set-up and conflicts | D19 | BLT |
+| W-29 | Appearance: palette, custom palette builder, saved themes | D5, D19 | BLT |
+| W-30 | General and Calendar settings | D19 | BLT |
 | W-31 | Projects: create, edit, delete (plan), budget lines, commitments, vendors | D14 | BLT |
 | W-32 | Assets: add, maintenance, service, warranty, lifecycle, delete | D14 | BLT |
 | W-33 | Household Services: arrangements, visits, payments, schedule changes, contract dates, hand-offs | D15 | BLT |
@@ -434,7 +445,7 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-36 | Contacts: add/edit/remove, where used | D14 | BLT |
 | W-37 | Household Finances review: period, disclosures, hide amounts | D12 | BLT |
 
-W-29 note: D5 added the Signature choice to Appearance and left the rest of the flow untouched; the flow is re-accepted in D19.
+W-29 note: D5 added the Signature choice to Appearance. D19 recomposed the flow (section 1.16, `BLT`, nothing `ACC`).
 
 ## 6. Residue baseline (report only)
 

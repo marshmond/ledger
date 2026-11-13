@@ -9,6 +9,7 @@ import { db } from '../db';
 import { downloadText } from '../lib/download';
 import { listSnapshots, readSnapshot, restoreLostVersion, takeSnapshot } from '../lib/sync/safety';
 import { conflictKey, readConflicts, removeConflict, removeConflicts } from '../lib/sync/conflicts';
+import { Pill, SettingsSection, SubHeading } from './SettingsParts';
 
 /** The encrypted file passes this size: time to think about a faster way to sync (see docs/PHASE0-PLAN-2026-11-05.md). */
 const BIG_FILE = 5 * 1024 * 1024;
@@ -170,35 +171,34 @@ export default function SyncPage() {
 
       {s.configured ? (
         <>
-          <div className="card">
-            <div className="row spread">
-              <strong>Syncing with {s.repo}</strong>
-              <span className="badge">{s.state === 'syncing' ? 'syncing…' : s.state === 'error' ? 'problem' : 'up to date'}</span>
-            </div>
-            <p className="muted">Last synced: {when(s.lastSyncedAt)}.{s.last && s.state === 'idle' && ` Last run: ${s.last.pulled} changed here, ${s.last.removedHere} removed here, ${s.last.pushed ? 'sent your changes' : 'nothing to send'}.`}</p>
+          <SettingsSection id="sync-status" title={`Syncing with ${s.repo}`} tone={s.state === 'error' ? 'warn' : 'default'}
+            badge={<Pill tone={s.state === 'error' ? 'bad' : s.state === 'syncing' ? 'info' : 'ok'}>{s.state === 'syncing' ? 'syncing…' : s.state === 'error' ? 'problem' : 'up to date'}</Pill>}>
+            <dl className="se-facts">
+              <div><dt>Last synced</dt><dd>{when(s.lastSyncedAt)}</dd></div>
+              {s.last && s.state === 'idle' && <div><dt>Last run</dt><dd>{s.last.pulled} changed here, {s.last.removedHere} removed here, {s.last.pushed ? 'sent your changes' : 'nothing to send'}</dd></div>}
+              {s.stats?.fileBytes !== undefined && <div><dt>Synced file</dt><dd>{fileSize(s.stats.fileBytes)}{s.stats.records !== undefined && `, ${s.stats.records.toLocaleString()} records`}</dd></div>}
+              {s.stats?.fileBytes !== undefined && <div><dt>Sent to GitHub</dt><dd>{s.stats.uploadsToday} {s.stats.uploadsToday === 1 ? 'time' : 'times'} today, {s.stats.uploads30d} in the last 30 days</dd></div>}
+            </dl>
             {s.stats?.fileBytes !== undefined && (
-              <p className="muted">
-                Synced file: {fileSize(s.stats.fileBytes)}{s.stats.records !== undefined && `, ${s.stats.records.toLocaleString()} records`}. Sent to GitHub {s.stats.uploadsToday} {s.stats.uploadsToday === 1 ? 'time' : 'times'} today and {s.stats.uploads30d} in the last 30 days (each one adds a copy to the repository's history).
+              <p className="muted small">
+                Each upload adds a copy to the repository's history.
                 {s.stats.fileBytes > BIG_FILE && ' The file is getting large; a faster way to sync may be needed soon.'}
               </p>
             )}
             {s.state === 'error' && <div className="error" role="status">{s.error}</div>}
-            <div className="row">
+            <div className="row se-actions">
               <button className="primary" disabled={s.state === 'syncing'} onClick={() => syncNow()}>Sync now</button>
               <label className="chk"><input type="checkbox" checked={s.auto} onChange={(e) => { const c = readConfig(); if (c) saveConfig({ ...c, auto: e.target.checked }); }} /> Sync automatically</label>
             </div>
-          </div>
+          </SettingsSection>
 
           {conflicts.length > 0 && (
-            <div className="card" id="conflicts">
-              <div className="row spread">
-                <strong>Edits that lost a tie ({conflicts.length})</strong>
-                <button className="link" onClick={() => setClearKeys(conflicts.map(conflictKey))}>clear this list</button>
-              </div>
-              <p className="muted">You and another device both changed these since the last sync. The later edit was kept. The other version is saved here so nothing is lost: put it back if you prefer it.</p>
-              <ul className="plain">
+            <SettingsSection id="conflicts" title={`Edits that lost a tie (${conflicts.length})`} tone="warn"
+              badge={<button className="link" onClick={() => setClearKeys(conflicts.map(conflictKey))}>clear this list</button>}
+              intro="You and another device both changed these since the last sync. The later edit was kept. The other version is saved here so nothing is lost: put it back if you prefer it.">
+              <ul className="plain se-list">
                 {(showAll ? conflicts : conflicts.slice(0, SHOWN_AT_FIRST)).map((c) => (
-                  <li key={conflictKey(c)} className="row spread">
+                  <li key={conflictKey(c)} className="se-item">
                     <span>{c.label} <span className="muted">({c.table}, {when(c.at)}): {c.kept === 'this device' ? 'the other device’s version was replaced by the one here' : 'the version on this device was replaced by the other device’s'}</span></span>
                     {c.lost ? <button onClick={() => putBack(c)}>Put that version back</button> : <span className="muted">no copy saved</span>}
                   </li>
@@ -207,44 +207,54 @@ export default function SyncPage() {
               {conflicts.length > SHOWN_AT_FIRST && (
                 <button className="link" onClick={() => setShowAll((v) => !v)}>{showAll ? `Show only the newest ${SHOWN_AT_FIRST}` : `Show all ${conflicts.length}`}</button>
               )}
-            </div>
+            </SettingsSection>
           )}
 
           {snaps.length > 0 && (
-            <div className="card">
-              <strong>Automatic safety copies on this device</strong>
-              <p className="muted">Full copies taken automatically before risky moments. They stay in this browser only. Download one if you want to keep it; it is a normal backup file that Import backup can restore.</p>
-              <ul className="plain">
+            <SettingsSection id="snapshots" title="Automatic safety copies on this device" badge={<Pill tone="quiet">This browser only</Pill>}
+              intro="Full copies taken automatically before risky moments. They stay in this browser only. Download one if you want to keep it; it is a normal backup file that Import backup can restore.">
+              <ul className="plain se-list">
                 {snaps.map((x) => (
-                  <li key={x.key} className="row spread">
+                  <li key={x.key} className="se-item">
                     <span>{x.why} <span className="muted">({when(x.at)}, {x.records.toLocaleString()} records)</span></span>
                     <button onClick={() => downloadSnap(x.key)}>Download</button>
                   </li>
                 ))}
               </ul>
-            </div>
+            </SettingsSection>
           )}
 
-          <div className="card">
-            <strong>Token</strong>
-            <p className="muted">If GitHub says the token expired, create a new one (same steps as below) and paste it here.</p>
+          <SettingsSection id="sync-token" title="Token" intro="If GitHub says the token expired, create a new one (same steps as below) and paste it here.">
             <div className="row">
               <label className="f">New token<input type="password" value={newToken} onChange={(e) => setNewToken(e.target.value)} autoComplete="off" /></label>
               <button disabled={!newToken.trim()} onClick={updateToken}>Update token</button>
             </div>
-          </div>
+          </SettingsSection>
 
-          <div className="card">
-            <strong>Turn off</strong>
+          <SettingsSection id="sync-off" title="Turn off" tone="danger" badge={<Pill tone="quiet">This device only</Pill>}>
             <p className="muted">Stops syncing on this device only. Nothing is deleted. To use sync again here you would replace this device’s data with the synced copy.</p>
             <button onClick={() => setAskStop(true)}>Stop syncing on this device</button>
-          </div>
+          </SettingsSection>
         </>
       ) : (
         <>
-          <div className="card">
-            <strong>Set up (about five minutes, once per device)</strong>
-            <ol>
+          <SettingsSection id="sync-state" title="Sync is not set up on this device" badge={<Pill tone="quiet">Not set up</Pill>}
+            intro="Until it is, this device keeps its own copy of your data and nothing is sent anywhere.">
+            <div className="se-choices">
+              <div className="se-choice">
+                <SubHeading>Send this device’s data</SubHeading>
+                <p className="muted small">For the device that already has your data. It uploads everything here as the starting copy. Nothing on this device changes.</p>
+              </div>
+              <div className="se-choice se-choice--replace">
+                <SubHeading>Replace this device’s data</SubHeading>
+                <p className="muted small">For your other devices, once a synced copy exists. It swaps everything here for the synced copy, so export a backup first if this device has data that is not synced anywhere.</p>
+              </div>
+            </div>
+            <p className="muted small">Setup checks the repository first and offers the one that fits: “send” when nothing has been synced yet, “replace” when a synced copy already exists.</p>
+          </SettingsSection>
+
+          <SettingsSection id="sync-setup" title="Set up (about five minutes, once per device)">
+            <ol className="se-steps">
               <li>On GitHub, create a <strong>new private repository</strong> just for this (for example <code>ledger-data</code>). Tick “Add a README file”. Do not reuse this app’s own repository; that one is public.</li>
               <li>
                 Create a <strong>fine-grained personal access token</strong> (GitHub, Settings, Developer settings, Personal access tokens). Give it access to <strong>only that repository</strong>,
@@ -252,44 +262,43 @@ export default function SyncPage() {
               </li>
               <li>Fill in the boxes below on this device. The token and passphrase are kept in this browser only. Choose the sync passphrase once and use the same one on every device; it cannot be recovered.</li>
             </ol>
-            <div className="row">
+            <div className="an-form an-form--wide">
               <label className="f">Repository<input aria-invalid={err ? true : undefined} aria-describedby={err ? 'sync-error' : undefined} value={repoText} onChange={(e) => setRepoText(e.target.value)} placeholder="owner/ledger-data" autoComplete="off" /></label>
               <label className="f">Token<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'sync-error' : undefined} value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" /></label>
               <label className="f">Sync passphrase<input type="password" aria-invalid={err ? true : undefined} aria-describedby={err ? 'sync-error' : undefined} value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" /></label>
+            </div>
+            <div className="row se-actions">
               <button className="primary" disabled={busy} onClick={check}>{busy && !probe ? 'Checking…' : 'Check connection'}</button>
             </div>
-          </div>
+          </SettingsSection>
 
           {probe && !probe.hasRemote && (
-            <div className="card">
-              <strong>Connected. Nothing has been synced yet.</strong>
+            <SettingsSection id="sync-send" title="Connected. Nothing has been synced yet." badge={<Pill tone="info">Send this device’s data</Pill>}>
               <p className="muted">Use this on the device that has your data (your main one). It uploads everything here as the starting copy. Then set up your other device and choose to use the synced copy.</p>
               <button className="primary" disabled={busy} onClick={() => connect('upload')}>Upload this device’s data</button>
-            </div>
+            </SettingsSection>
           )}
           {probe && probe.hasRemote && (
-            <div className="card">
-              <strong>Connected. A synced copy already exists.</strong>
+            <SettingsSection id="sync-replace" title="Connected. A synced copy already exists." tone="danger" badge={<Pill tone="bad">Replaces this device’s data</Pill>}>
               <p className="muted">
                 Using it <strong>replaces everything on this device</strong> with the synced copy. If this device has data you have not synced anywhere, <Link to="/backup">export a backup</Link> first.
                 After this, changes flow both ways.
               </p>
               <label className="chk"><input type="checkbox" checked={replaceOk} onChange={(e) => setReplaceOk(e.target.checked)} /> I understand this replaces the data on this device</label>
-              <div><button className="primary" disabled={busy || !replaceOk} onClick={() => connect('replace')}>Use the synced copy on this device</button></div>
-            </div>
+              <div className="se-actions"><button className="primary" disabled={busy || !replaceOk} onClick={() => connect('replace')}>Use the synced copy on this device</button></div>
+            </SettingsSection>
           )}
         </>
       )}
 
-      <div className="card">
-        <strong>Good to know</strong>
-        <ul>
+      <SettingsSection id="sync-know" title="Good to know">
+        <ul className="se-points">
           <li>If two devices change the same item, the later edit wins and the other version is saved in the list above, with a button to put it back.</li>
           <li>Deleting something on one device deletes it everywhere. Restoring a backup on a synced device replaces the data everywhere too.</li>
           <li>The price-data key stays on each device and is never synced. Sync is not a backup: keep exporting <Link to="/backup">backups</Link> too.</li>
           <li>Anyone with the token and your passphrase could read your data, so keep both private. If a phone is lost, delete the token on GitHub.</li>
         </ul>
-      </div>
+      </SettingsSection>
     </>
   );
 }

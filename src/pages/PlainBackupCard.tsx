@@ -8,6 +8,7 @@ import {
 } from '../lib/backupFile';
 import type { BackupFile } from '../lib/backup';
 import { PRIVACY_WARNING, summarizeBackup, type SummaryGroup } from '../lib/backupSummary';
+import { Pill, SettingsSection, SubHeading } from './SettingsParts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -19,8 +20,11 @@ export default function PlainBackupCard() {
   const [pending, setPending] = useState<{ file: BackupFile; summary: BackupSummary; name: string } | null>(null);
   const [fileKey, setFileKey] = useState(0); // changing it empties the file chooser
   const [saved, setSaved] = useState<SummaryGroup[] | null>(null);
+  // Which half of the card the last action belongs to, so its message appears beside the button that caused it. Display only.
+  const [zone, setZone] = useState<'create' | 'restore'>('create');
 
   async function doExport() {
+    setZone('create');
     setMsg(''); setErr(''); setSaved(null);
     try {
       const name = await exportBackupNow(db, (f) => setSaved(summarizeBackup(f)));
@@ -30,6 +34,7 @@ export default function PlainBackupCard() {
   }
 
   async function choose(f: File | undefined) {
+    setZone('restore');
     setMsg(''); setErr(''); setPending(null);
     if (!f) return;
     try {
@@ -43,6 +48,7 @@ export default function PlainBackupCard() {
 
   async function replace() {
     if (!pending) return;
+    setZone('restore');
     setBusy(true); setErr(''); setMsg('');
     try {
       // Safety copy first (if it fails nothing is touched), then the one-transaction restore. Same sequence as the encrypted restore.
@@ -76,44 +82,54 @@ export default function PlainBackupCard() {
 
   const w = pending?.summary;
   return (
-    <div className="card">
-      <h3 style={{ margin: 0 }}>Back up Ledger data</h3>
-      <p className="muted">
-        One file holds everything Ledger keeps in this browser: Finance, Tasks &amp; Calendar, Projects, Home &amp; Assets, Household Services, contacts, tags and links
-        between records, plus your settings and look-and-feel choices (colors, light/dark, layout). It is saved as a readable file named like “Ledger Backup {fmtToday()}.json”,
-        normally in your Downloads folder.
-      </p>
-      <div className="banner warn" style={{ display: 'block' }} role="note"><strong>{PRIVACY_WARNING}</strong> This file is NOT encrypted. It can include serial numbers, vehicle identification numbers, plates and addresses saved in Home &amp; Assets. For an encrypted copy, use “Encrypted backup” below.</div>
-      <details style={{ marginTop: 8 }}>
-        <summary>What is and is not in a backup</summary>
-        <ul className="plain">
-          <li><strong>Included:</strong> every record in every module, including deleted-record markers, and the colors, light/dark and layout choices kept in this browser.</li>
-          <li><strong>Web addresses and file names only:</strong> documents you attach or link are NOT inside the backup. Keep the original files wherever they are stored.</li>
-          <li><strong>Never included:</strong> the price-lookup key, the sync token and passphrase, and the weekly-backup passphrase. They stay on each device, so after restoring on a new device you set them up again.</li>
-          <li><strong>Not the same as sync:</strong> sync keeps devices in step; it is not a backup. This file is the copy you control.</li>
-        </ul>
-        <p className="muted small">Which choices follow you to other devices and which stay on one: see Settings &gt; General.</p>
-        <p className="muted small">File format: data version {CURRENT_SCHEMA_VERSION}, written by Ledger {APP_VERSION}. Older files are upgraded automatically; files from a newer Ledger are refused before anything changes.</p>
-      </details>
-      {restored && <div className="ok" role="status">Backup restored. Your previous data was saved first as “{restored}”.</div>}
-      <div className="row" style={{ marginTop: 8 }}>
-        <button className="primary" onClick={doExport} disabled={busy}>Export backup</button>
-      </div>
-      {saved && <SummaryList title="What this backup contains" groups={saved} />}
-
-      <h3 style={{ margin: '16px 0 0' }}>Restore Ledger data</h3>
-      <div className="row">
-        <label className="f">Choose a backup file (replaces everything on this device)
-          <input key={fileKey} id="plain-restore-file" type="file" accept=".json,application/json" disabled={busy} onChange={(e) => choose(e.target.files?.[0])} />
-        </label>
+    <SettingsSection id="plain-backup" title="Plain backup" badge={<Pill tone="warn">Not encrypted</Pill>}>
+      <div className="se-zone">
+        <SubHeading>Back up Ledger data</SubHeading>
+        <p className="muted">
+          One file holds everything Ledger keeps in this browser: Finance, Tasks &amp; Calendar, Projects, Home &amp; Assets, Household Services, contacts, tags and links
+          between records, plus your settings and look-and-feel choices (colors, light/dark, layout). It is saved as a readable file named like “Ledger Backup {fmtToday()}.json”,
+          normally in your Downloads folder.
+        </p>
+        <div className="banner warn se-privacy" role="note"><strong>{PRIVACY_WARNING}</strong> This file is NOT encrypted. It can include serial numbers, vehicle identification numbers, plates and addresses saved in Home &amp; Assets. For an encrypted copy, use “Encrypted backup” below.</div>
+        <details className="se-details">
+          <summary>What is and is not in a backup</summary>
+          <ul className="plain">
+            <li><strong>Included:</strong> every record in every module, including deleted-record markers, and the colors, light/dark and layout choices kept in this browser.</li>
+            <li><strong>Web addresses and file names only:</strong> documents you attach or link are NOT inside the backup. Keep the original files wherever they are stored.</li>
+            <li><strong>Never included:</strong> the price-lookup key, the sync token and passphrase, and the weekly-backup passphrase. They stay on each device, so after restoring on a new device you set them up again.</li>
+            <li><strong>Not the same as sync:</strong> sync keeps devices in step; it is not a backup. This file is the copy you control.</li>
+          </ul>
+          <p className="muted small">Which choices follow you to other devices and which stay on one: see Settings &gt; General.</p>
+          <p className="muted small">File format: data version {CURRENT_SCHEMA_VERSION}, written by Ledger {APP_VERSION}. Older files are upgraded automatically; files from a newer Ledger are refused before anything changes.</p>
+        </details>
+        {restored && <div className="ok" role="status">Backup restored. Your previous data was saved first as “{restored}”.</div>}
+        <div className="row se-actions">
+          <button className="primary" onClick={doExport} disabled={busy}>Export backup</button>
+        </div>
+        {saved && <SummaryList title="What this backup contains" groups={saved} />}
+        {zone === 'create' && msg && <div className="ok" role="status">{msg}</div>}
+        {zone === 'create' && err && <div className="error" role="alert">{err}</div>}
       </div>
 
-      {w && pending && <RestoreConfirm pending={pending} busy={busy} onConfirm={replace} onCancel={() => { setPending(null); setFileKey((k) => k + 1); setTimeout(() => document.getElementById('plain-restore-file')?.focus(), 0); }} />}
+      <div className="se-zone se-zone--restore">
+        <div className="se-zone-head">
+          <SubHeading>Restore Ledger data</SubHeading>
+          <Pill tone="bad">Replaces everything on this device</Pill>
+        </div>
+        <p className="muted small">Restoring is not an import that adds to what you have. It swaps all the data in this browser for the file’s contents. You will see what is in the file and confirm before anything changes.</p>
+        <div className="row">
+          <label className="f">Choose a backup file (replaces everything on this device)
+            <input key={fileKey} id="plain-restore-file" type="file" accept=".json,application/json" disabled={busy} onChange={(e) => choose(e.target.files?.[0])} />
+          </label>
+        </div>
 
-      {msg && <div className="ok" role="status">{msg}</div>}
-      {err && <div className="error" role="alert">{err}</div>}
+        {w && pending && <RestoreConfirm pending={pending} busy={busy} onConfirm={replace} onCancel={() => { setPending(null); setFileKey((k) => k + 1); setTimeout(() => document.getElementById('plain-restore-file')?.focus(), 0); }} />}
 
-      <details style={{ marginTop: 12 }}>
+        {zone === 'restore' && msg && <div className="ok" role="status">{msg}</div>}
+        {zone === 'restore' && err && <div className="error" role="alert">{err}</div>}
+      </div>
+
+      <details className="se-details">
         <summary>Testing tools (for checking the backup reminder)</summary>
         <p className="muted">
           These only change the date this device has on record for its last backup. They do not touch your money data. Current record:
@@ -124,7 +140,7 @@ export default function PlainBackupCard() {
           <button onClick={() => pretend(null)}>Set last backup to now</button>
         </div>
       </details>
-    </div>
+    </SettingsSection>
   );
 }
 
@@ -134,7 +150,7 @@ export function RestoreConfirm({ pending, busy, onConfirm, onCancel, encrypted =
   useEffect(() => { ref.current?.focus(); }, []);
   const w = pending.summary;
   return (
-    <div ref={ref} tabIndex={-1} className="banner warn" style={{ display: 'block', marginTop: 12 }} role="alertdialog" aria-label="Confirm restore"
+    <div ref={ref} tabIndex={-1} className="banner warn se-confirm" role="alertdialog" aria-label="Confirm restore"
       onKeyDown={(e) => { if (e.key === 'Escape' && !busy) onCancel(); }}>
       <strong>Replace your data with this backup?</strong>
       <ul className="plain">
@@ -160,7 +176,7 @@ export function RestoreConfirm({ pending, busy, onConfirm, onCancel, encrypted =
 /** Counts by area. These are groupings for reading, not database tables. */
 function SummaryList({ title, groups }: { title: string; groups: SummaryGroup[] }) {
   return (
-    <div style={{ marginTop: 8 }}>
+    <div className="se-summary">
       <strong>{title}</strong>
       <ul className="plain" aria-label={title}>
         {groups.map((g) => (

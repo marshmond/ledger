@@ -6,6 +6,8 @@ import { COLOR_ROLES, PRESETS, CLASSIC, colorsOf, contrastNotes, isHex, loadPale
 import { LIMIT_MESSAGE, addTheme, atLimit, checkThemeName, decodeTheme, encodeTheme, newThemeId, parseThemes, removeTheme, renameTheme, sameColors, uniqueName, updateTheme, type SavedTheme } from '../lib/savedThemes';
 import { applyTheme, loadTheme } from '../theme';
 import ThemeToggle from './ThemeToggle';
+import { PageHeader } from '../ui/components';
+import { Pill, SettingsSection, SubHeading } from './SettingsParts';
 
 const NAMES: Record<PaletteId, string> = { classic: 'Classic blue', teal: 'Calm teal', navy: 'Deep navy and gold', forest: 'Forest green and stone', slate: 'Slate and indigo', signature: 'Ledger Signature', custom: 'My own colors' };
 const BLURB: Record<string, string> = { classic: 'The original look: clean white and blue.', ...Object.fromEntries(PRESETS.map((p) => [p.id, p.blurb])), custom: 'Pick every color yourself, for light and dark.' };
@@ -24,7 +26,7 @@ function ColorRow({ role, value, onChange }: { role: (typeof COLOR_ROLES)[number
       <input type="color" aria-label={`${role.label} color`} value={shown.toLowerCase()} onChange={(e) => { setText(e.target.value); onChange(e.target.value.toUpperCase()); }} />
       <div className="info">
         <strong>{role.label}</strong>
-        <div className="muted" style={{ fontSize: '0.8rem' }}>{role.help}</div>
+        <div className="muted se-role-help">{role.help}</div>
       </div>
       <input
         className="hex"
@@ -111,59 +113,77 @@ export default function AppearanceCard() {
     try { await navigator.clipboard.writeText(text); setMsg('Theme code copied. Paste it into another copy of the app.'); } catch { setMsg('Copy the code from the box below.'); }
   }
 
+  const paletteIds = ['classic', ...PRESETS.map((p) => p.id), 'custom'] as PaletteId[];
+  const inUse = (id: PaletteId) => (id === 'custom' ? choice.id === 'custom' && !active : choice.id === id);
+  const nowName = active ? active.name : choice.id === 'custom' ? NAMES.custom : label(choice.id);
+
   return (
-    <div className="card">
-      <strong>Appearance</strong>
-      <p className="muted">Mode follows your phone or computer (Device), or you can force Light or Dark. Colors are chosen separately, below. Both are remembered on this device only, except your saved themes, which are kept with your data.</p>
-      <ThemeToggle />
+    <>
+      <PageHeader title="Appearance" description="Light or dark, the color palette, and themes you have saved." />
+      <p className="se-now" role="status">
+        <span className="se-now-label">Colors right now</span>
+        <strong className="se-now-value">{nowName}</strong>
+      </p>
 
-      <h3>Colors</h3>
-      <div className="pal-grid" role="radiogroup" aria-label="Color palette" onKeyDown={rovingKeys}>
-        {(['classic', ...PRESETS.map((p) => p.id), 'custom'] as PaletteId[]).map((id) => {
-          const sample = id === 'custom' ? (custom?.light ?? CLASSIC.light) : id === 'classic' ? CLASSIC.light : PRESETS.find((p) => p.id === id)!.light;
-          const sampleDark = id === 'custom' ? (custom?.dark ?? CLASSIC.dark) : id === 'classic' ? CLASSIC.dark : PRESETS.find((p) => p.id === id)!.dark;
-          const on = id === 'custom' ? choice.id === 'custom' && !active : choice.id === id;
-          return (
-            <button key={id} role="radio" aria-checked={on} tabIndex={(on) ? 0 : -1} className={`pal ${on ? 'on' : ''}`} onClick={() => (id === 'custom' ? (custom ? set({ id: 'custom', custom }) : startCustom(base)) : set({ id }))}>
-              <strong>{label(id)}</strong>
-              <div className="swatches" aria-hidden="true">{dots(sample).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-              <div className="swatches" aria-hidden="true">{dots(sampleDark).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-              <div className="muted">{BLURB[id]}</div>
-            </button>
-          );
-        })}
-      </div>
+      <SettingsSection id="mode" title="Mode" badge={<Pill tone="quiet">This device only</Pill>}
+        intro="Mode follows your phone or computer (Device), or you can force Light or Dark. Colors are chosen separately, below. Both are remembered on this device only, except your saved themes, which are kept with your data.">
+        <div className="se-mode">
+          <ThemeToggle />
+          <ul className="se-points">
+            <li><strong>Device</strong> follows the light or dark setting of your phone or computer.</li>
+            <li><strong>Light</strong> and <strong>Dark</strong> stay as chosen, whatever the device does.</li>
+            <li>The button cycles Device, Light, Dark. The same button is in the Ledger menu bar.</li>
+          </ul>
+        </div>
+      </SettingsSection>
 
-      <h3>My themes</h3>
-      {themes.length === 0 ? (
-        <p className="muted">Nothing saved yet. Choose “My own colors”, adjust the colors, and save them here with a name. Saved themes sync to your other devices.</p>
-      ) : (
-        <div className="pal-grid" role="radiogroup" aria-label="My saved themes" onKeyDown={rovingKeys}>
-          {themes.map((t, i) => (
-            <button key={t.id} role="radio" aria-checked={choice.savedId === t.id} tabIndex={rovingIndex(i, themes.findIndex((x) => x.id === choice.savedId))} className={`pal ${choice.savedId === t.id ? 'on' : ''}`} onClick={() => set({ id: 'custom', custom: { light: { ...t.light }, dark: { ...t.dark } }, savedId: t.id })}>
-              <strong>{t.name}</strong>
-              <div className="swatches" aria-hidden="true">{dots(t.light).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-              <div className="swatches" aria-hidden="true">{dots(t.dark).map((c, i) => <i key={i} style={{ background: c }} />)}</div>
-            </button>
-          ))}
+      <SettingsSection id="palettes" title="Color palettes" intro="Each card shows the palette in light (top row of dots) and dark (bottom row). Choose one to use it everywhere in Ledger.">
+        <div className="pal-grid se-pals" role="radiogroup" aria-label="Color palette" onKeyDown={rovingKeys}>
+          {paletteIds.map((id) => {
+            const sample = id === 'custom' ? (custom?.light ?? CLASSIC.light) : id === 'classic' ? CLASSIC.light : PRESETS.find((p) => p.id === id)!.light;
+            const sampleDark = id === 'custom' ? (custom?.dark ?? CLASSIC.dark) : id === 'classic' ? CLASSIC.dark : PRESETS.find((p) => p.id === id)!.dark;
+            const on = inUse(id);
+            return (
+              <button key={id} role="radio" aria-checked={on} tabIndex={(on) ? 0 : -1} className={`pal ${on ? 'on' : ''}`} onClick={() => (id === 'custom' ? (custom ? set({ id: 'custom', custom }) : startCustom(base)) : set({ id }))}>
+                <span className="se-pal-head"><strong>{label(id)}</strong>{on && <Pill tone="ok">In use</Pill>}</span>
+                <span className="swatches" aria-hidden="true">{dots(sample).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+                <span className="swatches" aria-hidden="true">{dots(sampleDark).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+                <span className="muted se-pal-blurb">{BLURB[id]}</span>
+              </button>
+            );
+          })}
         </div>
-      )}
-      <details style={{ marginTop: 8 }}>
-        <summary>Add a theme from a code</summary>
-        <p className="muted">Paste a theme code that was copied from another copy of the app.</p>
-        <div className="row">
-          <label className="f">Theme code<textarea rows={2} value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} placeholder="ledger-theme-1:…" /></label>
-          <button disabled={!pasted.trim()} onClick={importCode}>Add theme</button>
-        </div>
-      </details>
-      {msg && <div className="muted" role="status">{msg}</div>}
+      </SettingsSection>
+
+      <SettingsSection id="themes" title="My themes" badge={<Pill tone="info">Synced with your data</Pill>}
+        intro={themes.length === 0 ? 'Nothing saved yet. Choose “My own colors”, adjust the colors, and save them here with a name. Saved themes sync to your other devices.' : 'Colors you saved with a name. Choose one to use it; change it under “Your colors” below.'}>
+        {themes.length > 0 && (
+          <div className="pal-grid se-pals" role="radiogroup" aria-label="My saved themes" onKeyDown={rovingKeys}>
+            {themes.map((t, i) => (
+              <button key={t.id} role="radio" aria-checked={choice.savedId === t.id} tabIndex={rovingIndex(i, themes.findIndex((x) => x.id === choice.savedId))} className={`pal ${choice.savedId === t.id ? 'on' : ''}`} onClick={() => set({ id: 'custom', custom: { light: { ...t.light }, dark: { ...t.dark } }, savedId: t.id })}>
+                <span className="se-pal-head"><strong>{t.name}</strong>{choice.savedId === t.id && <Pill tone="ok">In use</Pill>}</span>
+                <span className="swatches" aria-hidden="true">{dots(t.light).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+                <span className="swatches" aria-hidden="true">{dots(t.dark).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <details className="se-details">
+          <summary>Add a theme from a code</summary>
+          <p className="muted">Paste a theme code that was copied from another copy of the app.</p>
+          <div className="row">
+            <label className="f">Theme code<textarea rows={2} value={pasted} onChange={(e) => setPasted(e.target.value)} spellCheck={false} placeholder="ledger-theme-1:…" /></label>
+            <button disabled={!pasted.trim()} onClick={importCode}>Add theme</button>
+          </div>
+        </details>
+        {msg && <div className="muted se-msg" role="status">{msg}</div>}
+      </SettingsSection>
 
       {choice.id === 'custom' && custom && current && (
-        <>
-          <h3>Your colors{active ? `: ${active.name}` : ''}</h3>
-          <p className="muted">Pick a color for each part of the app. Light and dark are set separately, so choose which one you are editing. Anything hard to read is flagged.</p>
-          <div className="row">
-            {active && changed && <span className="warn">changed</span>}
+        <SettingsSection id="editor" title={`Your colors${active ? `: ${active.name}` : ''}`}
+          intro="Pick a color for each part of the app. Light and dark are set separately, so choose which one you are editing. Anything hard to read is flagged.">
+          <div className="row se-actions">
+            {active && changed && <Pill tone="warn">Changed, not saved</Pill>}
             {active && changed && <button className="primary" onClick={() => store(updateTheme(themes, active.id, custom))}>Update “{active.name}”</button>}
             <button onClick={() => openName('new')}>Save as new theme…</button>
             {active && <button className="link" onClick={() => openName('rename')}>rename</button>}
@@ -171,18 +191,18 @@ export default function AppearanceCard() {
             <button className="link" onClick={copyCode}>copy theme code</button>
           </div>
           {naming && (
-            <form className="row" style={{ marginTop: 6 }} onSubmit={(e) => { e.preventDefault(); commitName(); }}>
+            <form className="row se-name" onSubmit={(e) => { e.preventDefault(); commitName(); }}>
               <label className="f">{naming === 'rename' ? 'New name' : 'Name for this theme'}<input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} autoFocus /></label>
               <button className="primary" type="submit">Save</button>
               <button type="button" onClick={() => setNaming(null)}>Cancel</button>
               {err && <span className="error" role="alert">{err}</span>}
             </form>
           )}
-          {code && <textarea readOnly rows={3} value={code} onFocus={(e) => e.currentTarget.select()} aria-label="Theme code" style={{ width: '100%', marginTop: 6 }} />}
-          <div className="row" style={{ marginTop: 8 }}>
+          {code && <textarea className="se-code" readOnly rows={3} value={code} onFocus={(e) => e.currentTarget.select()} aria-label="Theme code" />}
+          <div className="row se-editbar">
             <div className="seg" role="group" aria-label="Which mode to edit">
-              <button className={editing === 'light' ? 'on' : ''} onClick={() => setEditing('light')}>Light mode</button>
-              <button className={editing === 'dark' ? 'on' : ''} onClick={() => setEditing('dark')}>Dark mode</button>
+              <button className={editing === 'light' ? 'on' : ''} aria-pressed={editing === 'light'} onClick={() => setEditing('light')}>Light mode</button>
+              <button className={editing === 'dark' ? 'on' : ''} aria-pressed={editing === 'dark'} onClick={() => setEditing('dark')}>Dark mode</button>
             </div>
             <label className="row">Start over from
               <select value={base} onChange={(e) => { const id = e.target.value as PaletteId; setBase(id); if (confirm(`Replace your colors with ${NAMES[id]}? Your saved themes are not affected.`)) startCustom(id); }}>
@@ -190,34 +210,42 @@ export default function AppearanceCard() {
               </select>
             </label>
           </div>
-          <div className="colormap">
-            {COLOR_ROLES.map((r) => <ColorRow key={`${editing}-${r.key}-${current[r.key]}`} role={r} value={current[r.key]} onChange={(hex) => update(r.key, hex)} />)}
-          </div>
-          {notes.length > 0 && (
-            <ul className="warn">{notes.map((n, i) => <li key={i}>{n.message} (contrast {n.ratio.toFixed(1)}, aim for {n.min} or more)</li>)}</ul>
-          )}
-          <strong>Preview ({editing} mode)</strong>
-          <div className="samples" style={varsFor(current) as CSSProperties}>
-            <div className="sample-side">
-              <strong>Ledger</strong>
-              <span className="on">Budget</span>
-              <span>Transactions</span>
-              <span>Investments</span>
-            </div>
-            <div className="sample-main">
-              <strong>Net worth</strong>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>$412,350.00</div>
-              <div className="muted">Up <span className="pos">$12,400</span> this year, <span className="neg">$310</span> over budget, <span className="warn">backup due</span></div>
-              <div className="row" style={{ marginTop: 6 }}>
-                <button className="primary">Primary</button>
-                <button>Secondary</button>
-                <a href="#/more" onClick={(e) => e.preventDefault()}>A link</a>
+          <div className="se-editor">
+            <div>
+              <SubHeading>Color map ({editing} mode)</SubHeading>
+              <div className="colormap">
+                {COLOR_ROLES.map((r) => <ColorRow key={`${editing}-${r.key}-${current[r.key]}`} role={r} value={current[r.key]} onChange={(hex) => update(r.key, hex)} />)}
               </div>
-              <div className="card" style={{ marginTop: 6 }}>A card with some text.</div>
+            </div>
+            <div className="se-editor-side">
+              <SubHeading>Readability check</SubHeading>
+              {notes.length > 0 ? (
+                <ul className="warn se-warn">{notes.map((n, i) => <li key={i}>{n.message} (contrast {n.ratio.toFixed(1)}, aim for {n.min} or more)</li>)}</ul>
+              ) : <p className="muted small">Nothing hard to read in {editing} mode.</p>}
+              <SubHeading>Preview ({editing} mode)</SubHeading>
+              <div className="samples se-sample" style={varsFor(current) as CSSProperties}>
+                <div className="se-sample-bar">
+                  <strong>Ledger</strong>
+                  <span className="on">Money</span>
+                  <span>Invest</span>
+                  <span>Plan</span>
+                </div>
+                <div className="sample-main">
+                  <strong>Net worth</strong>
+                  <div className="se-sample-fig">$412,350.00</div>
+                  <div className="muted">Up <span className="pos">$12,400</span> this year, <span className="neg">$310</span> over budget, <span className="warn">backup due</span></div>
+                  <div className="row se-sample-row">
+                    <button className="primary">Primary</button>
+                    <button>Secondary</button>
+                    <a href="#/more" onClick={(e) => e.preventDefault()}>A link</a>
+                  </div>
+                  <div className="card se-sample-card">A card with some text.</div>
+                </div>
+              </div>
             </div>
           </div>
-        </>
+        </SettingsSection>
       )}
-    </div>
+    </>
   );
 }

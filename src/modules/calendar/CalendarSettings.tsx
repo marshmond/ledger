@@ -7,6 +7,8 @@ import type { Priority } from '../../core/entities';
 import { ensureCalendarSeed, loadLayers } from './data';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from './model';
 import { WEEKDAYS_LONG } from './time';
+import { PageHeader } from '../../ui/components';
+import { SettingsSection } from '../../pages/SettingsParts';
 
 /** Calendar options, shown on the shell's Settings page. */
 export default function CalendarSettingsCard() {
@@ -21,9 +23,10 @@ export default function CalendarSettingsCard() {
 
   return (
     <>
-      <div className="card">
-        <div className="card-head"><h2 className="card-title">Calendar</h2></div>
-        <div className="grid">
+      <PageHeader title="Calendar" description="How the Calendar looks when it opens, where new events go, and how Finance items show up on it." />
+
+      <SettingsSection id="cal-display" title="Display" intro="How the Calendar looks when you open it. You can still switch views on the Calendar itself.">
+        <div className="an-form">
           <label className="f">First day of the week
             <select value={s.weekStart} onChange={(e) => set({ weekStart: Number(e.target.value) })}>
               {WEEKDAYS_LONG.map((w, d) => <option key={w} value={d}>{w}</option>)}
@@ -38,11 +41,21 @@ export default function CalendarSettingsCard() {
               <option value="agenda">Agenda</option>
             </select>
           </label>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection id="cal-defaults" title="Defaults" intro="Where an event goes when you do not pick a calendar.">
+        <div className="an-form">
           <label className="f">New events go into
             <select value={s.defaultCalendarId ?? local.find((l) => l.builtin)?.id ?? ''} onChange={(e) => set({ defaultCalendarId: Number(e.target.value) })}>
               {local.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           </label>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection id="cal-finance" title="Finance items on the Calendar">
+        <div className="an-form">
           <label className="f">Show past-due Finance items for (days)
             <input
               inputMode="numeric" value={days} onChange={(e) => setDays(e.target.value)}
@@ -52,12 +65,11 @@ export default function CalendarSettingsCard() {
           </label>
         </div>
         <p className="muted small">Past-due Finance items are scheduled items you have neither approved nor skipped. Older ones stay on Ledger's Scheduled page; the Calendar just stops listing them. Ledger itself is not changed by this setting.</p>
-      </div>
+      </SettingsSection>
 
-      <div className="card">
-        <div className="card-head"><h2 className="card-title">Finance items: default priority</h2></div>
-        <p className="muted small">Each kind of Finance item gets this priority on the Calendar (it is not per item). Bills and loan payments set to Medium become High when due within 3 days or overdue.</p>
-        <div className="grid">
+      <SettingsSection id="cal-priority" title="Finance items: default priority"
+        intro="Each kind of Finance item gets this priority on the Calendar (it is not per item). Bills and loan payments set to Medium become High when due within 3 days or overdue.">
+        <div className="an-form">
           {FINANCE_CLASSES.map((c: FinanceClass) => (
             <label key={c} className="f">{FINANCE_CLASS_LABEL[c]}
               <select value={s.financePriorities[c]} onChange={(e) => set({ financePriorities: { ...s.financePriorities, [c]: e.target.value as Priority } })}>
@@ -66,8 +78,8 @@ export default function CalendarSettingsCard() {
             </label>
           ))}
         </div>
-        <div className="row"><button className="btn" onClick={() => set({ financePriorities: DEFAULT_CALENDAR_SETTINGS.financePriorities })}>Reset priorities</button></div>
-      </div>
+        <div className="row se-actions"><button className="btn" onClick={() => set({ financePriorities: DEFAULT_CALENDAR_SETTINGS.financePriorities })}>Reset priorities</button></div>
+      </SettingsSection>
     </>
   );
 }

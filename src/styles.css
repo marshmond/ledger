@@ -508,8 +508,6 @@ details.pick label.chk:hover { background: var(--hover); }
 .colorrow .hex { width: 90px; font-family: monospace; }
 .colorrow .info { flex: 1; min-width: 0; }
 .samples { display: grid; grid-template-columns: 150px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 8px 0; }
-.sample-side { background: var(--side-bg); color: var(--side-fg); padding: 10px; display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
-.sample-side .on { color: var(--side-active); font-weight: 600; box-shadow: inset 3px 0 0 var(--side-active); padding-left: 6px; }
 .sample-main { background: var(--bg); color: var(--fg); padding: 10px; }
 
 .progress { height: 8px; margin: 8px 0; background: var(--line); border-radius: 4px; overflow: hidden; }

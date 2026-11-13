@@ -23,11 +23,11 @@ export interface Colors {
   neg: string;
   /** Warnings. */
   warn: string;
-  /** Sidebar background. */
+  /** Menu bar background (the Ledger bar under the header; the role keeps its stored name `sideBg`). */
   sideBg: string;
-  /** Sidebar text. */
+  /** Menu bar text. */
   sideFg: string;
-  /** The active page in the sidebar. */
+  /** The active section in the menu bar. */
   sideActive: string;
 }
 
@@ -67,9 +67,9 @@ export const COLOR_ROLES: ColorRole[] = [
   { key: 'pos', label: 'Good news', help: 'Gains, refunds, and money in.' },
   { key: 'neg', label: 'Bad news', help: 'Losses, overspending, and money owed.' },
   { key: 'warn', label: 'Warnings', help: 'Things that need a look.' },
-  { key: 'sideBg', label: 'Sidebar background', help: 'The menu on the left (desktop).' },
-  { key: 'sideFg', label: 'Sidebar text', help: 'Menu names.' },
-  { key: 'sideActive', label: 'Sidebar highlight', help: 'The page you are on.' },
+  { key: 'sideBg', label: 'Menu bar background', help: 'The Ledger menu bar under the header (computer-width screens).' },
+  { key: 'sideFg', label: 'Menu bar text', help: 'Menu names.' },
+  { key: 'sideActive', label: 'Menu bar highlight', help: 'The section you are in.' },
 ];
 
 export interface PaletteDef {
@@ -129,7 +129,7 @@ export const PRESETS: PaletteDef[] = [
   {
     id: 'navy',
     name: 'Deep navy and gold',
-    blurb: 'A classic private-bank look: navy sidebar, white content, gold highlights.',
+    blurb: 'A classic private-bank look: navy menu bar, white content, gold highlights.',
     light: { bg: '#FFFFFF', card: '#F4F6FA', fg: '#14213D', muted: '#555F7A', line: '#DFE3EC', accent: '#1E3A8A', pos: '#166534', neg: '#B91C1C', warn: '#8A6508', sideBg: '#14213D', sideFg: '#E8ECF4', sideActive: '#E9C46A' },
     dark: { bg: '#0E1420', card: '#161E2E', fg: '#E8ECF4', muted: '#A2AEC8', line: '#25304A', accent: '#7DA2FF', pos: '#4ADE80', neg: '#F87171', warn: '#E9C46A', sideBg: '#0A0F19', sideFg: '#E8ECF4', sideActive: '#E9C46A' },
   },
@@ -261,8 +261,8 @@ export function contrastNotes(c: Colors): ContrastNote[] {
     { key: 'pos', against: 'card', min: 3, message: 'Good-news color is hard to see on cards.' },
     { key: 'neg', against: 'card', min: 3, message: 'Bad-news color is hard to see on cards.' },
     { key: 'warn', against: 'card', min: 3, message: 'Warning color is hard to see on cards.' },
-    { key: 'sideFg', against: 'sideBg', min: 4.5, message: 'Sidebar text is hard to read on the sidebar background.' },
-    { key: 'sideActive', against: 'sideBg', min: 3, message: 'The sidebar highlight barely stands out.' },
+    { key: 'sideFg', against: 'sideBg', min: 4.5, message: 'Menu bar text is hard to read on the menu bar background.' },
+    { key: 'sideActive', against: 'sideBg', min: 3, message: 'The menu bar highlight barely stands out.' },
   ];
   return checks.flatMap((k) => {
     const ratio = contrastRatio(c[k.key], c[k.against]);

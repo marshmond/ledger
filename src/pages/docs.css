@@ -1,0 +1,151 @@
+/*
+ * D19: More, Year in review, If something happens to me, Tax package. Prefix: dc-.
+ * Built from the shared Signature pieces (an-card, PlanSection, PlanFigs, tokens); only what those do not cover is here.
+ * The print rules at the end make each document come out light, without buttons or menus, and keep the privacy choices the page shows.
+ */
+
+/* ---------- common ---------- */
+.dc-doc { display: grid; gap: var(--sp-4); min-width: 0; }
+.dc-doc > * { margin: 0; min-width: 0; }
+.dc-doc > .page-head { margin-bottom: 0; }
+.dc-lede, .dc-foot, .dc-printed, .dc-note { margin: 0; }
+.dc-tablegap { margin-top: var(--sp-3); }
+.dc-highlights { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-2); }
+
+/* ---------- More ---------- */
+.dc-more { display: grid; gap: var(--sp-4); margin-top: var(--sp-4); min-width: 0; }
+.dc-more > * { min-width: 0; margin: 0; }
+.dc-group-intro { margin: var(--sp-1) 0 var(--sp-2); }
+.dc-dests { list-style: none; margin: 0; padding: 0; }
+.dc-dest { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 56px; margin: 0 calc(-1 * var(--sp-2)); padding: var(--sp-3) var(--sp-2); border-radius: var(--r-md); color: inherit; text-decoration: none; }
+.dc-dests li + li .dc-dest { box-shadow: 0 -1px 0 var(--line); }
+.dc-dest:hover { background: var(--hover); }
+.dc-dest-text { display: grid; gap: 2px; min-width: 0; }
+.dc-dest-text strong { color: var(--fg); }
+.dc-dest-go { flex: none; color: var(--accent-text); font-size: 1.25rem; }
+.dc-state { font-size: var(--fs-sm); font-weight: 600; color: var(--fg-2); }
+.dc-state--warn { color: var(--warn-text); }
+.dc-h3 { margin: var(--sp-3) 0 var(--sp-1); font-size: var(--fs-base); font-weight: 650; }
+.dc-keys { margin: 0; }
+.dc-about { margin: 0; }
+.dc-money .an-h2 { margin-bottom: var(--sp-2); }
+.dc-money .card { margin: 0; }
+.dc-money .card > strong { display: block; margin-bottom: var(--sp-2); }
+@media (min-width: 900px) {
+  /* two balanced columns that read top to bottom; on a phone the same order is one column */
+  .dc-more { display: block; columns: 2; column-gap: var(--sp-4); }
+  .dc-more > * { break-inside: avoid; margin-bottom: var(--sp-4); }
+}
+
+/* ---------- Year in review ---------- */
+.dc-report .pl-hero { margin: 0; }
+
+/* ---------- If something happens to me ---------- */
+.dc-orient { display: grid; gap: var(--sp-4); }
+.dc-orient-main p { margin: var(--sp-2) 0; }
+.dc-steps { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); color: var(--fg-2); }
+.dc-orient-warn { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--neg); border-left-width: 4px; border-radius: var(--r-md); background: var(--neg-soft); }
+.dc-orient-warn strong { display: block; margin-bottom: var(--sp-1); }
+@media (min-width: 900px) { .dc-orient { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+
+.dc-contacts, .dc-papers { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); }
+.dc-contact { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-soft); }
+.dc-contact-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-3); margin-bottom: var(--sp-2); }
+.dc-contact-top .danger { margin-left: auto; }
+.dc-role { display: inline-flex; padding: 1px 10px; border: 1px solid var(--control-line); border-radius: var(--r-pill); background: var(--surface); color: var(--fg-2); font-size: var(--fs-sm); }
+.dc-contact .f { margin: 0; }
+.dc-papers { gap: 0; }
+.dc-paper { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-1); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.dc-paper:first-child { border-top: none; }
+.dc-paper-item { font-weight: 600; }
+.dc-paper input { width: 100%; }
+.dc-paper .danger { justify-self: start; }
+@media (min-width: 760px) {
+  .dc-paper { grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1fr) auto; align-items: center; gap: var(--sp-3); }
+  .dc-paper .danger { justify-self: end; }
+}
+.dc-add { margin-top: var(--sp-3); }
+.dc-add input { flex: 1 1 200px; min-width: 0; }
+.dc-bal-note { margin: 0 0 var(--sp-2); }
+.dc-note-field textarea { width: 100%; }
+.dc-first { margin: 0 0 var(--sp-2); padding-left: var(--sp-5); display: grid; gap: var(--sp-2); }
+.dc-guide .an-table td input { width: 100%; }
+
+/* a table that becomes labeled blocks on a phone (Guide's read-only lists) */
+@media screen and (max-width: 639px) {
+  .dc-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .dc-stack, .dc-stack tbody, .dc-stack tr, .dc-stack td { display: block; width: 100%; }
+  .dc-stack tr { padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+  .dc-stack tbody tr:last-child { border-bottom: none; }
+  .dc-stack td { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 2px 0; border: none; text-align: left; }
+  .dc-stack td.num { text-align: right; }
+  .dc-stack td::before { content: attr(data-label); flex: none; max-width: 45%; font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+  .dc-stack td > input { flex: 1; min-width: 0; }
+  .dc-stack td:has(> input) { flex-direction: column; gap: var(--sp-1); }
+  .dc-stack td:has(> input)::before { max-width: none; }
+  .dc-stack td > .print-only { display: none; }
+}
+
+/* ---------- Tax package ---------- */
+.dc-tax-top { display: grid; gap: var(--sp-4); }
+.dc-tax-intro p { margin: var(--sp-2) 0; }
+.dc-tax-intro .row { margin-top: var(--sp-3); }
+.dc-tax-top .an-figs { box-shadow: none; }
+.dc-sections { display: grid; gap: var(--sp-4); }
+.dc-sections > * { margin: 0; min-width: 0; }
+.dc-tax-table { margin-top: var(--sp-2); }
+.dc-tax-table table { min-width: max-content; }
+.dc-tax-table th { white-space: normal; }
+
+/* ---------- print ---------- */
+.dc-blank { display: inline-block; min-width: 14em; border-bottom: 1px solid #000; height: 1.1em; vertical-align: bottom; }
+.dc-pre { white-space: pre-wrap; margin: 0; }
+
+@media print {
+  @page { margin: 14mm; }
+  /* Whatever palette or light/dark the screen uses, a document is printed dark on white. Local values on the page wrapper beat the palette's. */
+  .dc-doc {
+    --bg: #fff; --card: #fff; --surface: #fff; --surface-soft: #fff; --surface-sunken: #f2f2f2; --surface-raised: #fff; --page: #fff; --field-bg: #fff;
+    --fg: #000; --fg-2: #1a1a1a; --muted: #404040; --line: #b5b5b5; --control-line: #808080; --line-strong: #808080;
+    --th-bg: #eee; --th-fg: #000;
+    --accent: #000; --accent-soft: #f2f2f2; --accent-line: #808080; --accent-text: #000;
+    --pos: #14532d; --pos-text: #14532d; --pos-soft: #fff; --neg: #7f1d1d; --neg-text: #7f1d1d; --neg-soft: #fff; --warn: #404040; --warn-text: #000; --warn-soft: #fff;
+    --hero-bg: #fff; --hero-ink: #000; --hero-ink-2: #333; --hero-line: #808080; --hero-pos: #14532d; --hero-neg: #7f1d1d;
+    --s1: #1f3a68; --shadow-1: none; --shadow-2: none;
+    display: block; font-size: 10.5pt; color: #000; background: #fff;
+  }
+  .dc-doc > * + * { margin-top: 10pt; }
+  .dc-doc .pl-jump { display: none; }
+  .dc-doc .an-card, .dc-doc .pl-section { padding: 0; border: none; box-shadow: none; background: none; border-radius: 0; }
+  .dc-doc .an-head { margin-bottom: 4pt; }
+  .dc-doc .an-h2 { font-size: 13pt; break-after: avoid; }
+  .dc-doc .an-hero { padding: 8pt 10pt; border: 1px solid #808080; border-radius: 4pt; background: #fff; color: #000; break-inside: avoid; }
+  .dc-doc .an-hero-amt { font-size: 22pt; }
+  .dc-doc .an-hero-figs { border-left-color: #808080; }
+  .dc-doc .an-figs { border: 1px solid #808080; border-radius: 4pt; break-inside: avoid; }
+  .dc-doc .an-fig dd { font-size: 14pt; }
+  .dc-doc .an-tablewrap { overflow: visible; }
+  .dc-doc table { width: 100%; font-size: 8.5pt; }
+  .dc-doc thead { display: table-header-group; }
+  .dc-doc tr, .dc-doc .pl-line, .dc-doc .dc-contact, .dc-doc .dc-paper { break-inside: avoid; }
+  .dc-doc .pl-line { padding: 3pt 0; }
+  .dc-doc th, .dc-doc td { padding: 3pt 4pt; }
+  .dc-doc .viz, .dc-doc svg { break-inside: avoid; }
+  /* the chart surface sets its own colors per light/dark; the extra html: raises this above those rules so a chart prints on white too */
+  html:root .dc-doc .viz { --surface-1: #fff; --ink: #000; --ink-2: #333; --ink-3: #555; --grid: #d0d0d0; --axis: #999; --s1: #1f3a68; border-color: #b5b5b5; }
+  .dc-tax table { font-size: 7.5pt; }
+  .dc-tax-table table { min-width: 0; }
+  .dc-tax th, .dc-tax td { padding: 2pt 3pt; overflow-wrap: break-word; }
+  .dc-doc table th { font-size: 1em; text-transform: none; letter-spacing: 0; white-space: normal; }
+  .dc-tax .dc-wide table { font-size: 5.5pt; }
+  .dc-tax .dc-wide th, .dc-tax .dc-wide td { padding: 2pt 2pt; }
+  .dc-guide .an-kind { display: none; }
+  .dc-contacts { gap: 0; }
+  .dc-contact { padding: 4pt 0; border: none; border-bottom: 1px solid #b5b5b5; border-radius: 0; background: none; }
+  .dc-doc .dc-contact-print { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2pt 14pt; margin: 0; }
+  .dc-contact-print > div { display: flex; gap: 6pt; }
+  .dc-contact-print dt { flex: none; width: 3.2em; color: #404040; }
+  .dc-contact-print dd { margin: 0; flex: 1; overflow-wrap: anywhere; }
+  .dc-paper { grid-template-columns: minmax(150pt, 0.4fr) minmax(0, 1fr); padding: 4pt 0; }
+  .dc-doc .dc-lines { display: block; height: 66pt; background: repeating-linear-gradient(to bottom, transparent 0, transparent 21pt, #808080 21pt, #808080 22pt); }
+}

@@ -12,6 +12,10 @@ import { spendingMatrix } from '../lib/reports';
 import { buildReview } from '../lib/review';
 import { LinesChart } from './charts';
 import { PageHeader } from '../ui/components';
+import { Kind, Lines, PlanFigs, PlanHero, PlanJump, PlanSection } from './PlanParts';
+import './analysis.css';
+import './plan.css';
+import './docs.css';
 
 const pct = (f: number | null) => (f === null ? '—' : `${(f * 100).toFixed(1)}%`);
 
@@ -58,78 +62,97 @@ export default function ReviewPage() {
   const years = [...new Set([thisYear, thisYear - 1, ...profiles.map((p) => p.year), ...snaps.map((s) => Number(s.date.slice(0, 4)))])].sort((a, b) => b - a);
   const yearSnaps = snaps.filter((s) => s.date.startsWith(`${year}-`)).sort((a, b) => a.date.localeCompare(b.date));
 
+  const nw = r.netWorth;
+
   return (
-    <>
+    <div className="dc-doc dc-report">
       <PageHeader className="no-print" title="Year in review" description="A printable look back at the year." actions={<><div className="row">
           <label className="row">Year<select value={year} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select></label>
           <button className="primary" onClick={() => window.print()}>Print or save as PDF</button>
         </div></>} />
       <h1 className="print-only">{year} in review</h1>
-      <p className="muted no-print">A look back at {year}, from your accounts, your Income setup, your sales, and your net worth history. Income and spending are from the transactions in your accounts, so they are only as complete as what you entered.</p>
+      <p className="muted no-print dc-lede">A look back at {year}, from your accounts, your Income setup, your sales, and your net worth history. Income and spending are from the transactions in your accounts, so they are only as complete as what you entered.</p>
+
+      <PlanHero
+        id="review-top"
+        label={<>Net worth, end of {year}<Kind k="recorded">Saved snapshots</Kind></>}
+        amount={nw ? formatCents(nw.endCents) : 'Not enough data yet'}
+        message={nw ? <>Latest saved point is {nw.endDate}.</> : <>Needs at least two saved points. The app saves one each month; you can add past ones on the <Link to="/networth">Net worth</Link> page.</>}
+        figs={nw ? [
+          { label: `Start (${nw.startDate})`, value: formatCents(nw.startCents) },
+          { label: 'Change', value: formatCents(nw.changeCents), sub: nw.changePct === null ? undefined : `${(nw.changePct * 100).toFixed(1)}%` },
+          { label: 'Saved', value: formatCents(r.spending.savedCents), sub: `${pct(r.spending.savingsRate)} of income` },
+        ] : [
+          { label: 'Income into accounts', value: formatCents(r.spending.incomeCents) },
+          { label: 'Spending', value: formatCents(r.spending.totalCents) },
+        ]}
+      />
+
+      <PlanJump label="In this report" items={[
+        { id: 'rv-networth', label: 'Net worth' }, { id: 'rv-spending', label: 'Income and spending' },
+        { id: 'rv-pay', label: 'Pay, saving, and taxes' }, { id: 'rv-invest', label: 'Investing and debt' },
+      ]} />
 
       {r.highlights.length > 0 ? (
-        <div className="card">
-          <strong>Highlights</strong>
-          <ul>{r.highlights.map((h, i) => <li key={i}>{h}</li>)}</ul>
-        </div>
+        <PlanSection id="rv-highlights" title="Highlights" kind={<Kind k="actual">From the sections below</Kind>}>
+          <ul className="dc-highlights">{r.highlights.map((h, i) => <li key={i}>{h}</li>)}</ul>
+        </PlanSection>
       ) : <p className="muted">There is not enough data for {year} yet.</p>}
 
-      <section className="pkg">
-        <h2>Net worth</h2>
-        {r.netWorth ? (
-          <div className="tiles">
-            <div className="tile"><div className="muted">Start ({r.netWorth.startDate})</div><div className="v">{formatCents(r.netWorth.startCents)}</div></div>
-            <div className="tile"><div className="muted">Latest ({r.netWorth.endDate})</div><div className="v">{formatCents(r.netWorth.endCents)}</div></div>
-            <div className="tile"><div className="muted">Change</div><div className={`v ${r.netWorth.changeCents >= 0 ? 'pos' : 'neg'}`}>{formatCents(r.netWorth.changeCents)}</div><div className="muted" style={{ fontSize: '0.8rem' }}>{r.netWorth.changePct === null ? '' : `${(r.netWorth.changePct * 100).toFixed(1)}%`}</div></div>
-          </div>
+      <PlanSection id="rv-networth" title="Net worth" kind={<Kind k="recorded">Saved snapshots</Kind>}>
+        {nw ? (
+          <PlanFigs label="Net worth for the year" figs={[
+            { label: `Start (${nw.startDate})`, value: formatCents(nw.startCents) },
+            { label: `Latest (${nw.endDate})`, value: formatCents(nw.endCents) },
+            { label: 'Change', value: <span className={nw.changeCents >= 0 ? 'pos' : 'neg'}>{formatCents(nw.changeCents)}</span>, sub: nw.changePct === null ? undefined : `${(nw.changePct * 100).toFixed(1)}%` },
+          ]} />
         ) : <p className="muted">Needs at least two saved points. The app saves one each month; you can add past ones on the <Link to="/networth">Net worth</Link> page.</p>}
         {yearSnaps.length >= 2 && <LinesChart title={`Net worth in ${year}`} xLabels={yearSnaps.map((s) => s.date)} series={[{ label: 'Net worth', color: 'var(--s1)', values: yearSnaps.map((s) => s.totalCents) }]} />}
-      </section>
+      </PlanSection>
 
-      <section className="pkg">
-        <h2>Income and spending</h2>
-        <div className="tiles">
-          <div className="tile"><div className="muted">Income into accounts</div><div className="v">{formatCents(r.spending.incomeCents)}</div></div>
-          <div className="tile"><div className="muted">Spending</div><div className="v">{formatCents(r.spending.totalCents)}</div><div className="muted" style={{ fontSize: '0.8rem' }}>{formatCents(r.spending.monthlyAvgCents)} a month</div></div>
-          <div className="tile"><div className="muted">Saved</div><div className={`v ${r.spending.savedCents < 0 ? 'neg' : 'pos'}`}>{formatCents(r.spending.savedCents)}</div><div className="muted" style={{ fontSize: '0.8rem' }}>{pct(r.spending.savingsRate)} of income</div></div>
-        </div>
+      <PlanSection id="rv-spending" title="Income and spending" kind={<Kind k="recorded">Transactions in your accounts</Kind>}>
+        <PlanFigs label="Income and spending" figs={[
+          { label: 'Income into accounts', value: formatCents(r.spending.incomeCents) },
+          { label: 'Spending', value: formatCents(r.spending.totalCents), sub: `${formatCents(r.spending.monthlyAvgCents)} a month` },
+          { label: 'Saved', value: <span className={r.spending.savedCents < 0 ? 'neg' : 'pos'}>{formatCents(r.spending.savedCents)}</span>, sub: `${pct(r.spending.savingsRate)} of income` },
+        ]} />
         {r.spending.top.length > 0 && (
-          <table>
-            <thead><tr><th>Top categories</th><th className="num">Spent</th><th className="num">Share</th></tr></thead>
-            <tbody>{r.spending.top.map((c) => <tr key={c.name}><td>{c.name}</td><td className="num">{formatCents(c.cents)}</td><td className="num">{r.spending.totalCents ? `${Math.round((c.cents / r.spending.totalCents) * 100)}%` : ''}</td></tr>)}</tbody>
-          </table>
+          <div className="an-tablewrap dc-tablegap">
+            <table className="an-table">
+              <thead><tr><th>Top categories</th><th className="num">Spent</th><th className="num">Share</th></tr></thead>
+              <tbody>{r.spending.top.map((c) => <tr key={c.name}><td>{c.name}</td><td className="num">{formatCents(c.cents)}</td><td className="num">{r.spending.totalCents ? `${Math.round((c.cents / r.spending.totalCents) * 100)}%` : ''}</td></tr>)}</tbody>
+            </table>
+          </div>
         )}
         {r.spending.biggestMonth && <p className="muted">Highest-spending month: {monthLabel(r.spending.biggestMonth.month)} ({formatCents(r.spending.biggestMonth.cents)}). More on the <Link to="/reports">Reports</Link> page.</p>}
-      </section>
+      </PlanSection>
 
-      <section className="pkg">
-        <h2>Pay, saving, and taxes</h2>
-        <table><tbody>
-          <tr><td>Gross pay (before bonuses and stock awards)</td><td className="num">{formatCents(r.pay.grossCents)}</td></tr>
-          {r.pay.bonusCents > 0 && <tr><td>Bonuses</td><td className="num">{formatCents(r.pay.bonusCents)}</td></tr>}
-          {r.pay.rsuCents > 0 && <tr><td>Stock awards vested</td><td className="num">{formatCents(r.pay.rsuCents)}</td></tr>}
-          <tr><td>Take-home pay</td><td className="num">{formatCents(r.pay.netCents)}</td></tr>
-          <tr><td>Retirement and HSA saving (you + employer)</td><td className="num">{formatCents(r.retirement.totalCents)}</td></tr>
-          <tr><td>Federal income tax</td><td className="num">{formatCents(r.taxes.federalCents)}</td></tr>
-          <tr><td>Massachusetts income tax</td><td className="num">{formatCents(r.taxes.maCents)}</td></tr>
-          <tr><td>Social Security, Medicare, and PFML</td><td className="num">{formatCents(r.taxes.payrollCents)}</td></tr>
-          <tr><td><strong>Total taxes</strong> ({pct(r.taxes.effectiveRate)} of pay)</td><td className="num"><strong>{formatCents(r.taxes.totalCents)}</strong></td></tr>
-          {r.taxes.refundCents !== null && <tr><td>{r.taxes.refundCents >= 0 ? 'Expected refund' : 'Expected amount due'} (federal + MA)</td><td className={`num ${r.taxes.refundCents >= 0 ? 'pos' : 'neg'}`}>{formatCents(Math.abs(r.taxes.refundCents))}</td></tr>}
-        </tbody></table>
-      </section>
+      <PlanSection id="rv-pay" title="Pay, saving, and taxes" kind={<Kind k="estimate">From your Income setup</Kind>}>
+        <Lines label="Pay, saving, and taxes" rows={[
+          { label: 'Gross pay (before bonuses and stock awards)', value: formatCents(r.pay.grossCents) },
+          ...(r.pay.bonusCents > 0 ? [{ label: 'Bonuses', value: formatCents(r.pay.bonusCents) }] : []),
+          ...(r.pay.rsuCents > 0 ? [{ label: 'Stock awards vested', value: formatCents(r.pay.rsuCents) }] : []),
+          { label: 'Take-home pay', value: formatCents(r.pay.netCents) },
+          { label: 'Retirement and HSA saving (you + employer)', value: formatCents(r.retirement.totalCents) },
+          { label: 'Federal income tax', value: formatCents(r.taxes.federalCents) },
+          { label: 'Massachusetts income tax', value: formatCents(r.taxes.maCents) },
+          { label: 'Social Security, Medicare, and PFML', value: formatCents(r.taxes.payrollCents) },
+          { label: <><strong>Total taxes</strong> ({pct(r.taxes.effectiveRate)} of pay)</>, value: <strong>{formatCents(r.taxes.totalCents)}</strong>, strong: true },
+          ...(r.taxes.refundCents !== null ? [{ label: `${r.taxes.refundCents >= 0 ? 'Expected refund' : 'Expected amount due'} (federal + MA)`, value: <span className={r.taxes.refundCents >= 0 ? 'pos' : 'neg'}>{formatCents(Math.abs(r.taxes.refundCents))}</span> }] : []),
+        ]} />
+      </PlanSection>
 
-      <section className="pkg">
-        <h2>Investing and debt</h2>
-        <table><tbody>
-          <tr><td>Realized gains: short-term</td><td className="num">{formatCents(r.investing.shortTermCents)}</td></tr>
-          <tr><td>Realized gains: long-term</td><td className="num">{formatCents(r.investing.longTermCents)}</td></tr>
-          <tr><td>Loan principal paid down</td><td className="num">{formatCents(r.debt.principalCents)}</td></tr>
-          <tr><td>Loan interest paid</td><td className="num">{formatCents(r.debt.interestCents)}</td></tr>
-          {(r.hsa.qualifiedCents > 0 || r.hsa.taxableCents > 0) && <tr><td>HSA withdrawals: medical / not medical</td><td className="num">{formatCents(r.hsa.qualifiedCents)} / {formatCents(r.hsa.taxableCents)}</td></tr>}
-        </tbody></table>
+      <PlanSection id="rv-invest" title="Investing and debt" kind={<Kind k="recorded">Sales and loan schedules</Kind>}>
+        <Lines label="Investing and debt" rows={[
+          { label: 'Realized gains: short-term', value: formatCents(r.investing.shortTermCents) },
+          { label: 'Realized gains: long-term', value: formatCents(r.investing.longTermCents) },
+          { label: 'Loan principal paid down', value: formatCents(r.debt.principalCents) },
+          { label: 'Loan interest paid', value: formatCents(r.debt.interestCents) },
+          ...((r.hsa.qualifiedCents > 0 || r.hsa.taxableCents > 0) ? [{ label: 'HSA withdrawals: medical / not medical', value: <>{formatCents(r.hsa.qualifiedCents)} / {formatCents(r.hsa.taxableCents)}</> }] : []),
+        ]} />
         {goals.length > 0 && <p className="muted">Goals you are working toward: {goals.map((g) => g.name).join(', ')}. See <Link to="/goals">Goals</Link>.</p>}
-      </section>
-      <p className="muted">Prepared {todayISO()}. Tax figures are the app’s estimates from your Income setup, not your return.</p>
-    </>
+      </PlanSection>
+      <p className="muted dc-foot">Prepared {todayISO()}. Tax figures are the app’s estimates from your Income setup, not your return.</p>
+    </div>
   );
 }
