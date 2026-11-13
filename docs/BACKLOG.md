@@ -4,7 +4,28 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest, standalone fix): PAYCHECK PAGE CRASH FIXED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting owner and ChatGPT review
+## STATUS 2026-11-13 (newest): LEDGER SIGNATURE D18 (FINANCIAL PLANNING WORKSPACE) BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting owner and ChatGPT review; D19 NOT STARTED
+
+**Asked:** redesign the ten Financial Planning pages (Income with RSU and bonuses, Paycheck, Tax planning, Giving, Afford, Projections, Retirement, Roth, Goals, Protection) in the Ledger Signature look without changing any calculation, assumption, scenario or stored record.
+
+**Release gate:** D17 is committed and deployed as `61aef1b` (Actions run #104 success) and the Paycheck crash fix as `aba2b9b` (run #105 success); `main` = `origin/main` = `aba2b9b`.
+
+**Built:** report `docs/LEDGER-SIGNATURE-D18-REPORT.md`. Headline panel and kind-of-figure words on every page, grouped inputs, results next to or above their inputs (Paycheck, Retirement), a jump list on long pages, labeled rows on a phone, status in words (Done, To do, Within guideline, Looks fine, Needs attention), Guideline versus Recorded separation on Protection, Estimate versus real setup on Paycheck, readable phone charts (`FanChart` opt-in `fit`). New: `PlanParts.tsx`, `plan.css`, `d18Plan.test.tsx` (12 tests). Tests: 568 targeted tests in 32 files pass, `tsc` and the build are clean, the full suite was not run locally. Before and after: 2,803 distinct amounts and 795 input values compared on 33 views, none lost.
+
+**Judgment calls (please review):**
+1. Afford forecast and Rent-or-buy charts now plot exact balances, including below zero (they drew $0), like D17's Forecast.
+2. Retirement's results panel and the Goals "How it works" card are sticky on a computer; on a phone the Paycheck and Retirement results come before their inputs.
+3. Goal settings fold behind a summary line when a goal already has a cost; a new goal opens them.
+4. Direction colors removed from refund or amount due, gain or loss and gaps; words carry the meaning.
+5. Wording edits: Projections no longer says "the orange steady path"; Retirement's status is a sentence, not a green or red number; Giving reminders start with "Paperwork:"; the Roth winners moved to the top.
+6. Phone pages are taller (Income +18%, Roth +17%, Paycheck +22%, Tax planning +51%, Afford +66%, Projections +49%, Retirement +21%, Giving +50%, Protection +59%; Goals -17%).
+7. `PercentField` (Retirement confidence) used to show a stale value if the page painted before settings loaded; FIXED in this release (display only, see report section 16).
+
+**ROADMAP:** **D18.1, Person-Centric Income Organization (PLANNED, NOT IMPLEMENTED; approved by the owner; runs immediately after the D18 release and before D19).** Sequence: D18 release, then D18.1, then D19, D20, D21. Goal: organize Income around the person each compensation item belongs to instead of household-wide sections by type. Layout: keep the household income summary at the top; one independently expandable workspace per person (several can be open at once) grouping that person's salary and paycheck setup, bonuses, RSU and stock awards, deductions, benefits and contributions; a concise compensation summary in each collapsed header; genuinely household-wide settings (filing assumptions, shared tax settings) stay outside the person containers; ownership of every item is obvious. Safeguards: reuse existing person associations; no automatic reassignment of records; no matching or merging people by name; no change to compensation, RSU, payroll or tax calculations; no schema or migration unless separately justified and approved; vested versus unvested equity keeps its meaning; every existing form, control and record is preserved.
+
+**NOT built / not done:** `Kbd`, contrast, forced colors, real-device, Safari/Firefox and screen-reader checks; every `confirm()` dialog (D20); wider Hide amounts; add, edit and delete flows were preserved by source review and not driven. Nothing is `ACC`.
+
+## STATUS 2026-11-13 (previous, standalone fix): PAYCHECK PAGE CRASH FIXED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; awaiting owner and ChatGPT review
 
 **Asked:** Plan > Paycheck crashed the app. **Cause:** the page sorted scenarios with `updatedAt.localeCompare`, but sync stamps `updatedAt` as a number, so any saved scenario crashed it (predates D17 and D18). **Fix:** safe `sortScenariosNewestFirst` in `src/lib/paycheckCalc.ts`, used by the page; 3 new tests (paycheckCalc.test.ts 14 pass), tsc and build clean, checked in the app. Full report: `docs/PAYCHECK-CRASH-FIX-REPORT.md`.
 

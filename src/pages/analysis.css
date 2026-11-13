@@ -90,7 +90,7 @@
 /* ---- form grid ---- */
 .an-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: var(--sp-3); align-items: end; }
 .an-form .f { margin: 0; min-width: 0; }
-.an-form input, .an-form select { width: 100%; min-width: 0; }
+.an-form input:not([type="checkbox"]):not([type="radio"]), .an-form select { width: 100%; min-width: 0; }
 .an-form--wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
 .an-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
 .an-checks { display: grid; gap: var(--sp-2); margin-top: var(--sp-3); }

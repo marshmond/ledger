@@ -1,0 +1,161 @@
+/* ---- Financial planning pages (D18) ----
+   Income, Paycheck, Tax planning, Affordability, Projections, Retirement, Roth, Goals, Giving and Protection.
+   Presentation only: every figure, input, assumption and action is the page's own. This file adds to analysis.css (the "an-" classes of D17); it never replaces them.
+   Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so Classic and the older presets get the same composition and Signature adds its navy panel
+   and soft headings through the tokens. New classes use the "pl-" prefix.
+   Kinds of figure are told apart by a WORD first (Estimate, Projected, Simulated, Your inputs, Recorded, Guideline, Possible action) and a border style second. Status is a word
+   (Done, To do, Within guideline, Covered, Below...) as well as a mark; refund or amount due, and gain or loss, are never colored just for their sign. */
+
+.pl-anchor { scroll-margin-top: calc(var(--bar-h) + var(--sub-h, 0px) + var(--topbar-h) + var(--sp-3)); min-width: 0; }
+.pl-anchor:focus { outline: none; }
+.pl-anchor:focus-visible, .pl-section:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-lg); }
+.pl-section { scroll-margin-top: calc(var(--bar-h) + var(--sub-h, 0px) + var(--topbar-h) + var(--sp-3)); }
+.pl-vh { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; padding: 0; }
+.pl-subhead { margin: var(--sp-2) 0 var(--sp-3); }
+.pl-intro { margin-top: 0; }
+.pl-tagline, .pl-tables-note { margin: 0; }
+.pl-alert { border-color: var(--warn); background: var(--warn-soft); }
+.pl-alert p { margin: var(--sp-1) 0 var(--sp-2); }
+.pl-stack { display: grid; gap: var(--sp-4); min-width: 0; }
+.pl-stack > * { margin: 0; min-width: 0; }
+.pl-setup { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.pl-people { margin: 0; }
+.pl-warn { margin: var(--sp-2) 0 0; }
+.pl-peoplelist { margin-top: var(--sp-3); }
+.pl-formbtn { display: flex; align-items: flex-end; }
+.pl-formchk { align-self: end; min-height: var(--control-h); align-items: center; }
+.pl-equity { margin: 0; }
+
+/* ---- two columns: the controls and what they change, side by side on a computer, results first on a phone ---- */
+.pl-cols { display: grid; gap: var(--sp-5); align-items: start; min-width: 0; }
+.pl-cols > * { min-width: 0; margin: 0; }
+.pl-cols--out-right { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+.pl-cols--out-right > .pl-in { grid-column: 1; grid-row: 1; }
+.pl-cols--out-right > .pl-out { grid-column: 2; grid-row: 1; }
+.pl-cols--narrow-first { grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.6fr); }
+@media (max-width: 960px) {
+  .pl-cols, .pl-cols--out-right, .pl-cols--narrow-first { grid-template-columns: minmax(0, 1fr); }
+  .pl-cols--out-right > .pl-in, .pl-cols--out-right > .pl-out { grid-column: auto; grid-row: auto; }
+}
+@media (min-width: 961px) {
+  .pl-sticky { position: sticky; top: calc(var(--bar-h) + var(--sub-h, 0px) + var(--topbar-h) + var(--sp-3)); align-self: start; }
+}
+
+/* ---- the headline panel, when it sits in a narrow column ---- */
+.pl-hero--stack { grid-template-columns: minmax(0, 1fr); padding: var(--sp-4) var(--sp-5); }
+.pl-hero--stack .an-hero-figs { padding: var(--sp-3) 0 0; border-left: none; border-top: 1px solid var(--hero-line); }
+.pl-hero .an-hero-label { line-height: 1.35; }
+
+/* ---- a short row of places to jump to ---- */
+.pl-jump { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.pl-jump-label { flex: none; font-size: var(--fs-sm); font-weight: 650; color: var(--muted); }
+.pl-jump ul { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; min-width: 0; }
+.pl-jump button { min-height: var(--control-h-sm); padding: 0 var(--sp-3); border: 1px solid var(--control-line); border-radius: var(--r-pill); background: var(--surface); color: var(--fg-2); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0; }
+.pl-jump button:hover { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent-line); }
+@media (max-width: 640px) {
+  .pl-jump { flex-direction: column; align-items: stretch; gap: var(--sp-1); }
+  .pl-jump ul { flex-wrap: nowrap; overflow-x: auto; padding-bottom: var(--sp-1); }
+  .pl-jump button { min-height: 44px; white-space: nowrap; }
+}
+
+/* ---- kinds of figure and status words ---- */
+.pl-kind--action { border-style: solid; border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent-text); }
+.pl-sel { margin-left: var(--sp-2); }
+.pl-status { margin: 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-left: 4px solid var(--control-line); border-radius: var(--r-md); background: var(--surface-soft); }
+.pl-status--ok { border-left-color: var(--pos); }
+.pl-status--warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.pl-action { border-left: 4px solid var(--accent); }
+.pl-action ul { margin: var(--sp-2) 0; }
+.pl-info { margin: 0; padding: var(--sp-2) var(--sp-4); border-left: 3px solid var(--control-line); }
+.pl-reminder { margin: 0; padding: var(--sp-2) var(--sp-4); border: 1px solid var(--line); border-left: 4px solid var(--warn); border-radius: var(--r-md); background: var(--warn-soft); }
+.pl-checks .check { align-items: center; flex-wrap: wrap; }
+.pl-check-word { flex: none; padding: 1px 8px; border: 1px solid var(--control-line); border-radius: var(--r-xs); background: var(--surface); color: var(--fg-2); font-size: var(--fs-sm); font-weight: 650; white-space: nowrap; }
+.pl-checks .check.todo .pl-check-word { border-color: var(--warn); background: var(--warn-soft); color: var(--warn-text); }
+
+/* ---- a big plain figure ---- */
+.pl-bignum { margin: 0 0 var(--sp-2); }
+.pl-bignum-label { font-size: var(--fs-sm); font-weight: 600; color: var(--fg-2); }
+.pl-bignum-val { font-size: clamp(2rem, 6vw, var(--fs-display)); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.an-fig dd .pl-textfig { display: block; font-size: var(--fs-md); font-weight: 650; letter-spacing: 0; line-height: 1.3; }
+
+/* ---- a group of inputs under a name ---- */
+.pl-group { margin: 0; padding: var(--sp-3) var(--sp-4) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); min-width: 0; }
+.pl-group > legend { padding: 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 650; color: var(--fg-2); }
+.pl-group-note { margin: 0 0 var(--sp-3); }
+.pl-group .an-form .chk { align-items: center; }
+
+/* ---- a label and an amount per line ---- */
+.pl-lines { display: grid; margin: 0; }
+.pl-line { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.pl-line:last-child { border-bottom: none; }
+.pl-line dt { min-width: 0; color: var(--fg-2); overflow-wrap: anywhere; }
+.pl-line dd { flex: none; max-width: 62%; margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.pl-line--strong dt { color: var(--fg); font-weight: 650; }
+.pl-line--strong dd { font-weight: 700; }
+.pl-line--muted dt, .pl-line--muted dd { color: var(--muted); font-weight: 500; }
+@media (max-width: 480px) { .pl-line { flex-wrap: wrap; gap: 2px var(--sp-3); } .pl-line dd { max-width: 100%; text-align: left; } }
+
+/* ---- disclosures ---- */
+.pl-detail { padding: var(--sp-1) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.pl-detail > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); min-height: var(--control-h); font-weight: 650; cursor: pointer; }
+.pl-detail[open] > summary { margin-bottom: var(--sp-2); }
+.pl-dates { margin: 0; }
+.pl-dates ul { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.pl-dates li { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--sp-3); }
+.pl-date { font-variant-numeric: tabular-nums; }
+.pl-milestones { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: var(--sp-4); margin-top: var(--sp-4); }
+.pl-milestones .an-h3 { margin-top: 0; }
+
+/* ---- Paycheck: choosing what to compare ---- */
+.pl-pick { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.pl-pick li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.an-matrix th .an-sub { font-weight: 500; }
+.an-matrix th .an-sub { white-space: normal; }
+
+/* ---- Giving, Projections, Retirement: small helpers ---- */
+.pl-receipt { white-space: nowrap; align-items: center; }
+.pl-source { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.pl-spendhelp { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.pl-equity-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); grid-column: 1 / -1; }
+.pl-scn { padding: var(--sp-4) var(--sp-5); }
+.pl-scn h2 { margin-top: 0; }
+
+/* ---- Goals and Protection ---- */
+.pl-goal { display: grid; gap: var(--sp-3); }
+.pl-goal > * { margin: 0; min-width: 0; }
+.pl-goal-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.pl-goal-name { flex: 1; min-width: 0; font-size: var(--fs-lg); font-weight: 650; }
+.pl-goal-facts { margin: 0; }
+.pl-goal-acct { margin: 0; }
+.pl-goal .an-actions { margin-top: 0; }
+.pl-goal-result { padding-top: var(--sp-3); border-top: 1px solid var(--line); }
+.pl-policy { display: grid; gap: var(--sp-3); }
+.pl-policy > * { margin: 0; min-width: 0; }
+.pl-policy-facts { margin: 0; }
+
+/* ---- Roth ---- */
+.pl-strats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: var(--sp-4); }
+.pl-strats > * { min-width: 0; }
+.pl-strat-head { display: flex; align-items: flex-end; gap: var(--sp-3); }
+.pl-strat-head .f { flex: 1; min-width: 0; margin: 0; }
+.pl-badges { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: var(--sp-2); vertical-align: middle; }
+
+/* ---- pieces the older shared editors draw (profile, RSU grants, HSA): same cards and fields, quieter nesting ---- */
+.pl-page .card { border-radius: var(--r-lg); box-shadow: var(--shadow-1); }
+.pl-page .collapsible .card { background: var(--surface-soft); box-shadow: none; }
+.pl-page .card .collapsible, .pl-page .collapsible .collapsible { padding: 0; border: none; border-top: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+.pl-page .collapsible .collapsible .collapse-head h3 { margin: var(--sp-2) 0; }
+.pl-page .grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: var(--sp-3); align-items: end; }
+.pl-page .grid .f { margin: 0; min-width: 0; }
+.pl-page .row { gap: var(--sp-2) var(--sp-3); }
+.pl-page .scroll-x { max-width: 100%; }
+
+@media (forced-colors: active) {
+  .pl-status, .pl-reminder, .pl-action, .pl-check-word, .pl-jump button, .pl-group { border-color: CanvasText; }
+}
+
+/* a stack of blocks never grows wider than its column: a long line or a wide table inside one scrolls or wraps instead of widening the page */
+.pl-page .an-stack-col, .pl-page .pl-stack { grid-template-columns: minmax(0, 1fr); }
+.pl-page .an-stack-col > *, .pl-page .pl-stack > * { min-width: 0; }
+.pl-strats { align-items: start; }
+.an-title + .an-kind { margin-left: var(--sp-2); }

@@ -16,10 +16,13 @@ import { LinesChart } from './charts';
 import { MoneyField, NumField } from './fields';
 import PageTabs from './PageTabs';
 import { PageHeader } from '../ui/components';
+import { Fields, Kind, Lines, PlanChecks, PlanHero, type CheckLevel } from './PlanParts';
+import './analysis.css';
+import './plan.css';
 
 const KIND: Record<PurchaseKind, string> = { house: 'A house', car: 'A car', other: 'Something else' };
-const LEVEL = { ok: 'ok', caution: 'info', warn: 'todo' } as const;
-const MARK = { ok: '✓', caution: 'i', warn: '!' } as const;
+const LEVEL: Record<'ok' | 'caution' | 'warn', CheckLevel> = { ok: 'ok', caution: 'info', warn: 'warn' };
+const LEVEL_WORD: Record<CheckLevel, string> = { ok: 'Within guideline', info: 'Caution', warn: 'Outside guideline' };
 
 /** Can I afford it? A house, a car, or any big purchase checked against guidelines, your cash, your forecast, and renting. */
 export default function AffordPage() {
@@ -117,142 +120,190 @@ export default function AffordPage() {
   });
 
   const afford = (
-    <>
-      <div className="card">
-        <div className="row">
-          <label className="f">What are you buying?
-            <select value={kind} onChange={(e) => setKindAndDefaults(e.target.value as PurchaseKind)}>{(Object.keys(KIND) as PurchaseKind[]).map((k) => <option key={k} value={k}>{KIND[k]}</option>)}</select>
-          </label>
-          <MoneyField key={`p${kind}`} label="Price" cents={price} onChange={setPrice} width={140} />
-          <NumField label={kind === 'other' ? 'Paid in cash %' : 'Down payment %'} value={downPct} step={1} width={90} onChange={(n) => setDownPct(Math.max(0, Math.min(100, n)))} />
-          {kind !== 'other' && <NumField label="Interest rate %" value={apr} step={0.125} width={90} onChange={setApr} />}
-          {kind !== 'other' && <NumField label="Loan term (months)" value={term} step={12} width={100} onChange={(n) => setTerm(Math.max(1, Math.round(n)))} />}
-          <label className="f">Buying around<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+    <div className="an-stack-col">
+      <PlanHero
+        label="Total monthly cost"
+        kind={<Kind k="estimate">Rule of thumb</Kind>}
+        amount={formatCents(res.monthlyCostCents)}
+        message={<>If you buy {KIND[kind].toLowerCase()}: a check against common guidelines, your cash and your forecast. It is not a loan approval and not a recommendation.</>}
+        figs={[
+          { label: 'Loan', value: formatCents(res.loanCents) },
+          { label: 'Payment (principal + interest)', value: formatCents(res.paymentCents) },
+          { label: 'Cash needed up front', value: formatCents(res.upfrontCents) },
+        ]}
+      />
+
+      <div className="an-split">
+        <section className="an-card an-stack-col" aria-labelledby="af-in">
+          <h2 className="an-h2" id="af-in">The purchase <Kind k="input">Your inputs</Kind></h2>
+          <Fields legend="What and when">
+            <label className="f">What are you buying?
+              <select value={kind} onChange={(e) => setKindAndDefaults(e.target.value as PurchaseKind)}>{(Object.keys(KIND) as PurchaseKind[]).map((k) => <option key={k} value={k}>{KIND[k]}</option>)}</select>
+            </label>
+            <MoneyField key={`p${kind}`} label="Price" cents={price} onChange={setPrice} />
+            <label className="f">Buying around<input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          </Fields>
+          <Fields legend={kind === 'other' ? 'Paying' : 'Financing'}>
+            <NumField label={kind === 'other' ? 'Paid in cash %' : 'Down payment %'} value={downPct} step={1} onChange={(n) => setDownPct(Math.max(0, Math.min(100, n)))} />
+            {kind !== 'other' && <NumField label="Interest rate %" value={apr} step={0.125} onChange={setApr} />}
+            {kind !== 'other' && <NumField label="Loan term (months)" value={term} step={12} onChange={(n) => setTerm(Math.max(1, Math.round(n)))} />}
+          </Fields>
+          {kind === 'house' && (
+            <>
+              <Fields legend="Ongoing house costs">
+                <NumField label="Property tax % of price / yr" value={taxPct} step={0.1} onChange={setTaxPct} />
+                <MoneyField label="Home insurance / month" cents={insurance} onChange={setInsurance} />
+                <NumField label="Upkeep % of price / yr" value={maintPct} step={0.25} onChange={setMaintPct} />
+                <MoneyField label="HOA / month" cents={hoa} onChange={setHoa} />
+              </Fields>
+              <Fields legend="Up-front costs">
+                <NumField label="Closing costs %" value={closingPct} step={0.5} onChange={setClosingPct} />
+              </Fields>
+            </>
+          )}
+          {kind === 'car' && (
+            <Fields legend="Car costs">
+              <MoneyField label="Insurance, fuel, upkeep / month" cents={carExtra} onChange={setCarExtra} />
+              <MoneyField label="Tax, title, fees" cents={oneTime} onChange={setOneTime} />
+            </Fields>
+          )}
+          {kind === 'other' && <p className="an-note" style={{ margin: 0 }}>Enter the price and the share you would pay in cash; the checks below show what is left.</p>}
+          <details className="pl-detail">
+            <summary>Your numbers (filled in from the app, change them if they are off)</summary>
+            <div className="an-form" style={{ marginTop: 'var(--sp-3)' }}>
+              <MoneyField key={`g${grossMonthly}`} label="Gross income / month" cents={gross} onChange={setIncome2} />
+              <MoneyField key={`s${spendEst}`} label="Spending / month" cents={spending} onChange={setSpend2} />
+              <MoneyField label="Other debt payments / month" cents={other} onChange={setOther} />
+            </div>
+            <p className="an-note">
+              Loans and card minimums already counted: {formatCents(loanPay + cardMin)} a month. Cash available: {formatCents(nw?.cash ?? 0)}. Take-home about {formatCents(netMonthly)} a month.
+              {grossMonthly === 0 && <> Set up income on the <Link to="/income">Income</Link> tab to fill in your income.</>}
+            </p>
+          </details>
+        </section>
+
+        <div className="an-stack-col">
+          <section className="an-card an-stack-col" aria-labelledby="af-checks">
+            <h2 className="an-h2" id="af-checks">Checks against the guidelines <Kind k="guideline">Rules of thumb</Kind></h2>
+            <PlanChecks label="Affordability checks" words={LEVEL_WORD} items={res.checks.map((c) => ({ id: c.id, level: LEVEL[c.level], title: c.title, detail: c.detail }))} />
+          </section>
+
+          {max && (
+            <section className="an-card" aria-labelledby="af-max">
+              <h2 className="an-h2" id="af-max" style={{ fontSize: 'var(--fs-base)' }}>The most you could afford by the usual guidelines <Kind k="guideline">Guideline</Kind></h2>
+              <div className="pl-bignum"><div className="pl-bignum-val">{formatCents(max.priceCents)}</div></div>
+              <p className="an-note" style={{ margin: 0 }}>
+                {max.priceCents === 0 ? 'Needs your income first.' : kind === 'house'
+                  ? `Keeps housing at 28% of gross income and all debts at 36% (${max.limit === 'dti' ? 'your other debts are what limits it' : 'the housing cost is what limits it'}), with the same ${downPct}% down. Lenders may approve more; that does not mean it is comfortable.`
+                  : 'Keeps all car costs at 15% of gross income and all debts at 36%.'}
+              </p>
+            </section>
+          )}
         </div>
-        {kind === 'house' && (
-          <div className="row">
-            <NumField label="Property tax % of price / yr" value={taxPct} step={0.1} width={110} onChange={setTaxPct} />
-            <MoneyField label="Home insurance / month" cents={insurance} onChange={setInsurance} width={110} />
-            <NumField label="Upkeep % of price / yr" value={maintPct} step={0.25} width={110} onChange={setMaintPct} />
-            <MoneyField label="HOA / month" cents={hoa} onChange={setHoa} width={100} />
-            <NumField label="Closing costs %" value={closingPct} step={0.5} width={100} onChange={setClosingPct} />
-          </div>
-        )}
-        {kind === 'car' && (
-          <div className="row">
-            <MoneyField label="Insurance, fuel, upkeep / month" cents={carExtra} onChange={setCarExtra} width={140} />
-            <MoneyField label="Tax, title, fees" cents={oneTime} onChange={setOneTime} width={110} />
-          </div>
-        )}
-        {kind === 'other' && <p className="muted">Enter the price and the share you would pay in cash; the checks below show what is left.</p>}
-        <details>
-          <summary className="muted">Your numbers (filled in from the app, change them if they are off)</summary>
-          <div className="row" style={{ marginTop: 6 }}>
-            <MoneyField key={`g${grossMonthly}`} label="Gross income / month" cents={gross} onChange={setIncome2} width={120} />
-            <MoneyField key={`s${spendEst}`} label="Spending / month" cents={spending} onChange={setSpend2} width={120} />
-            <MoneyField label="Other debt payments / month" cents={other} onChange={setOther} width={120} />
-          </div>
-          <p className="muted">
-            Loans and card minimums already counted: {formatCents(loanPay + cardMin)} a month. Cash available: {formatCents(nw?.cash ?? 0)}. Take-home about {formatCents(netMonthly)} a month.
-            {grossMonthly === 0 && <> Set up income on the <Link to="/income">Income</Link> tab to fill in your income.</>}
-          </p>
-        </details>
       </div>
-
-      <div className="tiles">
-        <div className="tile"><div className="muted">Loan</div><div className="v">{formatCents(res.loanCents)}</div></div>
-        <div className="tile"><div className="muted">Payment (principal + interest)</div><div className="v">{formatCents(res.paymentCents)}</div></div>
-        <div className="tile"><div className="muted">Total monthly cost</div><div className="v">{formatCents(res.monthlyCostCents)}</div></div>
-        <div className="tile"><div className="muted">Cash needed up front</div><div className="v">{formatCents(res.upfrontCents)}</div></div>
-      </div>
-
-      <ul className="checklist">
-        {res.checks.map((c) => (
-          <li key={c.id} className={`check ${LEVEL[c.level]}`}>
-            <span className="mark" aria-hidden="true">{MARK[c.level]}</span>
-            <div><strong>{c.title}</strong><div className="muted">{c.detail}</div></div>
-          </li>
-        ))}
-      </ul>
-
-      {max && (
-        <div className="card">
-          <strong>The most you could afford by the usual guidelines</strong>
-          <div className="hero" style={{ fontSize: '1.6rem' }}>{formatCents(max.priceCents)}</div>
-          <p className="muted">
-            {max.priceCents === 0 ? 'Needs your income first.' : kind === 'house'
-              ? `Keeps housing at 28% of gross income and all debts at 36% (${max.limit === 'dti' ? 'your other debts are what limits it' : 'the housing cost is what limits it'}), with the same ${downPct}% down. Lenders may approve more; that does not mean it is comfortable.`
-              : 'Keeps all car costs at 15% of gross income and all debts at 36%.'}
-          </p>
-        </div>
-      )}
 
       {withBuy && base && (
-        <div className="card">
-          <strong>What it does to your cash forecast</strong>
-          <p className="muted">Using your forecast for the next {base.input.months} months, with the up-front cost on {date} and the monthly cost starting the month after.</p>
-          <table><tbody>
-            <tr><td>Lowest balance without it</td><td className="num">{formatCents(base.result.low.balanceCents)}</td></tr>
-            <tr><td><strong>Lowest balance with it</strong></td><td className={`num ${withBuy.low.balanceCents < base.thresholdCents ? 'neg' : ''}`}><strong>{formatCents(withBuy.low.balanceCents)}</strong> <span className="muted">on {withBuy.low.date}</span></td></tr>
-            <tr><td>Balance at the end, without / with</td><td className="num">{formatCents(base.result.endCents)} / {formatCents(withBuy.endCents)}</td></tr>
-          </tbody></table>
+        <section className="an-card an-stack-col" aria-labelledby="af-fc">
+          <h2 className="an-h2" id="af-fc">What it does to your cash forecast <Kind k="projected">Projected</Kind></h2>
+          <p className="an-note" style={{ margin: 0 }}>Using your forecast for the next {base.input.months} months, with the up-front cost on {date} and the monthly cost starting the month after.</p>
+          <Lines rows={[
+            { label: 'Lowest balance without it', value: formatCents(base.result.low.balanceCents) },
+            { label: 'Lowest balance with it', value: <>{formatCents(withBuy.low.balanceCents)} <span className="muted">on {withBuy.low.date}</span></>, strong: true },
+            { label: 'Balance at the end, without / with', value: `${formatCents(base.result.endCents)} / ${formatCents(withBuy.endCents)}` },
+          ]} />
           {withBuy.firstBelow
-            ? <p className="warn">Your cash would fall below your {formatCents(base.thresholdCents)} warning level on {withBuy.firstBelow.date}.</p>
-            : <p className="ok">Your cash stays above your {formatCents(base.thresholdCents)} warning level.</p>}
+            ? <p className="pl-status pl-status--warn" role="status"><strong>Below your warning level. </strong>Your cash would fall below your {formatCents(base.thresholdCents)} warning level on {withBuy.firstBelow.date}.</p>
+            : <p className="pl-status pl-status--ok" role="status"><strong>Above your warning level. </strong>Your cash stays above your {formatCents(base.thresholdCents)} warning level.</p>}
           <LinesChart
             title="Cash at the end of each month"
             xLabels={withBuy.months.map((m) => `${m.month}-01`)}
+            fit
+            precise
+            allowNegative
+            axis="month"
             series={[
-              { label: 'Without the purchase', color: 'var(--s3)', values: base.result.months.map((m) => Math.max(0, m.endCents)) },
-              { label: 'With the purchase', color: 'var(--s2)', values: withBuy.months.map((m) => Math.max(0, m.endCents)) },
+              { label: 'Without the purchase', color: 'var(--s3)', values: base.result.months.map((m) => m.endCents) },
+              { label: 'With the purchase', color: 'var(--s2)', values: withBuy.months.map((m) => m.endCents), dashed: true },
             ]}
           />
-        </div>
+        </section>
       )}
-    </>
+    </div>
   );
 
   const compare = (
-    <>
-      <p className="muted">
+    <div className="an-stack-col">
+      <PlanHero
+        label={`After ${years} years`}
+        kind={<Kind k="projected">Projected, built on guesses</Kind>}
+        amount={formatCents(Math.abs(rb.advantageCents))}
+        message={<>
+          <strong>{rb.advantageCents >= 0 ? 'Buying' : 'Renting'} comes out ahead by {formatCents(Math.abs(rb.advantageCents))}</strong> over {years} years.
+          {rb.breakEvenYear !== null ? ` Buying pulls ahead in year ${rb.breakEvenYear}.` : ' Buying does not catch up within this period.'}{' '}
+          Rent growth, home prices and returns are guesses, so this is one possible outcome, not a recommendation.
+        </>}
+      />
+      <p className="an-note" style={{ margin: 0 }}>
         Buying uses the house price, down payment, and costs from the first tab. Renting means paying rent and investing the down payment and closing money; whichever path costs
         less each month invests the difference. At the end the house is sold. Mortgage-interest and property-tax deductions are not included, and appreciation and returns are guesses.
       </p>
-      <div className="card">
-        <div className="row">
-          <MoneyField label="Rent per month" cents={rent} onChange={setRent} width={120} />
-          <NumField label="Rent rises % / yr" value={rentGrowth} step={0.5} width={100} onChange={setRentGrowth} />
-          <NumField label="Home price rises % / yr" value={appr} step={0.5} width={110} onChange={setAppr} />
-          <NumField label="Investments return % / yr (after tax)" value={ret} step={0.5} width={130} onChange={setRet} />
-          <NumField label="Years" value={years} step={1} width={70} onChange={(n) => setYears(Math.max(1, Math.min(40, Math.round(n))))} />
-          <NumField label="Selling costs %" value={sellPct} step={0.5} width={100} onChange={setSellPct} />
+
+      <div className="an-split an-split--even">
+        <section className="an-card an-stack-col" aria-labelledby="rb-buy">
+          <h2 className="an-h2" id="rb-buy">Buy <Kind k="projected">Projected</Kind></h2>
+          <Lines label="Taken from the first tab" rows={[
+            { label: 'Price', value: formatCents(price), muted: true },
+            { label: 'Down payment', value: `${downPct}%`, muted: true },
+            { label: 'Interest rate', value: `${apr}%`, muted: true },
+            { label: 'Loan term', value: `${term} months`, muted: true },
+          ]} />
+          <Fields legend="Assumptions for buying">
+            <NumField label="Home price rises % / yr" value={appr} step={0.5} onChange={setAppr} />
+            <NumField label="Selling costs %" value={sellPct} step={0.5} onChange={setSellPct} />
+          </Fields>
+          <Lines rows={[
+            { label: 'Owning costs per month (first month)', value: formatCents(rb.monthlyOwnCostCents) },
+            { label: `After ${years} years: buying`, value: formatCents(rb.buyWealthCents), strong: true },
+          ]} />
+        </section>
+        <section className="an-card an-stack-col" aria-labelledby="rb-rent">
+          <h2 className="an-h2" id="rb-rent">Rent and invest <Kind k="projected">Projected</Kind></h2>
+          <Fields legend="Assumptions for renting">
+            <MoneyField label="Rent per month" cents={rent} onChange={setRent} />
+            <NumField label="Rent rises % / yr" value={rentGrowth} step={0.5} onChange={setRentGrowth} />
+            <NumField label="Investments return % / yr (after tax)" value={ret} step={0.5} onChange={setRet} />
+          </Fields>
+          <Lines rows={[
+            { label: 'Rent per month', value: formatCents(rb.monthlyRentCents) },
+            { label: `After ${years} years: renting`, value: formatCents(rb.rentWealthCents), strong: true },
+          ]} />
+        </section>
+      </div>
+
+      <section className="an-card an-stack-col" aria-labelledby="rb-years">
+        <h2 className="an-h2" id="rb-years">How long <Kind k="input">Your input</Kind></h2>
+        <div className="an-form">
+          <NumField label="Years" value={years} step={1} onChange={(n) => setYears(Math.max(1, Math.min(40, Math.round(n))))} />
         </div>
-      </div>
-      <div className="tiles">
-        <div className="tile"><div className="muted">Owning costs per month (first month)</div><div className="v">{formatCents(rb.monthlyOwnCostCents)}</div></div>
-        <div className="tile"><div className="muted">Rent per month</div><div className="v">{formatCents(rb.monthlyRentCents)}</div></div>
-        <div className="tile"><div className="muted">After {years} years: buying</div><div className="v">{formatCents(rb.buyWealthCents)}</div></div>
-        <div className="tile"><div className="muted">After {years} years: renting</div><div className="v">{formatCents(rb.rentWealthCents)}</div></div>
-      </div>
-      <p>
-        <strong>{rb.advantageCents >= 0 ? 'Buying' : 'Renting'} comes out ahead by {formatCents(Math.abs(rb.advantageCents))}</strong> over {years} years.
-        {rb.breakEvenYear !== null ? ` Buying pulls ahead in year ${rb.breakEvenYear}.` : ' Buying does not catch up within this period.'}
-      </p>
-      <LinesChart
-        title="Net worth from each path"
-        xLabels={rb.years.map((y) => `${year + y.year}-01-01`)}
-        series={[
-          { label: 'Buy', color: 'var(--s1)', values: rb.years.map((y) => Math.max(0, y.buyWealthCents)) },
-          { label: 'Rent and invest', color: 'var(--s2)', values: rb.years.map((y) => Math.max(0, y.rentWealthCents)) },
-        ]}
-      />
-    </>
+        <LinesChart
+          title="Net worth from each path"
+          xLabels={rb.years.map((y) => `${year + y.year}-01-01`)}
+          fit
+          precise
+          allowNegative
+          series={[
+            { label: 'Buy', color: 'var(--s1)', values: rb.years.map((y) => y.buyWealthCents) },
+            { label: 'Rent and invest', color: 'var(--s2)', values: rb.years.map((y) => y.rentWealthCents), dashed: true },
+          ]}
+        />
+      </section>
+    </div>
   );
 
   return (
-    <>
-      <PageHeader title="Can I afford it?" description={<>Check a big purchase against the guidelines lenders and planners use, your cash, and your forecast. These are rules of thumb, not a loan approval.</>} />
+    <div className="an-page pl-page">
+      <PageHeader eyebrow="Plan" title="Can I afford it?" description={<>Check a big purchase against the guidelines lenders and planners use, your cash, and your forecast. These are rules of thumb, not a loan approval.</>} />
       <PageTabs id="afford" tabs={[{ id: 'afford', label: 'Can I afford it?', content: afford }, { id: 'rent', label: 'Rent or buy?', content: compare }]} />
-    </>
+    </div>
   );
 }

@@ -10,6 +10,9 @@ import { baseContribution, buildProjection, DEFAULT_PROJECTION, type ProjectionS
 import { FanChart, compactUSD } from './charts';
 import { MoneyField, NumField } from './fields';
 import { PageHeader } from '../ui/components';
+import { Fields, Kind, PlanHero } from './PlanParts';
+import './analysis.css';
+import './plan.css';
 
 export default function ProjectionPage() {
   const year0 = Number(todayISO().slice(0, 4));
@@ -46,9 +49,9 @@ export default function ProjectionPage() {
 
   if (accounts.length === 0) {
     return (
-      <>
-        <PageHeader title="Projections" description={<>Add your accounts and holdings on the <Link to="/investments">Investments</Link> page first.</>} />
-      </>
+      <div className="an-page pl-page">
+        <PageHeader eyebrow="Plan" title="Projections" description={<>Add your accounts and holdings on the <Link to="/investments">Investments</Link> page first.</>} />
+      </div>
     );
   }
 
@@ -56,6 +59,7 @@ export default function ProjectionPage() {
   const view = (arr: number[]) => (s.realTerms ? toReal(arr, infl) : arr);
   const n = s.years;
   const ty = Math.min(Math.max(1, s.targetYear), n);
+  const dollars = s.realTerms ? "today's dollars" : 'future dollars';
 
   let prob: number | null = null;
   if (result && s.targetCents > 0) {
@@ -85,133 +89,156 @@ export default function ProjectionPage() {
   };
 
   return (
-    <>
-      <PageHeader title="Projections" description="Long-range growth from your holdings and contributions." about={<>A long-range “what could happen” view built from your holdings, your contributions, and the return assumptions on the{' '}
+    <div className="an-page pl-page">
+      <PageHeader eyebrow="Plan" title="Projections" description="Long-range growth from your holdings and contributions." about={<>A long-range “what could happen” view built from your holdings, your contributions, and the return assumptions on the{' '}
         <Link to="/investments">Investments</Link> page. It is a planning tool, not a prediction: change the assumptions and see how the range moves.</>} />
-
-      <div className="card">
-        <div className="grid">
-          <NumField label="Years to project" value={s.years} step={1} onChange={(v) => setS({ years: Math.min(60, Math.max(1, Math.round(v))) })} />
-          <NumField label="Inflation (% per year)" value={s.inflationPct} step={0.1} onChange={(v) => setS({ inflationPct: v })} />
-          <label className="f">Dollars
-            <select value={s.realTerms ? 'real' : 'nominal'} onChange={(e) => setS({ realTerms: e.target.value === 'real' })}>
-              <option value="real">Today’s dollars (inflation-adjusted)</option>
-              <option value="nominal">Future dollars (nominal)</option>
-            </select>
-          </label>
-          <label className="f">Simulations
-            <select value={s.sims} onChange={(e) => setS({ sims: Number(e.target.value) })}>
-              <option value={1000}>1,000 (fast)</option>
-              <option value={5000}>5,000</option>
-              <option value={20000}>20,000 (smoothest)</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <h2>Contributions</h2>
-      <p className="muted">
-        Yearly amounts you expect to add, in dollars of the first year. They rise by the growth % each year; at 0% the amount stays flat,
-        which shrinks in today’s dollars, so set it near your expected raises. 401(k)s and HSAs can follow your{' '}
-        <Link to="/income">Income</Link> model (your deferrals plus employer match for {year0}).
-      </p>
-      <table>
-        <thead><tr><th>Account</th><th className="num">Per year</th><th className="num">Grows %/yr</th><th className="hide-sm">Source</th></tr></thead>
-        <tbody>
-          {open.map((a) => {
-            const linked = (a.kind === '401k' || a.kind === 'hsa') && a.linkToIncome;
-            const base = baseContribution(a, incomeModel.years);
-            return (
-              <tr key={a.id}>
-                <td>{a.name}</td>
-                <td className="num">
-                  {linked ? formatCents(base.cents) : <MoneyField key={`${a.id}-${a.annualContributionCents}`} cents={a.annualContributionCents} width={110} onChange={(c) => db.invAccounts.update(a.id!, { annualContributionCents: c })} />}
-                </td>
-                <td className="num"><NumField value={a.contributionGrowthPct} step={0.5} width={70} onChange={(v) => db.invAccounts.update(a.id!, { contributionGrowthPct: v })} /></td>
-                <td className="hide-sm">
-                  {a.kind === '401k' || a.kind === 'hsa' ? (
-                    <div className="row">
-                      <label className="row"><input type="checkbox" checked={a.linkToIncome} onChange={(e) => db.invAccounts.update(a.id!, { linkToIncome: e.target.checked })} />From income model</label>
-                      {a.linkToIncome && (
-                        <select value={a.personId ?? ''} onChange={(e) => db.invAccounts.update(a.id!, { personId: e.target.value ? Number(e.target.value) : null })}>
-                          <option value="">Whose?</option>
-                          {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                      )}
-                    </div>
-                  ) : <span className="muted">entered</span>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <h2>Target</h2>
-      <div className="row">
-        <MoneyField label={`Goal amount (${s.realTerms ? "today's dollars" : 'future dollars'})`} cents={s.targetCents} onChange={(c) => setS({ targetCents: c })} width={150} />
-        <NumField label="…by year (from now)" value={s.targetYear} step={1} width={90} onChange={(v) => setS({ targetYear: Math.round(v) })} />
-        {prob !== null && (
-          <div>
-            <div className="muted">Chance of reaching it by {year0 + ty}</div>
-            <div className="hero" style={{ fontSize: '2rem' }}>{(prob * 100).toFixed(0)}%</div>
-          </div>
-        )}
-      </div>
-      {prob !== null && <p className="muted">Out of {result!.mc.sims.toLocaleString()} simulated futures, this share ended at or above the goal.</p>}
 
       {result && fan && (
         <>
-          <h2>Results</h2>
-          {result.built.warnings.map((w) => <p key={w} className="warn">{w}</p>)}
+          {result.built.warnings.map((w) => <p key={w} className="warn" style={{ margin: 0 }}>{w}</p>)}
           {windfalls.some((w) => w.include) && (
-            <p className="muted">Includes {windfalls.filter((w) => w.include).length} windfall(s) from <Link to="/retirement">Retirement</Link>, treated as arriving at the end of their year.</p>
+            <p className="an-note" style={{ margin: 0 }}>Includes {windfalls.filter((w) => w.include).length} windfall(s) from <Link to="/retirement">Retirement</Link>, treated as arriving at the end of their year.</p>
           )}
-          <div className="viz">
-            <div className="muted">Median outcome in {year0 + n} ({s.realTerms ? "today's dollars" : 'future dollars'})</div>
-            <div className="hero">{formatCents(Math.round(fan.p50[n]))}</div>
-            <div className="tiles">
-              <div className="tile"><div className="muted">Starting value</div><div className="v">{compactUSD(result.built.startTotal)}</div></div>
-              <div className="tile"><div className="muted">Poor case (10th percentile)</div><div className="v">{compactUSD(fan.p10[n])}</div></div>
-              <div className="tile"><div className="muted">Strong case (90th percentile)</div><div className="v">{compactUSD(fan.p90[n])}</div></div>
-              <div className="tile"><div className="muted">Steady-return path</div><div className="v">{compactUSD(fan.steady[n])}</div></div>
-              <div className="tile"><div className="muted">Contributed over {n} yrs</div><div className="v">{compactUSD(totalContrib)}</div></div>
-            </div>
-          </div>
+          <PlanHero
+            label={`Median outcome in ${year0 + n} (${dollars})`}
+            kind={<Kind k="projected">Simulated</Kind>}
+            amount={formatCents(Math.round(fan.p50[n]))}
+            message={<>The middle of {s.sims.toLocaleString()} simulated futures. Real results could be well above or below it, and nothing here is guaranteed.</>}
+            figs={[
+              { label: 'Starting value', value: compactUSD(result.built.startTotal), kind: <Kind k="actual">Current</Kind> },
+              { label: 'Poor case (10th percentile)', value: compactUSD(fan.p10[n]) },
+              { label: 'Strong case (90th percentile)', value: compactUSD(fan.p90[n]) },
+              { label: 'Steady-return path', value: compactUSD(fan.steady[n]) },
+              { label: `Contributed over ${n} yrs`, value: compactUSD(totalContrib), kind: <Kind k="assumption">From your inputs</Kind> },
+            ]}
+          />
 
           <FanChart
             data={fan}
             realTerms={s.realTerms}
+            fit
             title={`Portfolio value over ${n} years`}
-            subtitle={`${s.sims.toLocaleString()} simulated futures · ${s.realTerms ? "today's dollars" : 'future dollars'}`}
+            subtitle={`${s.sims.toLocaleString()} simulated futures · ${dollars}`}
           />
-          <div className="row">
+          <div className="an-tools">
             <button onClick={() => setSeed(seed + 1)}>Re-run with new random draws</button>
-            <span className="muted">Same assumptions, different luck. If the picture changes a lot, use more simulations.</span>
+            <span className="an-note" style={{ margin: 0, flex: '1 1 260px' }}>Same assumptions, different luck. If the picture changes a lot, use more simulations.</span>
           </div>
+        </>
+      )}
 
-          <h2>Where each account ends up (steady-return path)</h2>
-          <table>
-            <thead><tr><th>Account</th><th className="num">Now</th><th className="num">In {n} years</th></tr></thead>
+      <div className="an-split an-split--even">
+        <section className="an-card an-stack-col" aria-labelledby="pj-assume">
+          <h2 className="an-h2" id="pj-assume">Growth, inflation and simulation <Kind k="assumption">Your assumptions</Kind></h2>
+          <Fields legend="Time and inflation">
+            <NumField label="Years to project" value={s.years} step={1} onChange={(v) => setS({ years: Math.min(60, Math.max(1, Math.round(v))) })} />
+            <NumField label="Inflation (% per year)" value={s.inflationPct} step={0.1} onChange={(v) => setS({ inflationPct: v })} />
+          </Fields>
+          <Fields legend="How results are shown" note={s.realTerms ? 'Today’s dollars take inflation out, so a figure far in the future is comparable to money you have now.' : 'Future dollars are the plain amounts you would see then; they are inflated, so they look larger than they feel.'}>
+            <label className="f">Dollars
+              <select value={s.realTerms ? 'real' : 'nominal'} onChange={(e) => setS({ realTerms: e.target.value === 'real' })}>
+                <option value="real">Today’s dollars (inflation-adjusted)</option>
+                <option value="nominal">Future dollars (nominal)</option>
+              </select>
+            </label>
+          </Fields>
+          <Fields legend="Simulation">
+            <label className="f">Simulations
+              <select value={s.sims} onChange={(e) => setS({ sims: Number(e.target.value) })}>
+                <option value={1000}>1,000 (fast)</option>
+                <option value={5000}>5,000</option>
+                <option value={20000}>20,000 (smoothest)</option>
+              </select>
+            </label>
+          </Fields>
+        </section>
+
+        <section className="an-card an-stack-col" aria-labelledby="pj-target">
+          <h2 className="an-h2" id="pj-target">Target <Kind k="input">Your input</Kind></h2>
+          <Fields legend="Goal">
+            <MoneyField label={`Goal amount (${dollars})`} cents={s.targetCents} onChange={(c) => setS({ targetCents: c })} />
+            <NumField label="…by year (from now)" value={s.targetYear} step={1} onChange={(v) => setS({ targetYear: Math.round(v) })} />
+          </Fields>
+          {prob !== null ? (
+            <div className="an-result" role="status">
+              <div className="muted">Chance of reaching it by {year0 + ty} <Kind k="projected">Simulated</Kind></div>
+              <div className="pl-bignum-val">{(prob * 100).toFixed(0)}%</div>
+              <p className="an-note" style={{ margin: 0 }}>Out of {result!.mc.sims.toLocaleString()} simulated futures, this share ended at or above the goal. It is a share of simulated outcomes, not a promise.</p>
+            </div>
+          ) : <p className="an-note" style={{ margin: 0 }}>Enter a goal amount to see the share of simulated futures that reach it.</p>}
+        </section>
+      </div>
+
+      <section className="an-card" aria-labelledby="pj-contrib">
+        <h2 className="an-h2" id="pj-contrib">Contributions <Kind k="input">Your inputs</Kind></h2>
+        <p className="an-note">
+          Yearly amounts you expect to add, in dollars of the first year. They rise by the growth % each year; at 0% the amount stays flat,
+          which shrinks in today’s dollars, so set it near your expected raises. 401(k)s and HSAs can follow your{' '}
+          <Link to="/income">Income</Link> model (your deferrals plus employer match for {year0}).
+        </p>
+        <div className="an-tablewrap">
+          <table className="an-table an-stack">
+            <thead><tr><th>Account</th><th className="num">Per year</th><th className="num">Grows %/yr</th><th>Source</th></tr></thead>
             <tbody>
-              {result.steady.perAccount.map((a) => {
-                const vals = view(a.values);
-                return <tr key={a.id}><td>{a.name}</td><td className="num">{formatCents(Math.round(vals[0]))}</td><td className="num">{formatCents(Math.round(vals[n]))}</td></tr>;
+              {open.map((a) => {
+                const linked = (a.kind === '401k' || a.kind === 'hsa') && a.linkToIncome;
+                const base = baseContribution(a, incomeModel.years);
+                return (
+                  <tr key={a.id}>
+                    <td className="an-full"><span className="an-title">{a.name}</span></td>
+                    <td className="num" data-label="Per year">
+                      {linked ? <>{formatCents(base.cents)} <span className="an-kind an-kind--manual">From Income</span></> : <MoneyField key={`${a.id}-${a.annualContributionCents}`} ariaLabel={`Per year for ${a.name}`} cents={a.annualContributionCents} width={120} onChange={(c) => db.invAccounts.update(a.id!, { annualContributionCents: c })} />}
+                    </td>
+                    <td className="num" data-label="Grows %/yr"><NumField ariaLabel={`Grows % per year for ${a.name}`} value={a.contributionGrowthPct} step={0.5} width={80} onChange={(v) => db.invAccounts.update(a.id!, { contributionGrowthPct: v })} /></td>
+                    <td className="an-full">
+                      {a.kind === '401k' || a.kind === 'hsa' ? (
+                        <div className="pl-source">
+                          <label className="chk"><input type="checkbox" checked={a.linkToIncome} onChange={(e) => db.invAccounts.update(a.id!, { linkToIncome: e.target.checked })} />From income model</label>
+                          {a.linkToIncome && (
+                            <select aria-label={`Whose income for ${a.name}`} value={a.personId ?? ''} onChange={(e) => db.invAccounts.update(a.id!, { personId: e.target.value ? Number(e.target.value) : null })}>
+                              <option value="">Whose?</option>
+                              {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                          )}
+                        </div>
+                      ) : <span className="muted">entered</span>}
+                    </td>
+                  </tr>
+                );
               })}
             </tbody>
           </table>
+        </div>
+      </section>
 
-          <div className="card">
-            <strong>How to read this</strong>
+      {result && fan && (
+        <>
+          <section className="an-card" aria-labelledby="pj-accts">
+            <h2 className="an-h2" id="pj-accts">Where each account ends up (steady-return path) <Kind k="projected">Projected</Kind></h2>
+            <div className="an-tablewrap" style={{ marginTop: 'var(--sp-3)' }}>
+              <table className="an-table an-stack an-stack--3">
+                <thead><tr><th>Account</th><th className="num">Now</th><th className="num">In {n} years</th></tr></thead>
+                <tbody>
+                  {result.steady.perAccount.map((a) => {
+                    const vals = view(a.values);
+                    return <tr key={a.id}><td className="an-full an-lead"><span className="an-title">{a.name}</span></td><td className="num" data-label="Now">{formatCents(Math.round(vals[0]))}</td><td className="num" data-label={`In ${n} years`}>{formatCents(Math.round(vals[n]))}</td></tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="an-card an-card--soft" aria-labelledby="pj-read">
+            <h2 className="an-h2" id="pj-read" style={{ fontSize: 'var(--fs-base)' }}>How to read this</h2>
             <ul className="muted">
-              <li><strong>Median vs steady path.</strong> The orange steady path assumes every year earns exactly the compound return you entered for each asset class. That figure already includes the cost of ups and downs, so the typical (median) simulated outcome should land close to the steady path. A gap of a few percent is normal: contributions and withdrawals land at different times, and a mix of classes can compound a little differently from the average of its parts.</li>
+              <li><strong>Median vs steady path.</strong> The steady path assumes every year earns exactly the compound return you entered for each asset class. That figure already includes the cost of ups and downs, so the typical (median) simulated outcome should land close to the steady path. A gap of a few percent is normal: contributions and withdrawals land at different times, and a mix of classes can compound a little differently from the average of its parts.</li>
               <li><strong>The bands.</strong> The darker band holds the middle half of simulated futures; the lighter band holds 80% of them. About one future in ten ends below the lower edge, and one in ten above the upper.</li>
               <li><strong>What is assumed.</strong> Each account keeps its current mix (rebalanced yearly). Contributions arrive evenly through the year. Asset classes move together in realistic ways (stocks with stocks, bonds less so).</li>
               <li><strong>What is not modeled.</strong> Fees, taxes, and market conditions that change over time. Withdrawals in retirement are modeled on the <Link to="/retirement">Retirement</Link> page, and college-type goals on <Link to="/goals">Goals</Link>.</li>
             </ul>
-          </div>
+          </section>
         </>
       )}
-    </>
+    </div>
   );
 }

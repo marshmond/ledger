@@ -28,6 +28,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D17 (2026-11-13, built and tested locally, uncommitted) redesigned Forecast, Reports (Trends and Flow diagram), Net worth, Investments (three views), Debt and Payoff: L-08, L-09, L-13, L-14, L-15 and L-16 read `BLT` with the marks actually recorded (section 1.14), the in-page views IV-24, IV-25, IV-26, IV-29 and IV-30 read `BLT`, and W-20, W-24 and W-25 read `BLT` for the parts section 1.14 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done. `Kbd` is recorded only for L-08, L-14 and L-15 (Tab walk and chart arrow keys in headless Chrome); the native `confirm()` calls on these pages remain (D20).**
 
+**D18 (2026-11-13, built and tested locally, uncommitted) redesigned the ten Financial Planning pages: Income, Tax planning, Giving, Afford (both views), Paycheck, Projections, Retirement, Goals, Protection and Roth: L-17 to L-26 read `BLT` with the marks actually recorded (section 1.15), IV-27 and IV-28 read `BLT`, and W-21, W-22 and W-23 read `BLT` for the parts section 1.15 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done, and `Kbd` is not recorded for any D18 page (only the in-page jump buttons were driven by script). The native `confirm()` calls on these pages remain (D20).**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -274,16 +276,16 @@ Ledger has 32 route entries and 31 pages. `/ledger/backup` is a redirect to `/se
 | L-14 | `/ledger/investments` | `src/pages/InvestmentsPage.tsx` | D17 | BLT | Y | Y | Y | Y | Y | Y |
 | L-15 | `/ledger/payoff` | `src/pages/PayoffPage.tsx` | D17 | BLT | Y | Y | Y | Y | Y | Y |
 | L-16 | `/ledger/debt` | `src/pages/DebtPage.tsx` | D17 | BLT | Y | . | Y | Y | . | Y |
-| L-17 | `/ledger/income` | `src/pages/IncomePage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-18 | `/ledger/taxplan` | `src/pages/TaxPlanPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-19 | `/ledger/giving` | `src/pages/GivingPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-20 | `/ledger/afford` | `src/pages/AffordPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-21 | `/ledger/paycheck` | `src/pages/PaycheckPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-22 | `/ledger/projections` | `src/pages/ProjectionPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-23 | `/ledger/retirement` | `src/pages/RetirementPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-24 | `/ledger/goals` | `src/pages/GoalsPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-25 | `/ledger/protection` | `src/pages/ProtectionPage.tsx` | D18 | NS | . | . | . | . | . | . |
-| L-26 | `/ledger/roth` | `src/pages/RothPage.tsx` | D18 | NS | . | . | . | . | . | . |
+| L-17 | `/ledger/income` | `src/pages/IncomePage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-18 | `/ledger/taxplan` | `src/pages/TaxPlanPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-19 | `/ledger/giving` | `src/pages/GivingPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-20 | `/ledger/afford` | `src/pages/AffordPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-21 | `/ledger/paycheck` | `src/pages/PaycheckPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-22 | `/ledger/projections` | `src/pages/ProjectionPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-23 | `/ledger/retirement` | `src/pages/RetirementPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-24 | `/ledger/goals` | `src/pages/GoalsPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-25 | `/ledger/protection` | `src/pages/ProtectionPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
+| L-26 | `/ledger/roth` | `src/pages/RothPage.tsx` | D18 | BLT | Y | Y | Y | Y | . | Y |
 | L-27 | `/ledger/more` | `src/pages/MorePage.tsx` | D19 | NS | . | . | . | . | . | . |
 | L-28 | `/ledger/review` | `src/pages/ReviewPage.tsx` | D19 | NS | . | . | . | . | . | . |
 | L-29 | `/ledger/guide` | `src/pages/GuidePage.tsx` | D19 | NS | . | . | . | . | . | . |
@@ -305,6 +307,15 @@ D17 (2026-11-13) recomposed the six pages with a shared hero, figures band, kind
 - **Sweep:** 9 views x 4 widths (1440, 800, 375, 320) x 3 looks (Signature light, Signature dark, Classic light) = 108 cells: no horizontal overflow, one h1, no skipped heading level and every control named after the final fixes (the first pass found a skipped level on Investments, unnamed number fields in Prices and Payoff, and an 11 px overflow at 320 in Payoff, all fixed). Contrast was not measured; small targets: at most 2 controls under 24 px in a view.
 - **Kbd (L-08, L-14, L-15):** Tab walk (21, 22 and 25 stops in the page) and chart arrow keys on the Forecast chart (readout shows the exact amounts); the tab list moves with the arrow key. The allocation bar's segments had no visible ring; one was added. Not a screen-reader test.
 - **Func:** every exact-cents amount and every input value on all nine views is the same before and after (331 amounts and 130 input values compared, 0 missing); Forecast look-ahead 12 to 6 and back; Trends month and Flow period; Net worth figures and the missing-month note; Investments account open, lots, Buy panel opened (nothing logged), Realized gains figures, Prices tab; Debt loans opened; Payoff extra 0 to 100 to 0 with the strategy cards. Trades were not entered, sold or undone; values were not edited.
+
+
+### 1.15 D18 evidence: the ten Financial Planning pages (built, NOT committed; nothing is `ACC`)
+
+D18 (2026-11-13) recomposed Income, Paycheck, Tax planning, Giving, Afford (Can I afford it? and Rent or buy?), Projections, Retirement, Roth conversions, Goals and Protection with a shared headline panel, kind-of-figure words (Estimate, Projected, Simulated, Your inputs, Recorded, Guideline, Possible action), grouped inputs and results placed beside the inputs that change them. Seen in headless Chrome on a throwaway copy of the fictional demo household extended with invented income, RSU, investment, loan, goal, gift, policy and scenario records (own address, sync off). Report: `docs/LEDGER-SIGNATURE-D18-REPORT.md`. Pictures (outside the repository): `Documents\Ledger-Design-Concepts\D18-Evidence`.
+
+- **L and D, 375 and 1440:** all ten pages and both Afford views at 1440 and 375 in Signature light; Signature dark at 1440 for Income, Tax planning, Roth, Afford (first view only), Projections, Retirement, Goals, Giving and Protection, and at 375 for Paycheck, Giving, Retirement, Goals and Protection. IV-28 (Rent or buy) has no dark picture, so it has no D mark. A 320 px capture of every page and a Classic light capture of Income, Afford, Protection and Tax planning at 1440 and 375 showed no horizontal overflow.
+- **Func:** every exact-cents amount (2,803 distinct amounts across 33 captured views) and every input value (795) is the same before and after, with two explained exceptions listed in the report; interactions driven through the real controls: Income year 2026 to 2027 and back, RSU section reached from the jump list, Afford both views with price and years changed and restored, Projections dollars toggle and back, Retirement year changed and restored plus Find spending that lasts, Goals settings opened and cost edited and restored plus Calculate, Roth strategy chosen, Giving form fields named (nothing added), Protection years changed and restored, a Paycheck scenario opened and two columns compared. Nothing was created or deleted.
+- **Not recorded:** Kbd (no Tab walk was done), contrast measurement, forced colors, real devices, screen readers.
 
 
 ## 3. In-page views (31)
@@ -339,8 +350,8 @@ Views share their page's address. Each needs its page's checks plus its own empt
 | IV-24 | L-14 Investments | Accounts | D17 | BLT | Y | Y | Y | Y | . | Y |
 | IV-25 | L-14 Investments | Realized gains | D17 | BLT | Y | . | Y | Y | . | Y |
 | IV-26 | L-14 Investments | Prices and assumptions | D17 | BLT | Y | . | Y | Y | . | Y |
-| IV-27 | L-20 Afford | Can I afford it? | D18 | NS | . | . | . | . | . | . |
-| IV-28 | L-20 Afford | Rent or buy? | D18 | NS | . | . | . | . | . | . |
+| IV-27 | L-20 Afford | Can I afford it? | D18 | BLT | Y | Y | Y | Y | . | Y |
+| IV-28 | L-20 Afford | Rent or buy? | D18 | BLT | Y | . | Y | Y | . | Y |
 | IV-29 | L-09 Reports | Trends | D17 | BLT | Y | Y | Y | Y | . | Y |
 | IV-30 | L-09 Reports | Flow diagram | D17 | BLT | Y | . | Y | Y | . | Y |
 | IV-31 | P-02 Project detail | Task filter groups | D14 | NS | . | . | . | . | . | . |
@@ -405,9 +416,9 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-18 | Rules and detect-recurring | D16 | BLT |
 | W-19 | Budget assign, targets, reorder | D16 | BLT |
 | W-20 | Trades, lots, prices, realized gains | D17 | BLT |
-| W-21 | RSU grants and vest schedule | D18 | NS |
-| W-22 | Income setup per person, HSA log, paycheck scenarios | D18 | NS |
-| W-23 | Planning calculators: tax plan, afford, projections, retirement, Roth, giving, protection, goals | D18 | NS |
+| W-21 | RSU grants and vest schedule | D18 | BLT |
+| W-22 | Income setup per person, HSA log, paycheck scenarios | D18 | BLT |
+| W-23 | Planning calculators: tax plan, afford, projections, retirement, Roth, giving, protection, goals | D18 | BLT |
 | W-24 | Loans and payoff | D17 | BLT |
 | W-25 | Net-worth valuations and snapshots | D17 | BLT |
 | W-26 | Documents: Year in review, If something happens guide, Tax package (print and export) | D19 | NS |

@@ -96,9 +96,13 @@ export interface FanData {
   steady: number[];
 }
 
-const W = 720;
-const H = 320;
-const M = { l: 56, r: 12, t: 12, b: 28 };
+const FAN_W = 720;
+const FAN_H = 320;
+const FAN_M = { l: 56, r: 12, t: 12, b: 28 };
+/** The default canvas of LinesChart. */
+const W = FAN_W;
+const H = FAN_H;
+const M = FAN_M;
 
 export function FanChart({
   data,
@@ -107,6 +111,7 @@ export function FanChart({
   realTerms,
   marker,
   steadyLabel = 'Steady-return path (average)',
+  fit = false,
 }: {
   data: FanData;
   title: string;
@@ -115,11 +120,27 @@ export function FanChart({
   /** A labelled vertical rule, e.g. the retirement year. */
   marker?: { index: number; label: string };
   steadyLabel?: string;
+  /** D18, opt-in: draw at the box's real width so labels stay 12px on a phone (the default keeps the fixed 720 by 320 canvas). */
+  fit?: boolean;
 }) {
   const n = data.p50.length - 1;
   const [idx, setIdx] = useState<number | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
+  const [fitW, setFitW] = useState(640);
+  useEffect(() => {
+    const el = box.current;
+    if (!fit || !el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setFitW(Math.max(260, Math.round(el.clientWidth - 2)));
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, [fit]);
+  const W = fit ? fitW : FAN_W;
+  const H = fit ? (fitW < 480 ? 250 : 300) : FAN_H;
+  const M = fit ? { l: fitW < 480 ? 54 : 60, r: 14, t: 14, b: 32 } : FAN_M;
+  const fs = fit ? 12 : 11;
 
   const max = Math.max(...data.p90, ...data.steady);
   const ticks = niceTicks(max / 100, 5).map((v) => v * 100);
@@ -158,7 +179,7 @@ export function FanChart({
   const tipLeft = idx === null ? 0 : (x(idx) / W) * 100;
 
   return (
-    <div className="viz" ref={box}>
+    <div className={fit ? 'viz viz-fit' : 'viz'} ref={box}>
       <h3>{title}</h3>
       <div className="sub">{subtitle}</div>
       <div className="legend">
@@ -173,6 +194,7 @@ export function FanChart({
         role="img"
         aria-label={`${title}. Median ${compactUSD(data.p50[n])} after ${n} years; 10th to 90th percentile ${compactUSD(data.p10[n])} to ${compactUSD(data.p90[n])}.`}
         tabIndex={0}
+        style={fit ? { height: H } : undefined}
         onPointerMove={(e) => locate(e.clientX)}
         onPointerLeave={() => setIdx(null)}
         onFocus={() => setIdx((i) => i ?? n)}
@@ -185,17 +207,17 @@ export function FanChart({
         {ticks.map((v) => (
           <g key={v}>
             <line x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} stroke="var(--grid)" strokeWidth={1} />
-            <text x={M.l - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fill="var(--ink-3)">{compactUSD(v)}</text>
+            <text x={M.l - 8} y={y(v) + 4} textAnchor="end" fontSize={fs} fill="var(--ink-3)">{compactUSD(v)}</text>
           </g>
         ))}
         <line x1={M.l} x2={W - M.r} y1={y(0)} y2={y(0)} stroke="var(--axis)" strokeWidth={1} />
         {xTicks.map((t) => (
-          <text key={t} x={x(t)} y={H - 8} textAnchor="middle" fontSize={11} fill="var(--ink-3)">{data.startYear + t}</text>
+          <text key={t} x={x(t)} y={H - 8} textAnchor="middle" fontSize={fs} fill="var(--ink-3)">{data.startYear + t}</text>
         ))}
         {marker && marker.index >= 0 && marker.index <= n && (
           <g>
             <line x1={x(marker.index)} x2={x(marker.index)} y1={M.t} y2={y(0)} stroke="var(--ink-3)" strokeWidth={1} />
-            <text x={x(marker.index) + 4} y={M.t + 11} fontSize={11} fill="var(--ink-2)">{marker.label}</text>
+            <text x={x(marker.index) + 4} y={M.t + 11} fontSize={fs} fill="var(--ink-2)">{marker.label}</text>
           </g>
         )}
         <path d={band(data.p90, data.p10)} fill="var(--s1)" fillOpacity={0.12} />
