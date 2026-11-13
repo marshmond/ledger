@@ -4,7 +4,9 @@ import { Link } from '../../core/router';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { useToday } from '../../ui/useToday';
 import ObligationForm from './ObligationForm';
-import { amountOf, day, StatusChip, useMoney } from './BillsParts';
+import { amountOf, StatusChip, TypeChip, useMoney } from './BillsParts';
+import { DateInline, DateTile } from '../../ui/DateTile';
+import { StatusChip as UiChip } from '../../ui/StatusChip';
 import { loadObligations } from './data';
 import { TYPE_LABEL, TYPES, type BillType } from './model';
 import { obligationRoute, overviewRoute } from './paths';
@@ -13,16 +15,19 @@ import { buildRows, countByStatus, filterRows, providersOf, STATUS_FILTERS, type
 
 function RowLine({ r, money, today }: { r: BillRow; money: (c: number) => string; today: string }) {
   const d = r.ob.data;
+  const next = r.next[0];
   return (
     <li>
-      <Link to={obligationRoute(r.ob.id)} className="bl-rowlink">
+      <Link to={obligationRoute(r.ob.id)} className="bl-rowlink bl-listrow">
+        <span className="bl-row-date">{next ? <DateTile iso={next.nominal} today={today} size="sm" labelled={false} /> : <span className="bl-nodate" aria-hidden="true">–</span>}</span>
         <span className="bl-row-main">
           <strong>{d.title}</strong>
-          <span className="small muted">{d.providerNameSnapshot || 'No provider'} · {amountOf(d, today, money)} · {describeSchedule(d.schedule)}</span>
-          <span className="bl-rowtags"><span className="bl-chip">{TYPE_LABEL[d.type]}</span>{d.review.on && <span className="bl-chip">Review list</span>}</span>
+          <span className="small muted">{d.providerNameSnapshot || 'No provider'} · {describeSchedule(d.schedule)}</span>
+          <span className="small bl-row-amt">{amountOf(d, today, money)}</span>
+          <span className="bl-rowtags"><TypeChip d={d} />{d.review.on && <UiChip icon={false}>Review list</UiChip>}</span>
         </span>
         <span className="bl-row-side small">
-          {r.next[0] ? <span>Next expected {day(r.next[0].nominal)}</span> : d.status === 'active' ? <span className="muted">Nothing expected</span> : null}
+          {next ? <span>Next expected <DateInline iso={next.nominal} today={today} /></span> : d.status === 'active' ? <span className="muted">Nothing expected</span> : null}
           {d.status !== 'active' && <StatusChip d={d} />}
         </span>
       </Link>
@@ -44,9 +49,9 @@ export default function ListPage() {
   const shown = filterRows(rows, { status, type, provider: provider === 'all' || provider === 'none' ? provider : Number(provider) });
   const providers = providersOf(obligations);
   return (
-    <div className="bl">
+    <div className="bl bl-lst">
       <p className="bl-back"><Link to={overviewRoute()}>← Bills & Subscriptions</Link></p>
-      <PageHeader title="All bills and subscriptions" actions={<button className="btn primary" onClick={() => setAdding(true)}>Add</button>} />
+      <PageHeader title="All bills and subscriptions" eyebrow="Household" actions={<button className="btn primary" onClick={() => setAdding(true)}>Add</button>} />
       {rows.length === 0 ? (
         <EmptyState title="Nothing here yet" action={<button className="btn primary" onClick={() => setAdding(true)}>Add your first bill or subscription</button>}>Three questions are enough: what is it, how much, and how often.</EmptyState>
       ) : (

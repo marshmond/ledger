@@ -22,6 +22,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D14 (2026-11-12, built and tested locally, uncommitted) redesigned Projects, Home & Assets and Contacts: P-01, P-02, A-01, A-02, A-03, N-01 and N-02 read `BLT` with the marks actually recorded (section 1.11), the nine tab views IV-15 to IV-23 read `BLT` with `Func` only, and W-31, W-32 and W-36 read `BLT` for the parts section 1.11 names. IV-31 (the project task filter) was not driven and stays `NS`. DL-04, DL-05 and DL-06 (the module-owned dialogs) stay `NS`: their markup was not touched and D20 owns the dialog sweep. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.** D13.1 is committed and deployed as `11bb7e4` (Actions run #100 success, Pages deployment success).
 
+**D15 (2026-11-12, built and tested locally, uncommitted) redesigned Household Services, Bills & Subscriptions and the Family member and dates pages: V-01 to V-04, B-01, B-02, B-03, B-04, B-05, F-02 and F-03 read `BLT` with the marks actually recorded (section 1.12; B-04 was recomposed in the final Bills refinement and its marks come from section 1.12); W-33, W-34 and W-35 read `BLT` for the parts section 1.12 names. DL-07, DL-08 and DL-09 (the module-owned dialogs) stay `NS`: their markup was not touched and D20 owns the dialog sweep. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -168,6 +170,16 @@ D14 (2026-11-12) redesigned the composition of seven routed pages. Seen in headl
 - **Sweep:** 220 combinations (11 views, 5 widths, 4 looks): no horizontal overflow, one h1 and no skipped heading level, every interactive control has a name. Phone touch targets under 44 px that remain: the Tasks check circle (28 px with a 46 px hit area, a shared control from the Tasks module).
 - **Not checked:** real phones, screen readers, forced colors, Safari and Firefox, budget-line, commitment and vendor edits on the project page (their code is unchanged except that two status labels now use the shared chip), the project task filter (IV-31), the asset maintenance, service and warranty dialogs.
 
+### 1.12 D15 evidence: Household Services, Bills & Subscriptions, Family detail (built, NOT committed; nothing is `ACC`)
+
+D15 (2026-11-12) recomposed twelve routed pages. Seen in headless Chrome on throwaway copies of the fictional D1 demo household plus invented edge cases (a twice-monthly service, a paused and an ended service, an on-demand service with a very long name, a no-provider service, an unknown-amount bill, an ended bill, a very long bill name, a member with no color; own address `localhost:5231`, sync off), driven by DevTools-protocol scripts with real pointer and key events. Screenshots are outside the repository (`Documents\Ledger-Design-Concepts\D15-Evidence`: `baseline`, `Household-Services`, `Bills-Subscriptions`, `Family`, `Comparisons`, `Verification`). Report: `docs/LEDGER-SIGNATURE-D15-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real-phone or screen-reader check.**
+
+- **V-01 to V-04 (Services):** `L` and `D` Signature at 1440, 1024, 800, 375 and 320 plus Classic light and Slate light in the sweep; overview, five arrangement states, visit and provider pages looked at in Signature light and dark. `Func`: authoritative values (arrangements, cadence words, next dates, open Task count, the 12-month Calendar dates, visits, estimates, spending, providers) are identical before and after; the filters, the 7/14/30/90-day window (saved), the open-arrangement, provider and visit navigation, create (biweekly and twice-monthly, one open Task each, dates every 14 days versus the 15th and last business day) and edit all worked. `Kbd`: a 70-stop Tab walk of V-01 and V-02 (every stop in the page showed a focus ring except the native date field), Enter and Escape on the Add dialog with focus returning to its button, arrow keys on the filter.
+- **B-01, B-02, B-03, B-05 (Bills):** the same widths and looks. `Func`: counts, due dates, amounts (known, estimated, not known), payment labels, attention counts, cash windows and the 12-month figures identical before and after; filters, create (known, estimated and unknown amounts) and edit, the linked-service text and the Finance link worked; no row was written by browsing. `Kbd`: Tab walks of B-01, B-02 and B-05. **B-04 (Needs review)** was recomposed in the final Bills refinement: seen at 1440, 375 and 320 in Signature light and dark and Classic; `Func`: its count and two groups equal the engine's, every item keeps its date, amount sentence and buttons, Mark paid… opens its dialog and Escape saves nothing, Open the bill and the jump buttons work, empty and one-bill states, Hide amounts leaves no dollar digit; `Kbd`: a 40-stop Tab walk with a focus ring at every stop. Only two of its sixteen group types exist in the demo data, so the other fourteen were not reproduced in the browser. **B-01** also gained a phone-only order (cash first) and a three-date Coming up preview with View all upcoming; its desktop is unchanged.
+- **F-02, F-03 (Family):** the same widths and looks. `Func`: member roles, colors, "This is me", birthdays and dates identical before and after; edit keeps role, color and "This is me"; a member with no color keeps the neutral mark; a date can be created and edited, resolves to the stored month and day, and creates no Calendar event; two same-name Contacts stay two. `Kbd`: Tab walks of F-02 and F-03.
+- **Sweep:** 380 combinations (19 views, 5 widths, 4 looks): no horizontal overflow, one h1 and no skipped heading level, every interactive control has a name, no clipped text. Browser workflow script: 49 of 49 checks passed.
+- **Not checked:** real phones, screen readers, forced colors, Safari and Firefox; the module-owned dialogs and their validation messages (D20); payment, lifecycle, contract-date, cancellation, price-change, scheduled-link and repair dialogs after the redesign (their code is unchanged); the Home & Assets handoff dialog; a Tab walk of V-03, V-04, B-03 and B-04.
+
 ### 1.9 D13 evidence: Calendar (built, NOT committed; nothing is `ACC`)
 
 Seen in headless Chrome on a throwaway profile holding the fictional D1 demo household (own address `localhost:5231`, sync off), driven by DevTools-protocol scripts. Screenshots are outside the repository (`DocumentsLedger-Design-ConceptsD13-Evidence`, `baseline` and `after`). Report: `docs/LEDGER-SIGNATURE-D13-REPORT.md`. **Synthetic key events are not a physical keyboard, and none of this is a real phone or a screen reader.** There is no approved Calendar prototype; the design applies the approved Today and Tasks language.
@@ -201,15 +213,15 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
-| V-01 | `/services` | `src/modules/services/OverviewPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| V-02 | `/services/a/:id` | `src/modules/services/ArrangementPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| V-03 | `/services/providers/:contactId` | `src/modules/services/ProviderPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| V-04 | `/services/v/:id` | `src/modules/services/VisitPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| B-01 | `/bills` | `src/modules/bills/OverviewPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| B-02 | `/bills/list` | `src/modules/bills/ListPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| B-03 | `/bills/upcoming` | `src/modules/bills/UpcomingPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| B-04 | `/bills/review` | `src/modules/bills/ReviewPage.tsx` | D15 | NS | . | . | . | . | . | . |
-| B-05 | `/bills/o/:id` | `src/modules/bills/ObligationPage.tsx` | D15 | NS | . | . | . | . | . | . |
+| V-01 | `/services` | `src/modules/services/OverviewPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
+| V-02 | `/services/a/:id` | `src/modules/services/ArrangementPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
+| V-03 | `/services/providers/:contactId` | `src/modules/services/ProviderPage.tsx` | D15 | BLT | Y | Y | Y | Y | . | Y |
+| V-04 | `/services/v/:id` | `src/modules/services/VisitPage.tsx` | D15 | BLT | Y | Y | Y | Y | . | Y |
+| B-01 | `/bills` | `src/modules/bills/OverviewPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
+| B-02 | `/bills/list` | `src/modules/bills/ListPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
+| B-03 | `/bills/upcoming` | `src/modules/bills/UpcomingPage.tsx` | D15 | BLT | Y | Y | Y | Y | . | Y |
+| B-04 | `/bills/review` | `src/modules/bills/ReviewPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
+| B-05 | `/bills/o/:id` | `src/modules/bills/ObligationPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
 
 ### 2.4 Household Finances, Family, Contacts (6)
 
@@ -217,8 +229,8 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 |---|---|---|---|---|---|---|---|---|---|---|
 | H-01 | `/household` | `src/modules/household/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
 | F-01 | `/family` | `src/modules/family/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
-| F-02 | `/family/m/:id` | `src/modules/family/MemberPage.tsx` | D9, D15 | NS | . | . | . | . | . | . |
-| F-03 | `/family/dates` | `src/modules/family/DatesPage.tsx` | D15 | NS | . | . | . | . | . | . |
+| F-02 | `/family/m/:id` | `src/modules/family/MemberPage.tsx` | D9, D15 | BLT | Y | Y | Y | Y | Y | Y |
+| F-03 | `/family/dates` | `src/modules/family/DatesPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
 | N-01 | `/contacts` | `src/modules/contacts/DirectoryPage.tsx` | D14 | BLT | Y | Y | Y | Y | Y | Y |
 | N-02 | `/contacts/c/:id` | `src/modules/contacts/ContactPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
 
@@ -386,9 +398,9 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-30 | General and Calendar settings | D19 | NS |
 | W-31 | Projects: create, edit, delete (plan), budget lines, commitments, vendors | D14 | BLT |
 | W-32 | Assets: add, maintenance, service, warranty, lifecycle, delete | D14 | BLT |
-| W-33 | Household Services: arrangements, visits, payments, schedule changes, contract dates, hand-offs | D15 | NS |
-| W-34 | Bills: add/edit, periods and payments, lifecycle, discovery, review list, links | D15 | NS |
-| W-35 | Family: member add/edit (contact choice, colour), dates, important contacts, removal | D9, D15 | NS |
+| W-33 | Household Services: arrangements, visits, payments, schedule changes, contract dates, hand-offs | D15 | BLT |
+| W-34 | Bills: add/edit, periods and payments, lifecycle, discovery, review list, links | D15 | BLT |
+| W-35 | Family: member add/edit (contact choice, colour), dates, important contacts, removal | D9, D15 | BLT |
 | W-36 | Contacts: add/edit/remove, where used | D14 | BLT |
 | W-37 | Household Finances review: period, disclosures, hide amounts | D12 | BLT |
 
@@ -415,6 +427,8 @@ Measured by `src/shell/uiBaseline.ts` at commit `8ab1789` plus the D5 change. Th
 Discrepancies found while re-measuring (none changed the baseline): D4's "9 font sizes below 12 px" counts `px` values only; the two further `rem` values (0.7rem and 0.68rem) make 11. D4's "37 confirm()" counts calls with a message; the source also has five local functions named `confirm` (not the browser's) which are not counted.
 
 Measured after D11 (informational): inline `style={{` 306 in 82 files, raw border-radius pixel values 61, raw font-size values 38, hex colours 147 (module CSS 54), own `<h1>` files 12 (Tasks now uses `PageHeader`), `<Modal>` sites 63 in 42 files, `!important` 11, native `confirm()` 37 in 24 files. The baseline constants in `src/shell/uiBaseline.ts` were not lowered except for the Modal count, which the guard needs.
+
+Measured after D15 (informational): inline `style={{` 301 in 83 files, raw border-radius pixel values 61, raw font-size values 38, font sizes below 12 px 3 (px) and 5 (px and rem), hex colours 134 (module CSS 41), own `<h1>` files 12, native `confirm()` 37 in 24 files, `<Modal>` sites 63 in 42 files, `!important` 11. D15 added no hex color, raw radius, inline style or `!important`; the one count above the D5 baseline (raw font sizes, 38 against 36) was already 38 after D6.
 
 ## 7. Aliases and redirects (not pages)
 

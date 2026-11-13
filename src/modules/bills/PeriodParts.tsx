@@ -3,6 +3,8 @@ import { STATUS_DETAIL, statusSummary } from './payments';
 import type { Period } from './periods';
 import { slotWords2 } from './schedule';
 import { day, type Money } from './BillsParts';
+import { StatusChip } from '../../ui/StatusChip';
+import { LABEL_TONE } from './presentation';
 
 /** The primary label in words, with the amounts that matter (all through the Hide-Amounts-aware `money`). */
 export function labelText(p: Period, money: Money): string {
@@ -64,7 +66,7 @@ export const periodName = (p: { slot: string }) => slotWords2(p.slot);
 export function PeriodLabel({ p, money }: { p: Period; money: Money }) {
   return (
     <span className="bl-plabel">
-      <span className={`bl-chip bl-l-${p.label}`}>{labelText(p, money)}</span>
+      <StatusChip tone={LABEL_TONE[p.label]}>{labelText(p, money)}</StatusChip>
       <span className="muted small bl-ev">{evidenceText(p, money)}</span>
     </span>
   );

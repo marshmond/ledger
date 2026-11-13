@@ -1,5 +1,5 @@
 /* Bills & Subscriptions (copied from the Household Services page styles). Uses the app's colour variables so light and dark both work. */
-.bl-main { padding-bottom: var(--sp-6, 48px); max-width: min(1100px, 100%); }
+.bl-main { padding-bottom: var(--sp-6, 48px); max-width: min(1500px, 100%); }
 .bl-back { margin: 0 0 var(--sp-2); }
 .bl-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
 .bl-head h1 { margin: 0 0 var(--sp-1); overflow-wrap: anywhere; }
@@ -185,3 +185,165 @@ a.btn.disabled { opacity: .5; pointer-events: none; }
 .bl-tag { font-size: .75rem; padding: 0 .35rem; border: 1px solid var(--border, #d9d9d9); border-radius: 6px; }
 .bl-radios { border: 0; padding: 0; margin: 0; display: grid; gap: .4rem; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ===== D15: Bills & Subscriptions recomposed on the shared tokens and components (date tiles, status chips, figures). ===== */
+.bl { max-width: none; }
+.bl .ui-chip { white-space: normal; text-align: left; }
+
+/* two columns: what is coming up on the left, the cash and cost figures on the right; one column below 1000px */
+.bl-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: var(--sp-3); align-items: start; }
+.bl-col { display: flex; flex-direction: column; min-width: 0; }
+.bl-col > .card:last-child { margin-bottom: 0; }
+@media (max-width: 1000px) { .bl-layout { grid-template-columns: minmax(0, 1fr); } .bl-col > .card:last-child { margin-bottom: var(--sp-3); } }
+
+/* counts band */
+.bl-band { padding: 0; margin-bottom: var(--sp-3); overflow: hidden; }
+.bl-band .bl-counts { gap: 0; margin: 0; }
+.bl-band .bl-fig { padding: var(--sp-3) var(--sp-4); border-left: 1px solid var(--line); }
+.bl-band .bl-fig:first-child { border-left: 0; }
+.bl-band .bl-big { font-size: var(--fs-metric, 1.8rem); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bl-attn { border-left: 3px solid var(--warn); }
+
+/* dated groups: an expected date under a tile, then the bills that fall on it */
+.bl-days { margin: 0; padding: 0; }
+.bl-day { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-3); align-items: start; padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.bl-day:last-child { border-bottom: none; }
+.bl-day-rows { margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.bl-due { display: flex; justify-content: space-between; gap: var(--sp-3); }
+.bl-due-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.bl-due-amt { font-variant-numeric: tabular-nums; }
+.bl-due-status { flex: 0 1 38%; min-width: 0; }
+.bl-pastdue { border-left: 3px solid var(--warn); }
+
+/* cash windows: known and estimated are two separate figures, never one total */
+.bl-cashwins { margin: 0 0 var(--sp-2); padding: 0; display: flex; flex-direction: column; }
+.bl-cashwin { padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+.bl-cashwin:first-child { padding-top: 0; }
+.bl-cashwin:last-child { border-bottom: none; }
+.bl-cashwin-h { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); font-weight: 650; color: var(--fg-2); text-transform: none; }
+.bl-cashfigs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.bl-cashnone { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-3); border: 1px dashed var(--line); border-radius: var(--r-md); }
+.bl-cashunk { margin: var(--sp-2) 0 0; }
+.bl-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1200px) and (min-width: 1001px) { .bl-cashfigs, .bl-kinds { grid-template-columns: minmax(0, 1fr); } }
+
+/* dated rows (contract dates) */
+.bl-dated { margin: 0 0 var(--sp-2); padding: 0; }
+.bl-dated-row { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.bl-dated-row:last-child { border-bottom: none; }
+.bl-dated-main { min-width: 0; overflow-wrap: anywhere; }
+
+/* list rows */
+.bl-listrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; border-radius: var(--r-md); }
+.bl-listrow:hover { background: var(--hover); text-decoration: none; }
+.bl-listrow:hover strong { text-decoration: underline; }
+.bl-row-date { display: flex; justify-content: center; }
+.bl-nodate { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 58px; border: 1px dashed var(--control-line, var(--line-strong)); border-radius: calc(var(--r-md) + 2px); color: var(--muted); }
+.bl-row-amt { font-variant-numeric: tabular-nums; }
+.bl-list { padding: var(--sp-1) var(--sp-2); }
+.bl-lst .bl-card { padding-inline: var(--sp-3); }
+
+/* detail hero and key terms */
+.bl-hero { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
+.bl-hero-main { display: flex; align-items: flex-start; gap: var(--sp-4); min-width: 0; flex: 1 1 360px; }
+.bl-hero-date { flex: none; }
+.bl-hero-nodate { display: inline-flex; align-items: center; justify-content: center; min-width: 76px; min-height: 76px; padding: var(--sp-2); border: 1px dashed var(--control-line, var(--line-strong)); border-radius: calc(var(--r-md) + 2px); color: var(--muted); font-size: var(--fs-sm); text-align: center; }
+.bl-hero-text { min-width: 0; }
+.bl-hero-text h1 { margin: 0 0 var(--sp-2); overflow-wrap: anywhere; }
+.bl-hero .bl-chips { margin: 0 0 var(--sp-1); }
+.bl-provider { margin: 0; overflow-wrap: anywhere; }
+.bl-keys { display: grid; grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)); gap: var(--sp-4); align-items: start; margin-bottom: var(--sp-3); }
+.bl-keys > .ui-figure { border: 0; padding: 0; background: none; }
+.bl-keyfact { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.bl-datelist { margin: 0; padding: 0; gap: 0; }
+.bl-dateitem { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); }
+.bl-dateitem:last-child { border-bottom: none; }
+.bl-dateitem-main { display: flex; flex-direction: column; min-width: 0; }
+
+@media (max-width: 640px) {
+  .bl-due { flex-direction: column; }
+  .bl-due-status { flex: none; }
+  .bl-day { gap: var(--sp-2); }
+  .bl-day .ui-dtile { min-width: 48px; }
+  .bl-listrow { grid-template-columns: 46px minmax(0, 1fr); align-items: start; }
+  .bl-listrow .bl-row-side { grid-column: 2; flex-direction: row; flex-wrap: wrap; align-items: center; text-align: left; }
+  .bl-hero-main { gap: var(--sp-3); flex-wrap: wrap; }
+  .bl-hero-text { flex: 1 1 180px; }
+  .bl .ui-figure-value { font-size: 1.4rem; }
+  .bl-hero-date .ui-dtile, .bl-hero-nodate { min-width: 64px; }
+  .bl-head-actions { width: 100%; }
+  .bl-head-actions .btn { flex: 1 1 auto; min-height: 44px; }
+  .bl-keys { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .bl-band .bl-fig { padding: var(--sp-3); }
+  .bl .page-actions .btn { min-height: 44px; }
+}
+
+/* the side column holds forms too: nothing in it may be wider than the column */
+.bl-col, .bl-col .card { min-width: 0; }
+.bl-col select, .bl-col input:not([type="checkbox"]):not([type="radio"]) { max-width: 100%; min-width: 0; }
+.bl-col .row { flex-wrap: wrap; }
+.bl-datelist .bl-dateitem { justify-content: flex-start; }
+.bl-col .bl-two { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+
+/* phones: the main links of each row are real touch targets (inline sentences keep their normal line height) */
+@media (max-width: 640px) {
+  .bl-back a, .bl-due-main > a, .bl-items > li > a, .bl-items > li > strong > a, .bl-dated-main a, .bl-dated-main > a { display: inline-flex; align-items: center; min-height: 44px; }
+  .bl select, .bl button.link { min-height: 44px; }
+}
+
+/* the Upcoming page: one column when there is no side column; the cash windows sit side by side across the full-width card */
+.bl-layout--one { grid-template-columns: minmax(0, 1fr); }
+.bl-up .bl-cashwins { flex-direction: row; flex-wrap: wrap; gap: var(--sp-4); }
+.bl-up .bl-cashwin { flex: 1 1 260px; padding: 0; border-bottom: 0; }
+
+@media (max-width: 340px) { .bl-cashfigs, .bl-kinds { grid-template-columns: minmax(0, 1fr); } }
+.bl-week + .bl-week { margin-top: var(--sp-3); }
+.bl-week-h { margin: 0 0 var(--sp-1); font-size: var(--fs-sm); font-weight: 650; color: var(--fg-2); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ===== D15 Bills refinement: phone preview, denser phone Upcoming rows, and the Needs review page ===== */
+.bl-viewall { margin: var(--sp-3) 0 var(--sp-2); }
+.bl-previewnote { margin: var(--sp-2) 0 0; }
+
+/* Needs review: a summary with jump buttons, then one card per existing group with dated rows */
+.bl-rv { max-width: none; }
+.bl-rv-sum { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-4); align-items: center; margin-bottom: var(--sp-3); }
+.bl-rv-count { display: flex; flex-direction: column; gap: 2px; padding-right: var(--sp-4); border-right: 1px solid var(--line); }
+.bl-rv-count .bl-big { font-size: var(--fs-metric, 1.8rem); font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bl-rv-count .bl-label { font-size: var(--fs-xs); color: var(--muted); }
+.bl-rv-jump { margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.bl-rv-jumpbtn { display: inline-flex; align-items: center; gap: var(--sp-2); min-height: var(--control-h-sm, 36px); padding: 0 var(--sp-3); border: 1px solid var(--control-line, var(--line-strong)); border-radius: 999px; background: var(--surface); color: var(--fg); font-weight: 500; text-align: left; }
+.bl-rv-jumpbtn:hover { background: var(--hover); }
+.bl-rv-n { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--surface-sunken); color: var(--fg-2); font-size: var(--fs-xs); font-weight: 650; }
+.bl-rv-group { border-left: 3px solid var(--line-strong); scroll-margin-top: calc(var(--topbar-h, 56px) + var(--sp-3)); }
+.bl-rv-group.bl-rv-warning { border-left-color: var(--warn); }
+.bl-rv-group.bl-rv-info { border-left-color: var(--accent); }
+.bl-rv-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: var(--sp-1); }
+.bl-rv-head h2 { margin: 0; outline: none; }
+.bl-rv-items { margin: var(--sp-2) 0 0; padding: 0; }
+.bl-rv-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--sp-3); align-items: start; padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+.bl-rv-item:last-child { border-bottom: none; padding-bottom: 0; }
+.bl-rv-date { display: flex; justify-content: center; }
+.bl-rv-nodate { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 58px; border: 1px dashed var(--control-line, var(--line-strong)); border-radius: calc(var(--r-md) + 2px); color: var(--muted); }
+.bl-rv-main { min-width: 0; overflow-wrap: anywhere; }
+.bl-rv-text { margin: 0; font-weight: 600; }
+.bl-rv-amt { margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.bl-rv-actions { margin-top: var(--sp-2); }
+
+@media (max-width: 640px) {
+  .bl-rv-sum { grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .bl-rv-count { flex-direction: row; align-items: baseline; gap: var(--sp-2); padding: 0 0 var(--sp-2); border-right: 0; border-bottom: 1px solid var(--line); }
+  .bl-rv-jump { flex-direction: column; }
+  .bl-rv-jumpbtn { width: 100%; min-height: 44px; justify-content: space-between; }
+  .bl-rv-item { grid-template-columns: 46px minmax(0, 1fr); gap: var(--sp-2); }
+  .bl-rv-actions .btn { flex: 1 1 auto; min-height: 44px; }
+  .bl-viewall .btn { display: flex; justify-content: center; width: 100%; min-height: 44px; }
+  /* Upcoming, phone: the same rows, tighter. Every line is still printed. */
+  .bl-up .bl-card { padding: var(--sp-3); }
+  .bl-day-rows { gap: var(--sp-2); }
+  .bl-due { gap: 2px; }
+  .bl-due-main { gap: 0; }
+  .bl-due-main > .small, .bl-due-main > .muted { font-size: var(--fs-xs); line-height: 1.35; }
+  .bl-due-main > a { min-height: 44px; }
+  .bl-plabel .bl-ev { font-size: var(--fs-xs); line-height: 1.35; margin-top: 2px; }
+  .bl-week + .bl-week { margin-top: var(--sp-2); }
+}

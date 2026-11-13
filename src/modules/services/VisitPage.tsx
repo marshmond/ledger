@@ -3,6 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from '../../core/router';
 import { dayLabel } from '../../core/time';
 import { EmptyState } from '../../ui/components';
+import { DateTile } from '../../ui/DateTile';
+import { StatusChip } from '../../ui/StatusChip';
+import { todayISO as todayIso } from '../../lib/money';
+import { VISIT_TONE } from './presentation';
 import { formatCents } from '../../lib/money';
 import { loadHideAmounts } from '../../core/hideAmounts';
 import { loadAssets, publicLabel } from '../assets/data';
@@ -40,13 +44,16 @@ export default function VisitPage({ id }: { id: number }) {
   return (
     <div className="sv">
       <p className="sv-back"><Link to={d.arrangementId !== null && row.arrangementTitle !== null ? arrangementRoute(d.arrangementId) : '/'}>← {row.arrangementTitle ?? 'Household Services'}</Link></p>
-      <div className="sv-head">
-        <div>
-          <h1>{d.title}</h1>
-          <p className="sv-chips"><span className={`sv-chip v-${d.status}`}>{statusWords(d)}</span><span>{day(d.date)}</span></p>
+      <header className="card sv-hero">
+        <div className="sv-hero-main">
+          <div className="sv-hero-date">{d.date ? <DateTile iso={d.date} today={todayIso()} caption={d.status === 'completed' ? 'Visit' : undefined} /> : <span className="sv-hero-nodate"><span>Date unknown</span></span>}</div>
+          <div className="sv-hero-text">
+            <h1>{d.title}</h1>
+            <p className="sv-chips"><StatusChip tone={VISIT_TONE[d.status]} icon={d.status === 'completed' ? undefined : false}>{statusWords(d)}</StatusChip><span className="sv-chip-text">{day(d.date)}</span></p>
+          </div>
         </div>
         <div className="sv-head-actions"><button className="btn" onClick={() => setEdit(true)}>Edit</button></div>
-      </div>
+      </header>
       {d.status === 'unsupported' && (
         <section className="card sv-card" aria-labelledby="sv-unsup-h" role="status">
           <h2 id="sv-unsup-h" className="sv-dup">⚠ Needs review: unsupported status</h2>

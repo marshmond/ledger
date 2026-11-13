@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from '../../core/router';
 import { dayLabel } from '../../core/time';
-import { formatCents } from '../../lib/money';
+import { formatCents, todayISO } from '../../lib/money';
 import { maskMoney } from '../../ui/TxnRefs';
 import { loadHideAmounts } from '../../core/hideAmounts';
 import { MODULE_LABEL, type Claim, type ClaimStatus } from './householdSpend';
@@ -10,6 +10,11 @@ import { arrangementRoute } from './paths';
 import { sourceTarget, type AttentionEntry, type ContractRow, type ServicesOverview, type UpcomingRow } from './servicesOverview';
 import type { ExpectedWindow } from './expectedCharges';
 import { addDays } from '../../lib/dates';
+import { DateInline, DateTile } from '../../ui/DateTile';
+import { StatusChip, type StatusTone } from '../../ui/StatusChip';
+import { ARRANGEMENT_TONE, arrangementCard, groupByDate, UPCOMING_KIND_WORDS } from './presentation';
+import { STATUS_LABEL } from './model';
+import type { Row } from './views';
 import { parseUpcomingDays, UPCOMING_ROWS, UPCOMING_WINDOWS, upcomingLabel, visibleUpcoming, type UpcomingDays } from './upcomingWindow';
 
 const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
@@ -27,20 +32,24 @@ const KIND_LABEL: Record<AttentionEntry['kind'], string> = {
   contract: 'Agreement date', unlogged: 'Not yet logged', schedule: 'Schedule', 'duplicate-visits': 'Possible duplicate', 'duplicate-handoff': 'Possible duplicate', 'finance-reference': 'Payment link', 'typed-amount': 'Typed amount',
   'review-visit': 'Needs review', provider: 'Provider', asset: 'Asset',
 };
+/** Provider and asset reminders are notes (info); everything else is something to look at (warning). Words always travel with the tone. */
+const KIND_TONE: Record<AttentionEntry['kind'], StatusTone> = {
+  contract: 'warning', unlogged: 'warning', schedule: 'warning', 'duplicate-visits': 'warning', 'duplicate-handoff': 'warning', 'finance-reference': 'warning', 'typed-amount': 'warning', 'review-visit': 'warning', provider: 'info', asset: 'info',
+};
 
 export function AttentionCard({ items, onLog }: { items: AttentionEntry[]; onLog: (u: NonNullable<AttentionEntry['unlogged']>) => void }) {
   const { text } = useMoney();
   return (
-    <section className="card sv-card" aria-labelledby="sv-att-h">
+    <section className={`card sv-card sv-attn${items.length ? ' has-items' : ''}`} aria-labelledby="sv-att-h">
       <h2 id="sv-att-h">Needs attention{items.length ? ` (${items.length})` : ''}</h2>
       {items.length === 0 ? <p className="sv-ok" role="status">✓ Nothing needs attention right now.</p> : (
         <ul className="plain sv-items">
           {items.map((x) => (
             <li key={x.id}>
-              <span className="sv-chip sv-kind">{KIND_LABEL[x.kind]}</span>{' '}
+              <StatusChip tone={KIND_TONE[x.kind]} icon={false}>{KIND_LABEL[x.kind]}</StatusChip>{' '}
               {x.to || x.href ? <Target t={x}><strong>{text(x.text)}</strong></Target> : <strong>{text(x.text)}</strong>}
               <span className="muted small"> · {text(x.hint)}</span>
-              {x.unlogged && <div className="sv-actionrow"><button className="btn" onClick={() => onLog(x.unlogged!)}>Log this visit…</button></div>}
+              {x.unlogged && <div className="sv-actionrow"><button className="btn" onClick={() => x.unlogged && onLog(x.unlogged)}>Log this visit…</button></div>}
             </li>
           ))}
         </ul>
@@ -54,8 +63,10 @@ export function AttentionCard({ items, onLog }: { items: AttentionEntry[]; onLog
 /**
  * Upcoming services, for the window the owner chose (7, 14, 30 or 90 days). The card shows the first rows and, when more match, says so and offers
  * "Show all": every visit in the window can be inspected, so a long window never pretends the short list is everything (B3.0A).
+ * D15: the rows are grouped under a date tile. A visit that is a Task is the one actionable next visit; an "Expected from schedule" date is derived and is
+ * never a Task, never done and never paid. Nothing is created to draw this list.
  */
-export function UpcomingCard({ rows, total, days, onDays }: { rows: UpcomingRow[]; total: number; days: UpcomingDays; onDays: (d: UpcomingDays) => void }) {
+export function UpcomingCard({ rows, total, days, onDays, today = todayISO() }: { rows: UpcomingRow[]; total: number; days: UpcomingDays; onDays: (d: UpcomingDays) => void; today?: string }) {
   const [all, setAll] = useState(false);
   const { shown, more } = visibleUpcoming(rows, all);
   return (
@@ -73,21 +84,30 @@ export function UpcomingCard({ rows, total, days, onDays }: { rows: UpcomingRow[
       </p>
       {rows.length === 0 ? <p className="muted">Nothing is scheduled in the next {days} days{total > 0 ? ' for the selected provider' : ''}. Choose a longer window above, or open an arrangement to schedule a visit.</p> : (
         <>
-          <ul className="plain sv-items">
-            {shown.map((r) => (
-              <li key={r.key}>
-                <div className="sv-visit-top">
-                  {r.kind === 'task'
-                    ? <a href={`#/tasks?task=${r.taskId}`}><strong>{day(r.date)}{r.time ? ` at ${r.time}` : ''}</strong></a>
-                    : <strong>{day(r.date)}{r.time ? ` at ${r.time}` : ''}</strong>}
-                  <span className={`sv-chip ${r.kind === 'task' ? 'v-completed' : 'v-skipped'}`}>{r.kind === 'task' ? 'Next visit (task)' : 'Expected from schedule'}</span>
-                  {r.overdue && <span className="sv-late"> overdue</span>}
-                  {r.movedFrom && <span className="sv-chip v-cancelled" title="Only this visit was moved; later dates are not shifted">Moved from {day(r.movedFrom)}</span>}
-                </div>
-                <div className="small"><Link to={arrangementRoute(r.arrangementId)}>{r.title}</Link>{r.providerName && <span className="muted"> · {r.providerName}</span>}{r.assetNames.length > 0 && <span className="muted"> · {r.assetNames.join(', ')}</span>}</div>
+          <ol className="plain sv-days" aria-label="Upcoming visits by date">
+            {groupByDate(shown).map((g) => (
+              <li key={g.date} className="sv-day">
+                <DateTile iso={g.date} today={today} overdue={g.rows.some((r) => r.overdue)} caption={g.rows.some((r) => r.overdue) ? 'Overdue' : undefined} />
+                <ul className="plain sv-day-rows">
+                  {g.rows.map((r) => (
+                    <li key={r.key} className={`sv-visit sv-up-${r.kind}`}>
+                      <div className="sv-visit-top">
+                        <Link to={arrangementRoute(r.arrangementId)}><strong>{r.title}</strong></Link>
+                        {r.time && <span className="small muted">at {r.time}</span>}
+                      </div>
+                      <div className="small muted">{r.providerName || 'No provider yet'}{r.assetNames.length > 0 && ` · ${r.assetNames.join(', ')}`}</div>
+                      <div className="sv-chiprow">
+                        <StatusChip tone={r.kind === 'task' ? 'active' : 'neutral'} icon={r.kind === 'task'}>{UPCOMING_KIND_WORDS[r.kind]}</StatusChip>
+                        {r.overdue && <StatusChip tone="overdue">Overdue</StatusChip>}
+                        {r.movedFrom && <StatusChip tone="warning" title="Only this visit was moved; later dates are not shifted">Moved from {day(r.movedFrom)}</StatusChip>}
+                        {r.kind === 'task' && r.taskId !== null && <a className="small" href={`#/tasks?task=${r.taskId}`}>Open task</a>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
-          </ul>
+          </ol>
           {(more > 0 || all) && rows.length > UPCOMING_ROWS && (
             <p><button type="button" className="btn" aria-expanded={all} onClick={() => setAll(!all)}>{all ? `Show only the first ${UPCOMING_ROWS}` : `Show all ${rows.length} visits`}</button></p>
           )}
@@ -98,18 +118,52 @@ export function UpcomingCard({ rows, total, days, onDays }: { rows: UpcomingRow[
   );
 }
 
+// ---- arrangements ----
+
+/** The arrangement list as cards: next visit first, then who, how often and the estimate (only when one was entered). Every row opens its arrangement. */
+export function ArrangementCards({ rows, today, money, empty }: { rows: Row[]; today: string; money: (c: number) => string; empty: string }) {
+  if (rows.length === 0) return <p className="muted">{empty}</p>;
+  return (
+    <ul className="plain sv-arr">
+      {rows.map((r) => {
+        const m = arrangementCard(r, today, money);
+        return (
+          <li key={m.id}>
+            <Link to={arrangementRoute(m.id)} className="sv-arr-card">
+              <span className="sv-arr-date">{m.next.date ? <DateTile iso={m.next.date} today={today} size="sm" overdue={m.next.state === 'overdue'} labelled={false} /> : <span className="sv-arr-nodate" aria-hidden="true">–</span>}</span>
+              <span className="sv-arr-main">
+                <strong>{m.title}</strong>
+                <span className="small muted">{m.provider} · {m.cadence}</span>
+                {(m.estimate || m.assetNames.length > 0) && <span className="small muted">{[m.estimate, ...m.assetNames].filter(Boolean).join(' · ')}</span>}
+              </span>
+              <span className="sv-arr-side small">
+                <StatusChip tone={ARRANGEMENT_TONE[m.status]} icon={m.status === 'active' ? false : undefined}>{STATUS_LABEL[m.status]}</StatusChip>
+                {m.next.date ? <span className={m.next.state === 'overdue' ? 'sv-late' : ''}>{m.next.label} <DateInline iso={m.next.date} today={today} overdue={m.next.state === 'overdue'} /></span> : <span className="muted">{m.next.label}</span>}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // ---- agreements ----
 
-export function ContractsCard({ rows }: { rows: ContractRow[] }) {
+export function ContractsCard({ rows, today = todayISO() }: { rows: ContractRow[]; today?: string }) {
   if (!rows.length) return null;
   return (
     <section className="card sv-card" aria-labelledby="sv-con-h">
       <h2 id="sv-con-h">Agreements to review (next 90 days)</h2>
-      <ul className="plain sv-items">
+      <ul className="plain sv-dated">
         {rows.map((r) => (
-          <li key={`${r.kind}-${r.arrangementId}`}>
-            <strong>{r.label}</strong>: <Link to={arrangementRoute(r.arrangementId)}>{r.title}</Link>{r.providerName && <span className="muted"> · {r.providerName}</span>}
-            <div className="small">{day(r.date)} · <span className="muted">{r.daysAway === 0 ? 'today' : r.daysAway === 1 ? 'tomorrow' : `in ${r.daysAway} days`}</span></div>
+          <li key={`${r.kind}-${r.arrangementId}`} className="sv-dated-row">
+            <DateTile iso={r.date} today={today} size="sm" special={r.kind === 'notice'} />
+            <div className="sv-dated-main">
+              <strong>{r.label}</strong>
+              <div><Link to={arrangementRoute(r.arrangementId)}>{r.title}</Link>{r.providerName && <span className="muted"> · {r.providerName}</span>}</div>
+              <div className="small muted">{day(r.date)} · {r.daysAway === 0 ? 'today' : r.daysAway === 1 ? 'tomorrow' : `in ${r.daysAway} days`}</div>
+            </div>
           </li>
         ))}
       </ul>

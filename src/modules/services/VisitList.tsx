@@ -1,21 +1,27 @@
 import { Link } from '../../core/router';
-import { dayLabel } from '../../core/time';
-import { formatCents } from '../../lib/money';
+import { formatCents, todayISO } from '../../lib/money';
 import { loadHideAmounts } from '../../core/hideAmounts';
+import { DateInline } from '../../ui/DateTile';
+import { StatusChip } from '../../ui/StatusChip';
 import { arrangementRoute, visitRoute } from './paths';
+import { VISIT_TONE } from './presentation';
 import { chargeWords, statusWords } from './visitModel';
 import type { VisitRow } from './views';
 
-const day = (d: string) => (d ? dayLabel(d, { weekday: 'short', year: true }) : 'Date unknown');
 const MARK = { completed: '✓', skipped: '–', cancelled: '✕', unsupported: '?' } as const;
 
-/** Plain-words history lines, newest first. Every line is built from the visit's own saved facts, so nothing depends on a Task, contact or arrangement still existing. */
+/**
+ * Plain-words history lines, newest first. Every line is built from the visit's own saved facts, so nothing depends on a Task, contact or arrangement
+ * still existing. The outcome is a word-and-icon chip (completed, skipped, cancelled, needs review): a visit in the past is never shown as completed
+ * unless it was logged as completed.
+ */
 export default function VisitList({ rows, showProvider = true, showArrangement = true, empty }: { rows: VisitRow[]; showProvider?: boolean; showArrangement?: boolean; empty: string }) {
   if (rows.length === 0) return <p className="muted">{empty}</p>;
   const hide = loadHideAmounts();
   const money = (c: number) => (hide ? '$••••' : formatCents(c));
+  const today = todayISO();
   return (
-    <ul className="plain sv-items" aria-label="Visit history">
+    <ul className="plain sv-items sv-history" aria-label="Visit history">
       {rows.map((r) => {
         const d = r.v.data;
         const fee = chargeWords(d, money);
@@ -24,8 +30,8 @@ export default function VisitList({ rows, showProvider = true, showArrangement =
           <li key={r.v.id}>
             <div className="sv-visit">
               <div className="sv-visit-top">
-                <Link to={visitRoute(r.v.id)}><strong>{day(d.date)}</strong></Link>
-                <span className={`sv-chip v-${d.status}`}><span aria-hidden="true">{MARK[d.status]} </span>{statusWords(d)}</span>
+                {d.date ? <Link to={visitRoute(r.v.id)}><DateInline iso={d.date} today={today} /></Link> : <Link to={visitRoute(r.v.id)}><strong>Date unknown</strong></Link>}
+                <StatusChip tone={VISIT_TONE[d.status]} icon={false}><span aria-hidden="true">{MARK[d.status]} </span>{statusWords(d)}</StatusChip>
               </div>
               <div>{d.title}</div>
               <div className="small muted">

@@ -6,6 +6,7 @@ import { Link } from '../../core/router';
 import { updateContactDetails } from '../../core/contacts';
 import { dayLabel } from '../../core/time';
 import { EmptyState } from '../../ui/components';
+import { StatusChip } from '../../ui/StatusChip';
 import { useToast } from '../../ui/Toast';
 import { getProject, projectsUsingContact } from '../projects/data';
 import { loadArrangements } from './data';
@@ -58,26 +59,21 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
   return (
     <div className="sv">
       <p className="sv-back"><Link to="/">← Household Services</Link></p>
-      <div className="sv-head">
-        <div>
-          <h1>{p.name || 'Provider'}</h1>
-          {!p.contact && <p className="sv-warn small">This contact was removed. The name comes from the arrangements.</p>}
-          {p.contact?.relationship && <p className="muted">{p.contact.relationship}</p>}
+      <header className="card sv-hero">
+        <div className="sv-hero-main">
+          <span className="sv-provider-mark" aria-hidden="true">{(p.name || 'P').trim().slice(0, 1).toUpperCase()}</span>
+          <div className="sv-hero-text">
+            <h1>{p.name || 'Provider'}</h1>
+            {!p.contact && <p className="sv-warn small">This contact was removed. The name comes from the arrangements.</p>}
+            {p.contact?.relationship && <p className="muted">{p.contact.relationship}</p>}
+            <p className="sv-chips"><StatusChip tone={p.active.length ? 'active' : 'neutral'} icon={false}>{p.active.length} current arrangement{p.active.length === 1 ? '' : 's'}</StatusChip>{p.past.length > 0 && <StatusChip icon={false}>{p.past.length} ended</StatusChip>}</p>
+          </div>
         </div>
         {p.contact && <div className="sv-head-actions"><button className="btn" onClick={() => setEditing(true)}>Edit contact details</button></div>}
-      </div>
+      </header>
 
-      {p.contact && (
-        <section className="card sv-card" aria-labelledby="sv-ct-h">
-          <h2 id="sv-ct-h">Contact</h2>
-          <dl className="sv-facts">
-            <div className="sv-fact"><dt>Phone</dt><dd>{p.contact.phone ? <a href={`tel:${p.contact.phone}`}>{p.contact.phone}</a> : <span className="muted">Not recorded</span>}</dd></div>
-            <div className="sv-fact"><dt>Email</dt><dd>{p.contact.email ? <a href={`mailto:${p.contact.email}`}>{p.contact.email}</a> : <span className="muted">Not recorded</span>}</dd></div>
-          </dl>
-          <p className="muted small">These come from your shared Contacts and are shown only on this page.</p>
-        </section>
-      )}
-
+      <div className="sv-layout sv-layout-detail">
+      <div className="sv-col sv-col-main">
       <section className="card sv-card" aria-labelledby="sv-pa-h">
         <h2 id="sv-pa-h">Current arrangements</h2>
         {p.active.length === 0 ? <p className="muted">None right now.</p> : <ul className="plain sv-items">{p.active.map(line)}</ul>}
@@ -91,6 +87,36 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
           <ul className="plain sv-items">{upcoming.map((r) => <li key={r.a.id}><a href={`#/tasks?task=${r.open!.id}`}><strong>{day(r.nextDate!)}{r.open!.data.dueTime ? ` at ${r.open!.data.dueTime}` : ''}</strong></a><div className="small muted">{r.a.data.title}</div></li>)}</ul>
         )}
       </section>
+      <section className="card sv-card" aria-labelledby="sv-pv-h">
+        <h2 id="sv-pv-h">Completed visits</h2>
+        {p.visits.length > 0 && (
+          <p className="sv-stats small" aria-label="Visit totals">
+            <span>Completed: <strong>{p.stats.completed}</strong></span><span>Skipped: <strong>{p.stats.skipped}</strong></span><span>Cancelled: <strong>{p.stats.cancelled}</strong></span>
+            <span>Last serviced: <strong>{p.stats.lastServiced ? day(p.stats.lastServiced) : 'never logged'}</strong></span>
+          </p>
+        )}
+        <p className="muted small">Each visit shows the provider it was done by at the time, even if an arrangement was later handed to someone else.</p>
+        <VisitList rows={completed} showProvider={false} empty="No completed visits with this provider yet." />
+      </section>
+      {notDone.length > 0 && (
+        <section className="card sv-card" aria-labelledby="sv-pn-h">
+          <h2 id="sv-pn-h">Skipped, cancelled and unreviewed visits</h2>
+          <p className="muted small">These did not deliver service, so they are kept apart from the completed visits above.</p>
+          <VisitList rows={notDone} showProvider={false} empty="" />
+        </section>
+      )}
+      </div>
+      <div className="sv-col sv-col-side">
+      {p.contact && (
+        <section className="card sv-card" aria-labelledby="sv-ct-h">
+          <h2 id="sv-ct-h">Contact</h2>
+          <dl className="sv-facts">
+            <div className="sv-fact"><dt>Phone</dt><dd>{p.contact.phone ? <a href={`tel:${p.contact.phone}`}>{p.contact.phone}</a> : <span className="muted">Not recorded</span>}</dd></div>
+            <div className="sv-fact"><dt>Email</dt><dd>{p.contact.email ? <a href={`mailto:${p.contact.email}`}>{p.contact.email}</a> : <span className="muted">Not recorded</span>}</dd></div>
+          </dl>
+          <p className="muted small">These come from your shared Contacts and are shown only on this page.</p>
+        </section>
+      )}
       {p.assets.length > 0 && (
         <section className="card sv-card" aria-labelledby="sv-pas-h">
           <h2 id="sv-pas-h">Properties and assets served</h2>
@@ -118,24 +144,8 @@ export default function ProviderPage({ contactId }: { contactId: number }) {
         </section>
       )}
       <ProviderMoney providerKey={`c:${contactId}`} />
-      <section className="card sv-card" aria-labelledby="sv-pv-h">
-        <h2 id="sv-pv-h">Completed visits</h2>
-        {p.visits.length > 0 && (
-          <p className="sv-stats small" aria-label="Visit totals">
-            <span>Completed: <strong>{p.stats.completed}</strong></span><span>Skipped: <strong>{p.stats.skipped}</strong></span><span>Cancelled: <strong>{p.stats.cancelled}</strong></span>
-            <span>Last serviced: <strong>{p.stats.lastServiced ? day(p.stats.lastServiced) : 'never logged'}</strong></span>
-          </p>
-        )}
-        <p className="muted small">Each visit shows the provider it was done by at the time, even if an arrangement was later handed to someone else.</p>
-        <VisitList rows={completed} showProvider={false} empty="No completed visits with this provider yet." />
-      </section>
-      {notDone.length > 0 && (
-        <section className="card sv-card" aria-labelledby="sv-pn-h">
-          <h2 id="sv-pn-h">Skipped, cancelled and unreviewed visits</h2>
-          <p className="muted small">These did not deliver service, so they are kept apart from the completed visits above.</p>
-          <VisitList rows={notDone} showProvider={false} empty="" />
-        </section>
-      )}
+      </div>
+      </div>
       {editing && p.contact && <EditContact id={contactId} name={p.contact.name} phone={p.contact.phone ?? ''} email={p.contact.email ?? ''} relationship={p.contact.relationship ?? ''} onClose={() => setEditing(false)} />}
     </div>
   );

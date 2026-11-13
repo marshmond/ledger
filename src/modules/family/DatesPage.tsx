@@ -4,6 +4,8 @@ import { Link } from '../../core/router';
 import { store } from '../../core/store';
 import ConfirmDialog from '../../shell/ConfirmDialog';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { DateTile } from '../../ui/DateTile';
+import { StatusChip } from '../../ui/StatusChip';
 import { useToast } from '../../ui/Toast';
 import { useToday } from '../../ui/useToday';
 import DateForm from './DateForm';
@@ -18,6 +20,18 @@ import { upcomingRows, type UpcomingRow } from './upcoming';
 /** "14 May 2027" from a plain date, with no time zone involved. */
 const dateText = (iso: string) => `${Number(iso.slice(8))} ${MONTH_NAMES[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`;
 const TYPE_LABEL: Record<UpcomingRow['type'], string> = { birthday: 'Birthday', ...DATE_KIND_LABEL };
+
+/** Rows grouped by the month and year of the date they next fall on (plain text from the date, no time zone involved). The order is the one given. */
+export function monthGroups(rows: UpcomingRow[]): { key: string; label: string; rows: UpcomingRow[] }[] {
+  const out: { key: string; label: string; rows: UpcomingRow[] }[] = [];
+  for (const r of rows) {
+    const key = r.date.slice(0, 7);
+    const last = out[out.length - 1];
+    if (last && last.key === key) last.rows.push(r);
+    else out.push({ key, label: `${MONTH_NAMES[Number(r.date.slice(5, 7)) - 1]} ${r.date.slice(0, 4)}`, rows: [r] });
+  }
+  return out;
+}
 
 /**
  * Family dates: member birthdays (from their profiles) and important dates (anniversaries and others) in the order they next fall. A date can be added,
@@ -36,6 +50,7 @@ export default function DatesPage() {
   const head = (
     <PageHeader
       title="Family dates"
+      eyebrow="Household"
       description="Birthdays and other dates the household wants to remember. They appear on your Calendar (the Family layer) and on Today, and nothing is copied or scheduled."
       actions={<button type="button" className="btn primary" onClick={() => setForm({})}>Add date</button>}
     />
@@ -53,9 +68,14 @@ export default function DatesPage() {
     const rec = r.recordId !== undefined ? recordOf(r.recordId) : undefined;
     return (
       <li key={r.key} className="fm-card fm-date-row">
+        <DateTile iso={r.date} today={today} special={r.type === 'birthday'} labelled={false} />
         <div className="fm-card-text">
           <span className="fm-name">{r.title}</span>
-          <span className="muted small">{dateText(r.date)} · {TYPE_LABEL[r.type]}{r.onCalendar ? '' : ' · Not on my Calendar'}</span>
+          <span className="fm-date-meta small">
+            <span className="muted">{dateText(r.date)}</span>
+            <StatusChip tone={r.type === 'birthday' ? 'info' : 'neutral'} icon={false}>{TYPE_LABEL[r.type]}</StatusChip>
+            {!r.onCalendar && <StatusChip tone="warning" icon={false}>Not on my Calendar</StatusChip>}
+          </span>
         </div>
         <span className="row fm-date-actions">
           {r.memberId !== undefined && <Link to={memberRoute(r.memberId)} className="btn fm-mini" aria-label={`Open profile: ${r.title}`}>Open profile</Link>}
@@ -86,7 +106,12 @@ export default function DatesPage() {
       ) : (
         <section className="card" aria-labelledby="fm-up">
           <div className="card-head"><h2 className="card-title" id="fm-up">Coming up</h2><span className="muted small">{rows.length}</span></div>
-          <ul className="plain fm-list">{rows.map(rowView)}</ul>
+          {monthGroups(rows).map((g) => (
+            <div key={g.key} className="fm-month">
+              <h3 className="fm-month-h">{g.label}</h3>
+              <ul className="plain fm-list">{g.rows.map(rowView)}</ul>
+            </div>
+          ))}
         </section>
       )}
 

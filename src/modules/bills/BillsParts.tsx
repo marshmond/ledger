@@ -4,6 +4,8 @@ import { loadHideAmounts } from '../../core/hideAmounts';
 import { dayLabel } from '../../core/time';
 import { NEED_LABEL, STATUS_LABEL, TYPE_LABEL, type ExpectedAmount, type ObligationData } from './model';
 import { currentAmount } from './views';
+import { StatusChip as Chip } from '../../ui/StatusChip';
+import { STATUS_TONE } from './presentation';
 
 export const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 
@@ -20,11 +22,10 @@ export function amountWords(a: ExpectedAmount, money: Money): string {
 export const amountOf = (d: ObligationData, today: string, money: Money) => amountWords(currentAmount(d, today), money);
 
 export function StatusChip({ d }: { d: ObligationData }) {
-  const key = d.status;
-  return <span className={`bl-chip s-${key === 'unsupported' ? 'paused' : key}`}>{STATUS_LABEL[key]}</span>;
+  return <Chip tone={STATUS_TONE[d.status]} icon={d.status === 'active' ? false : undefined}>{STATUS_LABEL[d.status]}</Chip>;
 }
-export const TypeChip = ({ d }: { d: ObligationData }) => <span className="bl-chip">{TYPE_LABEL[d.type]}</span>;
-export const NeedChip = ({ d }: { d: ObligationData }) => <span className={`bl-chip n-${d.need}`}>{NEED_LABEL[d.need]}</span>;
+export const TypeChip = ({ d }: { d: ObligationData }) => <Chip icon={false}>{TYPE_LABEL[d.type]}</Chip>;
+export const NeedChip = ({ d }: { d: ObligationData }) => <Chip icon={false}>{NEED_LABEL[d.need]}</Chip>;
 
 export const Lines = ({ lines }: { lines: string[] }) => (
   <ul className="plain bl-lines" aria-label="What will happen">

@@ -52,7 +52,7 @@ describe('the new member-page sections', () => {
     createElement(MemberDatesSection, { memberId: 1 }),
   )))));
   it('each section is a named region with an h2, and no heading level is skipped', () => {
-    expect(headings(page).filter((h) => h.level === 2).map((h) => h.text)).toEqual(['Schedule', 'To do', 'Projects', 'Important contacts', 'Important dates']);
+    expect(headings(page).filter((h) => h.level === 2).map((h) => h.text)).toEqual(['Schedule', 'Related tasks', 'Projects', 'Important contacts', 'Important dates']);
     expect(headingSkips(page)).toEqual([]);
     for (const s of all(page, (e) => e.tag === 'section')) expect(s.attrs['aria-labelledby']).toBeTruthy();
   });

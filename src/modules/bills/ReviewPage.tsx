@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from '../../core/router';
 import { EmptyState, PageHeader } from '../../ui/components';
+import { DateTile } from '../../ui/DateTile';
+import { StatusChip } from '../../ui/StatusChip';
+import { useMoney } from './BillsParts';
+import { amountLine } from './PeriodParts';
+import { REVIEW_TONE, reviewTotal } from './presentation';
 import { useToast } from '../../ui/Toast';
 import { useToday } from '../../ui/useToday';
 import { FactDialog } from './CycleDialogs';
@@ -16,7 +21,7 @@ import { runUndo } from './undo';
 import { KeepRuleDialog, leaveRuleAsIs } from './ScheduledUI';
 import { ruleLinkConflicts } from './scheduledLink';
 
-const GROUP: { id: AttentionCategory[]; title: string; hint: string }[] = [
+export const GROUP: { id: AttentionCategory[]; title: string; hint: string }[] = [
   { id: ['conflicts'], title: 'Records that disagree or look alike', hint: 'Nothing was merged or deleted. Choose what to keep, or leave them as they are.' },
   { id: ['typedFinance'], title: 'A typed payment and a Finance payment', hint: 'Ledger counts one source at a time: the Finance payment counts and the typed amount is left out and kept. Choose the Finance payment to set the typed one aside, or leave it as it is.' },
   { id: ['ruleShared'], title: 'One scheduled payment linked to two bills', hint: 'Both links are kept. Choose which bill keeps the Finance scheduled payment, or leave it as it is. Nothing in Finance is changed.' },
@@ -42,6 +47,7 @@ const GROUP: { id: AttentionCategory[]; title: string; hint: string }[] = [
 export default function ReviewPage() {
   const today = useToday();
   const toast = useToast();
+  const { money } = useMoney();
   const x = useLiveQuery(async () => derive(await loadBillsSnapshot(), today), [today]);
   const [paid, setPaid] = useState<{ ob: ObligationRecord; slot: string; taskId: number | null } | null>(null);
   const [keep, setKeep] = useState<{ ruleId: number; keepId: number } | null>(null);
@@ -73,25 +79,44 @@ export default function ReviewPage() {
     } catch (e) { toast(e instanceof Error ? e.message : 'Could not save. Nothing was changed.'); }
   }
 
+  const visible = GROUP.map((g, gi) => ({ g, gi, items: a.items.filter((i) => g.id.includes(i.category)) })).filter((v) => v.items.length > 0);
+  const count = reviewTotal(a);
+  const jump = (gi: number) => { const el = document.getElementById(`bl-rv-${gi}`); if (el) { el.scrollIntoView({ block: 'start' }); el.focus({ preventScroll: true }); } };
+  /** The period an item is about, read from the periods already derived (never recalculated), so its date and amount can be drawn with the item. */
+  const periodOf = (i: AttentionItem) => (i.obligationId !== null && i.slot ? (x.periods.get(i.obligationId) ?? []).concat(x.recorded.get(i.obligationId) ?? []).find((p) => p.slot === i.slot) : undefined);
+
   return (
-    <div className="bl">
+    <div className="bl bl-rv">
       <p className="bl-back"><Link to={overviewRoute()}>← Bills & Subscriptions</Link></p>
-      <PageHeader title="Needs review" description="Bills and records that need a person's eyes. Nothing here changes by itself." actions={<Link to={upcomingRoute()} className="btn">Upcoming</Link>} />
-      {a.total - a.dueSoon - a.trials - a.notices - a.renewals === 0 && acked.length === 0 ? <EmptyState title="Nothing needs review">No billing records disagree, no reminder Task is waiting to be confirmed, and no bill is waiting to be confirmed paid.</EmptyState> : null}
-      {GROUP.map((g) => {
-        const items = a.items.filter((i) => g.id.includes(i.category));
-        if (items.length === 0) return null;
-        return (
-          <section className="card bl-card" key={g.title} aria-label={g.title}>
-            <h2>{g.title} ({items.length})</h2>
-            <p className="muted small">{g.hint}</p>
-            <ul className="plain bl-items">
-              {items.map((i) => {
-                const ob = obOf(i.obligationId);
-                return (
-                  <li key={i.id} data-testid="review-item">
-                    {i.conflict ? <ConflictCard conflict={i.conflict} records={byRec} obligation={ob} /> : <p style={{ margin: 0 }}>{i.text}</p>}
-                    <div className="bl-actionrow">
+      <PageHeader title="Needs review" eyebrow="Household" description="Bills and records that need a person's eyes. Nothing here changes by itself." actions={<Link to={upcomingRoute()} className="btn">Upcoming</Link>} />
+      {count === 0 && acked.length === 0 ? <EmptyState title="Nothing needs review">No billing records disagree, no reminder Task is waiting to be confirmed, and no bill is waiting to be confirmed paid.</EmptyState> : null}
+      {visible.length > 0 && (
+        <section className="card bl-rv-sum" aria-label="What needs review">
+          <div className="bl-rv-count"><span className="bl-big" data-testid="review-count">{count}</span><span className="bl-label">{count === 1 ? 'item to look at' : 'items to look at'}</span></div>
+          <ul className="plain bl-rv-jump" aria-label="Jump to a group">
+            {visible.map(({ g, gi, items }) => <li key={g.title}><button type="button" className="bl-rv-jumpbtn" onClick={() => jump(gi)}><span>{g.title}</span><span className="bl-rv-n">{items.length}</span></button></li>)}
+          </ul>
+        </section>
+      )}
+      {visible.map(({ g, gi, items }) => (
+        <section className={`card bl-card bl-rv-group bl-rv-${REVIEW_TONE[g.id[0]]}`} key={g.title} aria-labelledby={`bl-rv-${gi}`}>
+          <div className="bl-rv-head">
+            <h2 id={`bl-rv-${gi}`} tabIndex={-1}>{g.title} ({items.length})</h2>
+            <StatusChip tone={REVIEW_TONE[g.id[0]]}>{items.length === 1 ? '1 item' : `${items.length} items`}</StatusChip>
+          </div>
+          <p className="muted small">{g.hint}</p>
+          <ul className="plain bl-rv-items">
+            {items.map((i) => {
+              const ob = obOf(i.obligationId);
+              const p = periodOf(i);
+              const date = i.date ?? p?.timing.date ?? null;
+              return (
+                <li key={i.id} data-testid="review-item" className="bl-rv-item">
+                  <div className="bl-rv-date">{date ? <DateTile iso={date} today={today} size="sm" overdue={!!p && p.open && date < today} labelled={false} /> : <span className="bl-rv-nodate" aria-hidden="true">–</span>}</div>
+                  <div className="bl-rv-main">
+                    {i.conflict ? <ConflictCard conflict={i.conflict} records={byRec} obligation={ob} /> : <p className="bl-rv-text">{i.text}</p>}
+                    {p && <p className="small bl-rv-amt">{amountLine(p, money)}</p>}
+                    <div className="bl-actionrow bl-rv-actions">
                       {ob && <Link className="btn" to={obligationRoute(ob.id)}>Open the bill</Link>}
                       {ob && i.slot && (i.category === 'unconfirmedTasks' || i.category === 'notConfirmed' || i.category === 'autopayCheck') && <button className="btn primary" onClick={() => setPaid({ ob, slot: i.slot!, taskId: null })}>Mark paid…</button>}
                       {i.category === 'ruleShared' && i.ruleId !== undefined && ruleLinkConflicts(x.snap.obligations).find((c) => c.ruleId === i.ruleId)?.holders.map((h) => <button key={h.id} className="btn" onClick={() => setKeep({ ruleId: i.ruleId!, keepId: h.id })}>Keep it on “{h.data.title}”</button>)}
@@ -100,13 +125,13 @@ export default function ReviewPage() {
                       {i.category === 'unconfirmedTasks' && <button className="btn" onClick={() => void leaveTask(i)}>Leave as is</button>}
                       {(i.category === 'cancelAwaiting' || i.category === 'lifecycleConflict' || i.category === 'afterCancel' || i.category === 'scheduledAfterEnd') && ob && i.ackKey && <button className="btn" onClick={() => void leaveEvidence(ob.id, i.ackKey!)}>Leave as is</button>}
                     </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
       {acked.length > 0 && (
         <details className="bl-sec">
           <summary>Left as is ({acked.length})</summary>

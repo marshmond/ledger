@@ -1,45 +1,26 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from '../../core/router';
-import { dayLabel } from '../../core/time';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
 import ArrangementForm from './ArrangementForm';
-import { BASIS_LABEL, cadenceText } from './model';
-import { arrangementRoute, providerRoute } from './paths';
-import { AttentionCard, ContractsCard, InsightsCard, SpendingCard, UpcomingCard, useMoney } from './OverviewParts';
+import { providerRoute } from './paths';
+import { ArrangementCards, AttentionCard, ContractsCard, InsightsCard, SpendingCard, UpcomingCard, useMoney } from './OverviewParts';
 import { loadServicesOverview } from './servicesOverview';
 import { filterUpcomingByProvider, loadUpcomingDays, saveUpcomingDays, type UpcomingDays } from './upcomingWindow';
 import VisitList from './VisitList';
 import { LogVisitDialog, OneOffDialog } from './VisitDialogs';
-import type { Row } from './views';
 import type { ArrangementRecord } from './model';
 
-const day = (d: string) => dayLabel(d, { weekday: 'short', year: true });
 type StatusFilter = 'active' | 'paused' | 'ended' | 'all';
 const FILTERS: { id: StatusFilter; label: string }[] = [{ id: 'active', label: 'Active' }, { id: 'paused', label: 'Paused' }, { id: 'ended', label: 'Ended' }, { id: 'all', label: 'All' }];
 
-function RowLine({ r, today, money }: { r: Row; today: string; money: (c: number) => string }) {
-  const d = r.a.data;
-  const e = d.expected;
-  return (
-    <li>
-      <Link to={arrangementRoute(r.a.id)} className="sv-rowlink">
-        <span className="sv-row-main">
-          <strong>{d.title}</strong>
-          <span className="small muted">{d.providerNameSnapshot || 'No provider yet'} · {cadenceText(d.cadence)}{e ? ` · estimate ${money(e.cents)} ${BASIS_LABEL[e.basis]}` : ''}</span>
-        </span>
-        <span className="sv-row-side small">
-          {r.nextDate ? <span className={r.nextDate < today ? 'sv-late' : ''}>{r.nextDate < today ? 'Overdue ' : 'Next '}{day(r.nextDate)}</span> : d.status === 'active' ? <span className="muted">Nothing scheduled</span> : null}
-          {d.status !== 'active' && <span className={`sv-chip s-${d.status}`}>{d.status === 'paused' ? 'Paused' : 'Ended'}</span>}
-        </span>
-      </Link>
-    </li>
-  );
-}
-
-/** Household Services landing page (S5): what needs attention, what is coming up, which agreements to review, what was recorded, and a few things worth knowing. */
+/**
+ * Household Services landing page (S5, recomposed in D15): the upcoming visits and the arrangements on the left, what needs a look, the agreements, what was
+ * logged and the providers on the right, and the spending and insights below. Every list, filter, window and action is the one the page had before; only
+ * the arrangement of the page changed. Nothing is created or written to draw it.
+ */
 export default function OverviewPage() {
   const today = useToday() || todayISO();
   const { hide, money } = useMoney();
@@ -52,7 +33,7 @@ export default function OverviewPage() {
   const [oneOff, setOneOff] = useState(false);
   const [logging, setLogging] = useState<{ arrangementId: number; taskId: number } | null>(null);
   const ov = useLiveQuery(() => loadServicesOverview(period, today, undefined, money, upcomingDays), [period, today, hide, upcomingDays]);
-  if (!ov) return <div className="sv"><PageHeader title="Household Services" /><p className="muted">Loading…</p></div>;
+  if (!ov) return <div className="sv"><PageHeader title="Household Services" eyebrow="Household" /><p className="muted">Loading…</p></div>;
 
   const rows = ov.base.rows;
   const byProvider = (a: ArrangementRecord) => provider === 'all' || String(a.data.providerContactId) === provider;
@@ -62,9 +43,10 @@ export default function OverviewPage() {
   const count = (s: StatusFilter) => (s === 'all' ? rows.length : rows.filter((r) => r.a.data.status === s).length);
 
   return (
-    <div className="sv">
+    <div className="sv sv-ov">
       <PageHeader
         title="Household Services"
+        eyebrow="Household"
         description="Who comes to the house, what is coming up, what needs a look, and what was recorded."
         actions={<><button className="btn" onClick={() => setOneOff(true)}>Log a one-off visit</button><button className="btn primary" onClick={() => setAdding(true)}>Add arrangement</button></>}
       />
@@ -90,31 +72,40 @@ export default function OverviewPage() {
             )}
           </div>
 
-          <UpcomingCard rows={upcoming} total={ov.upcoming.length} days={upcomingDays} onDays={setUpcomingDays} />
-          <ContractsCard rows={ov.contracts.filter((c) => provider === 'all' || String(rows.find((r) => r.a.id === c.arrangementId)?.a.data.providerContactId) === provider)} />
+          <div className="sv-layout">
+            <div className="sv-col sv-col-main">
+              <UpcomingCard rows={upcoming} total={ov.upcoming.length} days={upcomingDays} onDays={setUpcomingDays} today={today} />
 
-          <section className="card sv-card" aria-labelledby="sv-act-h">
-            <h2 id="sv-act-h">{FILTERS.find((f) => f.id === status)!.label} arrangements ({shown.length})</h2>
-            {shown.length === 0 ? <p className="muted">None{status !== 'all' ? ` ${status}` : ''}{provider !== 'all' ? ' for this provider' : ''}.</p> : <ul className="plain sv-list">{shown.map((r) => <RowLine key={r.a.id} r={r} today={today} money={money} />)}</ul>}
-          </section>
+              <section className="card sv-card" aria-labelledby="sv-act-h">
+                <h2 id="sv-act-h">{FILTERS.find((f) => f.id === status)!.label} arrangements ({shown.length})</h2>
+                <ArrangementCards rows={shown} today={today} money={money} empty={`None${status !== 'all' ? ` ${status}` : ''}${provider !== 'all' ? ' for this provider' : ''}.`} />
+              </section>
+            </div>
 
-          <section className="card sv-card" aria-labelledby="sv-rec-h">
-            <h2 id="sv-rec-h">Recent activity</h2>
-            <p className="muted small">Visits that were logged: completed, skipped or cancelled. Scheduled visits that have not happened yet are under Upcoming services.</p>
-            <VisitList rows={recent} empty="No visits logged yet." />
-          </section>
+            <div className="sv-col sv-col-side">
+              <ContractsCard today={today} rows={ov.contracts.filter((c) => provider === 'all' || String(rows.find((r) => r.a.id === c.arrangementId)?.a.data.providerContactId) === provider)} />
 
-          <SpendingCard ov={ov} onPeriod={setPeriod} />
-          <InsightsCard items={ov.insights} />
+              <section className="card sv-card" aria-labelledby="sv-rec-h">
+                <h2 id="sv-rec-h">Recent activity</h2>
+                <p className="muted small">Visits that were logged: completed, skipped or cancelled. Scheduled visits that have not happened yet are under Upcoming services.</p>
+                <VisitList rows={recent} empty="No visits logged yet." />
+              </section>
 
-          {ov.providers.length > 0 && (
-            <section className="card sv-card" aria-labelledby="sv-prov-h">
-              <h2 id="sv-prov-h">Providers</h2>
-              <ul className="plain sv-items">
-                {ov.providers.map((p) => <li key={p.contactId}><Link to={providerRoute(p.contactId)}><strong>{p.name}</strong></Link><span className="muted small"> · {p.active} active{p.total > p.active ? `, ${p.total - p.active} past` : ''}</span></li>)}
-              </ul>
-            </section>
-          )}
+              {ov.providers.length > 0 && (
+                <section className="card sv-card" aria-labelledby="sv-prov-h">
+                  <h2 id="sv-prov-h">Providers</h2>
+                  <ul className="plain sv-items">
+                    {ov.providers.map((p) => <li key={p.contactId}><Link to={providerRoute(p.contactId)}><strong>{p.name}</strong></Link><span className="muted small"> · {p.active} active{p.total > p.active ? `, ${p.total - p.active} past` : ''}</span></li>)}
+                  </ul>
+                </section>
+              )}
+            </div>
+          </div>
+
+          <div className="sv-below">
+            <SpendingCard ov={ov} onPeriod={setPeriod} />
+            <InsightsCard items={ov.insights} />
+          </div>
         </>
       )}
       {adding && <ArrangementForm onClose={() => setAdding(false)} />}

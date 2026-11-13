@@ -3,6 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from '../../core/router';
 import { PRIORITY_LABEL } from '../../core/priority';
 import { EmptyState } from '../../ui/components';
+import { DateTile } from '../../ui/DateTile';
+import { todayISO } from '../../lib/money';
+import { nextOccurrence } from './calendarDates';
 import { dayLabel, timeLabel } from '../calendar/time';
 import { readVisibility } from '../calendar/useCalendarData';
 import { loadDates } from './dateData';
@@ -49,6 +52,7 @@ export function ScheduleSection({ contactId, today, nameOfContact }: { contactId
           <ul className="plain fm-items">
             {shown.map((it) => (
               <li key={it.key} className="fm-item">
+                <DateTile iso={it.firstDay} today={today} size="sm" labelled={false} />
                 <span className="fm-bar" style={{ background: it.color }} aria-hidden="true" />
                 <div className="fm-item-text">
                   <a className="fm-item-title" href={calendarLink(it)}>{it.title}</a>
@@ -77,10 +81,10 @@ export function TodoSection({ contactId, today, nameOfContact, otherContacts }: 
   const shown = all ? tasks : tasks.slice(0, SHOWN);
   return (
     <section className="card" aria-labelledby="fm-todo">
-      <div className="card-head"><h2 className="card-title" id="fm-todo">To do</h2></div>
+      <div className="card-head"><h2 className="card-title" id="fm-todo">Related tasks</h2></div>
       {!res ? <p className="muted" role="status">Loading…</p> : tasks.length === 0 ? (
-        <EmptyState title="Nothing to do">
-          Open tasks appear here when they name this person under “People” in Tasks. A task you finish, or one you take them off, leaves this list.
+        <EmptyState title="No related tasks">
+          Open tasks appear here when they name this person under “People” in Tasks. Being named on a task does not make someone responsible for it. A task you finish, or one you take them off, leaves this list.
         </EmptyState>
       ) : (
         <>
@@ -94,6 +98,7 @@ export function TodoSection({ contactId, today, nameOfContact, otherContacts }: 
               const others = t.data.contactIds.filter((c) => c !== contactId && otherContacts.has(c));
               return (
                 <li key={t.id} className="fm-item">
+                  {when ? <DateTile iso={when.date} today={today} size="sm" overdue={late} labelled={false} /> : <span className="fm-tile-none" aria-hidden="true" />}
                   <div className="fm-item-text">
                     <a className="fm-item-title" href={`#/tasks?task=${t.id}`}>{t.data.title}</a>
                     <span className="muted small">
@@ -155,7 +160,7 @@ export function ProjectsSection({ contactId }: { contactId: number }) {
 }
 
 /** The important dates (anniversaries and others) that are about this member. Their birthday is on the profile above. */
-export function MemberDatesSection({ memberId }: { memberId: number }) {
+export function MemberDatesSection({ memberId, today = todayISO() }: { memberId: number; today?: string }) {
   const dates = useLiveQuery(() => loadDates(), []);
   const mine = (dates ?? []).filter((r) => r.data?.status === 'active' && r.data.memberId === memberId);
   return (
@@ -167,6 +172,7 @@ export function MemberDatesSection({ memberId }: { memberId: number }) {
         <ul className="plain fm-items">
           {mine.map((r) => (
             <li key={r.id} className="fm-item">
+              <DateTile iso={nextOccurrence(r.data!.monthDay, today)} today={today} size="sm" special labelled={false} />
               <div className="fm-item-text">
                 <span className="fm-item-title">{r.data!.label}</span>
                 <span className="muted small">{monthDayText(r.data!.monthDay)} · {DATE_KIND_LABEL[r.data!.dateKind]}</span>

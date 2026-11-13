@@ -7,6 +7,9 @@ import { EmptyState, PageHeader } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import { useToday } from '../../ui/useToday';
 import { MemberChip, MemberMark } from '../../ui/MemberIdentity';
+import { DateTile } from '../../ui/DateTile';
+import { StatusChip } from '../../ui/StatusChip';
+import { nextOccurrence } from './calendarDates';
 import { ImportantContactsSection } from './ImportantContacts';
 import { memberColorId } from './memberIdentity';
 import { MemberDatesSection, ProjectsSection, ScheduleSection, TodoSection } from './MemberSections';
@@ -75,6 +78,7 @@ export default function MemberPage({ id }: { id: number }) {
   const inMeConflict = meState.conflict.some((x) => x.id === rec.id);
   const nameOfMember = (m: { data: { contactId: number } | null }) => (m.data ? nameByContactId.get(m.data.contactId) ?? 'Contact no longer exists' : 'Unreadable record');
   const bday = monthDayText(d.birthMonthDay);
+  const nextBirthday = d.status === 'active' && d.birthMonthDay ? nextOccurrence(d.birthMonthDay, today) : null;
   const nameByContact = new Map(contacts.filter((c) => c.id !== undefined).map((c) => [c.id as number, c.name]));
   const nameByContactId = nameByContact;
   const nameOfContact = (cid: number) => nameByContact.get(cid) ?? 'A contact that no longer exists';
@@ -83,19 +87,27 @@ export default function MemberPage({ id }: { id: number }) {
 
   return (
     <div className="fm">
-      <PageHeader
-        title={name}
-        description={`${ROLE_LABEL[d.role]} · ${STATUS_LABEL[d.status]}${isMe ? ' · This is you' : ''}`}
-        actions={
-          <span className="row">
-            <button type="button" className="btn" onClick={() => setEditing(true)}>Edit</button>
-            {d.status === 'active'
-              ? <button type="button" className="btn" onClick={() => setConfirm('past')}>Mark as past member</button>
-              : <button type="button" className="btn" onClick={() => setConfirm('active')}>Mark as in the household</button>}
-          </span>
-        }
-      />
-      <p><Link to="/" className="fm-back">← All family members</Link></p>
+      <header className="card fm-hero">
+        <div className="fm-hero-main">
+          <MemberMark name={contact?.name} colorId={memberColorId(d.color)} size="xl" />
+          <div className="fm-hero-text">
+            <p className="fm-back"><Link to="/" className="fm-back">← All family members</Link></p>
+            <h1>{name}</h1>
+            <p className="fm-hero-chips">
+              <StatusChip tone="info" icon={false}>{ROLE_LABEL[d.role]}</StatusChip>
+              <StatusChip tone={d.status === 'active' ? 'active' : 'neutral'} icon={false}>{STATUS_LABEL[d.status]}</StatusChip>
+              {isMe && <StatusChip tone="done">This is you</StatusChip>}
+            </p>
+          </div>
+          {nextBirthday && <DateTile iso={nextBirthday} today={today} special caption="Birthday" />}
+        </div>
+        <span className="fm-hero-actions">
+          <button type="button" className="btn" onClick={() => setEditing(true)}>Edit</button>
+          {d.status === 'active'
+            ? <button type="button" className="btn" onClick={() => setConfirm('past')}>Mark as past member</button>
+            : <button type="button" className="btn" onClick={() => setConfirm('active')}>Mark as in the household</button>}
+        </span>
+      </header>
 
       {!contact && <div className="fm-warn" role="alert"><strong>The linked contact no longer exists.</strong><p className="small">This member is kept. Nothing was deleted by Family.</p></div>}
       {dupGroup && (
@@ -116,8 +128,15 @@ export default function MemberPage({ id }: { id: number }) {
         <div className="fm-warn" role="status"><strong>Part of this record could not be read</strong><ul className="plain">{rec.problems.map((p) => <li key={p}>{p}</li>)}</ul><p className="small">The stored value is untouched until you save that field again.</p></div>
       )}
 
+      <div className="fm-cols fm-member-cols">
+      <div className="fm-col-main">
+      <ScheduleSection contactId={d.contactId} today={today} nameOfContact={nameOfContact} />
+      <TodoSection contactId={d.contactId} today={today} nameOfContact={nameOfContact} otherContacts={otherContacts} />
+      <ProjectsSection contactId={d.contactId} />
+      </div>
+      <div className="fm-col-side">
       <section className="card" aria-labelledby="fm-profile">
-        <div className="card-head fm-profile-head"><MemberMark name={contact?.name} colorId={memberColorId(d.color)} size="lg" /><h2 className="card-title" id="fm-profile">Profile</h2></div>
+        <div className="card-head fm-profile-head"><h2 className="card-title" id="fm-profile">Profile</h2></div>
         <dl className="fm-facts">
           <div><dt>Role</dt><dd>{ROLE_LABEL[d.role]}</dd></div>
           <div><dt>Status</dt><dd>{STATUS_LABEL[d.status]}</dd></div>
@@ -155,12 +174,9 @@ export default function MemberPage({ id }: { id: number }) {
         </dl>
       </section>
 
-      <ScheduleSection contactId={d.contactId} today={today} nameOfContact={nameOfContact} />
-      <TodoSection contactId={d.contactId} today={today} nameOfContact={nameOfContact} otherContacts={otherContacts} />
-      <ProjectsSection contactId={d.contactId} />
-      <ImportantContactsSection memberId={rec.id} ownContactId={d.contactId} memberName={name} />
-      <MemberDatesSection memberId={rec.id} />
+      <MemberDatesSection memberId={rec.id} today={today} />
 
+      <ImportantContactsSection memberId={rec.id} ownContactId={d.contactId} memberName={name} />
       <section className="card" aria-labelledby="fm-contact">
         <div className="card-head"><h2 className="card-title" id="fm-contact">Linked contact</h2></div>
         {contact ? <p><strong>{contact.name}</strong><br /><span className="muted small">{contactDetail(contact)}</span></p> : <p className="muted">The contact was removed.</p>}
@@ -176,6 +192,9 @@ export default function MemberPage({ id }: { id: number }) {
         <div className="card-head"><h2 className="card-title" id="fm-notes">Private note</h2></div>
         {d.note ? <MaskedNote note={d.note} /> : <p className="muted">No note.</p>}
       </section>
+
+      </div>
+      </div>
 
       {editing && <MemberForm member={rec} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); toast('Saved'); }} />}
       {confirm && (

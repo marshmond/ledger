@@ -4,7 +4,26 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-12 (newest): LEDGER SIGNATURE D14 (PROJECTS, HOME & ASSETS, CONTACTS) BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D15 NOT STARTED
+## STATUS 2026-11-12 (newest): LEDGER SIGNATURE D15 FINAL BILLS REFINEMENT (PHONE OVERVIEW HIERARCHY AND NEEDS REVIEW) BUILT AND TESTED LOCALLY; STILL UNCOMMITTED WITH THE REST OF D15, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW
+
+**Asked (after the first ChatGPT visual review):** put the cash summary before the long Coming up list on the Bills phone overview, add a three-date preview with View all upcoming, make the Upcoming page denser on a phone without hiding anything, and redesign the Needs review page (B-04). Household Services, Family and the Bills desktop were approved and not reopened.
+**Built (presentation only):** phone order attention, Expected cash needed, three-date preview (whole dates; View all upcoming (17) opens the existing Upcoming page; one tree chosen with useMediaQuery so Tab order equals reading order); denser phone rows on Upcoming (every line kept; week groups in one card); Needs review as a summary with jump buttons plus one card per existing group with dated rows, the amount in words and the same buttons and conditions.
+**Heights (375 px):** overview 4,669 original, 6,114 first pass, 4,401 refined; Upcoming 5,730, 7,216, 5,918; Needs review 1,076, 1,098, 1,498.
+**Tests:** 273 files, 5119 tests, 0 failures (18 new in bills/d15BillsRefinement.test.tsx); tsc and build clean; browser 46 of 46 plus 6 of 6 reduced-data checks; 380-cell sweep clean; authoritative values and row counts identical to the pre-D15 baseline.
+**NOT built / not verified:** no new review condition, status, certainty rule, action or write; only two of sixteen Needs review group types exist in the demo data; no real phone, screen reader, forced-colors, Safari or Firefox check. Report section 28.
+
+## STATUS 2026-11-12: LEDGER SIGNATURE D15 (HOUSEHOLD SERVICES, BILLS & SUBSCRIPTIONS, FAMILY DETAIL) BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D16 NOT STARTED
+
+**Release gate:** D14 is COMMITTED AND DEPLOYED as `6fd14a3` (Actions run #101 success; Pages deployment success; `main` = `origin/main`). Report: `docs/LEDGER-SIGNATURE-D15-REPORT.md`.
+
+**Asked:** redesign the composition of Household Services, Bills & Subscriptions and the Family member and dates pages while keeping every record, figure, recurrence rule, relationship and safeguard.
+**Built (presentation only):** Services overview as date-grouped upcoming visits plus arrangement cards with a supporting column; arrangement page as a hero and two columns with a read-only "Coming up after that" list; provider and visit pages with heroes. Bills overview as Coming up beside Expected cash needed (Known and Estimated separate) and 12-month figures; date-led list; one week-grouped Upcoming card; bill page as a hero, key-terms band and two columns. Family member page as a hero (D9 mark, role, status, "This is you", next birthday tile) and two columns, "To do" renamed Related tasks; dates page grouped by month with date tiles.
+**Owner design priorities (recorded):** preserve approved prototype integrity; favor meaningful layout improvements; protect existing data and calculations; card customization is secondary to design quality; review actual desktop and mobile screenshots before release; separate approval before committing and deploying.
+**Tests:** 272 files, 5,101 tests (+59 in three new files); `tsc` and build clean; 49 of 49 scripted browser checks; 380-cell sweep clean; baseline and after authoritative values identical.
+**Judgment calls (please review; item 12 on the review page is superseded by the final refinement entry above):** (1) Needs attention is a full-width band above the filters; (2) Upcoming before the arrangement list on Services; (3) "Coming up after that" is new read-only content on the arrangement page (longer on a phone); (4) discovery card moved below the Bills columns; (5) the bill "Terms" card split into a key-terms band and "More about the terms"; (6) cash windows show known and estimated separately and say "None expected" instead of "$0.00 · 0 bills"; (7) "To do" became "Related tasks" (one heading test and the tracker row list updated); (8) a hero replaces PageHeader on detail pages (still one h1); (9) module page widths raised to 1,500 px; (10) "Open task" link replaces the date link on a next-visit row; (11) no color chip in the member hero (the mark carries it); (12) the needs-review page was not redesigned.
+**NOT built / not verified:** no new rule, metric or reconciliation; needs-review page not recomposed (SUPERSEDED: the final refinement entry above recomposed it); Services to Assets navigation not exercised in the browser; module-owned dialogs untouched (D20); phone pages are longer; no real phone, screen reader, forced-colors, Safari or Firefox check.
+
+## STATUS 2026-11-12: LEDGER SIGNATURE D14 (PROJECTS, HOME & ASSETS, CONTACTS), COMMITTED AND DEPLOYED AS `6fd14a3` (Actions run #101 success; verified at the D15 gate)
 
 **Release gate:** D13.1 is COMMITTED AND DEPLOYED as `11bb7e4` (Actions run #100 success; Pages deployment success). Report: `docs/LEDGER-SIGNATURE-D14-REPORT.md`.
 
