@@ -182,7 +182,7 @@ export default function PaycheckPage() {
         <div className="pl-cols pl-cols--out-right" aria-label={`Scenario: ${sel.name}`}>
           <div className="pl-out an-stack-col">
             {!result ? (
-              <div className="an-card pl-alert" role="alert"><strong>No tax tables for {sel.year}.</strong><p>Add them on the Income tab (Start from 2026 tables), then come back.</p></div>
+              <div className="an-card pl-alert" role="alert"><strong>No tax tables for {sel.year}.</strong><p>Add them on the Income tab (Start from the latest built-in tables), then come back.</p></div>
             ) : (
               <Collapsible id="paycheck.results" title="Results">
                 <div className="an-stack-col">

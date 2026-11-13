@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { TAX_2026 } from '../data/taxYears';
+import { TAX_YEARS, builtInTables, latestBuiltInYear } from '../data/taxYears';
 import type { IncomeProfile, TaxSettings } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import { buildIncomeModel, DEFAULT_SETTINGS, newProfile, parseTablesJson, resolveTables, rollForward } from '../lib/income';
@@ -15,6 +15,7 @@ import { MONTHS, monthName, personAnchorId, personSummary, scopeRows } from './i
 import { hsaYearImpact } from '../lib/hsa';
 import { netForTax, realizedFor } from '../lib/lots';
 import { PageHeader } from '../ui/components';
+import TaxProvenanceNote, { CustomTableNotice, customTableDifferences } from './TaxProvenance';
 import { Kind, Lines, PlanHero, PlanJump } from './PlanParts';
 import './analysis.css';
 import './plan.css';
@@ -93,8 +94,11 @@ export default function IncomePage() {
 
   const tablesForEdit = () => {
     const r = resolveTables(year, settings);
-    const base = r.tables ?? { ...TAX_2026, year, notes: [`Copied from 2026 as a starting point for ${year}. Update every number from the IRS, SSA, and MA DOR before relying on it.`] };
-    return JSON.stringify(base, null, 2);
+    const from = latestBuiltInYear();
+    const base = r.tables ?? { ...TAX_YEARS[from], year, notes: [`Copied from ${from} as a starting point for ${year}. Update every number from the IRS, SSA, and MA DOR before relying on it.`] };
+    const { provenance: _p, ...editable } = base; // the source list is shown on the page, not edited as text
+    void _p;
+    return JSON.stringify(editable, null, 2);
   };
   const showResults = model.years.length > 0 && !!model.tables && !!hh;
   const totalGross = model.years.reduce((a, y) => a + y.totals.gross, 0);
@@ -113,9 +117,9 @@ export default function IncomePage() {
           <strong>No tax tables for {year}.</strong>
           <p>
             I don’t guess at tax law, so nothing is calculated for {year} until tables exist. The IRS usually publishes next year’s limits in
-            October or November. Start from the 2026 tables, update the numbers, and save.
+            October or November. Start from the {latestBuiltInYear()} tables, update the numbers, and save.
           </p>
-          <div className="an-actions"><button className="primary" onClick={() => { setTablesText(tablesForEdit()); setTablesMsg(''); }}>Start from 2026 tables</button></div>
+          <div className="an-actions"><button className="primary" onClick={() => { setTablesText(tablesForEdit()); setTablesMsg(''); }}>Start from {latestBuiltInYear()} tables</button></div>
         </div>
       )}
       {model.tableSource === 'built-in' && model.tables && (
@@ -123,6 +127,13 @@ export default function IncomePage() {
           <Kind k="recorded">Tax tables</Kind> Using built-in {year} tax tables (federal MFJ, Social Security, MA).{' '}
           <button className="link" onClick={() => { setTablesText(tablesForEdit()); setTablesMsg(''); }}>view or edit</button>
         </p>
+      )}
+      {year === 2027 && model.tableSource === 'custom' && model.tables && builtInTables(year) && (
+        <CustomTableNotice year={year} differences={customTableDifferences(model.tables, builtInTables(year)!)} onEdit={() => { setTablesText(tablesForEdit()); setTablesMsg(''); }} />
+      )}
+      {model.tableSource === 'built-in' && model.tables?.provenance && <TaxProvenanceNote year={year} provenance={model.tables.provenance} />}
+      {model.capGainsRules && !model.capGainsRules.exact && (
+        <p className="an-note" role="status">Capital-gains and net investment income rules for {year} are not built in, so {model.capGainsRules.ruleYear} thresholds were used. Check them before relying on gains figures.</p>
       )}
       {model.tableSource === 'custom' && <p className="an-note pl-tables-note"><Kind k="recorded">Tax tables</Kind> Using your edited {year} tax tables. <button className="link" onClick={() => { setTablesText(tablesForEdit()); setTablesMsg(''); }}>view or edit</button></p>}
 

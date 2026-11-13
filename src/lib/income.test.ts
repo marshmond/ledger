@@ -5,16 +5,16 @@ import { FinanceDB } from '../db';
 import { exportAll, importAll } from './backup';
 
 describe('tax table resolution', () => {
-  it('uses built-in tables for 2026, and none (never a guess) for years without tables', () => {
+  it('uses built-in tables for 2026 and 2027, and none (never a guess) for years without tables', () => {
     expect(resolveTables(2026).source).toBe('built-in');
-    const r = resolveTables(2027);
+    const r = resolveTables(2028);
     expect(r.tables).toBeNull();
     expect(r.source).toBe('none');
   });
 
-  it('computes nothing for a year without tables', () => {
-    const p = { ...newProfile(1, 2027), salary: [{ effectiveDate: '2027-01-01', annualCents: 10000000 }] };
-    const m = buildIncomeModel(2027, [{ id: 1, name: 'A' }], [p], []);
+  it('computes nothing for a year without tables (2028)', () => {
+    const p = { ...newProfile(1, 2028), salary: [{ effectiveDate: '2028-01-01', annualCents: 10000000 }] };
+    const m = buildIncomeModel(2028, [{ id: 1, name: 'A' }], [p], []);
     expect(m.tableSource).toBe('none');
     expect(m.years).toEqual([]);
     expect(m.household).toBeNull();

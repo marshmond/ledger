@@ -1,5 +1,6 @@
 import type { FinanceDB } from '../db';
 import { builtInTables, type TaxTables } from '../data/taxYears';
+import { retirementRulesFor } from '../data/retirementTax';
 import type { Bonus, IncomeProfile, PayDay, Person, RsuVest, Security, TaxSettings } from '../types';
 import { resolveVests, type ResolvedVest } from './rsu';
 import { defaultFlags, householdTax, simulatePerson, type HouseholdTax, type PersonYear } from './payroll';
@@ -103,6 +104,8 @@ export interface IncomeModel {
   year: number;
   tables: TaxTables | null;
   tableSource: 'custom' | 'built-in' | 'none';
+  /** Which year's capital-gains and NIIT rules were applied, and whether that is this year's own (false = an earlier year's, so say so). */
+  capGainsRules: { ruleYear: number; exact: boolean } | null;
   people: Person[];
   years: PersonYear[];
   household: HouseholdTax | null;
@@ -145,6 +148,7 @@ export function buildIncomeModel(
     year,
     tables,
     tableSource: source,
+    capGainsRules: tables ? (({ ruleYear, exact }) => ({ ruleYear, exact }))(retirementRulesFor(tables.year)) : null,
     people,
     years,
     household: tables && years.length

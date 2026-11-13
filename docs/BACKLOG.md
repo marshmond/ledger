@@ -23,7 +23,31 @@ Status key: `[ ]` not started, `[x]` built.
 
 **Pending owner confirmation:** whether the default presentation is annual or per paycheck.
 
-## STATUS 2026-11-13 (newest): D19 MORE, SETTINGS AND DOCUMENTS REDESIGN APPROVED BY OWNER AND CHATGPT; RELEASE AUTHORIZED (commit message feat(ui): redesign More, Settings and documents; SHA and CI result recorded in the release handoff); D20 AND D21 NOT STARTED
+## STATUS 2026-11-13 (newest): T2027 2027 TAX TABLES APPROVED; RELEASE AUTHORIZED AS `feat(tax): add verified 2027 tax tables and year-aware rules` (SHA and CI result in the release summary); Paycheck 2027 browser check passed on fictional data; D18.2, D20 AND D21 NOT STARTED
+
+**What was asked:** research the published 2027 federal and Massachusetts rules and add built-in 2027 tax tables to Income and Financial Planning, using only official sources, without inventing or silently reusing 2026 values. **Gate:** D19 is committed and deployed as `bc353319` (Actions run #108 success; Pages deployment success for the same SHA; read from the public GitHub API); `main` = `origin/main`. Report: `docs/TAX-2027-UPDATE-REPORT.md` (field-by-field table with sources, before and after examples, limitations).
+
+**What was built:** `TAX_2027` with a per-field source record (verified, fixed by law, provisional, planning estimate) shown in a collapsible panel on Income; `RETIREMENT_RULES_2027` and a year lookup so capital-gains thresholds (2027: 0% to $102,100, 15% to $633,600), the 65+ deduction ($1,700) and the 0%-gains room follow the table year; the Roth planner starts from the newest built-in tables not after its first plan year. Federal brackets, standard deduction ($33,200), 401(k) ($25,500 / $8,500 / $11,750), HSA ($4,500 / $9,000), health FSA ($3,500), Social Security base ($192,300) and the MA PFML employee share (0.46%, capped at $192,300) are verified from IRS, SSA and DFML pages. 2026 data was not edited. A saved custom 2027 table still wins over the built-in one.
+
+**Final corrections 2026-11-13 (after ChatGPT review; still uncommitted):** dependent-care FSA reclassified statutory, outdated-saved-2027-table notice added (`taxCustomNotice.test.tsx`, 5 tests), MA surtax wording softened; 83 focused tests pass, `tsc` and build clean; see report section 16.
+
+**Tests:** 34 new tests (`tax2027.test.ts`); 14 targeted files / 237 tests and 23 guard and shell files / 443 tests pass; `tsc` and `npm run build` clean; full suite NOT run locally (CI will). Two older tests that used 2027 as "a year with no tables" now use 2028. Browser check on a throwaway profile with invented data: Income 2026 and 2027, source panel at desktop and 375 px, Roth page, Tax planning 2027, no console errors.
+
+**Judgment calls (please review):**
+1. The MA 4% surtax threshold for 2027 is NOT published (DOR lists 2023 to 2026). The 2026 amount ($1,107,750) is carried as a labelled PROVISIONAL placeholder; it is not a 2027 figure and may change when Massachusetts publishes 2027 guidance.
+2. The dependent care FSA ($7,500) is STATUTORY (IRS: P.L. 119-21 s.70404, from 2026); corrected from provisional in the final corrections; nothing calculates from it.
+3. IRMAA and ACA values for 2027 stay as labelled 2026 carry-forwards (Roth planner only); Rev. Proc. 2026-26 and the $21,640 poverty guideline are leads, not applied.
+4. A saved custom 2027 table (for example one copied from 2026 earlier) still wins; since the final corrections Income shows an informational notice when it differs from the built-in table (standard deduction, wage base, brackets, 401(k) limit). Nothing is reset or edited.
+5. For a year with no rules of its own (custom tables for 2028 or later) the gains rules now fall back to 2027, not 2026, and Income says so on screen.
+6. The IRS Rev. Proc. 2026-35 PDF text still contains a "[Release Date, 2026]" placeholder; all overlapping figures match the IRS news release.
+
+**Separate finding (NOT changed):** the built-in 2026 MA surtax threshold ($1,083,150) is the 2025 figure; DOR lists $1,107,750 for 2026. It only matters above $1.08M of MA taxable income (surtax overstated by at most $984). Recommended as a small separate correction.
+
+**Follow-ups, NOT implemented (decided at review):** (a) correct the 2026 MA surtax threshold from $1,083,150 to $1,107,750 (separate authorized correction); (b) update the 2027 MA surtax threshold when officially published; (c) Roth planner 2027 IRMAA/ACA source verification; (d) README "Every January" tax-table instructions need an eventual update.
+
+**NOT built / not done:** the 2026 surtax correction, IRMAA / ACA 2027 values, MA Circular M 2027 (unpublished), single / head-of-household figures, the CTC / EITC / adoption figures, the Roth catch-up wage threshold ($155,000), a browser check of the Paycheck page for 2027 (unit-tested only), real-device and screen-reader checks. README "Every January" steps not updated.
+
+## STATUS 2026-11-13 (superseded by T2027 above; D19 is committed and deployed `bc353319`, run #108 success): D19 MORE, SETTINGS AND DOCUMENTS REDESIGN APPROVED BY OWNER AND CHATGPT; RELEASE AUTHORIZED (commit message feat(ui): redesign More, Settings and documents; SHA and CI result recorded in the release handoff); D20 AND D21 NOT STARTED
 
 **What was asked:** redesign More, Year in review, If something happens to me, Tax package, the Settings frame and its five pages (General, Appearance, Data & Backups, Sync devices, Calendar) and the printed documents to the Ledger Signature standard, with every setting, export, backup, restore and Sync safeguard preserved. **What was built:** see `docs/LEDGER-SIGNATURE-D19-REPORT.md`. Gate: D18.1 is committed and deployed as `18f58bd` (Actions run #107 success; Pages deployment success). Checks: 55 test files and 938 tests pass (16 new in `d19Settings.test.tsx`); `tsc` and the build are clean; the full suite was not run locally. Browser checks at 1440, 375 and 320 in Signature Light and Dark and Classic with fictional data; every amount and input value is unchanged; backup and restore were exercised only on a disposable profile and Sync only against an in-browser fake.
 

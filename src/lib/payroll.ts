@@ -3,7 +3,7 @@ import type { Bonus, DeductionItem, DeductionType, IncomeProfile, Person, TaxSet
 import { addDays, monthPayDate } from './dates';
 import { daysBetween } from './money';
 import { occurrencesBetween } from './schedule';
-import { RETIREMENT_RULES_2026 } from '../data/retirementTax';
+import { retirementRulesFor } from '../data/retirementTax';
 import type { ResolvedVest } from './rsu';
 
 /**
@@ -467,12 +467,14 @@ export function householdTax(years: PersonYear[], s: TaxSettings, t: TaxTables, 
   // Long-term gains sit on top of ordinary income and are taxed at 0%, 15%, or 20%.
   const prefIncome = Math.min(ltcg, taxable);
   const ordTaxable = taxable - prefIncome;
-  const z = RETIREMENT_RULES_2026.ltcg0Top;
-  const f15 = RETIREMENT_RULES_2026.ltcg15Top;
+  // Capital-gains thresholds and NIIT belong to the tax year of the tables in use (2027 has its own thresholds).
+  const rules = retirementRulesFor(t.year).rules;
+  const z = rules.ltcg0Top;
+  const f15 = rules.ltcg15Top;
   const amt15 = Math.max(0, Math.min(ordTaxable + prefIncome, f15) - Math.max(ordTaxable, z));
   const amt20 = Math.max(0, ordTaxable + prefIncome - Math.max(ordTaxable, f15));
   const capitalGainsTax = Math.round(amt15 * 0.15 + amt20 * 0.2);
-  const niit = Math.round(RETIREMENT_RULES_2026.niitRate * Math.max(0, Math.min(stcg + ltcg, gross - RETIREMENT_RULES_2026.niitThreshold)));
+  const niit = Math.round(rules.niitRate * Math.max(0, Math.min(stcg + ltcg, gross - rules.niitThreshold)));
   const before = bracketTax(ordTaxable, t.fedBracketsMFJ) + capitalGainsTax;
   const incomeTax = Math.max(0, before - s.federalCreditsCents);
   const medicareWages = sum((p) => p.totals.ficaTaxable);

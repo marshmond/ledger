@@ -1,5 +1,5 @@
-import { TAX_2026 } from '../data/taxYears';
-import { RETIREMENT_RULES_2026, rmdStartAge } from '../data/retirementTax';
+import { TAX_2026, TAX_YEARS, type TaxTables } from '../data/taxYears';
+import { RETIREMENT_RULES, RETIREMENT_RULES_2026, rmdStartAge } from '../data/retirementTax';
 import type { AssetClass, Holding, IncomeProfile, InvAccount, Person, RetirementSettings, Sale, Security } from '../types';
 import { netForTax, realizedFor } from './lots';
 import type { IncomeModel } from './income';
@@ -7,6 +7,13 @@ import { holdingValue } from './investments';
 import { DEFAULT_RETIREMENT } from './retirement';
 import type { OtherIncome, PlanInput, PlanPerson, Strategy } from './rothPlan';
 import { NO_CONVERSION } from './rothPlan';
+
+/** Newest built-in tax table whose year is not after `year0` (the 2026 table if there is none). Both tables and rules must exist for that year. */
+export function planBaseTables(year0: number): TaxTables {
+  const years = Object.keys(TAX_YEARS).map(Number).filter((y) => y <= year0 && RETIREMENT_RULES[y]).sort((a, b) => a - b);
+  const y = years.pop();
+  return y === undefined ? TAX_2026 : TAX_YEARS[y];
+}
 
 /** What you can change on the Roth page (stored on this device under the settings key 'rothPlan'). */
 export interface RothSettings {
@@ -209,6 +216,12 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
   const extraGains = realized.count > 0 ? { [year0]: { stcg: g.stcgCents, ltcg: g.ltcgCents, lossDeduction: g.lossDeductionCents } } : undefined;
   if (realized.count > 0) notes.push(`Gains realized so far in ${year0} (${realized.count} sale${realized.count === 1 ? '' : 's'}) are counted in this year’s income.`);
 
+  // Base tables for the plan: the newest built-in year that is not after the first plan year (the plan then scales the
+  // indexed amounts by your inflation from that table year). Plan years before 2026 use the 2026 tables, as before.
+  const baseT = planBaseTables(year0);
+  const baseR = RETIREMENT_RULES[baseT.year] ?? RETIREMENT_RULES_2026;
+  if (baseT.year < year0) notes.push(`No built-in ${year0} tax tables yet, so the plan starts from the ${baseT.year} tables and scales them by your inflation assumption.`);
+
   const input: PlanInput | null =
     planPeople.length === 0
       ? null
@@ -233,8 +246,8 @@ export function buildPlanInput(src: RothSources, s: RothSettings): BuiltPlan {
           conversionTaxFrom: s.conversionTaxFrom,
           endTaxRatePct: s.endTaxRatePct,
           heirTaxRatePct: s.heirTaxRatePct,
-          T: TAX_2026,
-          R: RETIREMENT_RULES_2026,
+          T: baseT,
+          R: baseR,
         };
 
   return {

@@ -4,11 +4,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { buildIncomeModel } from '../lib/income';
 import { formatCents, todayISO } from '../lib/money';
-import { buildPlanInput, DEFAULT_ROTH, newStrategyId, starterStrategies, type RothSettings } from '../lib/rothInputs';
+import { buildPlanInput, DEFAULT_ROTH, newStrategyId, planBaseTables, starterStrategies, type RothSettings } from '../lib/rothInputs';
 import {
   comparePlans, firstRmdYear, makeZPaths, NO_CONVERSION, planEndYear, runMonteCarlo, type McSummary, type OtherIncome, type PlanInput, type Strategy,
 } from '../lib/rothPlan';
-import { RETIREMENT_RULES_2026, rmdStartAge } from '../data/retirementTax';
+import { RETIREMENT_RULES, RETIREMENT_RULES_2026, rmdStartAge } from '../data/retirementTax';
 import { LinesChart, compactUSD } from './charts';
 import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
@@ -451,7 +451,7 @@ export default function RothPage() {
                 <li>Medicare IRMAA uses income from two years earlier, per person on Medicare. The ACA credit uses current-year income and a household of two; it vanishes above 400% of the poverty guideline.</li>
                 <li>Left out: early-withdrawal penalties and the Roth five-year rules (convert and withdraw with those in mind if anyone is under 59½), HSAs, one spouse dying (survivor tax brackets and benefits), state tax outside Massachusetts, long-term care costs, and the 10-year inherited-account payout schedule (heirs’ tax is one flat rate you set).</li>
                 <li>Random futures use one common market return each year for all accounts, with the volatility above.</li>
-                {RETIREMENT_RULES_2026.notes.map((n) => <li key={n} className="muted">{n}</li>)}
+                {(RETIREMENT_RULES[planBaseTables(year0).year] ?? RETIREMENT_RULES_2026).notes.map((n) => <li key={n} className="muted">{n}</li>)}
               </ul>
             </Collapsible>
           </div>

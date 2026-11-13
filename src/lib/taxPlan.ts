@@ -1,9 +1,8 @@
 import type { TaxTables } from '../data/taxYears';
-import { RETIREMENT_RULES_2026 } from '../data/retirementTax';
 import type { InvAccount, Person, RsuVest, Security, TaxLot } from '../types';
 import type { HouseholdTax, PersonYear } from './payroll';
 import { isLongTerm, netForTax, type Realized } from './lots';
-import { rmdFactor, rmdStartAge } from '../data/retirementTax';
+import { retirementRulesFor, rmdFactor, rmdStartAge } from '../data/retirementTax';
 import { daysBetween } from './money';
 
 /**
@@ -40,7 +39,7 @@ export function bracketRoom(t: TaxTables, taxableIncome: number, longTermGains: 
     top,
     roomCents: Number.isFinite(top) ? top - ord : null,
     nextRate: i + 1 < b.length ? b[i + 1].rate : null,
-    zeroGainRoomCents: Math.max(0, RETIREMENT_RULES_2026.ltcg0Top - taxableIncome),
+    zeroGainRoomCents: Math.max(0, retirementRulesFor(t.year).rules.ltcg0Top - taxableIncome),
   };
 }
 

@@ -87,6 +87,45 @@ export const RETIREMENT_RULES_2026: RetirementTaxRules = {
   medicareAge: 65,
 };
 
+/**
+ * 2027 rules (read 2026-11-13). VERIFIED from IRS Rev. Proc. 2026-35: capital-gains thresholds (joint 0% to $102,100, 15% to
+ * $633,600, section 3.03) and the extra standard deduction for age 65+ ($1,700 per spouse, section 3.15(3)). MA age-65 exemption
+ * ($700): MA DOR exemptions page, updated 2026-10-30. UNCHANGED STATUTORY: senior deduction, Social Security taxation thresholds, NIIT.
+ * NOT VERIFIED FOR 2027, carried from 2026 and labelled in the notes: IRMAA tiers and surcharges, the poverty guideline, and the ACA table.
+ */
+export const RETIREMENT_RULES_2027: RetirementTaxRules = {
+  ...RETIREMENT_RULES_2026,
+  year: 2027,
+  notes: [
+    'VERIFIED for 2027 (IRS Rev. Proc. 2026-35): long-term capital gains thresholds for joint filers (0% to $102,100, 15% to $633,600) and the extra standard deduction for age 65+ ($1,700 per spouse).',
+    'Unchanged by law (not indexed): the $6,000 senior deduction (tax years 2025-2028), Social Security taxation thresholds ($32,000 / $44,000), and the net investment income tax ($250,000 joint).',
+    'NOT VERIFIED for 2027: IRMAA tiers and surcharges, the ACA poverty guideline and applicable-percentage table, and the senior-deduction phase-out detail. These are 2026 figures carried forward.',
+    'Later years scale the indexed amounts (brackets, deductions, IRMAA tiers, poverty guideline) by your inflation assumption. The law could change.',
+  ],
+  ltcg0Top: d(102100),
+  ltcg15Top: d(633600),
+  addlStdDeduction65: d(1700),
+};
+
+/** Built-in rules by tax year. A year with no entry has no verified rules; `retirementRulesFor` says so instead of guessing. */
+export const RETIREMENT_RULES: Record<number, RetirementTaxRules> = {
+  2026: RETIREMENT_RULES_2026,
+  2027: RETIREMENT_RULES_2027,
+};
+
+/**
+ * The rules to use for a tax year. `exact` is false when the year has no entry: the newest earlier year is used (the earliest
+ * known year for a year before any entry) and callers should say so, so an older year's thresholds are never presented as the year's own.
+ */
+export function retirementRulesFor(year: number): { rules: RetirementTaxRules; ruleYear: number; exact: boolean } {
+  const known = Object.keys(RETIREMENT_RULES).map(Number).sort((a, b) => a - b);
+  const exact = RETIREMENT_RULES[year];
+  if (exact) return { rules: exact, ruleYear: year, exact: true };
+  const earlier = known.filter((y) => y < year).pop();
+  const ruleYear = earlier ?? known[0];
+  return { rules: RETIREMENT_RULES[ruleYear], ruleYear, exact: false };
+}
+
 /** IRS Uniform Lifetime Table (distribution period by age at year end), used from 2022 on. */
 export const UNIFORM_LIFETIME: Record<number, number> = {
   72: 27.4, 73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9, 78: 22.0, 79: 21.1, 80: 20.2, 81: 19.4, 82: 18.5, 83: 17.7, 84: 16.8,
