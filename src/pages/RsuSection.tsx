@@ -8,6 +8,7 @@ import { recordHeldVest, vestOutcome, vestProblem, type ResolvedVest } from '../
 import { NumField } from './fields';
 import Collapsible from './Collapsible';
 import RsuGrants from './RsuGrants';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { inScope } from './incomeOwners';
 
 const SOURCE_TEXT = { deal: 'deal price', actual: 'actual vest price', current: 'current price', none: 'no price' } as const;
@@ -78,6 +79,9 @@ export default function RsuSection({
   const [sharesText, setSharesText] = useState('');
   const [priceText, setPriceText] = useState('');
   const [msg, setMsg] = useState('');
+  // D20.1B (NC-32): the vest whose "delete" was pressed, by id. Nothing is deleted until the dialog's own button is pressed.
+  const [askVest, setAskVest] = useState<number | null>(null);
+  const askVestRow = askVest === null ? undefined : vests.find((x) => x.id === askVest);
   const [showAll, setShowAll] = useState(!!unassigned); // a record with no person can be in any year, so the review list starts with every year
 
   const personName = (id: number) => people.find((p) => p.id === id)?.name ?? '?';
@@ -285,7 +289,7 @@ export default function RsuSection({
                         >add to holdings</button>
                       )}{' '}
                       <button className="link" onClick={() => startEdit(v)}>edit</button>{' '}
-                      <button className="link danger" onClick={() => confirm(`Delete this ${v.date} vest?${v.recorded ? ' The shares already added to holdings stay there.' : ''}`) && db.rsuVests.delete(v.id!)}>delete</button>
+                      <button className="link danger" aria-label={`Delete the ${v.date} vest`} onClick={() => setAskVest(v.id!)}>delete</button>
                     </td>
                   </tr>
                 );
@@ -300,6 +304,19 @@ export default function RsuSection({
         detail (it is not counted as spendable cash). “Add to holdings” puts the whole shares in the account, with the vest price as their cost basis, and the
         value of the leftover part of a share as cash in the same account, once the vest date has passed. Before that they are projections only.
       </p>
+      {askVestRow && (
+        <ConfirmDialog
+          title="Delete vest?"
+          confirmLabel="Delete vest"
+          busyLabel="Deleting…"
+          onCancel={() => setAskVest(null)}
+          // Found again by id; the vest's recorded flag is read now, so the wording matches the record as it is when the question is shown.
+          onConfirm={async () => { await db.rsuVests.delete(askVestRow.id!); setAskVest(null); }}
+        >
+          <p><strong>{askVestRow.date} vest</strong><br /><span className="muted small">{askVestRow.shares} share{askVestRow.shares === 1 ? '' : 's'}</span></p>
+          <p>This removes the vest from your income and tax figures.{askVestRow.recorded ? ' The shares already added to holdings stay there.' : ''}</p>
+        </ConfirmDialog>
+      )}
     </Collapsible>
   );
 }

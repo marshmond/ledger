@@ -10,6 +10,7 @@ import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import ProfileEditor from './ProfileEditor';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { Kind, PlanHero } from './PlanParts';
 import './analysis.css';
 import './plan.css';
@@ -59,6 +60,11 @@ export default function PaycheckPage() {
   const result = useMemo(() => (sel ? run(sel) : null), [sel, people, profiles, bonuses, allSettings, rsuVests, securities]); // eslint-disable-line react-hooks/exhaustive-deps
   const event = result ? result.year.events[Math.min(checkIdx, result.year.events.length - 1)] : null;
 
+  // D20.1B (NC-25, NC-26): the scenario whose "delete" or "clear deductions and start over" was pressed, by id. Nothing is written until the dialog's own button is pressed.
+  const [askDelete, setAskDelete] = useState<number | null>(null);
+  const [askReset, setAskReset] = useState<number | null>(null);
+  const askDeleteRow = askDelete === null ? undefined : scenarios.find((s) => s.id === askDelete);
+  const askResetRow = askReset === null ? undefined : scenarios.find((s) => s.id === askReset);
   const patch = (p: Partial<PayScenario>) => sel && db.payScenarios.update(sel.id!, { ...p, updatedAt: new Date().toISOString() });
   const nameFor = (s: string) => s.trim() || 'New scenario';
 
@@ -130,7 +136,7 @@ export default function PaycheckPage() {
                         <td className="an-cell-act">
                           <span className="an-rowbtns">
                             <button className="link" aria-label={`Duplicate ${s.name}`} onClick={async () => { const { id: _i, ...rest } = s; void _i; const id = await db.payScenarios.add({ ...rest, name: `${s.name} (copy)`, updatedAt: new Date().toISOString() }); setSelId(id); }}>duplicate</button>
-                            <button className="link danger" aria-label={`Delete ${s.name}`} onClick={() => { if (confirm(`Delete “${s.name}”?`)) { db.payScenarios.delete(s.id!); if (selId === s.id) setSelId(null); setCmp((c) => c.filter((k) => k !== `sc:${s.id}`)); } }}>delete</button>
+                            <button className="link danger" aria-label={`Delete ${s.name}`} onClick={() => setAskDelete(s.id!)}>delete</button>
                           </span>
                         </td>
                       </tr>
@@ -307,7 +313,7 @@ export default function PaycheckPage() {
                       person={person}
                       profile={sel.profile}
                       onSave={(p) => patch({ profile: p })}
-                      onDelete={() => { if (confirm('Reset this scenario to a blank setup with the same salary?')) { const sal = [...sel.profile.salary].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate)).at(-1)?.annualCents ?? 0; const b = blankScenario(sel.personId, sel.year, sel.name, sal); patch({ profile: b.profile }); } }}
+                      onDelete={() => setAskReset(sel.id!)}
                       deleteLabel="clear deductions and start over"
                     />
                   ) : null;
@@ -363,6 +369,44 @@ export default function PaycheckPage() {
           </>
         )}
       </Collapsible>
+
+      {askDeleteRow && (
+        <ConfirmDialog
+          title="Delete scenario?"
+          confirmLabel="Delete scenario"
+          busyLabel="Deleting…"
+          onCancel={() => setAskDelete(null)}
+          onConfirm={async () => {
+            const id = askDeleteRow.id!;
+            await db.payScenarios.delete(id);
+            if (selId === id) setSelId(null);
+            setCmp((c) => c.filter((k) => k !== `sc:${id}`));
+            setAskDelete(null);
+          }}
+        >
+          <p><strong>{askDeleteRow.name}</strong><br /><span className="muted small">{personName(askDeleteRow.personId)} · {askDeleteRow.year}</span></p>
+          <p>This deletes the saved what-if scenario and takes it out of the comparison. Your real income setup and paychecks are not changed.</p>
+        </ConfirmDialog>
+      )}
+      {askResetRow && (
+        <ConfirmDialog
+          title="Reset scenario?"
+          confirmLabel="Reset scenario"
+          busyLabel="Resetting…"
+          kind="replace"
+          onCancel={() => setAskReset(null)}
+          onConfirm={async () => {
+            // The salary is read from the scenario as it is now, and the reset is written to this scenario's id (not to whatever is selected).
+            const sal = [...askResetRow.profile.salary].sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate)).at(-1)?.annualCents ?? 0;
+            const b = blankScenario(askResetRow.personId, askResetRow.year, askResetRow.name, sal);
+            await db.payScenarios.update(askResetRow.id!, { profile: b.profile, updatedAt: new Date().toISOString() });
+            setAskReset(null);
+          }}
+        >
+          <p><strong>{askResetRow.name}</strong></p>
+          <p>This clears the deductions in this scenario and starts over from a blank setup with the same salary. Your real income setup is not changed.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

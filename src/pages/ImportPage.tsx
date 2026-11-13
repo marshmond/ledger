@@ -14,6 +14,7 @@ import {
 } from '../lib/csvImport';
 import { formatCents } from '../lib/money';
 import { EmptyLine, PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { StatusChip, type StatusTone } from '../ui/StatusChip';
 import { IMPORT_STEPS, countWord, importStage } from './moneyPresentation';
 import './money.css';
@@ -31,6 +32,9 @@ const CLS_TONE: Record<ClassifiedRow['cls'], StatusTone> = { new: 'done', duplic
 export default function ImportPage() {
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
   const batches = useLiveQuery(() => db.importBatches.orderBy('id').reverse().toArray(), []) ?? [];
+  // D20.1B (NC-15): the past import whose "undo" was pressed, by id. Nothing is changed until the dialog's own button is pressed.
+  const [askUndo, setAskUndo] = useState<number | null>(null);
+  const undoRow = askUndo === null ? undefined : batches.find((x) => x.id === askUndo);
 
   const [accountId, setAccountId] = useState<number | ''>('');
   const [filename, setFilename] = useState('');
@@ -208,12 +212,26 @@ export default function ImportPage() {
                   <div className="muted">{accounts.find((a) => a.id === b.accountId)?.name} · {new Date(b.importedAt).toLocaleString()}</div>
                 </div>
                 <div className="mny-batch-count">{b.createdCount} new, {b.matched.length} matched</div>
-                <button className="link danger" aria-label={`Undo import of ${b.filename}`} onClick={() => confirm('Undo this import?') && undoBatch(db, b.id!)}>undo</button>
+                <button className="link danger" aria-label={`Undo import of ${b.filename}`} onClick={() => setAskUndo(b.id!)}>undo</button>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {undoRow && (
+        <ConfirmDialog
+          title="Undo import?"
+          confirmLabel="Undo import"
+          busyLabel="Undoing…"
+          kind="linked"
+          onCancel={() => setAskUndo(null)}
+          onConfirm={async () => { await undoBatch(db, undoRow.id!); setAskUndo(null); }}
+        >
+          <p><strong>{undoRow.filename}</strong><br /><span className="muted small">{accounts.find((a) => a.id === undoRow.accountId)?.name} · {new Date(undoRow.importedAt).toLocaleString()}</span></p>
+          <p>This deletes the {undoRow.createdCount} transaction{undoRow.createdCount === 1 ? '' : 's'} this import added{undoRow.matched.length ? ` and puts the ${undoRow.matched.length} entr${undoRow.matched.length === 1 ? 'y' : 'ies'} it matched back to how ${undoRow.matched.length === 1 ? 'it' : 'they'} were before` : ''}. Changes you made to the imported transactions since are lost with them.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

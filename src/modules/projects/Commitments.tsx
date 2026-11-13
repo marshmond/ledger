@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import ConfirmDialog from '../../shell/ConfirmDialog';
 import { store } from '../../core/store';
 import { dayLabel } from '../../core/time';
 import { formatCents } from '../../lib/money';
@@ -40,9 +42,11 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
 
   const act = (fn: () => Promise<void>, done?: string) => void fn().then(() => done && toast(done)).catch((e) => toast(e instanceof Error ? e.message : 'Something went wrong.'));
   const setStatus = (c: CommitmentRecord, s: CommitmentStatus, done: string) => act(() => setCommitmentStatus(c.id, s), done);
-  const remove = (c: CommitmentRecord) => {
-    if (confirm(`Remove "${c.data.title}"? If anything is paid on it, cancel it instead.`)) act(() => removeCommitment(c.id), 'Removed');
-  };
+  // D20.1B (NC-02, NC-03): which agreement or change order Remove / Cancel agreement was pressed on, by id. Nothing changes until the dialog's own button is pressed.
+  const [ask, setAsk] = useState<{ id: number; what: 'remove' | 'cancel' } | null>(null);
+  const remove = (c: CommitmentRecord) => setAsk({ id: c.id, what: 'remove' });
+  const allRecords = [...groups.accepted, ...groups.pending, ...groups.closed].flatMap((r) => [r.root, ...r.changes]);
+  const target = ask ? allRecords.find((c) => c.id === ask.id) : undefined;
 
   const meta = (c: CommitmentRecord, row?: ContractRow) => [vendorName(c.data.vendorContactId), row?.money?.split ? `Split across ${row.money.split.lines.filter((l) => l.lineId !== null).length || 'no'} line${row.money.split.lines.filter((l) => l.lineId !== null).length === 1 ? '' : 's'}` : lineName(c.data.budgetLineId)].filter(Boolean).join(' · ');
   const splitName = (id: number | null) => (id === null ? 'No budget line' : lineName(id) || 'A removed line');
@@ -158,7 +162,7 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
         <div className="pj-contract-actions">
           <button className="btn" onClick={() => onChange(c)}>Add change order</button>
           <button className="link" onClick={() => onEdit(c)}>Edit</button>
-          <button className="link" onClick={() => { if (confirm(`Cancel "${c.data.title}"? It stays on the project and anything paid on it stays in the totals, but nothing more is expected on it.`)) setStatus(c, 'cancelled', 'Cancelled'); }}>Cancel agreement</button>
+          <button className="link" onClick={() => setAsk({ id: c.id, what: 'cancel' })}>Cancel agreement</button>
           <button className="link danger" onClick={() => remove(c)}>Remove</button>
         </div>
       </li>
@@ -212,6 +216,33 @@ export default function Commitments({ groups, lines, pieces, focusLine, onNew, o
           {accepted.length + pending.length + closed.length === 0 && <p className="muted">Nothing under this budget line.</p>}
         </>
       )}
+
+      {target && ask && (ask.what === 'remove' ? (
+        <ConfirmDialog
+          title="Remove commitment?"
+          confirmLabel="Remove commitment"
+          busyLabel="Removing…"
+          kind="linked"
+          onCancel={() => setAsk(null)}
+          // removeCommitment refuses when change orders or tagged transactions exist; the reason is shown here and nothing is removed.
+          onConfirm={async () => { await removeCommitment(target.id); toast('Removed'); setAsk(null); }}
+        >
+          <p><strong>{target.data.title}</strong></p>
+          <p>If anything is paid on it, cancel it instead: a commitment with payments or change orders cannot be removed.</p>
+        </ConfirmDialog>
+      ) : (
+        <ConfirmDialog
+          title="Cancel agreement?"
+          confirmLabel="Cancel agreement"
+          busyLabel="Cancelling…"
+          kind="linked"
+          onCancel={() => setAsk(null)}
+          onConfirm={async () => { await setCommitmentStatus(target.id, 'cancelled'); toast('Cancelled'); setAsk(null); }}
+        >
+          <p><strong>{target.data.title}</strong></p>
+          <p>It stays on the project and anything paid on it stays in the totals, but nothing more is expected on it. You can reinstate it later.</p>
+        </ConfirmDialog>
+      ))}
     </section>
   );
 }

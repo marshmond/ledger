@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from '../../shell/Modal';
+import ConfirmDialog from '../../shell/ConfirmDialog';
 import { useToast } from '../../ui/Toast';
 import { createList, deleteList, renameList } from './data';
 import type { TaskList } from './model';
@@ -8,7 +9,11 @@ import type { TaskList } from './model';
 export default function ListsDialog({ lists, counts, onClose }: { lists: TaskList[]; counts: Map<number, number>; onClose: () => void }) {
   const toast = useToast();
   const [name, setName] = useState('');
+  // D20.1B (NC-05): the list whose Delete was pressed, by id. Nothing is deleted until the dialog's own button is pressed.
+  const [ask, setAsk] = useState<number | null>(null);
+  const target = ask === null ? undefined : lists.find((l) => l.id === ask);
   return (
+    <>
     <Modal title="Lists" onClose={onClose}>
       {lists.length === 0 && <p className="muted">No lists yet. A list groups tasks, such as Renovation, Taxes or Household. Tasks do not need one.</p>}
       <ul className="plain cal-manage">
@@ -16,11 +21,7 @@ export default function ListsDialog({ lists, counts, onClose }: { lists: TaskLis
           <li key={l.id} className="row grow">
             <input defaultValue={l.name} aria-label="List name" onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== l.name) void renameList(l.id, v); else e.target.value = l.name; }} />
             <span className="muted small">{counts.get(l.id) ?? 0} open</span>
-            <button className="link danger" onClick={async () => {
-              if (!confirm(`Delete the list "${l.name}"? Its tasks are kept and will have no list.`)) return;
-              const n = await deleteList(l.id);
-              toast(n ? `List deleted. ${n} task${n === 1 ? '' : 's'} kept, with no list.` : 'List deleted');
-            }}>Delete</button>
+            <button className="link danger" onClick={() => setAsk(l.id)}>Delete</button>
           </li>
         ))}
       </ul>
@@ -30,5 +31,24 @@ export default function ListsDialog({ lists, counts, onClose }: { lists: TaskLis
       </form>
       <div className="row cal-actions"><button className="btn primary" onClick={onClose}>Done</button></div>
     </Modal>
+    {/* A sibling, not a child, so the question draws over the Lists dialog on its own; Escape then cancels only the question (see modalKeys.ts). */}
+    {target && (
+      <ConfirmDialog
+        title="Delete list?"
+        confirmLabel="Delete list"
+        busyLabel="Deleting…"
+        kind="linked"
+        onCancel={() => setAsk(null)}
+        onConfirm={async () => {
+          const n = await deleteList(target.id);
+          toast(n ? `List deleted. ${n} task${n === 1 ? '' : 's'} kept, with no list.` : 'List deleted');
+          setAsk(null);
+        }}
+      >
+        <p><strong>{target.name}</strong></p>
+        <p>Its tasks are kept and will have no list.</p>
+      </ConfirmDialog>
+    )}
+    </>
   );
 }

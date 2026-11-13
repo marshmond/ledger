@@ -3,6 +3,7 @@ import type { DeductionItem, DeductionType, IncomeProfile, MatchConfig, PayDay, 
 import { esppOn, hsaOn, newDeduction, payDaysOf } from '../lib/income';
 import Collapsible, { useCollapsed } from './Collapsible';
 import { MoneyField, NumField } from './fields';
+import ConfirmDialog from '../shell/ConfirmDialog';
 
 const ADD: [DeductionType, string][] = [
   ['k401_pretax', '+ 401(k) pre-tax'],
@@ -87,13 +88,20 @@ export default function ProfileEditor({
   const flat = match?.formula === 'flat';
   const setMatch = (patch: Partial<MatchConfig>) => match && set({ match: { ...match, ...patch } });
   const [open, setOpen] = useCollapsed(`income.p${person.id}`);
+  const [askOff, setAskOff] = useState<'hsa' | 'espp' | null>(null); // NC-27: which benefit's checkbox was unticked, waiting for the dialog's own button
 
   function switchBenefit(kind: 'hsa' | 'espp', on: boolean) {
     const type: DeductionType = kind;
     const has = d.deductions.some((x) => x.type === type);
-    if (!on && has && !confirm(`Turning this off removes the ${kind === 'hsa' ? 'HSA' : 'ESPP'} deduction from ${person.name}'s setup. Continue?`)) return;
-    if (kind === 'hsa') set({ hasHsa: on, ...(on ? {} : { employerHsaAnnualCents: 0, deductions: d.deductions.filter((x) => x.type !== 'hsa') }) });
-    else set({ esppEnrolled: on, ...(on ? {} : { deductions: d.deductions.filter((x) => x.type !== 'espp') }) });
+    // NC-27 (D20.1B): turning a benefit off while it still has a deduction asks first. The checkbox is controlled by the saved choice, so until the dialog's own button is pressed it
+    // simply stays as it was; nothing in the setup changes.
+    if (!on && has) { setAskOff(kind); return; }
+    applyBenefit(kind, on);
+  }
+  /** The change itself (unchanged), applied to the draft as it is now: only this benefit's own deduction is removed; every other deduction stays. */
+  function applyBenefit(kind: 'hsa' | 'espp', on: boolean) {
+    if (kind === 'hsa') setD((prev) => ({ ...prev, hasHsa: on, ...(on ? {} : { employerHsaAnnualCents: 0, deductions: prev.deductions.filter((x) => x.type !== 'hsa') }) }));
+    else setD((prev) => ({ ...prev, esppEnrolled: on, ...(on ? {} : { deductions: prev.deductions.filter((x) => x.type !== 'espp') }) }));
   }
 
   return (
@@ -341,6 +349,19 @@ export default function ProfileEditor({
           {dirty && <button onClick={() => setD(profile)}>Discard</button>}
         </div>}
       </div>
+      {askOff && (
+        <ConfirmDialog
+          title={`Turn off ${askOff === 'hsa' ? 'HSA' : 'ESPP'}?`}
+          confirmLabel={`Turn off ${askOff === 'hsa' ? 'HSA' : 'ESPP'}`}
+          busyLabel="Turning off…"
+          kind="linked"
+          onCancel={() => setAskOff(null)}
+          onConfirm={() => { applyBenefit(askOff, false); setAskOff(null); }}
+        >
+          <p><strong>{person.name}</strong></p>
+          <p>Turning this off removes the {askOff === 'hsa' ? 'HSA' : 'ESPP'} deduction{askOff === 'hsa' ? ' (and the employer HSA amount)' : ''} from {person.name}'s setup. Other deductions are not changed.{live ? '' : ' Nothing is saved until you press Save changes.'}</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

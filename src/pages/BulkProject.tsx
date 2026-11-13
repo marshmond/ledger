@@ -4,6 +4,7 @@ import type { Txn } from '../types';
 import { formatCents } from '../lib/money';
 import { bulkSetTxnProject, type BulkProjectResult, type BulkSkipReason } from '../lib/txnProject';
 import { useToast } from '../ui/Toast';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { useProjectChoices } from './ProjectTag';
 
 const WHY: Record<BulkSkipReason, string> = {
@@ -34,21 +35,28 @@ export default function BulkProject({ ids, txns, onDone }: { ids: number[]; txns
   const anyIn = picked.some((t) => t.amountCents > 0 && !t.transferTxnId);
   const hasContracts = contracts.length > 0;
 
+  // NC-09 (D20.1B): the rows "Remove project" was pressed on, by id. Nothing is changed until the dialog's own button is pressed.
+  const [askClear, setAskClear] = useState<number[] | null>(null);
+
+  /** The change itself (unchanged). Throws when it cannot be done; `run` shows that on the page, the Remove dialog shows it inside itself. */
+  async function apply(clear: boolean, rowIds: number[]) {
+    const r = await bulkSetTxnProject(
+      db, rowIds,
+      clear ? null : {
+        projectId: Number(projectId),
+        ...(contract ? { commitmentId: contract.id } : lineId ? { budgetLineId: Number(lineId) } : {}),
+      },
+      { replace, refundsAreProjectLevel: generalRefunds },
+    );
+    setResult(r);
+    const skipped = r.skipped?.length ?? 0;
+    toast(clear ? `Removed the project from ${r.updated} transaction${r.updated === 1 ? '' : 's'}.` : `Tagged ${r.updated} transaction${r.updated === 1 ? '' : 's'}${skipped ? `, left ${skipped} alone` : ''}.`);
+    if (!skipped) onDone();
+  }
   async function run(clear: boolean) {
     setError('');
     try {
-      const r = await bulkSetTxnProject(
-        db, ids,
-        clear ? null : {
-          projectId: Number(projectId),
-          ...(contract ? { commitmentId: contract.id } : lineId ? { budgetLineId: Number(lineId) } : {}),
-        },
-        { replace, refundsAreProjectLevel: generalRefunds },
-      );
-      setResult(r);
-      const skipped = r.skipped?.length ?? 0;
-      toast(clear ? `Removed the project from ${r.updated} transaction${r.updated === 1 ? '' : 's'}.` : `Tagged ${r.updated} transaction${r.updated === 1 ? '' : 's'}${skipped ? `, left ${skipped} alone` : ''}.`);
-      if (!skipped) onDone();
+      await apply(clear, ids);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not change the project.');
     }
@@ -79,7 +87,7 @@ export default function BulkProject({ ids, txns, onDone }: { ids: number[]; txns
           </select>
         )}
         <button disabled={!projectId} onClick={() => void run(false)}>Apply project</button>
-        <button className="link" onClick={() => { if (confirm(`Remove the project tag from ${ids.length} selected transaction(s)? Tags on individual splits stay.`)) void run(true); }}>Remove project</button>
+        <button className="link" onClick={() => setAskClear(ids)}>Remove project</button>
       </div>
       <div className="row small">
         <label className="chk"><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />Replace tags that are already there</label>
@@ -89,6 +97,19 @@ export default function BulkProject({ ids, txns, onDone }: { ids: number[]; txns
       </div>
       {contract && anyIn && <p className="muted small">Money coming back cannot be put on a contract in bulk. Those are left alone, so you can open each and choose reversal or credit.</p>}
       {error && <div className="error" role="alert">{error}</div>}
+      {askClear && (
+        <ConfirmDialog
+          title="Remove project tag?"
+          confirmLabel="Remove project tag"
+          busyLabel="Removing…"
+          kind="linked"
+          onCancel={() => setAskClear(null)}
+          onConfirm={async () => { setError(''); await apply(true, askClear); setAskClear(null); }}
+        >
+          <p>Remove the project tag from {askClear.length} selected transaction{askClear.length === 1 ? '' : 's'}?</p>
+          <p>Tags on individual splits stay. The transactions themselves, their amounts and categories are not changed.</p>
+        </ConfirmDialog>
+      )}
       {result && (
         <div className="bulk-result" role="status">
           <strong>{result.updated} updated{result.skipped?.length ? `, ${result.skipped.length} left alone` : ''}.</strong>

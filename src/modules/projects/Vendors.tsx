@@ -5,6 +5,7 @@ import { contactChoiceLabel, sharedNameIds } from '../../core/contactChoice';
 import type { Contact } from '../../core/entities';
 import { store } from '../../core/store';
 import { db } from '../../db';
+import ConfirmDialog from '../../shell/ConfirmDialog';
 import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
 import { NewContactBox } from '../../ui/ContactChoice';
@@ -27,6 +28,9 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Contact | null>(null);
+  // D20.1B (NC-04): the vendor whose Remove was pressed, by contact id, with the counts the question reports.
+  const [askRemove, setAskRemove] = useState<{ id: number; others: number; used: number } | null>(null);
+  const askContact = askRemove ? byId.get(askRemove.id) : undefined;
 
   async function run(fn: () => Promise<void>) {
     try { await fn(); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong.'); }
@@ -59,10 +63,10 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
                   <span className="pj-line-actions">
                     <button className="link" onClick={() => setEditing(c)}>Edit</button>
                     <button className="link danger" onClick={() => void run(async () => {
+                      // The two lookups the question needs are made first (read only); nothing is written until the dialog's own button is pressed.
                       const others = (await projectsUsingContact(c.id as number)).filter((p) => p.id !== projectId).length;
                       const used = await commitmentsWithVendor(projectId, c.id as number);
-                      if (!confirm(`Take ${c.name} off this project?${used ? ` They are still the vendor on ${used} commitment${used === 1 ? '' : 's'}, which keep${used === 1 ? 's' : ''} them.` : ''}${others ?` They stay on ${others} other project${others === 1 ? '' : 's'} and in your contacts.` : ' They stay in your contacts.'}`)) return;
-                      await removeVendor(projectId, c.id as number);
+                      setAskRemove({ id: c.id as number, others, used });
                     })}>Remove</button>
                   </span>
                 </>
@@ -96,6 +100,21 @@ export default function Vendors({ projectId, vendorIds }: { projectId: number; v
         <button type="button" className="btn pj-newvendor-btn" onClick={() => setCreating(true)}>Create a new vendor contact</button>
       )}
       {error && <div className="error" role="alert">{error}</div>}
+
+      {askRemove && askContact && vendorIds.includes(askRemove.id) && (
+        <ConfirmDialog
+          title="Take vendor off this project?"
+          confirmLabel="Take off project"
+          busyLabel="Removing…"
+          kind="linked"
+          onCancel={() => setAskRemove(null)}
+          onConfirm={async () => { await removeVendor(projectId, askRemove.id); setAskRemove(null); }}
+        >
+          <p><strong>{askContact.name}</strong></p>
+          {askRemove.used > 0 && <p>They are still the vendor on {askRemove.used} commitment{askRemove.used === 1 ? '' : 's'}, which keep{askRemove.used === 1 ? 's' : ''} them.</p>}
+          <p>{askRemove.others ? `They stay on ${askRemove.others} other project${askRemove.others === 1 ? '' : 's'} and in your contacts.` : 'They stay in your contacts.'}</p>
+        </ConfirmDialog>
+      )}
     </section>
   );
 }

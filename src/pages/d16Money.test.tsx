@@ -219,9 +219,9 @@ describe('D16 source guards: presentation only', () => {
     expect(read('src/pages/ScheduledPage.tsx')).toMatch(/dueInstances\(db, todayISO\(\), LOOKAHEAD_DAYS\)/);
     expect(read('src/pages/ScheduledPage.tsx')).toMatch(/postInstance\(db, rule, date/);
     expect(read('src/pages/ImportPage.tsx')).toMatch(/commitImport\(db, accountId, filename, rows/);
-    expect(read('src/pages/ImportPage.tsx')).toMatch(/undoBatch\(db, b\.id!\)/);
+    expect(read('src/pages/ImportPage.tsx')).toMatch(/undoBatch\(db, undoRow\.id!\)/); // D20.1B: the same engine call, now run from the confirmation dialog on the remembered batch id
     expect(read('src/pages/RulesPage.tsx')).toMatch(/applyRulesToExisting\(db\)/);
-    expect(read('src/pages/TransactionsPage.tsx')).toMatch(/bulkSetCategory\(db, selIds/);
+    expect(read('src/pages/TransactionsPage.tsx')).toMatch(/bulkSetCategory\(db, a\.ids/); // D20.1B: the same engine call, run from the dialog on the ids captured when Apply was pressed
   });
   it('the destructive and safeguard actions are all still on the pages', () => {
     const tx = read('src/pages/TransactionsPage.tsx');

@@ -7,6 +7,7 @@ import { db } from '../db';
 import type { Txn, TxnStatus } from '../types';
 import { formatCents, todayISO } from '../lib/money';
 import TxnDeleteDialog from './TxnDeleteDialog';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import {
   DEFAULT_SORT, EMPTY_FILTER, applyFilter, buildRows, presetRange, sortRows, toCsv, totals, visibleSelection,
   type DatePreset, type Sort, type SortKey, type TxnFilter,
@@ -66,6 +67,10 @@ export default function TransactionsPage() {
   /** The delete confirmation: one transaction, or the whole selection. */
   const [deleting, setDeleting] = useState<{ ids: number[]; subject: 'transaction' | 'selection' } | null>(null);
   const [bulkCat, setBulkCat] = useState('');
+  // D20.1B (NC-35, NC-36): the bulk category change, and the saved filter (by id), waiting for the dialog's own button.
+  const [askCat, setAskCat] = useState<{ ids: number[]; categoryId: number | null; label: string } | null>(null);
+  const [askFilter, setAskFilter] = useState<string | null>(null);
+  const askFilterRow = askFilter === null ? undefined : saved.find((x) => x.id === askFilter);
   const [bulkStatus, setBulkStatus] = useState('');
   const [saveName, setSaveName] = useState('');
   const [panel, setPanel] = useState(false);
@@ -119,13 +124,19 @@ export default function TransactionsPage() {
     if (kind === 'delete') {
       setDeleting({ ids: selIds, subject: 'selection' });
     } else if (kind === 'category') {
+      // NC-35: only remembers what was chosen (the rows by id, the category by id). Nothing is written until the dialog's own button is pressed.
       const label = bulkCat === 'none' ? 'Uncategorized' : categories.find((c) => String(c.id) === bulkCat)?.name ?? '';
-      if (!confirm(`Set the category to "${label}" on ${selIds.length} transaction(s)? Split transactions are replaced by this single category; transfers are skipped.`)) return;
-      const r = await bulkSetCategory(db, selIds, bulkCat === 'none' ? null : Number(bulkCat));
-      toast(`Updated ${r.updated} transaction${r.updated === 1 ? '' : 's'}.${r.skippedTransfers ? ` Skipped ${r.skippedTransfers} transfer(s).` : ''}${r.splitsCleared ? ` Replaced ${r.splitsCleared} split(s).` : ''}`);
-      setBulkCat('');
-      setSel(new Set());
+      setAskCat({ ids: selIds, categoryId: bulkCat === 'none' ? null : Number(bulkCat), label });
     }
+  }
+  /** NC-35, on confirm: the same bulk change as before. The category is checked again first, so a category deleted while the question was open cannot leave rows pointing at nothing. */
+  async function applyBulkCategory(a: { ids: number[]; categoryId: number | null }) {
+    if (a.categoryId !== null && !(await db.categories.get(a.categoryId))) throw new Error('That category no longer exists. Nothing was changed. Choose a category again.');
+    const r = await bulkSetCategory(db, a.ids, a.categoryId);
+    toast(`Updated ${r.updated} transaction${r.updated === 1 ? '' : 's'}.${r.skippedTransfers ? ` Skipped ${r.skippedTransfers} transfer(s).` : ''}${r.splitsCleared ? ` Replaced ${r.splitsCleared} split(s).` : ''}`);
+    setBulkCat('');
+    setSel(new Set());
+    setAskCat(null);
   }
 
   const accountOf = (t: Txn) => accounts.find((a) => a.id === t.accountId);
@@ -218,7 +229,7 @@ export default function TransactionsPage() {
             onClick={async () => { await saveFilter(db, saveName, filter, sort); toast(`Saved filter “${saveName.trim()}”.`); setSaveName(''); }}
           >Save current filter</button>
           {saved.length > 0 && (
-            <select aria-label="Delete a saved filter" value="" onChange={async (e) => { const f = saved.find((x) => x.id === e.target.value); if (f && confirm(`Delete saved filter "${f.name}"?`)) await deleteSavedFilter(db, f.id); }}>
+            <select aria-label="Delete a saved filter" value="" onChange={(e) => { const f = saved.find((x) => x.id === e.target.value); if (f) setAskFilter(f.id); }}>
               <option value="">Delete a saved filter…</option>
               {saved.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
@@ -269,6 +280,38 @@ export default function TransactionsPage() {
           </div>
           <BulkProject ids={selIds} txns={txns} onDone={() => setSel(new Set())} />
         </section>
+      )}
+
+      {askCat && (() => {
+        const rows = askCat.ids.map((id) => txns.find((t) => t.id === id)).filter((t): t is Txn => !!t);
+        const transfers = rows.filter((t) => t.transferTxnId).length;
+        const splits = rows.filter((t) => !t.transferTxnId && t.splits?.length).length;
+        return (
+          <ConfirmDialog
+            title="Change category?"
+            confirmLabel="Change category"
+            busyLabel="Changing…"
+            kind="replace"
+            onCancel={() => setAskCat(null)}
+            onConfirm={() => applyBulkCategory(askCat)}
+          >
+            <p>Set the category to <strong>{askCat.label}</strong> on {askCat.ids.length} selected transaction{askCat.ids.length === 1 ? '' : 's'}?</p>
+            <p>Split transactions are replaced by this single category{splits ? ` (${splits} selected ${splits === 1 ? 'is a split' : 'are splits'})` : ''}. Transfers are skipped{transfers ? ` (${transfers} selected ${transfers === 1 ? 'is a transfer' : 'are transfers'})` : ''}.</p>
+          </ConfirmDialog>
+        );
+      })()}
+
+      {askFilterRow && (
+        <ConfirmDialog
+          title="Delete saved filter?"
+          confirmLabel="Delete filter"
+          busyLabel="Deleting…"
+          onCancel={() => setAskFilter(null)}
+          onConfirm={async () => { await deleteSavedFilter(db, askFilterRow.id); setAskFilter(null); }}
+        >
+          <p><strong>{askFilterRow.name}</strong></p>
+          <p>This removes the saved filter from the list. Your transactions are not changed.</p>
+        </ConfirmDialog>
       )}
 
       {deleting && (

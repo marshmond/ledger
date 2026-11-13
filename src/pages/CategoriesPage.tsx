@@ -9,6 +9,8 @@ import { formatCents, todayISO } from '../lib/money';
 import { monthOf } from '../lib/dates';
 import { readCollapsed, writeCollapsed } from './Collapsible';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
+import { countCategoryUse, deleteCategoryUncategorizing } from '../lib/confirmedDeletes';
 import './money.css';
 
 type Drag = { kind: 'group' | 'cat' | 'target'; id: number };
@@ -26,6 +28,9 @@ export default function CategoriesPage() {
   const groups = sortByOrder(useLiveQuery(() => db.categoryGroups.toArray(), []) ?? []);
   const cats = useLiveQuery(() => db.categories.toArray(), []);
   const targets = useLiveQuery(() => db.budgetTargets.toArray(), []) ?? [];
+  // D20.1B (NC-10): the category whose delete was pressed (by id) and how many transactions used it when the question was shown.
+  const [askCat, setAskCat] = useState<{ id: number; used: number } | null>(null);
+  const askCatRow = askCat ? (cats ?? []).find((c) => c.id === askCat.id) : undefined;
   const [newGroup, setNewGroup] = useState('');
   const [newCat, setNewCat] = useState<Record<number, string>>({});
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -71,16 +76,14 @@ export default function CategoriesPage() {
 
   async function removeCategory(id: number) {
     if (id === SETUP_CATEGORY_ID) return;
-    const used = await db.txns.filter((t) => t.categoryId === id || !!t.splits?.some((s) => s.categoryId === id)).count();
-    if (used > 0 && !confirm(`${used} transaction(s) use this category. They will become uncategorized. Delete anyway?`)) return;
-    await db.transaction('rw', db.categories, db.txns, async () => {
-      await db.txns.filter((t) => t.categoryId === id).modify({ categoryId: null });
-      await db.txns.filter((t) => !!t.splits?.some((s) => s.categoryId === id)).modify((t) => {
-        t.splits = t.splits!.map((s) => (s.categoryId === id ? { ...s, categoryId: null } : s));
-      });
-      await db.categories.delete(id);
-    });
+    const used = await countUsing(id);
+    // NC-10 (D20.1B): a category in use waits for the dialog; one nothing uses is deleted at once, as before.
+    if (used > 0) { setAskCat({ id, used }); return; }
+    await deleteCategory(id);
   }
+  // Moved unchanged into lib/confirmedDeletes.ts so a test can drive them.
+  const countUsing = (id: number) => countCategoryUse(db, id);
+  const deleteCategory = (id: number) => deleteCategoryUncategorizing(db, id);
 
   async function removeGroup(id: number) {
     if (id === SETUP_GROUP_ID) return;
@@ -312,6 +315,28 @@ export default function CategoriesPage() {
           }}
         >Add group</button>
       </div>
+      {askCat && askCatRow && (
+        <ConfirmDialog
+          title="Delete category in use?"
+          confirmLabel="Delete category"
+          busyLabel="Deleting…"
+          kind="linked"
+          onCancel={() => setAskCat(null)}
+          onConfirm={async () => {
+            // Counted again now. If the number changed while the question was open, the dialog says so and asks again instead of deleting on an out-of-date count.
+            const now = await countUsing(askCat.id);
+            if (now !== askCat.used) {
+              setAskCat({ id: askCat.id, used: now });
+              return `The number of transactions using this category changed from ${askCat.used} to ${now}. Nothing was deleted. Check the new number and confirm again.`;
+            }
+            await deleteCategory(askCat.id);
+            setAskCat(null);
+          }}
+        >
+          <p><strong>{askCatRow.name}</strong></p>
+          <p>{askCat.used} transaction{askCat.used === 1 ? ' uses' : 's use'} this category (including any splits). {askCat.used === 1 ? 'It' : 'They'} will become uncategorized.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

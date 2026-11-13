@@ -3,7 +3,7 @@
  *  - Escape closes (and is not passed on to anything else).
  *  - Tab / Shift+Tab wrap inside the TOPMOST open dialog (the last `[aria-modal="true"]` on the page). A dialog with nothing focusable is left alone.
  *  - Focus moves into the dialog unless something inside already has it, and goes back to where it was when the dialog closes.
- * Limit: with two dialogs open, Escape is heard by both (each listens on the document), as before this change.
+ * With two dialogs open (D20.1B: a confirmation over another dialog), Escape is acted on only by the topmost one.
  */
 export interface KeyEventLike { key: string; shiftKey: boolean; stopPropagation(): void; preventDefault(): void }
 export interface FocusableLike { disabled?: boolean; focus(): void; getClientRects(): ArrayLike<unknown> }
@@ -25,6 +25,10 @@ export function attachModal(doc: DocLike, box: BoxLike | null, close: () => void
   const before = (opener ?? doc.activeElement) as { focus?: () => void } | null;
   const onKey = (e: KeyEventLike) => {
     if (e.key === 'Escape') {
+      // D20.1B: with a confirmation open over another dialog (the Tasks lists, an edit form), only the TOPMOST one reacts, so Escape cancels the question and leaves the dialog under it open.
+      // With no way to tell (no box, or no open dialog found) it behaves as before.
+      const open = box ? doc.querySelectorAll('[aria-modal="true"]') : [];
+      if (box && open.length > 1 && open[open.length - 1] !== box) return;
       e.stopPropagation();
       close();
     }

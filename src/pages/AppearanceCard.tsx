@@ -60,6 +60,8 @@ export default function AppearanceCard() {
   const [msg, setMsg] = useState('');
   // D20.1A: the saved theme whose "delete" was pressed, by id. Nothing is changed until the dialog's own Delete theme button is pressed.
   const [askDelete, setAskDelete] = useState<string | null>(null);
+  // D20.1B (NC-08): the palette chosen under "Start over from", held until the dialog's own Replace colors button is pressed. The select (and the colors) are not touched before that.
+  const [askBase, setAskBase] = useState<PaletteId | null>(null);
 
   const set = (c: PaletteChoice) => {
     setChoiceState(c);
@@ -210,7 +212,7 @@ export default function AppearanceCard() {
               <button className={editing === 'dark' ? 'on' : ''} aria-pressed={editing === 'dark'} onClick={() => setEditing('dark')}>Dark mode</button>
             </div>
             <label className="row">Start over from
-              <select value={base} onChange={(e) => { const id = e.target.value as PaletteId; setBase(id); if (confirm(`Replace your colors with ${NAMES[id]}? Your saved themes are not affected.`)) startCustom(id); }}>
+              <select value={base} onChange={(e) => setAskBase(e.target.value as PaletteId)}>
                 {(['classic', ...PRESETS.map((p) => p.id)] as PaletteId[]).map((id) => <option key={id} value={id}>{label(id)}</option>)}
               </select>
             </label>
@@ -250,6 +252,22 @@ export default function AppearanceCard() {
             </div>
           </div>
         </SettingsSection>
+      )}
+
+      {askBase && (
+        <ConfirmDialog
+          title="Replace your colors?"
+          confirmLabel="Replace colors"
+          busyLabel="Replacing…"
+          tone="primary"
+          kind="replace"
+          onCancel={() => setAskBase(null)}
+          // The select keeps showing the palette you were on until this button is pressed, so cancelling leaves both the colors and the label as they were.
+          onConfirm={() => { setBase(askBase); startCustom(askBase); setAskBase(null); }}
+        >
+          <p>Replace your colors with <strong>{NAMES[askBase]}</strong>?</p>
+          <p>Your saved themes are not affected.{active && changed ? ` Changes you made to “${active.name}” that are not saved yet are lost.` : ''}</p>
+        </ConfirmDialog>
       )}
 
       {target && (

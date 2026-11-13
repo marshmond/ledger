@@ -6,6 +6,7 @@ import type { InvAccount, Person, RsuGrant, RsuVest, Security, VestFrequency } f
 import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { resolveVest } from '../lib/rsu';
 import { inScope } from './incomeOwners';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import {
   FREQUENCY_LABELS, deleteGrant, fillEvenly, grantProblem, refreshSecurityPrice, saveGrant, scheduleChange, securityForTicker, setVestShares, vestDates,
 } from '../lib/rsuGrant';
@@ -39,6 +40,7 @@ function CommitBox({ value, label, width, placeholder, onCommit }: { value: stri
 function Worksheet({ grant, vests, security }: { grant: RsuGrant; vests: RsuVest[]; security?: Security }) {
   const [total, setTotal] = useState('');
   const [msg, setMsg] = useState('');
+  const [askFill, setAskFill] = useState<number | null>(null); // the total shares to split, waiting for the dialog's own button
   const dates = vestDates(grant);
   const byDate = new Map(vests.filter((v) => v.grantId === grant.id).map((v) => [v.date, v]));
   const today = todayISO();
@@ -50,7 +52,11 @@ function Worksheet({ grant, vests, security }: { grant: RsuGrant; vests: RsuVest
   async function fill() {
     const t = Number(total);
     if (!(t > 0)) return setMsg('Enter the total number of shares to split');
-    if (entered.length > 0 && !confirm(`Replace the ${entered.length} vest${entered.length === 1 ? '' : 's'} already entered with an even split of ${t} shares?`)) return;
+    // NC-29 (D20.1B): when vests are already entered, ask first (the dialog's own button runs the split); with none entered it runs at once, as before.
+    if (entered.length > 0) { setAskFill(t); return; }
+    await doFill(t);
+  }
+  async function doFill(t: number) {
     await fillEvenly(db, grant, t);
     setMsg(`Split ${t} shares over ${dates.length} vests`);
     setTotal('');
@@ -122,6 +128,21 @@ function Worksheet({ grant, vests, security }: { grant: RsuGrant; vests: RsuVest
         </table>
       </div>
       {grant.cliffMonths ? <p className="muted">With a {grant.cliffMonths}-month cliff, the first vest usually covers everything earned up to that date, so it is often larger than the ones after it.</p> : null}
+      {askFill !== null && (
+        <ConfirmDialog
+          title="Replace entered vests?"
+          confirmLabel="Fill evenly"
+          busyLabel="Filling…"
+          tone="primary"
+          kind="replace"
+          onCancel={() => setAskFill(null)}
+          // The one existing operation, run once. The count shown is the live one, so it is what is stored when the button is pressed.
+          onConfirm={async () => { await doFill(askFill); setAskFill(null); }}
+        >
+          <p>Replace the {entered.length} vest{entered.length === 1 ? '' : 's'} already entered for <strong>{grant.name}</strong> with an even split of {askFill} shares over {dates.length} vest dates?</p>
+          <p>Shares you typed on individual vests are overwritten. Vests whose shares were already added to holdings are kept.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
@@ -148,6 +169,11 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
   const [adding, setAdding] = useState(false);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  // D20.1B (NC-30, NC-31): the grant save that would drop vests (the grant, the resolved stock, the vests by id), and the grant whose "delete" was pressed (by id).
+  // Nothing is saved or deleted until the dialog's own button is pressed.
+  const [askSave, setAskSave] = useState<{ full: RsuGrant; security: Security | undefined; goneIds: number[] } | null>(null);
+  const [askDelete, setAskDelete] = useState<number | null>(null);
+  const askDeleteGrant = askDelete === null ? undefined : allGrants.find((x) => x.id === askDelete);
 
   const set = (patch: Partial<RsuGrant>) => setDraft((d) => ({ ...d, ...patch }));
   const brokerage = invAccounts.filter((a) => !a.closed && a.kind === 'brokerage');
@@ -187,24 +213,45 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
     if (problem) return setMsg(problem);
     const full = { ...g, ...(editing ? { id: editing } : {}) } as RsuGrant;
     if (editing) {
+      // NC-30 (D20.1B): validated first, then the vests this schedule would drop are listed and the question is asked. Nothing is saved until the dialog's own button is pressed.
       const gone = scheduleChange(full, vests).orphaned.filter((v) => !v.recorded);
-      if (gone.length > 0 && !confirm(`This schedule drops ${gone.length} vest${gone.length === 1 ? '' : 's'} that no longer fall on a vest date (${gone.slice(0, 3).map((v) => `${v.date}: ${v.shares} sh`).join(', ')}${gone.length > 3 ? ', …' : ''}). Continue?`)) return;
+      if (gone.length > 0) { setAskSave({ full, security, goneIds: gone.map((v) => v.id!) }); return; }
     }
+    await commitSave(full, security);
+  }
+  /** The save itself (unchanged): the grant, its vests that no longer fit, then the optional price lookup. */
+  async function commitSave(full: RsuGrant, security: Security | undefined) {
     setBusy(true);
-    const id = await saveGrant(db, full);
-    let note = 'Saved';
-    if (security && security.priceCents == null) {
-      const r = await refreshSecurityPrice(db, security);
-      note = r.ok ? `Saved. ${r.message}` : `Saved. ${r.message}`;
+    try {
+      const id = await saveGrant(db, full);
+      let note = 'Saved';
+      if (security && security.priceCents == null) {
+        const r = await refreshSecurityPrice(db, security);
+        note = r.ok ? `Saved. ${r.message}` : `Saved. ${r.message}`;
+      }
+      setMsg(note);
+      setOpen(id);
+      setEditing(null);
+      setAdding(false);
+      setDraft(blank(startPerson));
+      setTicker('');
+      setPriceText('');
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
-    setMsg(note);
-    setOpen(id);
-    setEditing(null);
-    setAdding(false);
-    setDraft(blank(startPerson));
-    setTicker('');
-    setPriceText('');
+  }
+  /** NC-30, on confirm: the grant and its vests are read again; if what would be dropped is no longer the list that was shown, nothing is saved and the dialog says so. */
+  async function confirmSave(a: { full: RsuGrant; security: Security | undefined; goneIds: number[] }) {
+    if (!(await db.rsuGrants.get(a.full.id!))) throw new Error('This grant no longer exists. Nothing was saved.');
+    const fresh = await db.rsuVests.where('grantId').equals(a.full.id!).toArray();
+    const now = scheduleChange(a.full, fresh).orphaned.filter((v) => !v.recorded).map((v) => v.id!).sort((x, y) => x - y);
+    const shown = [...a.goneIds].sort((x, y) => x - y);
+    if (now.length !== shown.length || now.some((x, i) => x !== shown[i])) {
+      setAskSave({ ...a, goneIds: now });
+      return `The vests this schedule would drop changed while the question was open (now ${now.length}). Nothing was saved. Check the list and confirm again.`;
+    }
+    await commitSave(a.full, a.security);
+    setAskSave(null);
   }
 
   const dateCount = draft.startDate && draft.frequency && Number(draft.years) >= 1 ? vestDates({ startDate: draft.startDate, frequency: draft.frequency, years: Number(draft.years), cliffMonths: draft.cliffMonths }).length : 0;
@@ -315,18 +362,50 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
                   <button className="link" onClick={async () => { const r = await refreshSecurityPrice(db, sec); setMsg(r.ok ? `Saved. ${r.message}` : r.message); }}>refresh price</button>
                 )}
                 <button className="link" onClick={() => startEdit(g)}>edit</button>
-                <button className="link danger" onClick={async () => {
-                  const held = mine.filter((v) => v.recorded).length;
-                  if (!confirm(`Delete “${g.name}” and its ${mine.length - held} vest${mine.length - held === 1 ? '' : 's'}?${held ? ` ${held} vest${held === 1 ? ' that was' : 's that were'} already added to holdings will stay as single vests.` : ''}`)) return;
-                  await deleteGrant(db, g.id!);
-                  setMsg('Saved. Grant deleted');
-                }}>delete</button>
+                <button className="link danger" aria-label={`Delete grant ${g.name}`} onClick={() => setAskDelete(g.id!)}>delete</button>
               </div>
             </div>
             {shown && <Worksheet grant={g} vests={vests} security={sec} />}
           </div>
         );
       })}
+      {askSave && (() => {
+        const dropped = vests.filter((v) => askSave.goneIds.includes(v.id!)).sort((x, y) => x.date.localeCompare(y.date));
+        return (
+          <ConfirmDialog
+            title="Replace vest schedule?"
+            confirmLabel="Save and drop vests"
+            busyLabel="Saving…"
+            kind="replace"
+            onCancel={() => setAskSave(null)}
+            onConfirm={() => confirmSave(askSave)}
+          >
+            <p>Saving <strong>{askSave.full.name}</strong> with this schedule drops {askSave.goneIds.length} vest{askSave.goneIds.length === 1 ? '' : 's'} that no longer fall on a vest date.</p>
+            <ul className="plain">
+              {dropped.slice(0, 8).map((v) => <li key={v.id} className="small">{v.date}: {v.shares} share{v.shares === 1 ? '' : 's'}</li>)}
+              {dropped.length > 8 && <li className="muted small">…and {dropped.length - 8} more</li>}
+            </ul>
+            <p>Vests whose shares were already added to holdings are kept and are not part of this count.</p>
+          </ConfirmDialog>
+        );
+      })()}
+      {askDeleteGrant && (() => {
+        const mine = vests.filter((v) => v.grantId === askDeleteGrant.id);
+        const held = mine.filter((v) => v.recorded).length;
+        return (
+          <ConfirmDialog
+            title="Delete grant?"
+            confirmLabel="Delete grant"
+            busyLabel="Deleting…"
+            kind="irreversible"
+            onCancel={() => setAskDelete(null)}
+            onConfirm={async () => { await deleteGrant(db, askDeleteGrant.id!); setMsg('Saved. Grant deleted'); setAskDelete(null); }}
+          >
+            <p><strong>{askDeleteGrant.name}</strong></p>
+            <p>This deletes the grant and its {mine.length - held} vest{mine.length - held === 1 ? '' : 's'}.{held ? ` ${held} vest${held === 1 ? ' that was' : 's that were'} already added to holdings will stay as single vests.` : ''}</p>
+          </ConfirmDialog>
+        );
+      })()}
     </div>
   );
 }

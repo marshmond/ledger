@@ -8,11 +8,12 @@ import { useMediaQuery } from '../../ui/useMediaQuery';
 import { PageHeader, EmptyState } from '../../ui/components';
 import { Icon } from '../../ui/icons';
 import Modal from '../../shell/Modal';
+import ConfirmDialog from '../../shell/ConfirmDialog';
 import { useToast } from '../../ui/Toast';
 import { projectLabel, selectableProjects, useProjectChoices } from '../../core/projectLink';
 import { dayLabel } from '../../core/time';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
-import { assignTasksToProject, completeTask, loadDeletedTasks, loadLists, loadTasks, planTaskProject, removeTasks, reopenTask, restoreTaskData, restoreTasks, saveTask, updateTasks } from './data';
+import { assignTasksToProject, completeTask, loadDeletedTasks, loadLists, loadTasks, planTaskProject, removeTasks, reopenTask, restoreTaskData, restoreTasks, saveTask, updateTasks, type ProjectAssignPlan } from './data';
 import ListsDialog from './ListsDialog';
 import { QuickAddBar } from './QuickTask';
 import TaskEditor from './TaskEditor';
@@ -131,20 +132,32 @@ export default function TasksPage() {
       const where = target === null ? 'no project' : projectLabel(projects, target);
       if (plan.missing) { toast(`${plan.missing} of the selected tasks no longer exist. Nothing was changed.`); return; }
       if (plan.unchanged === plan.total) { toast(target === null ? 'None of those tasks are on a project.' : `All of those tasks are already on ${where}.`); return; }
-      if (plan.replacing > 0) {
-        const from = plan.replacedFrom.map((id) => projectLabel(projects, id)).join(', ');
-        const ms = plan.milestonesLeaving ? ` ${plan.milestonesLeaving} milestone${plan.milestonesLeaving === 1 ? '' : 's'} will become ordinary task${plan.milestonesLeaving === 1 ? '' : 's'}.` : '';
-        const msg = target === null
-          ? `Take ${plan.replacing} task${plan.replacing === 1 ? '' : 's'} off ${from || 'their project'}?${ms}`
-          : `${plan.replacing} of the ${plan.total} selected task${plan.total === 1 ? ' is' : 's are'} on ${from}. Move ${plan.replacing === 1 ? 'it' : 'them'} to ${where}?${plan.adding ? ` ${plan.adding} more will be added to it.` : ''}`;
-        if (!confirm(msg)) return;
-      }
-      const { changed, before } = await assignTasksToProject(ids, target);
-      toast(`${target === null ? 'Taken off their projects' : `On ${where}`}: ${changed} task${changed === 1 ? '' : 's'}${plan.unchanged ? ` (${plan.unchanged} already there)` : ''}`, async () => { await restoreTaskData(before); });
-      setSelected(new Set());
+      // NC-06 (D20.1B): the plan is worked out first (read only). Only when it would replace a project does a dialog ask; nothing is written until the dialog's own button is pressed.
+      if (plan.replacing > 0) { setAskMove({ ids, target, plan }); return; }
+      await runMove(ids, target, plan);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Could not change the project. Nothing was changed.');
     }
+  };
+  /** The assignment itself (unchanged): one all-or-nothing write, with its Undo. */
+  const runMove = async (ids: number[], target: number | null, plan: ProjectAssignPlan) => {
+    const where = target === null ? 'no project' : projectLabel(projects, target);
+    const { changed, before } = await assignTasksToProject(ids, target);
+    toast(`${target === null ? 'Taken off their projects' : `On ${where}`}: ${changed} task${changed === 1 ? '' : 's'}${plan.unchanged ? ` (${plan.unchanged} already there)` : ''}`, async () => { await restoreTaskData(before); });
+    setSelected(new Set());
+  };
+  /** NC-06, on confirm: the plan is worked out again. If it is no longer what the dialog described, nothing is written and the dialog says so. */
+  const confirmMove = async (a: { ids: number[]; target: number | null; plan: ProjectAssignPlan }) => {
+    const now = await planTaskProject(a.ids, a.target);
+    if (now.missing) throw new Error(`${now.missing} of the selected tasks no longer exist. Nothing was changed.`);
+    if (now.replacing === 0) throw new Error('None of those tasks would replace a project any more. Nothing was changed.');
+    const same = (x: ProjectAssignPlan, y: ProjectAssignPlan) => x.total === y.total && x.unchanged === y.unchanged && x.adding === y.adding && x.replacing === y.replacing && x.milestonesLeaving === y.milestonesLeaving && [...x.replacedFrom].sort().join() === [...y.replacedFrom].sort().join();
+    if (!same(now, a.plan)) {
+      setAskMove({ ...a, plan: now });
+      return 'The selected tasks changed while the question was open. Nothing was changed. Check the updated numbers and confirm again.';
+    }
+    await runMove(a.ids, a.target, now);
+    setAskMove(null);
   };
   const bulkComplete = async () => {
     const ids = picked().filter(isOpen).map((t) => t.id);
@@ -159,6 +172,8 @@ export default function TasksPage() {
     setSelected(new Set());
   };
   const [moveTo, setMoveTo] = useState('');
+  // NC-06: the project move waiting for the dialog's own button (task ids, target project id or null, and the plan the dialog describes).
+  const [askMove, setAskMove] = useState<{ ids: number[]; target: number | null; plan: ProjectAssignPlan } | null>(null);
 
   if (!tasks) return <p className="muted">Loading…</p>;
   const f = (patch: Partial<Filter>) => {
@@ -285,6 +300,28 @@ export default function TasksPage() {
 
       {editing && <TaskEditor key={editing.id} task={editing} onClose={() => setEditing(null)} />}
       {manageLists && <ListsDialog lists={lists} counts={listCounts} onClose={() => setManageLists(false)} />}
+      {askMove && (() => {
+        const { plan, target } = askMove;
+        const where = target === null ? 'no project' : projectLabel(projects, target);
+        const from = plan.replacedFrom.map((id) => projectLabel(projects, id)).join(', ');
+        return (
+          <ConfirmDialog
+            title={target === null ? 'Take tasks off their project?' : 'Move tasks to another project?'}
+            confirmLabel={target === null ? 'Take off project' : `Move to ${where}`}
+            busyLabel="Moving…"
+            tone="primary"
+            kind="linked"
+            onCancel={() => setAskMove(null)}
+            onConfirm={() => confirmMove(askMove)}
+          >
+            {target === null
+              ? <p>Take {plan.replacing} task{plan.replacing === 1 ? '' : 's'} off {from || 'their project'}?</p>
+              : <p>{plan.replacing} of the {plan.total} selected task{plan.total === 1 ? ' is' : 's are'} on {from}. Move {plan.replacing === 1 ? 'it' : 'them'} to {where}?{plan.adding ? ` ${plan.adding} more will be added to it.` : ''}</p>}
+            {plan.milestonesLeaving > 0 && <p>{plan.milestonesLeaving} milestone{plan.milestonesLeaving === 1 ? '' : 's'} will become ordinary task{plan.milestonesLeaving === 1 ? '' : 's'}.</p>}
+            <p className="muted small">You can undo this from the message that appears afterwards.</p>
+          </ConfirmDialog>
+        );
+      })()}
     </div>
   );
 }

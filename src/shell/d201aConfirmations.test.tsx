@@ -45,29 +45,30 @@ describe('D20.1A inventory of native confirmations', () => {
     expect([count('A'), count('B'), count('C'), count('D')]).toEqual([5, 12, 14, 7]);
     for (const r of rows) expect(['A', 'B', 'C', 'D'], r[0]).toContain(r[5]);
   });
-  it('marks as migrated exactly the five D20.1A candidates, and only those', () => {
-    const done = rows.filter((r) => r[6].includes('Migrated')).map((r) => r[0]);
+  it('marks the five D20.1A candidates as migrated in D20.1A, and every other row as migrated in D20.1B (updated for D20.1B)', () => {
+    const done = rows.filter((r) => r[6].includes('D20.1A')).map((r) => r[0]);
     expect(done).toEqual(['NC-07', 'NC-11', 'NC-12', 'NC-13', 'NC-28']);
     for (const id of done) expect(byId.get(id)![5]).toBe('A');
     for (const r of rows.filter((x) => x[5] === 'A')) expect(r[6]).toContain('Migrated');
+    for (const r of rows) expect(r[6], r[0]).toContain('Migrated');
   });
-  it('the actual native count in the source equals the number of rows not yet migrated (33), and the unmigrated files match', () => {
+  it('the actual native count in the source equals the number of rows not yet migrated, and the unmigrated files match (updated for D20.1B: zero and zero)', () => {
     const calls = nativeCalls();
     const open = rows.filter((r) => !r[6].includes('Migrated'));
     expect(calls).toHaveLength(open.length);
-    expect(calls).toHaveLength(33);
+    expect(calls).toHaveLength(0);
     const filesInInventory = open.map((r) => `src/${r[1].replace(/`/g, '').replace(/:\d+$/, '')}`).sort();
     expect(calls.sort()).toEqual(filesInInventory);
   });
-  it('keeps the historical tracker metric separate: the rule is unchanged, its baseline is still the D4 37, and it now measures 32', () => {
+  it('keeps the historical tracker metric separate: the rule is unchanged, its baseline is still the D4 37, and it now measures 0 (updated for D20.1B)', () => {
     const m = measure();
     expect(BASELINE.nativeConfirm).toBe(37);
     expect(BASELINE.nativeConfirmFiles).toBe(24);
-    expect(m.nativeConfirm).toBe(32);
-    expect(m.nativeConfirmFiles).toBe(20);
+    expect(m.nativeConfirm).toBe(0);
+    expect(m.nativeConfirmFiles).toBe(0);
     expect(readFileSync('src/shell/uiBaseline.ts', 'utf8')).toContain('/(^|[^A-Za-z.])confirm\\(\\s*[`\'"]/g');
-    // the one call the historical rule cannot see (a variable instead of a quote) is still counted by the actual rule
-    expect(nativeCalls().filter((f) => f.endsWith('modules/tasks/TasksPage.tsx'))).toHaveLength(1);
+    // the one call the historical rule could not see (a variable instead of a quote) is gone too
+    expect(nativeCalls().filter((f) => f.endsWith('modules/tasks/TasksPage.tsx'))).toHaveLength(0);
   });
   it('does not count the five local functions named confirm', () => {
     const calls = nativeCalls();
@@ -84,12 +85,11 @@ describe('D20.1A: the five callers no longer use the browser box for these actio
   it('has no native confirm left in the gift, goal, policy and saved-view files', () => {
     for (const f of [FILES.gift, FILES.goal, FILES.policy, FILES.view]) expect(src(f).match(NATIVE), f).toBeNull();
   });
-  it('keeps exactly one native confirm in AppearanceCard.tsx: the separate "Replace your colors" select (NC-08, a later batch), not the saved-theme delete', () => {
+  it('has no native confirm left in AppearanceCard.tsx either (updated for D20.1B: the "Replace your colors" select, NC-08, is now a dialog too), and the saved-theme delete text is gone', () => {
     const t = src(FILES.theme);
-    expect(t.match(NATIVE)).toHaveLength(1);
-    expect(t).toContain('Replace your colors with');
+    expect(t.match(NATIVE)).toBeNull();
     expect(t).not.toContain('Delete the theme');
-    expect(t).toMatch(/onChange=\{\(e\) => \{ const id = e\.target\.value as PaletteId; setBase\(id\); if \(confirm\(/);
+    expect(t).not.toMatch(/if \(confirm\(/);
   });
   it('every delete button now only records WHICH item (by id) and changes nothing; cancel only clears that', () => {
     expect(src(FILES.gift)).toContain('onClick={() => setAskGift(d.id!)}');
@@ -310,11 +310,12 @@ describe('D20.1A: the confirm button runs the existing operation once and never 
 });
 
 describe('D20.1A: documents and tracker are honest about what is done', () => {
-  it('records OD-6 as approved and CF-03 as partially migrated, not complete, and D21 as not started', () => {
+  it('records OD-6 as approved and CF-03 as migrated but not accepted, and D21 as not started (updated for D20.1B)', () => {
     const tracker = doc('UI-COVERAGE.md');
     expect(INVENTORY).toContain('OD-6: Owner approved option (a), replacement of all 38 native confirmations, in controlled batches with high-risk workflows last.');
     const cf03 = tracker.split('\n').find((l) => l.startsWith('| CF-03 |'))!;
-    expect(cf03).toMatch(/PARTIALLY MIGRATED/);
+    // updated for D20.1B: all 38 are migrated, so the row now reads built and pending owner acceptance (never accepted here)
+    expect(cf03).toMatch(/MIGRATED/);
     expect(cf03).toContain(`${BASELINE.nativeConfirm} in ${BASELINE.nativeConfirmFiles} files`);
     expect(cf03).toMatch(/\| NS \|$|\| BLT \|$/);
     expect(doc('LEDGER-SIGNATURE-D20.1A-REPORT.md')).toMatch(/D21[^.]*not started/i);

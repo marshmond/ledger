@@ -1,16 +1,17 @@
 # Ledger Signature D20.1: OD-6 inventory of every browser-native confirmation
 
-Date: 2026-11-13. Source baseline: `ff39a9a` (the D20 core release; Actions run #111 and the `github-pages` deployment succeeded for it).
+Date: 2026-11-13. Source baseline: `ff39a9a` (the D20 core release; Actions run #111 and the `github-pages` deployment succeeded for it). D20.1A baseline: `e24407b` (run #112 and the `github-pages` deployment succeeded).
 **OD-6: Owner approved option (a), replacement of all 38 native confirmations, in controlled batches with high-risk workflows last.**
-This file is the living inventory for D20.1A to D20.1D. A test (`src/shell/d201aConfirmations.test.tsx`) reads it and checks it against the source, so it cannot drift silently.
+**State after D20.1B (built and tested locally, uncommitted, pending owner acceptance): 38 original, 5 converted in D20.1A, 33 converted in D20.1B, 0 browser-native `confirm()` calls remain. No exceptions: every original call was converted.**
+This file is the living inventory for D20.1A and D20.1B. Two tests (`src/shell/d201aConfirmations.test.tsx` and `src/shell/d201bConfirmations.test.tsx`) read it and check it against the source, so it cannot drift silently.
 
 ## 1. The count, honestly
 
-| Measure | Value at `ff39a9a` | Value now (after D20.1A) | Where it comes from |
-|---|---:|---:|---|
-| **Historical tracker metric** (`measure()` in `src/shell/uiBaseline.ts`: `confirm(` followed by a quote) | 37 in 24 files | 32 in 20 files | Unchanged rule. Baseline stays 37 / 24 (the D4 baseline); the residue report prints "down". |
-| **Actual browser-native `confirm()` calls** (this inventory) | **38** | **33** | Recounted by hand and by a broader pattern (any `confirm(` that is not a member call and not a local `function confirm`). |
-| Difference | 1 | 1 | `confirm(msg)` in `TasksPage.tsx` passes a variable, so the tracker's pattern (a quote right after the bracket) cannot see it. NC-06 below. |
+| Measure | Value at `ff39a9a` | After D20.1A (`e24407b`) | Now (after D20.1B) | Where it comes from |
+|---|---:|---:|---:|---|
+| **Historical tracker metric** (`measure()` in `src/shell/uiBaseline.ts`: `confirm(` followed by a quote) | 37 in 24 files | 32 in 20 files | **0 in 0 files** | Unchanged rule. Baseline stays 37 / 24 (the D4 baseline); the residue report prints "down". |
+| **Actual browser-native `confirm()` calls** (this inventory) | **38** | **33** | **0** | Recounted by hand and by a broader pattern (any `confirm(` that is not a member call and not a local `function confirm`). |
+| Difference | 1 | 1 | 0 | `confirm(msg)` in `TasksPage.tsx` passed a variable, so the tracker's pattern (a quote right after the bracket) could not see it. NC-06 below. |
 
 Not counted, on purpose: five **local functions named `confirm`** (`LifecycleDialog.tsx`, `PaymentUI.tsx` and `ScheduledUI.tsx` x3, `RemoveContact.tsx`) are ordinary handlers behind Ledger's own buttons, not browser boxes; they are listed in section 5 so nobody converts them by mistake. Native `alert()` calls (`CategoriesPage.tsx:87`, `bills/quickAddDef.ts`, `services/quickAddDef.ts`) are outside OD-6 and were not touched.
 
@@ -18,52 +19,52 @@ The tracker rule was **not** changed (changing a measurement definition to flatt
 
 ## 2. How to read the tables
 
-IDs `NC-01` to `NC-38` are stable (sorted by file, then line at `ff39a9a`; the line is where the call was **before** D20.1A). Risk: Low (one leaf record, one write), Medium (one record with side effects, or several records through an existing helper), High (cascade, money, several tables, or a decision inside a computation). **Batch** is the proposed release group: A (done in this batch), B (moderate), C (financial and multi-record), D (complex interaction or save order). Status: `Migrated (D20.1A)` or `Native, not started`.
+IDs `NC-01` to `NC-38` are stable (sorted by file, then line at `ff39a9a`; the line is where the call was **before** D20.1A). Risk: Low (one leaf record, one write), Medium (one record with side effects, or several records through an existing helper), High (cascade, money, several tables, or a decision inside a computation). **Batch** is the proposed release group: A (done in this batch), B (moderate), C (financial and multi-record), D (complex interaction or save order). Status: `Migrated (D20.1A)` or `Migrated (D20.1B)` (earlier statuses were `Native, not started`). The "batch" column is the original proposal; D20.1B did batches B, C and D in one cycle.
 
 ## 3. Identification, risk, batch and status
 
 | ID | Source (line at `ff39a9a`) | Action | Native message (abridged) | Risk | Batch | Status |
 |---|---|---|---|---|---|---|
-| NC-01 | `modules/projects/BudgetLines.tsx:72` | Remove a budget line | Remove the budget line "{name}"? | Medium | B | Native, not started |
-| NC-02 | `modules/projects/Commitments.tsx:44` | Remove a commitment | Remove "{title}"? If anything is paid on it, cancel it instead. | Medium | B | Native, not started |
-| NC-03 | `modules/projects/Commitments.tsx:161` | Cancel an agreement | Cancel "{title}"? It stays on the project and anything paid stays in the totals... | Medium | B | Native, not started |
-| NC-04 | `modules/projects/Vendors.tsx:64` | Take a vendor off a project | Take {name} off this project? (adds how many commitments and other projects use them) | Medium | B | Native, not started |
-| NC-05 | `modules/tasks/ListsDialog.tsx:20` | Delete a Tasks list | Delete the list "{name}"? Its tasks are kept and will have no list. | Medium | B | Native, not started |
-| NC-06 | `modules/tasks/TasksPage.tsx:140` | Bulk move or clear the project on selected tasks | Computed text (`confirm(msg)`): how many tasks move off which project, milestones becoming ordinary tasks | High | D | Native, not started |
+| NC-01 | `modules/projects/BudgetLines.tsx:72` | Remove a budget line | Remove the budget line "{name}"? | Medium | B | **Migrated (D20.1B)** |
+| NC-02 | `modules/projects/Commitments.tsx:44` | Remove a commitment | Remove "{title}"? If anything is paid on it, cancel it instead. | Medium | B | **Migrated (D20.1B)** |
+| NC-03 | `modules/projects/Commitments.tsx:161` | Cancel an agreement | Cancel "{title}"? It stays on the project and anything paid stays in the totals... | Medium | B | **Migrated (D20.1B)** |
+| NC-04 | `modules/projects/Vendors.tsx:64` | Take a vendor off a project | Take {name} off this project? (adds how many commitments and other projects use them) | Medium | B | **Migrated (D20.1B)** |
+| NC-05 | `modules/tasks/ListsDialog.tsx:20` | Delete a Tasks list | Delete the list "{name}"? Its tasks are kept and will have no list. | Medium | B | **Migrated (D20.1B)** |
+| NC-06 | `modules/tasks/TasksPage.tsx:140` | Bulk move or clear the project on selected tasks | Computed text (`confirm(msg)`): how many tasks move off which project, milestones becoming ordinary tasks | High | D | **Migrated (D20.1B)** |
 | NC-07 | `pages/AppearanceCard.tsx:190` | Delete a saved theme | Delete the theme "{name}"? The colors stay on until you pick something else. | Low | A | **Migrated (D20.1A)** |
-| NC-08 | `pages/AppearanceCard.tsx:208` | "Start over from" a palette (replace your colors) | Replace your colors with {palette}? Your saved themes are not affected. | Medium | D | Native, not started |
-| NC-09 | `pages/BulkProject.tsx:82` | Remove the project tag from selected transactions | Remove the project tag from {n} selected transaction(s)? Tags on individual splits stay. | Medium | C | Native, not started |
-| NC-10 | `pages/CategoriesPage.tsx:75` | Delete a category that transactions use | {n} transaction(s) use this category. They will become uncategorized. Delete anyway? | High | C | Native, not started |
+| NC-08 | `pages/AppearanceCard.tsx:208` | "Start over from" a palette (replace your colors) | Replace your colors with {palette}? Your saved themes are not affected. | Medium | D | **Migrated (D20.1B)** |
+| NC-09 | `pages/BulkProject.tsx:82` | Remove the project tag from selected transactions | Remove the project tag from {n} selected transaction(s)? Tags on individual splits stay. | Medium | C | **Migrated (D20.1B)** |
+| NC-10 | `pages/CategoriesPage.tsx:75` | Delete a category that transactions use | {n} transaction(s) use this category. They will become uncategorized. Delete anyway? | High | C | **Migrated (D20.1B)** |
 | NC-11 | `pages/FlowViews.tsx:64` | Delete a saved flow view | Delete the view "{name}"? | Low | A | **Migrated (D20.1A)** |
 | NC-12 | `pages/GivingPage.tsx:134` | Delete a charitable gift | Delete this gift? | Low | A | **Migrated (D20.1A)** |
 | NC-13 | `pages/GoalsPage.tsx:44` | Delete a goal | Delete "{name}"? | Low | A | **Migrated (D20.1A)** |
-| NC-14 | `pages/HsaLog.tsx:34` | Delete an HSA withdrawal | Delete this withdrawal? | High | C | Native, not started |
-| NC-15 | `pages/ImportPage.tsx:211` | Undo a CSV import | Undo this import? | High | C | Native, not started |
-| NC-16 | `pages/IncomePage.tsx:247` | Replace a year's income setup with last year's | Replace {name}'s {year} setup with {year-1}'s? | High | C | Native, not started |
-| NC-17 | `pages/IncomePage.tsx:248` | Remove a year's income setup | Remove {name}'s {year} income setup? | High | C | Native, not started |
-| NC-18 | `pages/InvestmentsPage.tsx:193` | Remove a holding | Remove {ticker} from {account}? (To record a sale, use sell instead.) | High | C | Native, not started |
-| NC-19 | `pages/InvestmentsPage.tsx:214` | Delete an investment account and its holdings | Delete {account} and its {n} holding(s)? | High | C | Native, not started |
-| NC-20 | `pages/LoanCard.tsx:206` | Delete a loan | Delete "{name}" and its rate changes and extra payments? (notes the ledger account is kept) | High | C | Native, not started |
-| NC-21 | `pages/NetWorthPage.tsx:70` | Delete a property value | Delete this value? | Low | B | Native, not started |
-| NC-22 | `pages/NetWorthPage.tsx:77` | Delete a property and its value history | Delete {name} and its value history? | High | C | Native, not started |
-| NC-23 | `pages/NetWorthPage.tsx:179` | Add a second net-worth point in the same month (a "continue?" prompt, not a delete) | There is already a point in that month. Add another? | Low | B | Native, not started |
-| NC-24 | `pages/NetWorthPage.tsx:200` | Delete a net-worth point | Delete the {date} point? | Low | B | Native, not started |
-| NC-25 | `pages/PaycheckPage.tsx:133` | Delete a saved paycheck scenario | Delete "{name}"? | Medium | B | Native, not started |
-| NC-26 | `pages/PaycheckPage.tsx:310` | Reset a scenario to a blank setup | Reset this scenario to a blank setup with the same salary? | Medium | B | Native, not started |
-| NC-27 | `pages/ProfileEditor.tsx:94` | Turn off the HSA or ESPP deduction (a checkbox) | Turning this off removes the {HSA or ESPP} deduction from {name}'s setup. Continue? | Medium | D | Native, not started |
+| NC-14 | `pages/HsaLog.tsx:34` | Delete an HSA withdrawal | Delete this withdrawal? | High | C | **Migrated (D20.1B)** |
+| NC-15 | `pages/ImportPage.tsx:211` | Undo a CSV import | Undo this import? | High | C | **Migrated (D20.1B)** |
+| NC-16 | `pages/IncomePage.tsx:247` | Replace a year's income setup with last year's | Replace {name}'s {year} setup with {year-1}'s? | High | C | **Migrated (D20.1B)** |
+| NC-17 | `pages/IncomePage.tsx:248` | Remove a year's income setup | Remove {name}'s {year} income setup? | High | C | **Migrated (D20.1B)** |
+| NC-18 | `pages/InvestmentsPage.tsx:193` | Remove a holding | Remove {ticker} from {account}? (To record a sale, use sell instead.) | High | C | **Migrated (D20.1B)** |
+| NC-19 | `pages/InvestmentsPage.tsx:214` | Delete an investment account and its holdings | Delete {account} and its {n} holding(s)? | High | C | **Migrated (D20.1B)** |
+| NC-20 | `pages/LoanCard.tsx:206` | Delete a loan | Delete "{name}" and its rate changes and extra payments? (notes the ledger account is kept) | High | C | **Migrated (D20.1B)** |
+| NC-21 | `pages/NetWorthPage.tsx:70` | Delete a property value | Delete this value? | Low | B | **Migrated (D20.1B)** |
+| NC-22 | `pages/NetWorthPage.tsx:77` | Delete a property and its value history | Delete {name} and its value history? | High | C | **Migrated (D20.1B)** |
+| NC-23 | `pages/NetWorthPage.tsx:179` | Add a second net-worth point in the same month (a "continue?" prompt, not a delete) | There is already a point in that month. Add another? | Low | B | **Migrated (D20.1B)** |
+| NC-24 | `pages/NetWorthPage.tsx:200` | Delete a net-worth point | Delete the {date} point? | Low | B | **Migrated (D20.1B)** |
+| NC-25 | `pages/PaycheckPage.tsx:133` | Delete a saved paycheck scenario | Delete "{name}"? | Medium | B | **Migrated (D20.1B)** |
+| NC-26 | `pages/PaycheckPage.tsx:310` | Reset a scenario to a blank setup | Reset this scenario to a blank setup with the same salary? | Medium | B | **Migrated (D20.1B)** |
+| NC-27 | `pages/ProfileEditor.tsx:94` | Turn off the HSA or ESPP deduction (a checkbox) | Turning this off removes the {HSA or ESPP} deduction from {name}'s setup. Continue? | Medium | D | **Migrated (D20.1B)** |
 | NC-28 | `pages/ProtectionPage.tsx:38` | Delete an insurance policy record | Delete this policy? | Low | A | **Migrated (D20.1A)** |
-| NC-29 | `pages/RsuGrants.tsx:53` | Replace entered vests with an even split | Replace the {n} vest(s) already entered with an even split of {t} shares? | High | D | Native, not started |
-| NC-30 | `pages/RsuGrants.tsx:191` | Save a grant whose new schedule drops vests | This schedule drops {n} vest(s) that no longer fall on a vest date (...). Continue? | High | D | Native, not started |
-| NC-31 | `pages/RsuGrants.tsx:320` | Delete an RSU grant and its unrecorded vests | Delete "{name}" and its {n} vest(s)? (notes recorded vests stay as single vests) | High | C | Native, not started |
-| NC-32 | `pages/RsuSection.tsx:288` | Delete one RSU vest | Delete this {date} vest? (notes shares already in holdings stay) | Medium | B | Native, not started |
-| NC-33 | `pages/TradePanels.tsx:70` | Remove a tax lot | Remove this lot? The holding shrinks by its shares. | High | C | Native, not started |
-| NC-34 | `pages/TradePanels.tsx:253` | Undo a logged sale | Undo this sale? The shares go back into their lots. | High | C | Native, not started |
-| NC-35 | `pages/TransactionsPage.tsx:123` | Bulk set the category on selected transactions | Set the category to "{label}" on {n} transaction(s)? Split transactions are replaced...; transfers are skipped. | High | C | Native, not started |
-| NC-36 | `pages/TransactionsPage.tsx:221` | Delete a saved filter (a select) | Delete saved filter "{name}"? | Low | B | Native, not started |
-| NC-37 | `pages/TxnForm.tsx:112` | Move a reconciled transaction to another account | This transaction is reconciled. Moving it to {account} changes the reconciled balance of both accounts... Move it? | High | D | Native, not started |
-| NC-38 | `pages/TxnForm.tsx:240` | Switch a split transaction to a single category | Using a single category removes the project tags on the individual splits. Continue? | Medium | D | Native, not started |
+| NC-29 | `pages/RsuGrants.tsx:53` | Replace entered vests with an even split | Replace the {n} vest(s) already entered with an even split of {t} shares? | High | D | **Migrated (D20.1B)** |
+| NC-30 | `pages/RsuGrants.tsx:191` | Save a grant whose new schedule drops vests | This schedule drops {n} vest(s) that no longer fall on a vest date (...). Continue? | High | D | **Migrated (D20.1B)** |
+| NC-31 | `pages/RsuGrants.tsx:320` | Delete an RSU grant and its unrecorded vests | Delete "{name}" and its {n} vest(s)? (notes recorded vests stay as single vests) | High | C | **Migrated (D20.1B)** |
+| NC-32 | `pages/RsuSection.tsx:288` | Delete one RSU vest | Delete this {date} vest? (notes shares already in holdings stay) | Medium | B | **Migrated (D20.1B)** |
+| NC-33 | `pages/TradePanels.tsx:70` | Remove a tax lot | Remove this lot? The holding shrinks by its shares. | High | C | **Migrated (D20.1B)** |
+| NC-34 | `pages/TradePanels.tsx:253` | Undo a logged sale | Undo this sale? The shares go back into their lots. | High | C | **Migrated (D20.1B)** |
+| NC-35 | `pages/TransactionsPage.tsx:123` | Bulk set the category on selected transactions | Set the category to "{label}" on {n} transaction(s)? Split transactions are replaced...; transfers are skipped. | High | C | **Migrated (D20.1B)** |
+| NC-36 | `pages/TransactionsPage.tsx:221` | Delete a saved filter (a select) | Delete saved filter "{name}"? | Low | B | **Migrated (D20.1B)** |
+| NC-37 | `pages/TxnForm.tsx:112` | Move a reconciled transaction to another account | This transaction is reconciled. Moving it to {account} changes the reconciled balance of both accounts... Move it? | High | D | **Migrated (D20.1B)** |
+| NC-38 | `pages/TxnForm.tsx:240` | Switch a split transaction to a single category | Using a single category removes the project tags on the individual splits. Continue? | Medium | D | **Migrated (D20.1B)** |
 
-**Per batch:** A = 5 (NC-07, 11, 12, 13, 28; all migrated), B = 12 (NC-01 to 05, 21, 23, 24, 25, 26, 32, 36), C = 14 (NC-09, 10, 14 to 20, 22, 31, 33, 34, 35), D = 7 (NC-06, 08, 27, 29, 30, 37, 38). 5 + 12 + 14 + 7 = **38**. Remaining native after D20.1A: **33**.
+**Per batch:** A = 5 (NC-07, 11, 12, 13, 28; all migrated), B = 12 (NC-01 to 05, 21, 23, 24, 25, 26, 32, 36), C = 14 (NC-09, 10, 14 to 20, 22, 31, 33, 34, 35), D = 7 (NC-06, 08, 27, 29, 30, 37, 38). 5 + 12 + 14 + 7 = **38**. Remaining native after D20.1A: 33. **Remaining native after D20.1B: 0.**
 
 ## 4. Behavior of each call (what the dialog must preserve)
 
@@ -110,6 +111,46 @@ IDs `NC-01` to `NC-38` are stable (sorted by file, then line at `ff39a9a`; the l
 | NC-37 | The transaction is saved and moved (several writes), after validation | `save()` returns; nothing is saved, the form stays open | **Yes: update, move, status reset** | **Yes: validation runs first; the question sits between validation and the save** |
 | NC-38 | Switches the form from split to single category (local form state only) | The toggle is not changed | No (form state, nothing stored) | Only asked when splits carry project tags |
 
+## 4b. D20.1B migration record (the 33 calls converted in D20.1B)
+
+"Dialog at" is the line of the new `ConfirmDialog` in the file as built (it moves as files change). Every row: opening the dialog writes nothing; Cancel, Escape and the close icon only forget the remembered id; only the dialog's own button runs the existing operation; a refusal or failure stays inside the dialog and nothing is reported as done; a second press while running is ignored (`confirmRun.ts`). **Tests:** `d201bConfirmations.test.tsx` (source checks for all 33; database checks as named); browser checks are in the D20.1B report. Existing tests of each operation were not changed.
+
+| ID | Dialog at | Treatment | Notable behavior change | Test evidence | Remaining risk |
+|---|---|---|---|---|---|
+| NC-01 | `modules/projects/BudgetLines.tsx:102` | id in state; `kind="linked"` | The refusal (commitments or transactions use the line) now shows inside the dialog instead of a toast | disposable DB: refused, line stays, success step not reached | None known |
+| NC-02 | `modules/projects/Commitments.tsx:221` | id in state, shared with NC-03; found in all groups and change orders | Refusal shown in the dialog | disposable DB: refused with a change order | None known |
+| NC-03 | `modules/projects/Commitments.tsx:234` | same state as NC-02 | Failure shown in the dialog, not a toast | disposable DB: runs once, no write before the press | None known |
+| NC-04 | `modules/projects/Vendors.tsx:105` | the two read-only lookups run when Remove is pressed; the counts ride in state | The counts are as of the press, not re-read at confirm (text only; the removal is by contact id) | source checks | Counts in the text can be a moment old |
+| NC-05 | `modules/tasks/ListsDialog.tsx:36` | id in state; dialog is a sibling of the Lists dialog | Escape now cancels only the question (shared `modalKeys.ts`) | disposable DB: tasks kept with no list, other list untouched | None known |
+| NC-06 | `modules/tasks/TasksPage.tsx:308` | plan (read only) then dialog then plan again then the one write | The plan is recomputed at confirm; if it differs, nothing is written and the dialog says so | disposable DB: stale plan, deleted task, task moved elsewhere | None known |
+| NC-08 | `pages/AppearanceCard.tsx:258` | chosen palette held in state; the select stays on the old value | **The select no longer changes before the question**, so cancelling leaves the label and the colors as they were (before, the label showed the new name after Cancel) | source checks | The select does not show the pending name while the dialog is open |
+| NC-09 | `pages/BulkProject.tsx:101` | rows (ids) captured; the write was split into a throwing `apply` and the page's `run` | Failure shows in the dialog (and no longer on the page) | source checks | None known |
+| NC-10 | `pages/CategoriesPage.tsx:319` | count at press; recount at confirm | **If the count changed while the question was open, nothing is deleted and the dialog shows the new number**; count and delete moved unchanged to `lib/confirmedDeletes.ts` | disposable DB: uncategorizes transactions and splits only for that category; count changes | None known |
+| NC-14 | `pages/HsaLog.tsx:76` | id in state; delete moved unchanged to `lib/confirmedDeletes.ts`, row read inside the transaction | A withdrawal already deleted elsewhere returns its cash only once (before, the stale screen copy could return it again) | disposable DB: cash back once, twice-press, already gone, no cash taken | None known |
+| NC-15 | `pages/ImportPage.tsx:223` | id in state | Text now says what the import added and matched | source checks (`undoBatch` has its own tests) | Not browser-checked with real files |
+| NC-16 | `pages/IncomePage.tsx:380` | person, year in state; both profiles read again at confirm | Refuses with a message if either year's setup is gone | source checks | None known |
+| NC-17 | `pages/IncomePage.tsx:399` | same state as NC-16 | None | source checks | None known |
+| NC-18 | `pages/InvestmentsPage.tsx:221` | id in state | **None: still two separate awaits (lots, then holding), not one transaction** | source checks | Existing: a failure between the two writes can leave a holding without lots. See section 6 |
+| NC-19 | `pages/InvestmentsPage.tsx:235` | state on the account card | **None: still two awaits (holdings, then account)** | source checks | Existing: same as NC-18; also the account's tax lots are not deleted (existing) |
+| NC-20 | `pages/LoanCard.tsx:477` | state on the loan card | None (one transaction as before) | source checks | None known |
+| NC-21 | `pages/NetWorthPage.tsx:85` | id in state | None | source checks | None known |
+| NC-22 | `pages/NetWorthPage.tsx:97` | state on the property card | **None: still two awaits (values, then property)** | source checks | Existing: see section 6 |
+| NC-23 | `pages/NetWorthPage.tsx:275` | `tone="primary"` (a "continue" question, not a delete) | None | source checks | None known |
+| NC-24 | `pages/NetWorthPage.tsx:288` | id in state | None | source checks | None known |
+| NC-25 | `pages/PaycheckPage.tsx:374` | id in state | The delete is now awaited before the screen state changes | source checks | None known |
+| NC-26 | `pages/PaycheckPage.tsx:392` | id in state; the reset is written to that scenario's id | Written to the remembered scenario, not whichever is selected | source checks | None known |
+| NC-27 | `pages/ProfileEditor.tsx:353` | benefit name in state; the checkbox stays on the saved choice | The draft is changed with the latest draft (functional update); other deductions untouched | source checks | None known |
+| NC-29 | `pages/RsuGrants.tsx:132` | total in state; asked only when vests are entered | None | disposable DB: runs once, keeps vests in holdings, no duplicates | None known |
+| NC-30 | `pages/RsuGrants.tsx:375` | validated grant, resolved stock and dropped vest ids in state | The list is recomputed at confirm; if it differs, nothing is saved and the dialog says so. `setBusy` is released in a `finally` | disposable DB: cancel, confirm, list changes, holdings kept | Existing: for a stock grant the ticker's security row is created (or found) BEFORE the question, as before |
+| NC-31 | `pages/RsuGrants.tsx:396` | id in state; counts read live | None | disposable DB: unrecorded removed, recorded detached, other grant untouched | None known |
+| NC-32 | `pages/RsuSection.tsx:308` | id in state; wording read from the record as it is | None | source checks | None known |
+| NC-33 | `pages/TradePanels.tsx:83` | id in state | None | source checks (`deleteLot` has its own tests) | None known |
+| NC-34 | `pages/TradePanels.tsx:283` | id in state | `undoSale` returning false (already gone) is shown in the dialog instead of silent | source checks (`undoSale` has its own tests) | None known |
+| NC-35 | `pages/TransactionsPage.tsx:290` | rows (ids) and category id captured | The category is checked again at confirm; text adds how many selected are splits or transfers | disposable DB: splits replaced, transfers skipped | None known |
+| NC-36 | `pages/TransactionsPage.tsx:305` | id in state | None | source checks | None known |
+| NC-37 | `pages/TxnForm.tsx:320` | all validation runs first; the question sits before the first write; `save(true)` only from the dialog | The transaction and the target account are read again at confirm; refuses if either changed. The Save button now calls `save()` with no argument | disposable DB: move and status reset once; source-order checks | The form's save is still a sequence of several writes, as before |
+| NC-38 | `pages/TxnForm.tsx:335` | flag in state; only the dialog turns the split off | None; nothing is saved | source checks | None known |
+
 ## 5. Local functions named `confirm` (NOT browser calls; do not migrate)
 
 `modules/assets/LifecycleDialog.tsx:73`, `modules/bills/PaymentUI.tsx:111`, `modules/bills/ScheduledUI.tsx:104, 166, 200`, `modules/contacts/RemoveContact.tsx:39`. They run after a Ledger dialog's own button; they are already part of a styled dialog.
@@ -126,4 +167,6 @@ IDs `NC-01` to `NC-38` are stable (sorted by file, then line at `ff39a9a`; the l
 
 ## 7. Path to zero
 
-D20.1A: 38 to 33. D20.1B: 33 to 21. D20.1C: 21 to 7. D20.1D: 7 to 0. Each batch must update this file (status column), the residue baseline note, `docs/UI-COVERAGE.md` (CF-03) and the handoff, and run an invented-data delete and cancel check for what it converts. D20.1D rows must document the existing and proposed save sequence and get a focused review BEFORE implementation.
+D20.1A: 38 to 33. **D20.1B (the planned B, C and D batches in one cycle, as the owner approved): 33 to 0.** The planned D20.1C and D20.1D are not needed. Nothing was left native.
+
+Follow-ups recorded (NOT done, each needs its own decision): (1) wrap NC-18, NC-19 and NC-22 (two awaits each) in one transaction, and delete the account's tax lots in NC-19; (2) show the pending palette name in the "Start over from" select while its dialog is open; (3) move focus to a sensible heading after a delete removes the button that opened its dialog (D20.1A item); (4) native `alert()` calls (`CategoriesPage.tsx` "Delete or move this group's categories first", `bills/quickAddDef.ts`, `services/quickAddDef.ts`) remain outside OD-6.

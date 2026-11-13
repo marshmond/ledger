@@ -15,6 +15,7 @@ import { MONTHS, monthName, personAnchorId, personSummary, scopeRows } from './i
 import { hsaYearImpact } from '../lib/hsa';
 import { netForTax, realizedFor } from '../lib/lots';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import TaxProvenanceNote, { CustomTableNotice, customTableDifferences } from './TaxProvenance';
 import { Kind, PlanHero, PlanJump } from './PlanParts';
 import { HouseholdComparison, PersonStatementView } from './IncomeStatement';
@@ -78,6 +79,11 @@ export default function IncomePage() {
   const [tablesText, setTablesText] = useState<string | null>(null);
   const [tablesMsg, setTablesMsg] = useState('');
 
+  // D20.1B (NC-16, NC-17): which person's setup, in which year, "copy from last year" or "remove" was pressed on. Nothing is written until the dialog's own button is pressed.
+  const [askIncome, setAskIncome] = useState<{ what: 'copy' | 'remove'; personId: number; year: number } | null>(null);
+  const askPerson = askIncome ? people.find((x) => x.id === askIncome.personId) : undefined;
+  const askProf = askIncome ? profiles.find((x) => x.personId === askIncome.personId && x.year === askIncome.year) : undefined;
+  const askPrev = askIncome ? profiles.find((x) => x.personId === askIncome.personId && x.year === askIncome.year - 1) : undefined;
   const save = async (p: IncomeProfile) => {
     if (p.id) await db.incomeProfiles.put(p);
     else await db.incomeProfiles.add(p);
@@ -244,8 +250,8 @@ export default function IncomePage() {
                         person={p}
                         profile={prof}
                         onSave={save}
-                        onCopyPrev={prev ? () => confirm(`Replace ${p.name}'s ${year} setup with ${year - 1}'s?`) && save({ ...rollForward(prev, year), id: prof.id }) : undefined}
-                        onDelete={() => confirm(`Remove ${p.name}'s ${year} income setup?`) && db.incomeProfiles.delete(prof.id!)}
+                        onCopyPrev={prev ? () => setAskIncome({ what: 'copy', personId: p.id!, year }) : undefined}
+                        onDelete={() => setAskIncome({ what: 'remove', personId: p.id!, year })}
                       />
                     )}
                   </section>
@@ -369,6 +375,39 @@ export default function IncomePage() {
           </Collapsible>
         </div>
       )}
+
+      {askIncome && askPerson && askProf && (askIncome.what === 'copy' ? (
+        <ConfirmDialog
+          title={`Replace ${askIncome.year} setup?`}
+          confirmLabel={`Replace with ${askIncome.year - 1}`}
+          busyLabel="Replacing…"
+          kind="replace"
+          onCancel={() => setAskIncome(null)}
+          onConfirm={async () => {
+            // Both profiles are looked at again now (they may have changed while the question was open); the copy is worked out from what is stored at this moment.
+            const prof = await db.incomeProfiles.get(askProf.id!);
+            const prev = askPrev?.id ? await db.incomeProfiles.get(askPrev.id) : undefined;
+            if (!prof || !prev) throw new Error(`The ${askIncome.year} or ${askIncome.year - 1} setup is no longer there. Nothing was changed.`);
+            await save({ ...rollForward(prev, askIncome.year), id: prof.id });
+            setAskIncome(null);
+          }}
+        >
+          <p><strong>{askPerson.name}</strong></p>
+          <p>This replaces {askPerson.name}'s {askIncome.year} income setup with a copy of {askIncome.year - 1}'s, rolled forward. Anything you entered in the {askIncome.year} setup is overwritten.</p>
+        </ConfirmDialog>
+      ) : (
+        <ConfirmDialog
+          title={`Remove ${askIncome.year} income setup?`}
+          confirmLabel="Remove setup"
+          busyLabel="Removing…"
+          kind="linked"
+          onCancel={() => setAskIncome(null)}
+          onConfirm={async () => { await db.incomeProfiles.delete(askProf.id!); setAskIncome(null); }}
+        >
+          <p><strong>{askPerson.name}</strong></p>
+          <p>This removes {askPerson.name}'s {askIncome.year} income setup. Take-home and tax figures that depend on it will no longer count it. Bonuses and stock awards are kept.</p>
+        </ConfirmDialog>
+      ))}
     </div>
   );
 }

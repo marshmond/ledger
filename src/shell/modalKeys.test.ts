@@ -116,13 +116,13 @@ describe('Modal keyboard and focus behaviour', () => {
     expect(close).toHaveBeenCalledTimes(1);
     expect(e.stop).toBe(true);
   });
-  it('known limit (unchanged): with two dialogs open, Escape reaches both', () => {
+  it('D20.1B: with two dialogs open (a confirmation over another dialog), Escape closes only the topmost one', () => {
     const p = page();
     const c1 = vi.fn(), c2 = vi.fn();
     attachModal(p.doc, p.box([p.el()]), c1);
     attachModal(p.doc, p.box([p.el()]), c2);
     p.press('Escape');
-    expect([c1.mock.calls.length, c2.mock.calls.length]).toEqual([1, 1]);
+    expect([c1.mock.calls.length, c2.mock.calls.length]).toEqual([0, 1]);
   });
   it('works with no box (a dialog not yet mounted): no crash, Escape still closes', () => {
     const p = page();

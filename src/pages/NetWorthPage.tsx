@@ -13,6 +13,7 @@ import { netWorthBars } from '../lib/homeCharts';
 import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { missingMonths, signedWords } from './analysisPresentation';
 import './analysis.css';
 
@@ -28,6 +29,10 @@ function PropertyCard({ p, loans }: { p: Property; loans: { id: number; name: st
   const eq = equityOf(p, values, owed);
   const age = valueAgeDays(values, p.id!, today);
   const sorted = [...values].sort((a, b) => b.date.localeCompare(a.date));
+  // D20.1B (NC-21, NC-22): which value, or this property, "delete" was pressed on. Nothing is deleted until the dialog's own button is pressed.
+  const [askValue, setAskValue] = useState<number | null>(null);
+  const [askProperty, setAskProperty] = useState(false);
+  const askValueRow = askValue === null ? undefined : values.find((v) => v.id === askValue);
 
   return (
     <div className="an-card an-prop">
@@ -67,15 +72,41 @@ function PropertyCard({ p, loans }: { p: Property; loans: { id: number; name: st
           <thead><tr><th>Date</th><th className="num">Value</th><th /></tr></thead>
           <tbody>
             {sorted.map((v) => (
-              <tr key={v.id}><td data-label="Date">{v.date}</td><td className="num" data-label="Value">{formatCents(v.valueCents)}</td><td className="an-cell-act"><button className="link danger" onClick={() => confirm('Delete this value?') && db.propertyValues.delete(v.id!)}>delete</button></td></tr>
+              <tr key={v.id}><td data-label="Date">{v.date}</td><td className="num" data-label="Value">{formatCents(v.valueCents)}</td><td className="an-cell-act"><button className="link danger" aria-label={`Delete the ${v.date} value of ${formatCents(v.valueCents)}`} onClick={() => setAskValue(v.id!)}>delete</button></td></tr>
             ))}
           </tbody>
         </table>
       </details>
       <div className="an-actions" style={{ marginTop: 0, justifyContent: 'space-between' }}>
         <label className="chk"><input type="checkbox" checked={!p.excluded} onChange={(e) => db.properties.update(p.id!, { excluded: !e.target.checked })} /> Count in net worth</label>
-        <button className="link danger" onClick={async () => { if (!confirm(`Delete ${p.name} and its value history?`)) return; await db.propertyValues.where('propertyId').equals(p.id!).delete(); await db.properties.delete(p.id!); }}>delete</button>
+        <button className="link danger" onClick={() => setAskProperty(true)}>delete</button>
       </div>
+      {askValueRow && (
+        <ConfirmDialog
+          title="Delete property value?"
+          confirmLabel="Delete value"
+          busyLabel="Deleting…"
+          onCancel={() => setAskValue(null)}
+          onConfirm={async () => { await db.propertyValues.delete(askValueRow.id!); setAskValue(null); }}
+        >
+          <p><strong>{p.name}</strong><br /><span className="muted small">{askValueRow.date} · {formatCents(askValueRow.valueCents)}</span></p>
+          <p>This removes this one entered value from the property's history. Equity and net worth are worked out from the latest remaining value.</p>
+        </ConfirmDialog>
+      )}
+      {askProperty && (
+        <ConfirmDialog
+          title="Delete property?"
+          confirmLabel="Delete property"
+          busyLabel="Deleting…"
+          kind="irreversible"
+          onCancel={() => setAskProperty(false)}
+          // The same two steps as before (the value history, then the property); nothing is written until this button is pressed.
+          onConfirm={async () => { await db.propertyValues.where('propertyId').equals(p.id!).delete(); await db.properties.delete(p.id!); setAskProperty(false); }}
+        >
+          <p><strong>{p.name}</strong><br /><span className="muted small">{KIND_LABEL[p.kind]} · {sorted.length} saved value{sorted.length === 1 ? '' : 's'}</span></p>
+          <p>This deletes the property and its whole value history. Any loans linked to it are not deleted.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
@@ -97,6 +128,16 @@ export default function NetWorthPage() {
   const [pDate, setPDate] = useState(today);
   const [hDate, setHDate] = useState('');
   const [hTotal, setHTotal] = useState(0);
+
+  // D20.1B (NC-23, NC-24): "add another point in the same month" and "delete this point". Both ask first through a dialog; the point is found again by id when confirmed.
+  const [askAnother, setAskAnother] = useState(false);
+  const [askPoint, setAskPoint] = useState<number | null>(null);
+  const pointRow = askPoint === null ? undefined : snaps.find((s) => s.id === askPoint);
+  async function addPoint() {
+    await db.netWorthSnapshots.add({ ...snapshotOf(hDate, { cash: 0, investments: 0, property: 0, cards: 0, loans: 0, total: hTotal }) });
+    setHDate('');
+    setHTotal(0);
+  }
 
   async function addProperty() {
     if (!pName.trim()) return;
@@ -176,10 +217,8 @@ export default function NetWorthPage() {
               disabled={!hDate || hTotal === 0}
               onClick={async () => {
                 const exists = snaps.some((s) => s.date.slice(0, 7) === hDate.slice(0, 7));
-                if (exists && !confirm('There is already a point in that month. Add another?')) return;
-                await db.netWorthSnapshots.add({ ...snapshotOf(hDate, { cash: 0, investments: 0, property: 0, cards: 0, loans: 0, total: hTotal }) });
-                setHDate('');
-                setHTotal(0);
+                if (exists) { setAskAnother(true); return; } // NC-23: asks first; nothing is added until the dialog's own button is pressed
+                await addPoint();
               }}
             >Add</button>
           </div>
@@ -197,7 +236,7 @@ export default function NetWorthPage() {
                       <td className="num" data-label="Net worth"><strong>{formatCents(s.totalCents)}</strong></td>
                       <td className="num" data-label="Cash">{formatCents(s.cashCents)}</td><td className="num" data-label="Investments">{formatCents(s.investmentsCents)}</td><td className="num" data-label="Property">{formatCents(s.propertyCents)}</td>
                       <td className="num" data-label="Cards">{formatCents(s.cardsCents)}</td><td className="num" data-label="Loans">{formatCents(s.loansCents)}</td>
-                      <td className="an-cell-act"><button className="link danger" onClick={() => confirm(`Delete the ${s.date} point?`) && db.netWorthSnapshots.delete(s.id!)}>delete</button></td>
+                      <td className="an-cell-act"><button className="link danger" aria-label={`Delete the ${s.date} point`} onClick={() => setAskPoint(s.id!)}>delete</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -231,6 +270,32 @@ export default function NetWorthPage() {
           </div>
         </div>
       </Collapsible>
+
+      {askAnother && (
+        <ConfirmDialog
+          title="Add another point this month?"
+          confirmLabel="Add another point"
+          busyLabel="Adding…"
+          tone="primary"
+          onCancel={() => setAskAnother(false)}
+          onConfirm={async () => { await addPoint(); setAskAnother(false); }}
+        >
+          <p>There is already a saved point in {monthLabel(hDate.slice(0, 7))}. Adding this one keeps both; nothing is replaced.</p>
+          <p className="muted small">{hDate} · {formatCents(hTotal)}</p>
+        </ConfirmDialog>
+      )}
+      {pointRow && (
+        <ConfirmDialog
+          title="Delete net-worth point?"
+          confirmLabel="Delete point"
+          busyLabel="Deleting…"
+          onCancel={() => setAskPoint(null)}
+          onConfirm={async () => { await db.netWorthSnapshots.delete(pointRow.id!); setAskPoint(null); }}
+        >
+          <p><strong>{pointRow.date}</strong><br /><span className="muted small">Net worth {formatCents(pointRow.totalCents)}</span></p>
+          <p>This removes this saved point from the history and the chart. Today's net worth and your accounts are not changed.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

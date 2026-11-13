@@ -15,6 +15,7 @@ import RenameAccount from './RenameAccount';
 import { LotsPanel, RealizedSection, TradePanel } from './TradePanels';
 import { addLot, ensureLots, isTaxable, setHoldingBasis } from '../lib/lots';
 import { Banner, PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import Collapsible from './Collapsible';
 import { PRICE_KIND_WORD, priceKind } from './analysisPresentation';
 import './analysis.css';
@@ -123,6 +124,10 @@ function AccountBlock({ s, holdings, securities, classes, people, otherNames }: 
     for (const h of mine) if (!lotIds.some((l) => l.holdingId === h.id)) ensureLots(db, h.id!);
   }, [taxable, lotIds, mine.map((h) => h.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const panelHolding = panel ? mine.find((h) => h.id === panel.holdingId) : undefined;
+  // D20.1B (NC-18, NC-19): the holding (by id) or this account whose remove / delete was pressed. Nothing is deleted until the dialog's own button is pressed.
+  const [askHolding, setAskHolding] = useState<number | null>(null);
+  const [askAccount, setAskAccount] = useState(false);
+  const askHoldingRow = askHolding === null ? undefined : mine.find((h) => h.id === askHolding);
 
   const ticker = (h: Holding) => secById.get(h.securityId)?.ticker ?? 'holding';
   return (
@@ -190,7 +195,7 @@ function AccountBlock({ s, holdings, securities, classes, people, otherNames }: 
                           {taxable && <button className="link" aria-label={`Lots of ${ticker(h)}`} onClick={() => setPanel(panel !== null && panel.holdingId === h.id && panel.mode === 'lots' ? null : { holdingId: h.id!, mode: 'lots' })}>lots</button>}
                           <button className="link" aria-label={`Buy ${ticker(h)}`} onClick={() => setPanel({ holdingId: h.id!, mode: 'buy' })}>buy</button>
                           <button className="link" aria-label={`Sell ${ticker(h)}`} onClick={() => setPanel({ holdingId: h.id!, mode: 'sell' })}>sell</button>
-                          <button className="link danger" aria-label={`Remove ${ticker(h)} from ${a.name}`} onClick={async () => { if (!confirm(`Remove ${sec?.ticker} from ${a.name}? (To record a sale, use sell instead.)`)) return; await db.taxLots.where('holdingId').equals(h.id!).delete(); await db.holdings.delete(h.id!); }}>remove</button>
+                          <button className="link danger" aria-label={`Remove ${ticker(h)} from ${a.name}`} onClick={() => setAskHolding(h.id!)}>remove</button>
                         </span>
                       </td>
                     </tr>
@@ -208,17 +213,38 @@ function AccountBlock({ s, holdings, securities, classes, people, otherNames }: 
             <div className="an-acct-foot">
               <button onClick={() => setAdding(true)}>+ Add holding</button>
               <button className="link" onClick={() => db.invAccounts.update(a.id!, { closed: !a.closed })}>{a.closed ? 'reopen account' : 'close account'}</button>
-              <button
-                className="link danger"
-                onClick={async () => {
-                  if (!confirm(`Delete ${a.name} and its ${mine.length} holding(s)?`)) return;
-                  await db.holdings.where('accountId').equals(a.id!).delete();
-                  await db.invAccounts.delete(a.id!);
-                }}
-              >delete account</button>
+              <button className="link danger" onClick={() => setAskAccount(true)}>delete account</button>
             </div>
           )}
           {a.kind === 'hsa' && <HsaLog account={a} people={people} />}
+          {askHoldingRow && (
+            <ConfirmDialog
+              title="Remove holding?"
+              confirmLabel="Remove holding"
+              busyLabel="Removing…"
+              kind="irreversible"
+              onCancel={() => setAskHolding(null)}
+              // The same two steps as before (its lots, then the holding), not wrapped in one transaction; see the D20.1B report.
+              onConfirm={async () => { await db.taxLots.where('holdingId').equals(askHoldingRow.id!).delete(); await db.holdings.delete(askHoldingRow.id!); setAskHolding(null); }}
+            >
+              <p><strong>{ticker(askHoldingRow)}</strong> in {a.name}<br /><span className="muted small">{askHoldingRow.shares} share{askHoldingRow.shares === 1 ? '' : 's'}</span></p>
+              <p>This removes the holding and its tax lots from the account. It does not record a sale: to record a sale, use sell instead.</p>
+            </ConfirmDialog>
+          )}
+          {askAccount && (
+            <ConfirmDialog
+              title="Delete investment account?"
+              confirmLabel="Delete account"
+              busyLabel="Deleting…"
+              kind="irreversible"
+              onCancel={() => setAskAccount(false)}
+              // The same two steps as before (the account's holdings, then the account), not wrapped in one transaction; see the D20.1B report.
+              onConfirm={async () => { await db.holdings.where('accountId').equals(a.id!).delete(); await db.invAccounts.delete(a.id!); setAskAccount(false); }}
+            >
+              <p><strong>{a.name}</strong><br /><span className="muted small">{KIND_LABEL[a.kind]} · {mine.length} holding{mine.length === 1 ? '' : 's'}</span></p>
+              <p>This deletes the account and its {mine.length} holding{mine.length === 1 ? '' : 's'}. It does not record any sales.</p>
+            </ConfirmDialog>
+          )}
         </div>
       )}
     </div>

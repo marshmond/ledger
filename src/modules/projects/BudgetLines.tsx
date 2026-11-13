@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ConfirmDialog from '../../shell/ConfirmDialog';
 import { formatCents, parseAmountToCents } from '../../lib/money';
 import { EmptyState } from '../../ui/components';
 import { useToast } from '../../ui/Toast';
@@ -16,6 +17,9 @@ export default function BudgetLines({ projectId, budgetCents, lines }: { project
   const [eName, setEName] = useState('');
   const [eAmount, setEAmount] = useState('');
   const [eError, setEError] = useState('');
+  // D20.1B (NC-01): the line whose Remove was pressed, by id. Nothing is removed until the dialog's own button is pressed.
+  const [askRemove, setAskRemove] = useState<number | null>(null);
+  const target = askRemove === null ? undefined : lines.find((x) => x.id === askRemove);
 
   const guard = async (fn: () => Promise<void>, onError: (m: string) => void) => {
     try { await fn(); } catch (e) { onError(e instanceof Error ? e.message : 'Something went wrong.'); }
@@ -68,10 +72,7 @@ export default function BudgetLines({ projectId, budgetCents, lines }: { project
                     <button className="btn icon" aria-label={`Move ${l.data.name} up`} disabled={i === 0} onClick={() => void moveLine(projectId, l.id, -1)}>↑</button>
                     <button className="btn icon" aria-label={`Move ${l.data.name} down`} disabled={i === lines.length - 1} onClick={() => void moveLine(projectId, l.id, 1)}>↓</button>
                     <button className="link" onClick={() => startEdit(l)}>Edit</button>
-                    <button className="link danger" onClick={() => {
-                      if (!confirm(`Remove the budget line "${l.data.name}"?`)) return;
-                      void guard(async () => { await removeLine(l.id); toast('Budget line removed'); }, (m) => toast(m));
-                    }}>Remove</button>
+                    <button className="link danger" onClick={() => setAskRemove(l.id)}>Remove</button>
                   </span>
                 </>
               )}
@@ -96,6 +97,21 @@ export default function BudgetLines({ projectId, budgetCents, lines }: { project
         <button className="btn" type="submit">Add line</button>
         {error && <div className="error" role="alert">{error}</div>}
       </form>
+
+      {target && (
+        <ConfirmDialog
+          title="Remove budget line?"
+          confirmLabel="Remove line"
+          busyLabel="Removing…"
+          kind="linked"
+          onCancel={() => setAskRemove(null)}
+          // If a commitment or transaction uses the line, removeLine refuses; the reason is shown here and nothing is removed.
+          onConfirm={async () => { await removeLine(target.id); toast('Budget line removed'); setAskRemove(null); }}
+        >
+          <p><strong>{target.data.name}</strong><br /><span className="muted small">Planned {formatCents(target.data.plannedCents)}</span></p>
+          <p>This removes the line from the project's budget. A line that commitments or transactions still use cannot be removed.</p>
+        </ConfirmDialog>
+      )}
     </section>
   );
 }

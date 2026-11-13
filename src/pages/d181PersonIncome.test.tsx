@@ -181,7 +181,9 @@ describe('D18.1 source guards', () => {
   it('profiles are shown for the selected year and never created by opening a workspace', () => {
     expect(page).toContain('x.personId === p.id && x.year === year');
     const body = page.slice(page.indexOf('<PersonWorkspace'), page.indexOf('</PersonWorkspace>'));
-    expect(body.match(/save\(/g)?.length).toBe(3); // only the calls the page already had: Set up, Copy, and the confirmed replace
+    // D20.1B: two inside the workspace now: Set up and Copy. The confirmed replace moved into its dialog (below the workspace), where it is the only other call.
+    expect(body.match(/save\(/g)?.length).toBe(2);
+    expect(page.match(/await save\(\{ \.\.\.rollForward\(prev, askIncome\.year\), id: prof\.id \}\)/g)).toHaveLength(1);
   });
   it('the unassigned bonus list renders nothing when there is nothing to review', () => {
     expect(html(createElement(UnassignedBonuses, { bonuses: [] }))).toBe('');

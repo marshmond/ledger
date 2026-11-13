@@ -5,6 +5,8 @@ import type { InvAccount, Person } from '../types';
 import { hsaYearImpact } from '../lib/hsa';
 import { formatCents, todayISO } from '../lib/money';
 import { MoneyField } from './fields';
+import ConfirmDialog from '../shell/ConfirmDialog';
+import { deleteHsaWithdrawal } from '../lib/confirmedDeletes';
 
 /** Withdrawals from an HSA: qualified medical spending is tax-free; the rest is taxed (plus a penalty before 65). */
 export default function HsaLog({ account, people }: { account: InvAccount; people: Person[] }) {
@@ -29,15 +31,11 @@ export default function HsaLog({ account, people }: { account: InvAccount; peopl
     setAmt(0);
     setNote('');
   }
-  async function remove(id: number) {
-    const w = all.find((x) => x.id === id);
-    if (!w || !confirm('Delete this withdrawal?')) return;
-    await db.transaction('rw', db.hsaWithdrawals, db.invAccounts, async () => {
-      await db.hsaWithdrawals.delete(id);
-      const cur = await db.invAccounts.get(account.id!);
-      if (cur && w.fromCashCents > 0) await db.invAccounts.update(account.id!, { cashCents: cur.cashCents + w.fromCashCents });
-    });
-  }
+  // D20.1B (NC-14): the withdrawal whose "delete" was pressed, by id. Nothing is changed until the dialog's own button is pressed.
+  const [askId, setAskId] = useState<number | null>(null);
+  const askRow = askId === null ? undefined : all.find((x) => x.id === askId);
+  // The row is read again inside the transaction (lib/confirmedDeletes.ts), so a withdrawal already deleted elsewhere gives its cash back only once.
+  const remove = (id: number) => deleteHsaWithdrawal(db, account.id!, id);
 
   return (
     <div style={{ marginTop: 8 }}>
@@ -68,11 +66,24 @@ export default function HsaLog({ account, people }: { account: InvAccount; peopl
                 <td>{w.date}</td><td className="num">{formatCents(w.amountCents)}</td>
                 <td>{w.qualified ? <span className="ok">qualified</span> : <span className="warn">taxable</span>}</td>
                 <td>{w.note}</td>
-                <td><button className="link danger" onClick={() => remove(w.id!)}>delete</button></td>
+                <td><button className="link danger" aria-label={`Delete the ${w.date} withdrawal of ${formatCents(w.amountCents)}`} onClick={() => setAskId(w.id!)}>delete</button></td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+      {askRow && (
+        <ConfirmDialog
+          title="Delete HSA withdrawal?"
+          confirmLabel="Delete withdrawal"
+          busyLabel="Deleting…"
+          kind="linked"
+          onCancel={() => setAskId(null)}
+          onConfirm={async () => { await remove(askRow.id!); setAskId(null); }}
+        >
+          <p><strong>{askRow.date} · {formatCents(askRow.amountCents)}</strong><br /><span className="muted small">{askRow.qualified ? 'Qualified medical expense' : 'Not for medical costs (taxable)'}{askRow.note ? ` · ${askRow.note}` : ''}</span></p>
+          <p>This removes the withdrawal from your log and its effect on this year's tax figures.{askRow.fromCashCents > 0 ? ` The ${formatCents(askRow.fromCashCents)} that was taken from the account's cash goes back into it.` : ' No cash was taken from the account for it, so none is returned.'}</p>
+        </ConfirmDialog>
       )}
     </div>
   );

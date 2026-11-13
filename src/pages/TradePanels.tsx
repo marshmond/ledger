@@ -6,6 +6,7 @@ import { formatCents, todayISO } from '../lib/money';
 import { addLot, deleteLot, isLongTerm, isTaxable, netForTax, previewSale, realizedFor, recordBuy, recordSale, undoSale, updateLot } from '../lib/lots';
 import { MoneyField } from './fields';
 import { signedWords } from './analysisPresentation';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import './analysis.css';
 
 const METHOD_LABEL: Record<SaleMethod, string> = {
@@ -34,6 +35,9 @@ export function LotsPanel({ holding, security, onClose }: { holding: Holding; se
   const price = security?.priceCents ?? null;
   const today = todayISO();
   const [adding, setAdding] = useState(false);
+  // D20.1B (NC-33): the lot whose "remove" was pressed, by id. Nothing is removed until the dialog's own button is pressed.
+  const [askLot, setAskLot] = useState<number | null>(null);
+  const askLotRow = askLot === null ? undefined : lots.find((l) => l.id === askLot);
 
   return (
     <div className="an-card an-card--soft an-lots an-stack-col">
@@ -67,7 +71,7 @@ export function LotsPanel({ holding, security, onClose }: { holding: Holding; se
                   <td className="num" data-label="Per share">{perShare(l.costBasisCents, l.shares)}</td>
                   <td className="num" data-label="Gain / loss">{gl === null ? '—' : `${gl > 0 ? '+' : ''}${formatCents(gl)}`}</td>
                   <td data-label="Term">{isLongTerm(l.acquiredDate, today) ? 'long' : 'short'}</td>
-                  <td className="an-cell-act"><button className="link danger" onClick={() => confirm('Remove this lot? The holding shrinks by its shares. (To record a sale, use Sell instead.)') && deleteLot(db, l.id!)}>remove</button></td>
+                  <td className="an-cell-act"><button className="link danger" aria-label={`Remove the lot bought ${l.acquiredDate ?? 'on an unknown date'}`} onClick={() => setAskLot(l.id!)}>remove</button></td>
                 </tr>
               );
             })}
@@ -75,6 +79,19 @@ export function LotsPanel({ holding, security, onClose }: { holding: Holding; se
         </table>
       </div>
       {adding ? <AddLot holding={holding} onDone={() => setAdding(false)} /> : <button onClick={() => setAdding(true)}>+ Add a lot</button>}
+      {askLotRow && (
+        <ConfirmDialog
+          title="Remove tax lot?"
+          confirmLabel="Remove lot"
+          busyLabel="Removing…"
+          kind="irreversible"
+          onCancel={() => setAskLot(null)}
+          onConfirm={async () => { await deleteLot(db, askLotRow.id!); setAskLot(null); }}
+        >
+          <p><strong>{security?.ticker}: lot bought {askLotRow.acquiredDate ?? 'on an unknown date'}</strong><br /><span className="muted small">{shortShares(askLotRow.shares)} share{askLotRow.shares === 1 ? '' : 's'} · cost {formatCents(askLotRow.costBasisCents)}</span></p>
+          <p>The holding shrinks by this lot's {shortShares(askLotRow.shares)} share{askLotRow.shares === 1 ? '' : 's'}. This does not record a sale: to record a sale, use Sell instead.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
@@ -220,6 +237,9 @@ export function RealizedSection({ accounts, securities }: { accounts: InvAccount
   const list = sales.filter((s) => s.date.startsWith(`${year}-`)).sort((a, b) => b.date.localeCompare(a.date) || (b.id ?? 0) - (a.id ?? 0));
   const acct = (id: number) => accounts.find((a) => a.id === id)?.name ?? '?';
   const tick = (id: number) => securities.find((s) => s.id === id)?.ticker ?? '?';
+  // D20.1B (NC-34): the sale whose "undo" was pressed, by id. Nothing is changed until the dialog's own button is pressed.
+  const [askSale, setAskSale] = useState<number | null>(null);
+  const askSaleRow = askSale === null ? undefined : sales.find((s) => s.id === askSale);
 
   return (
     <>
@@ -250,7 +270,7 @@ export function RealizedSection({ accounts, securities }: { accounts: InvAccount
                       {s.taxable ? signedWords(s.gainCents) : <span className="an-kind">Not taxed</span>}
                       {s.taxable && <span className="an-sub">{formatCents(s.shortTermCents)} short · {formatCents(s.longTermCents)} long</span>}
                     </td>
-                    <td className="an-cell-act"><button className="link danger" aria-label={`Undo the ${tick(s.securityId)} sale of ${s.date}`} onClick={() => confirm('Undo this sale? The shares go back into their lots.') && undoSale(db, s.id!)}>undo</button></td>
+                    <td className="an-cell-act"><button className="link danger" aria-label={`Undo the ${tick(s.securityId)} sale of ${s.date}`} onClick={() => setAskSale(s.id!)}>undo</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -259,6 +279,23 @@ export function RealizedSection({ accounts, securities }: { accounts: InvAccount
         )}
       </section>
       <p className="an-note" style={{ margin: 0 }}>Wash sales (rebuying within 30 days of a loss) are not tracked. Check your broker’s 1099-B for the official figures.</p>
+      {askSaleRow && (
+        <ConfirmDialog
+          title="Undo sale?"
+          confirmLabel="Undo sale"
+          busyLabel="Undoing…"
+          kind="linked"
+          onCancel={() => setAskSale(null)}
+          onConfirm={async () => {
+            // undoSale looks the sale up again inside its own transaction; false means it was already gone.
+            if (!(await undoSale(db, askSaleRow.id!))) return 'This sale is no longer logged. Nothing was changed.';
+            setAskSale(null);
+          }}
+        >
+          <p><strong>{tick(askSaleRow.securityId)} sale of {askSaleRow.date}</strong><br /><span className="muted small">{acct(askSaleRow.accountId)} · {shortShares(askSaleRow.shares)} share{askSaleRow.shares === 1 ? '' : 's'} · proceeds {formatCents(askSaleRow.proceedsCents)}</span></p>
+          <p>The shares go back into their lots{askSaleRow.toCashCents > 0 ? ` and the ${formatCents(askSaleRow.toCashCents)} of proceeds is taken back out of the account's cash` : ''}. The sale is removed from your realized gains.</p>
+        </ConfirmDialog>
+      )}
     </>
   );
 }

@@ -9,6 +9,7 @@ import { balanceAt, loanView, monthlyTotal, nextRow, scheduleToCsv, yearlySummar
 import { createLoanLedgerAccount, ledgerOwed, recordLoanPayment } from '../lib/loanLedger';
 import Collapsible, { useCollapsed } from './Collapsible';
 import { LinesChart, type LineSeries } from './charts';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import './analysis.css';
 import { MoneyField, NumField } from './fields';
 
@@ -131,6 +132,8 @@ export default function LoanCard({
   const [eNote, setENote] = useState('');
   const [page, setPage] = useState(0);
   const [mode, setMode] = useState<'yearly' | 'monthly'>('yearly');
+  // D20.1B (NC-20): "delete" was pressed on this loan. Nothing is deleted until the dialog's own button is pressed.
+  const [askDelete, setAskDelete] = useState(false);
 
   const next = nextRow(s, today);
   const balanceNow = balanceAt(s, today);
@@ -200,17 +203,7 @@ export default function LoanCard({
             <span className="an-small muted" style={{ fontWeight: 500, letterSpacing: 0 }}>{loan.scenario ? 'Balance (what-if)' : 'Owed now'}</span>
             <strong>{formatCents(balanceNow)}</strong>
           </span>
-          <button
-            className="link danger"
-            onClick={async () => {
-              if (!confirm(`Delete "${loan.name}" and its rate changes and extra payments? ${loan.ledgerAccountId ? 'Its ledger account and transactions are kept.' : ''}`)) return;
-              await db.transaction('rw', db.loans, db.loanRates, db.loanEvents, async () => {
-                await db.loanRates.where('loanId').equals(id).delete();
-                await db.loanEvents.where('loanId').equals(id).delete();
-                await db.loans.delete(id);
-              });
-            }}
-          >delete</button>
+          <button className="link danger" aria-label={`Delete ${loan.name}`} onClick={() => setAskDelete(true)}>delete</button>
         </div>
       </div>
 
@@ -480,6 +473,26 @@ export default function LoanCard({
           </Collapsible>
         )}
       </div>
+      {askDelete && (
+        <ConfirmDialog
+          title="Delete loan?"
+          confirmLabel="Delete loan"
+          busyLabel="Deleting…"
+          kind="irreversible"
+          onCancel={() => setAskDelete(false)}
+          onConfirm={async () => {
+            await db.transaction('rw', db.loans, db.loanRates, db.loanEvents, async () => {
+              await db.loanRates.where('loanId').equals(id).delete();
+              await db.loanEvents.where('loanId').equals(id).delete();
+              await db.loans.delete(id);
+            });
+            setAskDelete(false);
+          }}
+        >
+          <p><strong>{loan.name}</strong><br /><span className="muted small">{KIND_NAMES[loan.kind]}{loan.scenario ? ' · what-if' : ''}</span></p>
+          <p>This deletes the loan with its {rates.length} rate change{rates.length === 1 ? '' : 's'} and {events.length} extra payment{events.length === 1 ? '' : 's'}.{loan.ledgerAccountId ? ' Its ledger account and transactions are kept.' : ''}</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

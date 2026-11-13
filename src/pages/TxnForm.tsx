@@ -12,6 +12,7 @@ import ProjectTag, { useProjectChoices } from './ProjectTag';
 import { convertToTransfer, createTransfer, moveTxn, updateTxn } from '../lib/transfers';
 import { recentPayees, suggestCategory } from '../lib/rules';
 import AmountInput from './AmountInput';
+import ConfirmDialog from '../shell/ConfirmDialog';
 
 interface Props {
   account: Account;
@@ -82,6 +83,9 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   const [hint, setHint] = useState('');
   // When editing, the account can be changed (an entry made on the wrong account). The one it is on now is always offered.
   const [acctId, setAcctId] = useState(String(account.id));
+  // D20.1B (NC-37, NC-38): the reconciled move, and the split-to-single switch, waiting for the dialog's own button.
+  const [askMove, setAskMove] = useState(false);
+  const [askSingle, setAskSingle] = useState(false);
   const moving = !!editing && acctId !== String(account.id);
   const current = accounts.find((a) => String(a.id) === acctId) ?? account;
   const choices = accounts.filter((a) => a.id === account.id || (!a.closed && a.kind !== 'loan'));
@@ -98,7 +102,11 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
   }
   const bad = (f: 'amount' | 'date' | 'other' | 'acct') => !!error && errField === f;
 
-  async function save() {
+  /**
+   * Validates, then saves. Returns an error message when the save itself failed (it is also shown on the form), nothing otherwise.
+   * `moveConfirmed` (D20.1B, NC-37): true only when called from the reconciled-move dialog's own button; without it a reconciled move stops at the dialog, before ANY write.
+   */
+  async function save(moveConfirmed = false): Promise<string | void> {
     setError('');
     setErrField('');
     const abs = total === null ? null : Math.abs(total);
@@ -109,7 +117,8 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
     if (wantsTransfer && !isTransfer && !other) return fail('other', 'Choose the other account for the transfer');
     if (moving && isTransfer && acctId === String(otherAccountId)) return fail('acct', 'A transfer needs two different accounts');
     if (moving && wantsTransfer && !isTransfer && other === acctId) return fail('acct', 'A transfer needs two different accounts');
-    if (reconciledMove && !confirm(`This transaction is reconciled. Moving it to ${current.name} changes the reconciled balance of both accounts, and it goes back to Cleared so you can reconcile again. Move it?`)) return;
+    // NC-37: all validation above has passed; now (and only now) the question, before any database write. Cancel leaves the form open and the transaction untouched.
+    if (reconciledMove && !moveConfirmed) { setAskMove(true); return; }
 
     try {
       if (isTransfer && editing) {
@@ -168,8 +177,21 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
       }
       onDone();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+      return message;
     }
+  }
+  /** NC-37, on confirm: the transaction and the target account are read again first; if either changed while the question was open, nothing is written. Then the one existing save runs once. */
+  async function confirmMove() {
+    const fresh = await db.txns.get(editing!.id!);
+    if (!fresh) throw new Error('This transaction no longer exists. Nothing was changed.');
+    if (fresh.status !== 'reconciled' || fresh.accountId !== account.id) throw new Error('This transaction changed while the question was open. Nothing was changed. Close this form and open the transaction again.');
+    const target = await db.accounts.get(Number(acctId));
+    if (!target || (target.closed && target.id !== account.id)) throw new Error('The account you chose is no longer available. Nothing was changed. Choose an account again.');
+    const failed = await save(true);
+    if (typeof failed === 'string') return failed; // shown inside the dialog; the dialog stays open
+    setAskMove(false);
   }
 
   const liability = current.kind === 'credit_card' || current.kind === 'loan';
@@ -237,7 +259,7 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
             </label>
           )}
           {choice !== 'transfer' && (
-            <button className="link" onClick={() => { if (splitOn && splits.some((r) => r.tag.projectId) && !confirm('Using a single category removes the project tags on the individual splits. Continue?')) return; setSplitOn(!splitOn); }}>
+            <button className="link" onClick={() => { if (splitOn && splits.some((r) => r.tag.projectId)) { setAskSingle(true); return; } setSplitOn(!splitOn); }}>
               {splitOn ? 'Use a single category' : 'Split across categories'}
             </button>
           )}
@@ -290,10 +312,38 @@ export default function TxnForm({ account, editing, otherAccountId, onDone }: Pr
 
       <label className="f" style={{ marginTop: 8 }}>Memo<input value={memo} onChange={(e) => setMemo(e.target.value)} /></label>
       <div className="row" style={{ marginTop: 8 }}>
-        <button className="primary" onClick={save}>{editing ? 'Save' : 'Add transaction'}</button>
+        <button className="primary" onClick={() => void save()}>{editing ? 'Save' : 'Add transaction'}</button>
         <button onClick={onDone}>Cancel</button>
       </div>
       {error && <div className="error" id="txn-form-error" role="alert">{error}</div>}
+      {askMove && (
+        <ConfirmDialog
+          title="Move reconciled transaction?"
+          confirmLabel="Move transaction"
+          busyLabel="Moving…"
+          tone="primary"
+          kind="linked"
+          onCancel={() => setAskMove(false)}
+          onConfirm={() => confirmMove()}
+        >
+          <p><strong>{editing?.payee || '(no payee)'}</strong><br /><span className="muted small">{account.name} → {current.name}</span></p>
+          <p>This transaction is reconciled. Moving it to {current.name} changes the reconciled balance of both accounts, and it goes back to Cleared so you can reconcile again.</p>
+          <p className="muted small">Nothing has been saved yet. Cancel keeps this form open and the transaction where it is.</p>
+        </ConfirmDialog>
+      )}
+      {askSingle && (
+        <ConfirmDialog
+          title="Use a single category?"
+          confirmLabel="Use single category"
+          tone="primary"
+          kind="replace"
+          onCancel={() => setAskSingle(false)}
+          onConfirm={() => { setSplitOn(false); setAskSingle(false); }}
+        >
+          <p>Using a single category removes the project tags on the individual splits.</p>
+          <p className="muted small">This only changes the form. Nothing is saved until you press {editing ? 'Save' : 'Add transaction'}; Cancel here keeps your splits as they are.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }
