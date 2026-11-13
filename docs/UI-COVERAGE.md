@@ -24,6 +24,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D15 (2026-11-12, built and tested locally, uncommitted) redesigned Household Services, Bills & Subscriptions and the Family member and dates pages: V-01 to V-04, B-01, B-02, B-03, B-04, B-05, F-02 and F-03 read `BLT` with the marks actually recorded (section 1.12; B-04 was recomposed in the final Bills refinement and its marks come from section 1.12); W-33, W-34 and W-35 read `BLT` for the parts section 1.12 names. DL-07, DL-08 and DL-09 (the module-owned dialogs) stay `NS`: their markup was not touched and D20 owns the dialog sweep. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done.**
 
+**D16 (2026-11-12, built and tested locally, uncommitted) redesigned the nine core Money pages: L-02, L-03, L-04, L-05, L-06, L-07, L-10, L-11 and L-12 read `BLT` with the marks actually recorded (section 1.13; `Kbd` is recorded only for L-04, L-05 and L-07 after the 2026-11-13 keyboard walk; the other six D16 pages have no keyboard mark), and W-14 to W-19 read `BLT`. DL-10 (the three Ledger dialog call sites) is untouched and stays `NS`. D15 is committed and deployed as `8e01e61`. Nothing reads `ACC`; no owner review, real-device or screen-reader pass has happened.**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -255,17 +257,17 @@ Ledger has 32 route entries and 31 pages. `/ledger/backup` is a redirect to `/se
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
 | L-01 | `/ledger` | `src/pages/HomePage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
-| L-02 | `/ledger/checkin` | `src/pages/CheckinPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-03 | `/ledger/accounts` | `src/pages/AccountsPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-04 | `/ledger/account/:id` | `src/pages/LedgerPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-05 | `/ledger/transactions` | `src/pages/TransactionsPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-06 | `/ledger/budget` | `src/pages/BudgetPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-07 | `/ledger/scheduled` | `src/pages/ScheduledPage.tsx` | D16 | NS | . | . | . | . | . | . |
+| L-02 | `/ledger/checkin` | `src/pages/CheckinPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
+| L-03 | `/ledger/accounts` | `src/pages/AccountsPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
+| L-04 | `/ledger/account/:id` | `src/pages/LedgerPage.tsx` | D16 | BLT | Y | Y | Y | Y | Y | Y |
+| L-05 | `/ledger/transactions` | `src/pages/TransactionsPage.tsx` | D16 | BLT | Y | Y | Y | Y | Y | Y |
+| L-06 | `/ledger/budget` | `src/pages/BudgetPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
+| L-07 | `/ledger/scheduled` | `src/pages/ScheduledPage.tsx` | D16 | BLT | Y | Y | Y | Y | Y | Y |
 | L-08 | `/ledger/forecast` | `src/pages/ForecastPage.tsx` | D17 | NS | . | . | . | . | . | . |
 | L-09 | `/ledger/reports` | `src/pages/ReportsPage.tsx` | D17 | NS | . | . | . | . | . | . |
-| L-10 | `/ledger/rules` | `src/pages/RulesPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-11 | `/ledger/import` | `src/pages/ImportPage.tsx` | D16 | NS | . | . | . | . | . | . |
-| L-12 | `/ledger/categories` | `src/pages/CategoriesPage.tsx` | D16 | NS | . | . | . | . | . | . |
+| L-10 | `/ledger/rules` | `src/pages/RulesPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
+| L-11 | `/ledger/import` | `src/pages/ImportPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
+| L-12 | `/ledger/categories` | `src/pages/CategoriesPage.tsx` | D16 | BLT | Y | Y | Y | Y | . | Y |
 | L-13 | `/ledger/networth` | `src/pages/NetWorthPage.tsx` | D17 | NS | . | . | . | . | . | . |
 | L-14 | `/ledger/investments` | `src/pages/InvestmentsPage.tsx` | D17 | NS | . | . | . | . | . | . |
 | L-15 | `/ledger/payoff` | `src/pages/PayoffPage.tsx` | D17 | NS | . | . | . | . | . | . |
@@ -287,6 +289,11 @@ Ledger has 32 route entries and 31 pages. `/ledger/backup` is a redirect to `/se
 | L-31 | `/ledger/sync` | `src/pages/SyncPage.tsx` | D19 | NS | . | . | . | . | . | . |
 
 Dashboard cards (Today 11, Ledger Home 12) are tracked inside T-01 and L-01.
+
+
+### 1.13 D16 evidence: the nine core Money pages (built, NOT committed; nothing is `ACC`)
+
+D16 (2026-11-12) recomposed Check-in, Accounts, the account page, Transactions, Budget, Scheduled, Rules, Import and Categories. Seen in headless Chrome on throwaway copies of the fictional demo household (own address, sync off). Marks recorded: **L, D, 375 and 1440** (Signature light and dark at 1440 and 375, plus Classic light; the 200-cell sweep also covered 1024, 800 and 320 and a fourth look, Slate), **Func** (the existing suites, 27 new tests, 47 of 47 scripted browser workflows, and an engine snapshot identical before and after). **Kbd** was added on 2026-11-13 for L-04, L-05 and L-07 only (30 synthetic-key checks in headless Chrome, see report section 16.8); the other six pages have none. Not real-device, screen-reader or forced-colors tested. Pictures: `Documents\Ledger-Design-Concepts\D16-Evidence`. Report: `docs/LEDGER-SIGNATURE-D16-REPORT.md`.
 
 ## 3. In-page views (31)
 
@@ -379,12 +386,12 @@ A workflow is accepted when its pages and dialogs are accepted and the flow chec
 | W-11 | Calendar event handed to Ledger as a scheduled item | D13, D16 | NS |
 | W-12 | Tasks: create, edit, complete, bulk select, lists | D11 | BLT |
 | W-13 | Today: edit layout, hide amounts | D11 | BLT |
-| W-14 | Monthly check-in | D16 | NS |
-| W-15 | Transactions: add, edit, split, reconcile, bulk category, delete with dependency check | D16 | NS |
-| W-16 | CSV import and undo import | D16 | NS |
-| W-17 | Scheduled items: create, post, skip, delete recurring | D16 | NS |
-| W-18 | Rules and detect-recurring | D16 | NS |
-| W-19 | Budget assign, targets, reorder | D16 | NS |
+| W-14 | Monthly check-in | D16 | BLT |
+| W-15 | Transactions: add, edit, split, reconcile, bulk category, delete with dependency check | D16 | BLT |
+| W-16 | CSV import and undo import | D16 | BLT |
+| W-17 | Scheduled items: create, post, skip, delete recurring | D16 | BLT |
+| W-18 | Rules and detect-recurring | D16 | BLT |
+| W-19 | Budget assign, targets, reorder | D16 | BLT |
 | W-20 | Trades, lots, prices, realized gains | D17 | NS |
 | W-21 | RSU grants and vest schedule | D18 | NS |
 | W-22 | Income setup per person, HSA log, paycheck scenarios | D18 | NS |

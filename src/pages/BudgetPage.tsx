@@ -11,9 +11,12 @@ import { planFunding, targetNeed } from '../lib/budgetTargets';
 import BudgetTargets from './BudgetTargets';
 import InlineTarget from './InlineTarget';
 import { PageHeader } from '../ui/components';
+import { StatusChip } from '../ui/StatusChip';
 import { readCollapsed, writeCollapsed } from './Collapsible';
 import { sortByOrder } from '../lib/order';
 import { assignedLabel, budgetEditTargetLabel, budgetFundLabel, budgetFundPaymentLabel, budgetSetTargetLabel } from '../lib/a11yLabels';
+import { budgetStateWord, countWord } from './moneyPresentation';
+import './money.css';
 
 const foldKey = (groupId: number) => `budget.g${groupId}`;
 
@@ -100,22 +103,23 @@ export default function BudgetPage() {
 
   const renderRow = (r: BudgetRow) => (
     <Fragment key={r.key}>
-    <tr>
-      <td>
-        {r.name}
+    <tr className={r.available < 0 ? 'is-over' : ''}>
+      <td className="b-name" data-label="Category">
+        <span className="b-title">{r.name}</span>
+        {budgetStateWord(r.available) && r.kind === 'category' && <> <StatusChip tone="overdue">{budgetStateWord(r.available)}</StatusChip></>}
         {r.kind === 'category' && needOf(r).map((n) => (
-          <div key={n.target.id} className={n.funded ? 'muted' : 'warn'} style={{ fontSize: '0.8rem' }}>
+          <div key={n.target.id} className={`b-target ${n.funded ? 'muted' : 'warn'}`}>
             Target {n.description}: {n.funded ? 'funded ✓' : <>needs {formatCents(n.needCents)} this month{' '}<button className="link" aria-label={budgetFundLabel(r.name)} onClick={() => setAssignment(db, month, r.key, r.assigned + n.needCents)}>fund</button></>}{' '}
             <button className="link" aria-label={budgetEditTargetLabel(r.name)} onClick={() => setEditingTarget({ categoryId: r.categoryId!, targetId: n.target.id })}>edit</button>
           </div>
         ))}
         {r.kind === 'category' && needOf(r).length === 0 && editingTarget?.categoryId !== r.categoryId && (
-          <div><button className="link" style={{ fontSize: '0.8rem' }} aria-label={budgetSetTargetLabel(r.name)} onClick={() => setEditingTarget({ categoryId: r.categoryId! })}>+ set a target</button></div>
+          <div><button className="link b-settarget" aria-label={budgetSetTargetLabel(r.name)} onClick={() => setEditingTarget({ categoryId: r.categoryId! })}>+ set a target</button></div>
         )}
         {r.kind === 'payment' && (() => {
           const u = budget.unfunded.find((x) => `p${x.accountId}` === r.key);
           return u ? (
-            <div className="warn">
+            <div className="warn b-target">
               Owed {formatCents(u.owedCents)}; {formatCents(u.unfundedCents)} not funded yet{' '}
               <button className="link" aria-label={budgetFundPaymentLabel(r.name)} onClick={() => setAssignment(db, month, r.key, r.assigned + (u.owedCents - r.available))}>
                 fund it
@@ -124,9 +128,9 @@ export default function BudgetPage() {
           ) : null;
         })()}
       </td>
-      <td className="num"><Assigned month={month} row={r} /></td>
-      <td className={`num hide-sm ${r.activity < 0 ? '' : r.activity > 0 ? 'pos' : 'muted'}`}>{formatCents(r.activity)}</td>
-      <td className={`num ${r.available < 0 ? 'neg' : r.available > 0 ? 'pos' : 'muted'}`}>
+      <td className="num b-assigned" data-label="Assigned"><Assigned month={month} row={r} /></td>
+      <td className={`num b-activity ${r.activity < 0 ? '' : r.activity > 0 ? 'pos' : 'muted'}`} data-label="Activity">{formatCents(r.activity)}</td>
+      <td className={`num b-avail ${r.available < 0 ? 'neg' : r.available > 0 ? 'pos' : 'muted'}`} data-label="Available">
         {formatCents(r.available)}
         {r.available < 0 && (
           <div><button className="link" aria-label={`Cover ${formatCents(-r.available)} overspent in ${r.name}`} onClick={() => cover(r)}>cover {formatCents(-r.available)}</button></div>
@@ -134,7 +138,7 @@ export default function BudgetPage() {
       </td>
     </tr>
     {r.kind === 'category' && editingTarget && editingTarget.categoryId === r.categoryId && (
-      <tr><td colSpan={4}>
+      <tr className="b-editor"><td colSpan={4}>
         <InlineTarget key={`${r.categoryId}-${editingTarget.targetId ?? 'new'}`} categoryId={r.categoryId!} existing={targets.find((t) => t.id === editingTarget.targetId)} month={month} onClose={() => setEditingTarget(null)} />
       </td></tr>
     )}
@@ -143,36 +147,48 @@ export default function BudgetPage() {
 
   const head = (
     <thead>
-      <tr><th>Category</th><th className="num">Assigned</th><th className="num hide-sm">Activity</th><th className="num">Available</th></tr>
+      <tr><th>Category</th><th className="num">Assigned</th><th className="num">Activity</th><th className="num">Available</th></tr>
     </thead>
   );
 
   return (
-    <>
-      <PageHeader title="Budget" description="Give every dollar a job." actions={<><div className="row">
-          <button onClick={() => setMonth(prevMonth(month))}>‹</button>
-          <strong>{monthLabel(month)}</strong>
-          <button onClick={() => setMonth(nextMonth(month))}>›</button>
+    <div className="mny-page mny-budget">
+      <PageHeader title="Budget" description="Give every dollar a job." actions={<div className="mny-month">
+          <button aria-label="Previous month" onClick={() => setMonth(prevMonth(month))}>‹</button>
+          <strong aria-live="polite">{monthLabel(month)}</strong>
+          <button aria-label="Next month" onClick={() => setMonth(nextMonth(month))}>›</button>
           <button className="link" onClick={() => setMonth(monthOf(todayISO()))}>today</button>
-        </div></>} />
+        </div>} />
 
-      <div className={`card row spread rta ${rta < 0 ? 'rta-neg' : rta === 0 ? 'rta-zero' : 'rta-pos'}`}>
-        <div>
-          <div className="muted">Ready to Assign</div>
-          <div className="rta-amt">{formatCents(rta)}</div>
-        </div>
-        <div className="muted">
-          Cash {formatCents(budget.cash)} · Income this month {formatCents(budget.incomeThisMonth)}
-          <div>
+      <section className={`card mny-rta ${rta < 0 ? 'rta-neg' : rta === 0 ? 'rta-zero' : 'rta-pos'}`} aria-label="Ready to Assign">
+        <div className="mny-rta-main">
+          <div className="mny-rta-label">Ready to Assign</div>
+          <div className="mny-rta-amt">{formatCents(rta)}</div>
+          <p className="mny-rta-msg">
             {rta > 0 && 'Give every dollar a job.'}
             {rta === 0 && 'Every dollar has a job.'}
             {rta < 0 && 'Over-assigned or overspent: move money from another category.'}
-          </div>
+          </p>
         </div>
-      </div>
+        <dl className="mny-rta-figs">
+          <div><dt>Cash</dt><dd>{formatCents(budget.cash)}</dd></div>
+          <div><dt>Income this month</dt><dd>{formatCents(budget.incomeThisMonth)}</dd></div>
+        </dl>
+      </section>
+
+      {(budget.uncategorizedCount > 0 || overspent.length > 0) && (
+        <section className="mny-attn" aria-label="Needs attention">
+          {overspent.length > 0 && (
+            <p className="warn"><StatusChip tone="overdue">Overspent</StatusChip> {overspent.length} categor{overspent.length === 1 ? 'y is' : 'ies are'} overspent. Cover it from another category, or it lowers Ready to Assign next month.</p>
+          )}
+          {budget.uncategorizedCount > 0 && (
+            <p className="warn"><StatusChip tone="warning">Uncategorized</StatusChip> {budget.uncategorizedCount} uncategorized outflow(s) so far. They reduce Ready to Assign but no category. Categorize them in the account ledgers.</p>
+          )}
+        </section>
+      )}
 
       {needs.length > 0 && (
-        <div className={`card row spread ${plan.totalNeedCents > 0 ? '' : 'rta-pos'}`}>
+        <section className={`card mny-targets ${plan.totalNeedCents > 0 ? '' : 'rta-pos'}`} aria-label="Targets for this month">
           <div>
             <strong>Targets</strong>
             <div className="muted">
@@ -180,8 +196,23 @@ export default function BudgetPage() {
             </div>
           </div>
           {plan.totalNeedCents > 0 && <button className="primary" disabled={plan.totalAddCents === 0} onClick={fundTargets}>{plan.shortCents > 0 ? 'Fund what I can' : 'Fund all targets'}</button>}
-        </div>
+        </section>
       )}
+
+      <div className="mny-tools">
+        <button
+          onClick={async () => {
+            const n = await copyLastMonth(db, month);
+            setNote(n ? `Copied ${n} assignment(s) from ${monthLabel(prevMonth(month))}.` : 'Nothing to copy.');
+          }}
+        >Copy last month’s assignments</button>
+        {shownGroups.length > 1 && (
+          <button className="link" onClick={() => setFold(shownGroups.map((g) => g.id!), !shownGroups.every((g) => isFolded(g.id!)))}>
+            {shownGroups.every((g) => isFolded(g.id!)) ? 'Expand all groups' : 'Collapse all groups'}
+          </button>
+        )}
+        {note && <span className="muted" role="status">{note}</span>}
+      </div>
 
       {forecast && forecast.net > 0 && (
         <p className="muted">
@@ -190,50 +221,30 @@ export default function BudgetPage() {
         </p>
       )}
 
-      <div className="row">
-        <button
-          onClick={async () => {
-            const n = await copyLastMonth(db, month);
-            setNote(n ? `Copied ${n} assignment(s) from ${monthLabel(prevMonth(month))}.` : 'Nothing to copy.');
-          }}
-        >Copy last month’s assignments</button>
-        {note && <span className="muted">{note}</span>}
-      </div>
-
-      {budget.uncategorizedCount > 0 && (
-        <p className="warn">{budget.uncategorizedCount} uncategorized outflow(s) so far. They reduce Ready to Assign but no category. Categorize them in the account ledgers.</p>
-      )}
-      {overspent.length > 0 && (
-        <p className="warn">{overspent.length} categor{overspent.length === 1 ? 'y is' : 'ies are'} overspent. Cover it from another category, or it lowers Ready to Assign next month.</p>
-      )}
-
       {payRows.length > 0 && (
-        <section>
-          <h2>Credit card payments</h2>
-          <p className="muted">Spending on a card moves that money here automatically; paying the card draws it down. Assign here to pay down an existing balance.</p>
+        <section className="card flush mny-group" aria-labelledby="b-pay">
+          <div className="mny-group-head">
+            <h2 id="b-pay" className="mny-h2 mny-h2--tight">Credit card payments</h2>
+          </div>
+          <p className="muted mny-group-note">Spending on a card moves that money here automatically; paying the card draws it down. Assign here to pay down an existing balance.</p>
           <table className="budget-table">{head}<tbody>{payRows.map(renderRow)}</tbody></table>
         </section>
       )}
 
-      {shownGroups.length > 1 && (
-        <div className="row">
-          <button className="link" onClick={() => setFold(shownGroups.map((g) => g.id!), !shownGroups.every((g) => isFolded(g.id!)))}>
-            {shownGroups.every((g) => isFolded(g.id!)) ? 'Expand all groups' : 'Collapse all groups'}
-          </button>
-        </div>
-      )}
       {shownGroups.map((g) => {
         const rows = groupRows(g.id!);
         const sum = (f: (r: BudgetRow) => number) => rows.reduce((s, r) => s + f(r), 0);
         const open = !isFolded(g.id!);
         return (
-          <section key={g.id} className="collapsible">
-            <h2>
-              <button className="collapse-btn" aria-expanded={open} onClick={() => setFold([g.id!], open)}>
-                <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> {g.name}
-              </button>{' '}
-              <span className="muted">· available {formatCents(sum((r) => r.available))}{!open && ` · ${rows.length} categor${rows.length === 1 ? 'y' : 'ies'}`}</span>
-            </h2>
+          <section key={g.id} className="card flush mny-group collapsible" aria-labelledby={`b-g${g.id}`}>
+            <div className="mny-group-head">
+              <h2 id={`b-g${g.id}`} className="mny-h2 mny-h2--tight">
+                <button className="collapse-btn" aria-expanded={open} onClick={() => setFold([g.id!], open)}>
+                  <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> {g.name}
+                </button>
+              </h2>
+              <span className="mny-group-sum">available {formatCents(sum((r) => r.available))}{!open && <span className="muted"> · {countWord(rows.length, 'category', 'categories')}</span>}</span>
+            </div>
             {open && <table className="budget-table">{head}<tbody>{rows.map(renderRow)}</tbody></table>}
           </section>
         );
@@ -246,6 +257,6 @@ export default function BudgetPage() {
         Income categories (and uncategorized deposits) feed Ready to Assign. Mark a category as income on the{' '}
         <Link to="/categories">Categories</Link> page.
       </p>
-    </>
+    </div>
   );
 }

@@ -8,8 +8,12 @@ import { formatCents, parseAmountToCents, todayISO } from '../lib/money';
 import { deleteRule, dueInstances, postInstance, skipInstance, type DueInstance } from '../lib/schedule';
 import { orphanedRules } from '../lib/accountDependents';
 import Modal from '../shell/Modal';
-import { PageHeader } from '../ui/components';
+import { EmptyLine, PageHeader } from '../ui/components';
+import { DateTile } from '../ui/DateTile';
+import { StatusChip } from '../ui/StatusChip';
 import { dueAmountLabel, dueApproveLabel, dueDateLabel, dueSkipLabel, ruleActionLabel } from '../lib/a11yLabels';
+import { countWord, isOverdueDate, splitRules } from './moneyPresentation';
+import './money.css';
 
 const FREQ: Record<Frequency, string> = {
   weekly: 'Weekly',
@@ -26,6 +30,7 @@ type FormField = 'account' | 'payee' | 'amount' | 'other' | 'semi1';
 const FIELD_ID: Record<FormField, string> = { account: 'sched-account', payee: 'sched-payee', amount: 'sched-amount', other: 'sched-other', semi1: 'sched-semi1' };
 const FORM_ERROR_ID = 'sched-form-error';
 
+/** One scheduled item that has come due: its date and amount can be changed, then Approve posts it (as a pending transaction) or Skip clears that one date. Nothing posts by itself. */
 export function DueRow({ item, accountMissing }: { item: DueInstance; accountMissing: boolean }) {
   const { rule, date } = item;
   const [d, setD] = useState(date);
@@ -33,7 +38,8 @@ export function DueRow({ item, accountMissing }: { item: DueInstance; accountMis
   const [err, setErr] = useState('');
   const errId = `due-err-${rule.id}-${date}`;
   const sign = rule.amountCents < 0 ? -1 : 1;
-  const overdue = date < todayISO();
+  const today = todayISO();
+  const overdue = isOverdueDate(date, today);
 
   async function approve() {
     const cents = parseAmountToCents(amt);
@@ -46,28 +52,32 @@ export function DueRow({ item, accountMissing }: { item: DueInstance; accountMis
   }
 
   return (
-    <tr>
-      <td>
-        <input type="date" aria-label={dueDateLabel(rule.payee, date)} value={d} onChange={(e) => setD(e.target.value)} />
-        <div className={overdue ? 'warn' : 'muted'}>{overdue ? 'overdue · ' : ''}scheduled {date}</div>
-      </td>
-      <td>
-        {rule.payee} <span className="badge">scheduled</span>
-        <div className="muted">{rule.transferAccountId ? 'Transfer' : ''}</div>
+    <li className={`mny-due${overdue ? ' is-overdue' : ''}`}>
+      <DateTile iso={date} today={today} overdue={overdue} size="sm" labelled={false} />
+      <div className="mny-due-main">
+        <div className="mny-due-title">
+          <strong>{rule.payee}</strong>
+          {overdue && <StatusChip tone="overdue">Overdue</StatusChip>}
+          <StatusChip tone="info" icon={false}>scheduled</StatusChip>
+          {rule.transferAccountId ? <StatusChip tone="neutral" icon={false}>Transfer</StatusChip> : null}
+        </div>
+        <div className={overdue ? 'warn' : 'muted'}>{overdue ? 'overdue · ' : ''}scheduled {date} · {sign < 0 ? 'out' : 'in'} · {formatCents(rule.amountCents)} expected</div>
         {accountMissing && <div className="warn" role="note">Its account no longer exists, so it cannot be approved. Skip it, or fix or delete it under Recurring items below.</div>}
-      </td>
-      <td className="num">
-        <input style={{ width: 100 }} inputMode="decimal" aria-label={dueAmountLabel(rule.payee, date)} aria-invalid={err ? true : undefined} aria-describedby={err ? errId : undefined} value={amt} onChange={(e) => { setAmt(e.target.value); setErr(''); }} />
-        <div className="muted">{sign < 0 ? 'out' : 'in'} · {formatCents(rule.amountCents)} expected</div>
-      </td>
-      <td>
-        <div className="row">
-          <button className="primary" aria-label={dueApproveLabel(rule.payee, date)} onClick={approve} disabled={accountMissing} title={accountMissing ? 'Its account no longer exists' : undefined}>Approve</button>
-          <button aria-label={dueSkipLabel(rule.payee, date)} onClick={() => skipInstance(db, rule, date)}>Skip</button>
+        <div className="mny-due-fields">
+          <label className="f"><span className="mny-lbl">Post on</span>
+            <input type="date" aria-label={dueDateLabel(rule.payee, date)} value={d} onChange={(e) => setD(e.target.value)} />
+          </label>
+          <label className="f"><span className="mny-lbl">Amount</span>
+            <input inputMode="decimal" aria-label={dueAmountLabel(rule.payee, date)} aria-invalid={err ? true : undefined} aria-describedby={err ? errId : undefined} value={amt} onChange={(e) => { setAmt(e.target.value); setErr(''); }} />
+          </label>
         </div>
         {err && <div className="error" id={errId} role="alert">{err}</div>}
-      </td>
-    </tr>
+      </div>
+      <div className="mny-due-act">
+        <button className="primary" aria-label={dueApproveLabel(rule.payee, date)} onClick={approve} disabled={accountMissing} title={accountMissing ? 'Its account no longer exists' : undefined}>Approve</button>
+        <button aria-label={dueSkipLabel(rule.payee, date)} onClick={() => skipInstance(db, rule, date)}>Skip</button>
+      </div>
+    </li>
   );
 }
 
@@ -127,7 +137,8 @@ export default function ScheduledPage() {
     setSemi1(String(r.semiDays?.[0] ?? 1));
     setSemi2(String(r.semiDays?.[1] ?? 15));
     setMemo(r.memo);
-    window.scrollTo({ top: document.body.scrollHeight });
+    // The form sits below the lists: bring it into view (it used to be the bottom of the page).
+    setTimeout(() => document.getElementById('sched-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 
   // The Calendar's "Edit in Ledger" opens this page with ?rule=<id>: show that item in the edit form below.
@@ -181,8 +192,44 @@ export default function ScheduledPage() {
     reset();
   }
 
+  const today = todayISO();
+  const { active, paused } = splitRules(rules);
+  const overdueCount = (due ?? []).filter((x) => isOverdueDate(x.date, today)).length;
+
+  const ruleRow = (r: RecurringRule) => {
+    return (
+      <li key={r.id} className={`mny-rule${r.active ? '' : ' is-paused'}`}>
+        <div className="mny-rule-main">
+          <div className="mny-rule-title">
+            <strong>{r.payee}</strong>
+            {!r.active && <StatusChip tone="neutral" icon={false}>Paused</StatusChip>}
+            {orphans.has(r.id!) && <StatusChip tone="warning">account missing</StatusChip>}
+          </div>
+          <div className="muted">{acctName(r.accountId)} · {r.transferAccountId ? `transfer ${r.amountCents < 0 ? 'to' : 'from'} ${acctName(r.transferAccountId)}` : catName(r.categoryId)}</div>
+        </div>
+        <div className="mny-rule-when">
+          <div>{FREQ[r.frequency]}</div>
+          <div className="muted">
+            from {r.startDate}{r.endDate ? ` to ${r.endDate}` : ''}
+            {r.frequency === 'semimonthly' ? ` (days ${r.semiDays?.join(' & ')})` : ''}
+          </div>
+        </div>
+        <div className="mny-rule-amt">
+          <span className={`mny-amt ${r.amountCents < 0 ? 'neg' : 'pos'}`}>{formatCents(r.amountCents)}</span>
+          <span className="mny-acct-cap">{r.amountCents < 0 ? 'out' : 'in'}</span>
+        </div>
+        <div className="mny-rule-act">
+          <TaskActions module="ledger" id={`scheduled:${r.id}`} label={r.payee} />
+          <button className="link" aria-label={ruleActionLabel('Edit', r.payee)} onClick={() => load(r)}>edit</button>
+          <button className="link" aria-label={ruleActionLabel(r.active ? 'Pause' : 'Resume', r.payee)} onClick={() => db.recurring.update(r.id!, { active: !r.active })}>{r.active ? 'pause' : 'resume'}</button>
+          <button className="link danger" aria-label={ruleActionLabel('Delete', r.payee)} onClick={() => setAskDelete(r)}>delete</button>
+        </div>
+      </li>
+    );
+  };
+
   return (
-    <>
+    <div className="mny-page mny-sched">
       <PageHeader title="Scheduled" description="Recurring items you approve before they post." about={<>Recurring items show up here as they come due (up to {LOOKAHEAD_DAYS} days ahead). Nothing is posted until you approve it, and you
         can change the date or amount first. Approved items land in the ledger as pending, marked “scheduled”.</>} />
 
@@ -193,105 +240,91 @@ export default function ScheduledPage() {
         </div>
       )}
 
-      <h2>Due now</h2>
-      {due && due.length === 0 && <p className="muted">Nothing due.</p>}
-      {due && due.length > 0 && (
-        <table>
-          <thead><tr><th>Date</th><th>Item</th><th className="num">Amount</th><th></th></tr></thead>
-          <tbody>{due.map((x) => <DueRow key={`${x.rule.id}-${x.date}`} item={x} accountMissing={orphans.has(x.rule.id!)} />)}</tbody>
-        </table>
-      )}
+      <dl className="card mny-figs" aria-label="Scheduled at a glance">
+        <div className="mny-fig"><dt>Due now</dt><dd>{due ? due.length : '…'}</dd>{due && due.length > 0 && <dd className="mny-fig-sub">{overdueCount > 0 ? `${overdueCount} overdue` : `next ${LOOKAHEAD_DAYS} days`}</dd>}</div>
+        <div className="mny-fig"><dt>Recurring items</dt><dd>{active.length}</dd></div>
+        <div className="mny-fig"><dt>Paused</dt><dd>{paused.length}</dd></div>
+      </dl>
 
-      <h2>Recurring items</h2>
-      {rules.length === 0 && <p className="muted">None yet. Add rent, paychecks, subscriptions, card payments…</p>}
-      <table>
-        <tbody>
-          {rules.map((r) => (
-            <tr key={r.id} className={r.active ? '' : 'muted'}>
-              <td>
-                {r.payee}
-                <div className="muted">
-                  {orphans.has(r.id!) && <span className="badge">account missing</span>} {acctName(r.accountId)} · {r.transferAccountId ? `transfer ${r.amountCents < 0 ? 'to' : 'from'} ${acctName(r.transferAccountId)}` : catName(r.categoryId)}
-                </div>
-              </td>
-              <td>
-                {FREQ[r.frequency]}
-                <div className="muted">
-                  from {r.startDate}{r.endDate ? ` to ${r.endDate}` : ''}
-                  {r.frequency === 'semimonthly' ? ` (days ${r.semiDays?.join(' & ')})` : ''}
-                </div>
-              </td>
-              <td className={`num ${r.amountCents < 0 ? 'neg' : 'pos'}`}>{formatCents(r.amountCents)}</td>
-              <td>
-                <div className="row">
-                  <TaskActions module="ledger" id={`scheduled:${r.id}`} label={r.payee} />
-                  <button className="link" aria-label={ruleActionLabel('Edit', r.payee)} onClick={() => load(r)}>edit</button>
-                  <button className="link" aria-label={ruleActionLabel(r.active ? 'Pause' : 'Resume', r.payee)} onClick={() => db.recurring.update(r.id!, { active: !r.active })}>{r.active ? 'pause' : 'resume'}</button>
-                  <button className="link danger" aria-label={ruleActionLabel('Delete', r.payee)} onClick={() => setAskDelete(r)}>delete</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <section aria-labelledby="sched-due">
+        <h2 id="sched-due" className="mny-h2">Due now</h2>
+        {due && due.length === 0 && <div className="card"><EmptyLine>Nothing due.</EmptyLine></div>}
+        {due && due.length > 0 && (
+          <ul className="card flush mny-dues">{due.map((x) => <DueRow key={`${x.rule.id}-${x.date}`} item={x} accountMissing={orphans.has(x.rule.id!)} />)}</ul>
+        )}
+      </section>
 
-      <h2>{editing ? 'Edit recurring item' : 'Add recurring item'}</h2>
-      <div className="card">
-        <div className="grid">
-          <label className="f">Account
-            <select id={FIELD_ID.account} aria-invalid={invalid('account')} aria-describedby={described('account')} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-              <option value="">Choose…</option>
-              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
-          </label>
-          <label className="f">Name<input id={FIELD_ID.payee} aria-invalid={invalid('payee')} aria-describedby={described('payee')} value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="e.g. Rent" /></label>
-          <label className="f">Type
-            <select value={dir} onChange={(e) => setDir(e.target.value as 'out' | 'in')}>
-              <option value="out">Outflow (−)</option>
-              <option value="in">Inflow (+)</option>
-            </select>
-          </label>
-          <label className="f">Amount<input id={FIELD_ID.amount} aria-invalid={invalid('amount')} aria-describedby={described('amount')} value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /></label>
-          <label className="f">Category
-            <select value={choice} onChange={(e) => setChoice(e.target.value)}>
-              <option value="">Uncategorized</option>
-              <option value="transfer">↔ Transfer to/from another account…</option>
-              {groups.map((g) => (
-                <optgroup key={g.id} label={g.name}>
-                  {cats.filter((c) => c.groupId === g.id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </optgroup>
-              ))}
-            </select>
-          </label>
-          {choice === 'transfer' && (
-            <label className="f">{dir === 'out' ? 'To account' : 'From account'}
-              <select id={FIELD_ID.other} aria-invalid={invalid('other')} aria-describedby={described('other')} value={other} onChange={(e) => setOther(e.target.value)}>
+      <section aria-labelledby="sched-rules">
+        <h2 id="sched-rules" className="mny-h2">Recurring items <span className="mny-count">{countWord(rules.length, 'item')}</span></h2>
+        {rules.length === 0 && <div className="card"><EmptyLine>None yet. Add rent, paychecks, subscriptions, card payments…</EmptyLine></div>}
+        {active.length > 0 && <ul className="card flush mny-rules" aria-label="Active recurring items">{active.map(ruleRow)}</ul>}
+        {paused.length > 0 && (
+          <>
+            <h3 className="mny-h3">Paused <span className="mny-count">{paused.length}</span></h3>
+            <ul className="card flush mny-rules" aria-label="Paused recurring items">{paused.map(ruleRow)}</ul>
+          </>
+        )}
+      </section>
+
+      <section aria-labelledby="sched-form-h" id="sched-form">
+        <h2 id="sched-form-h" className="mny-h2">{editing ? 'Edit recurring item' : 'Add recurring item'}</h2>
+        <div className="card">
+          <div className="mny-form mny-form--wide">
+            <label className="f">Account
+              <select id={FIELD_ID.account} aria-invalid={invalid('account')} aria-describedby={described('account')} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
                 <option value="">Choose…</option>
-                {accounts.filter((a) => String(a.id) !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </label>
-          )}
-          <label className="f">Repeats
-            <select value={freq} onChange={(e) => setFreq(e.target.value as Frequency)}>
-              {Object.entries(FREQ).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </label>
-          <label className="f">First date<input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label>
-          <label className="f">Ends (optional)<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label>
-          {freq === 'semimonthly' && (
-            <>
-              <label className="f">1st day of month<input id={FIELD_ID.semi1} aria-invalid={invalid('semi1')} aria-describedby={described('semi1')} value={semi1} onChange={(e) => setSemi1(e.target.value)} inputMode="numeric" /></label>
-              <label className="f">2nd day (31 = last)<input value={semi2} onChange={(e) => setSemi2(e.target.value)} inputMode="numeric" /></label>
-            </>
-          )}
+            <label className="f">Name<input id={FIELD_ID.payee} aria-invalid={invalid('payee')} aria-describedby={described('payee')} value={payee} onChange={(e) => setPayee(e.target.value)} placeholder="e.g. Rent" /></label>
+            <label className="f">Type
+              <select value={dir} onChange={(e) => setDir(e.target.value as 'out' | 'in')}>
+                <option value="out">Outflow (−)</option>
+                <option value="in">Inflow (+)</option>
+              </select>
+            </label>
+            <label className="f">Amount<input id={FIELD_ID.amount} aria-invalid={invalid('amount')} aria-describedby={described('amount')} value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /></label>
+            <label className="f">Category
+              <select value={choice} onChange={(e) => setChoice(e.target.value)}>
+                <option value="">Uncategorized</option>
+                <option value="transfer">↔ Transfer to/from another account…</option>
+                {groups.map((g) => (
+                  <optgroup key={g.id} label={g.name}>
+                    {cats.filter((c) => c.groupId === g.id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            {choice === 'transfer' && (
+              <label className="f">{dir === 'out' ? 'To account' : 'From account'}
+                <select id={FIELD_ID.other} aria-invalid={invalid('other')} aria-describedby={described('other')} value={other} onChange={(e) => setOther(e.target.value)}>
+                  <option value="">Choose…</option>
+                  {accounts.filter((a) => String(a.id) !== accountId).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+            )}
+            <label className="f">Repeats
+              <select value={freq} onChange={(e) => setFreq(e.target.value as Frequency)}>
+                {Object.entries(FREQ).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </label>
+            <label className="f">First date<input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></label>
+            <label className="f">Ends (optional)<input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></label>
+            {freq === 'semimonthly' && (
+              <>
+                <label className="f">1st day of month<input id={FIELD_ID.semi1} aria-invalid={invalid('semi1')} aria-describedby={described('semi1')} value={semi1} onChange={(e) => setSemi1(e.target.value)} inputMode="numeric" /></label>
+                <label className="f">2nd day (31 = last)<input value={semi2} onChange={(e) => setSemi2(e.target.value)} inputMode="numeric" /></label>
+              </>
+            )}
+          </div>
+          <label className="f mny-memo">Memo<input value={memo} onChange={(e) => setMemo(e.target.value)} /></label>
+          {error && <div className="error" id={FORM_ERROR_ID} role="alert">{error}</div>}
+          <div className="mny-actions">
+            <button className="primary" onClick={save}>{editing ? 'Save changes' : 'Add recurring item'}</button>
+            {editing && <button onClick={reset}>Cancel</button>}
+          </div>
         </div>
-        <label className="f" style={{ marginTop: 8 }}>Memo<input value={memo} onChange={(e) => setMemo(e.target.value)} /></label>
-        <div className="row" style={{ marginTop: 8 }}>
-          <button className="primary" onClick={save}>{editing ? 'Save changes' : 'Add recurring item'}</button>
-          {editing && <button onClick={reset}>Cancel</button>}
-        </div>
-        {error && <div className="error" id={FORM_ERROR_ID} role="alert">{error}</div>}
-      </div>
+      </section>
 
       {askDelete && (
         <Modal title="Delete this recurring item?" onClose={() => setAskDelete(null)}>
@@ -302,6 +335,6 @@ export default function ScheduledPage() {
           </div>
         </Modal>
       )}
-    </>
+    </div>
   );
 }

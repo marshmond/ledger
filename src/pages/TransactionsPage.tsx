@@ -20,6 +20,11 @@ import TxnForm from './TxnForm';
 import BulkProject from './BulkProject';
 import { projectLabel, useProjectChoices } from '../core/projectLink';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
+import { StatusChip } from '../ui/StatusChip';
+import { Figure } from '../ui/Figure';
+import { STATUS_HELP, STATUS_WORD, statusTone } from './moneyPresentation';
+import RowActions from './RowActions';
+import './money.css';
 
 const COLS: { key: SortKey; label: string; cls?: string; first: 'asc' | 'desc' }[] = [
   { key: 'date', label: 'Date', first: 'desc' },
@@ -147,14 +152,14 @@ export default function TransactionsPage() {
   };
 
   return (
-    <>
+    <div className="mny-page mny-txns">
       <PageHeader
         title="Transactions"
         description={`Every transaction from every account in one place. ${txns.length.toLocaleString()} across ${accounts.length} account${accounts.length === 1 ? '' : 's'}.`}
         actions={<button className="primary" onClick={openAddTransaction}>Add transaction</button>}
       />
 
-      <div className="toolbar">
+      <div className="toolbar mny-toolbar">
         <label className="grow">
           <span className="sr-only">Search payee or memo</span>
           <input type="search" value={filter.text} onChange={(e) => patch({ text: e.target.value })} placeholder="Search payee or memo" />
@@ -225,38 +230,45 @@ export default function TransactionsPage() {
 
       <FilterChips chips={chips} onClearAll={clearAll} />
 
-      <div className="tiles">
-        <div className="tile"><div className="muted">Showing</div><div className="v">{tot.count.toLocaleString()}</div></div>
-        <div className="tile"><div className="muted">Money out</div><div className="v neg">{formatCents(tot.outCents)}</div></div>
-        <div className="tile"><div className="muted">Money in</div><div className="v pos">{signedCents(tot.inCents)}</div></div>
-        <div className="tile"><div className="muted">Net</div><div className={`v ${tot.netCents < 0 ? 'neg' : 'pos'}`}>{signedCents(tot.netCents)}</div></div>
+      {/* The same four totals as before (the same totals() function over the filtered rows), now one band. Money out and in keep their sign words; none is recomputed here. */}
+      <div className="card ui-band mny-band" role="group" aria-label="Totals for the transactions shown">
+        <Figure label="Showing" value={tot.count.toLocaleString()} description="transactions" />
+        <Figure label="Money out" value={formatCents(tot.outCents)} tone="bad" />
+        <Figure label="Money in" value={signedCents(tot.inCents)} tone="good" />
+        <Figure label="Net" value={signedCents(tot.netCents)} />
       </div>
       {tot.transfers > 0 && <p className="muted">Totals include {tot.transfers} transfer row(s), which move money between your own accounts. Use “Hide transfers” to leave them out.</p>}
 
       {selIds.length > 0 && (
-        <div className="card bulk">
-          <div className="row">
-            <strong>{selIds.length} selected</strong>
-            <select aria-label="Set category" value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
-              <option value="">Set category…</option>
-              <option value="none">Uncategorized</option>
-              {groups.map((g) => (
-                <optgroup key={g.id} label={g.name}>
-                  {categories.filter((c) => c.groupId === g.id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </optgroup>
-              ))}
-            </select>
-            <button disabled={!bulkCat} onClick={() => doBulk('category')}>Apply category</button>
-            <select aria-label="Set status" value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
-              <option value="">Set status…</option>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <button disabled={!bulkStatus} onClick={setBulkStatusWithUndo}>Apply status</button>
-            <button className="danger" onClick={() => doBulk('delete')}>Delete selected</button>
-            <button className="link" onClick={() => setSel(new Set())}>Clear selection</button>
+        <section className="card bulk mny-bulk" aria-label="Actions for the selected transactions">
+          <div className="mny-bulk-row">
+            <strong className="mny-bulk-count" role="status">{selIds.length} selected</strong>
+            <div className="mny-bulk-group">
+              <select aria-label="Set category" value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
+                <option value="">Set category…</option>
+                <option value="none">Uncategorized</option>
+                {groups.map((g) => (
+                  <optgroup key={g.id} label={g.name}>
+                    {categories.filter((c) => c.groupId === g.id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+              <button disabled={!bulkCat} onClick={() => doBulk('category')}>Apply category</button>
+            </div>
+            <div className="mny-bulk-group">
+              <select aria-label="Set status" value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
+                <option value="">Set status…</option>
+                {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <button disabled={!bulkStatus} onClick={setBulkStatusWithUndo}>Apply status</button>
+            </div>
+            <div className="mny-bulk-group mny-bulk-end">
+              <button className="danger" onClick={() => doBulk('delete')}>Delete selected</button>
+              <button className="link" onClick={() => setSel(new Set())}>Clear selection</button>
+            </div>
           </div>
           <BulkProject ids={selIds} txns={txns} onDone={() => setSel(new Set())} />
-        </div>
+        </section>
       )}
 
       {deleting && (
@@ -307,25 +319,33 @@ export default function TransactionsPage() {
             {pageRows.map(({ txn: t, accountName, categoryLabel }) => (
               <Fragment key={t.id}>
               <tr className={sel.has(t.id!) ? 'selected' : ''}>
-                <td className="c-sel"><input type="checkbox" aria-label={txnRowLabel('Select', t.payee, t.date)} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></td>
+                <td className="c-sel"><label className="mny-selhit"><input type="checkbox" aria-label={txnRowLabel('Select', t.payee, t.date)} checked={sel.has(t.id!)} onChange={() => toggle(t.id!)} /></label></td>
                 <td className="c-date">{t.date}</td>
                 <td className="c-acct">{accountName}</td>
                 <td className="c-payee">
-                  {t.payee || <span className="muted">(no payee)</span>}
-                  {t.memo && <span className="sub">{t.memo}</span>}
-                  <span className="sub show-sm">{t.date} · {accountName} · {categoryLabel}{t.status !== 'cleared' ? ` · ${t.status}` : ''}</span>
-                  {t.splits?.length ? <SplitToggle className="show-sm" open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>Show split amounts</SplitToggle> : null}
+                  <span className="mny-nameline">
+                    <span className="mny-payee">{t.payee || <span className="muted">(no payee)</span>}</span>
+                    {t.transferTxnId ? <> <StatusChip tone="info" icon={false}>Transfer</StatusChip></> : null}
+                    <span className="show-sm mny-flag"> <StatusChip tone={statusTone(t.status)} icon={false}>{STATUS_WORD[t.status]}</StatusChip></span>
+                  </span>
+                  <span className="mny-metaline">
+                    {t.memo && <span className="sub">{t.memo}</span>}
+                    <span className="sub show-sm">{t.date} · {accountName} · {categoryLabel}</span>
+                    {t.splits?.length ? <SplitToggle className="show-sm" open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>Show split amounts</SplitToggle> : null}
+                  </span>
                 </td>
                 <td className="c-cat">{t.splits?.length ? <SplitToggle open={openSplits.has(t.id!)} onToggle={() => toggleSplit(t.id!)}>{categoryLabel}</SplitToggle> : categoryLabel === 'Uncategorized' ? <span className="muted">{categoryLabel}</span> : categoryLabel}</td>
                 <td className={`num c-amt ${t.amountCents < 0 ? 'neg' : 'pos'}`}>{signedCents(t.amountCents)}</td>
-                <td className="c-status"><span className={`badge ${t.status}`}>{t.status}</span></td>
+                <td className="c-status"><span title={STATUS_HELP[t.status]}><StatusChip tone={statusTone(t.status)} icon={false}>{STATUS_WORD[t.status]}</StatusChip></span></td>
                 <td className="c-act">
-                  <button className="link" aria-label={txnRowLabel('Edit', t.payee, t.date)} onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
-                  <button
-                    className="link danger"
-                    aria-label={txnRowLabel('Delete', t.payee, t.date)}
-                    onClick={() => setDeleting({ ids: [t.id!], subject: 'transaction' })}
-                  >Delete</button>
+                  <RowActions label={`${t.payee || 'transaction'}, ${t.date}`}>
+                    <button className="link" aria-label={txnRowLabel('Edit', t.payee, t.date)} onClick={() => { setEditing(t); window.scrollTo({ top: 0 }); }}>Edit</button>
+                    <button
+                      className="link danger"
+                      aria-label={txnRowLabel('Delete', t.payee, t.date)}
+                      onClick={() => setDeleting({ ids: [t.id!], subject: 'transaction' })}
+                    >Delete</button>
+                  </RowActions>
                 </td>
               </tr>
               {t.splits?.length && openSplits.has(t.id!) ? <SplitDetailRow txn={t} catName={catName} variant="all" /> : null}
@@ -370,6 +390,6 @@ export default function TransactionsPage() {
           <button className="link" onClick={() => setSel(new Set(sorted.map((r) => r.txn.id!)))}>Select all {sorted.length.toLocaleString()} matching</button>
         </p>
       )}
-    </>
+    </div>
   );
 }

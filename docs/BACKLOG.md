@@ -4,7 +4,27 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-12 (newest): LEDGER SIGNATURE D15 FINAL BILLS REFINEMENT (PHONE OVERVIEW HIERARCHY AND NEEDS REVIEW) BUILT AND TESTED LOCALLY; STILL UNCOMMITTED WITH THE REST OF D15, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW
+## STATUS 2026-11-13 (newest): LEDGER SIGNATURE D16 FINAL MOBILE REFINEMENT AND FINANCIAL WORKFLOW VERIFICATION BUILT AND TESTED LOCALLY; STILL UNCOMMITTED WITH THE REST OF D16, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D17 NOT STARTED
+
+**Asked (after the ChatGPT visual review):** denser, more reachable phone transaction rows; fix the misleading "Next scheduled" label; browser-test the split, transfer, account-move, bulk-status, saved-filter and related workflows; a keyboard check.
+
+**Built:** report section 16. One labeled Actions button per phone row (Add task, Clear, Edit, Unlink, Delete inside), 44 px targets, two-line rows; "Next scheduled" removed. **Tests:** 275 files, 5,158 tests, 0 failures; 25 of 25 financial workflows; 30 of 30 keyboard checks; sweep 0 problems; engine snapshot identical.
+
+**Judgment calls (please review):** (1) the Actions menu stays open after choosing an item so Delete's dialog returns focus to a visible button; (2) the status chip now shows on every phone Transactions row; (3) no sticky bulk bar, no change for the floating Add button (overlap is transient while scrolling); (4) the 800 px width keeps the desktop table with a narrow Payee column (not changed); (5) phone account page remains 15 percent taller than D15 because it shows category and running balance.
+
+**NOT built:** real-device or screen-reader checks; a reconciled-move browser test; pagination or virtualization (explicitly excluded); D17.
+
+## STATUS 2026-11-12 (superseded as newest by the refinement above): LEDGER SIGNATURE D16 (CORE MONEY WORKSPACE: CHECK-IN, ACCOUNTS, ACCOUNT PAGE, TRANSACTIONS, BUDGET, SCHEDULED, RULES, IMPORT, CATEGORIES) BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D17 NOT STARTED
+
+**Asked:** redesign the nine core Money routes in the Ledger Signature language without changing any financial calculation, record or workflow. **Gate:** D15 verified committed and deployed as `8e01e61` (run `43347866698`, Pages deployment `7754875383`).
+
+**Built:** see `docs/LEDGER-SIGNATURE-D16-REPORT.md`. New `src/pages/money.css`, `moneyPresentation.ts`, `d16Money.test.tsx`; the nine page files recomposed; the coverage tracker (L-02 to L-07, L-10 to L-12 and W-14 to W-19 read `BLT`, `Kbd` not recorded). **Tests:** 274 files, 5,146 tests, 0 failures; `tsc` and build clean; 47 of 47 browser workflows; 200-cell sweep clean; engine snapshot identical before and after.
+
+**Judgment calls (please review):** (1) phone pages are longer (account page 8,034 to 11,263 px, Transactions 10,551 to 12,516, Rules 3,181 to 5,206, Scheduled 2,923 to 4,202, Budget 3,164 to 4,136) because the phone now shows Activity, running balance and category; options in report section 13. (2) A card or loan balance is not colored by its sign and carries the word Owed; Net and the debt totals are ink; money out and in keep red and green. (3) "Next scheduled" on Scheduled comes from `occurrencesBetween` and ignores approved or skipped dates. (4) The bulk bar is not sticky. (5) The check-in lists "Needs your attention" before "Done" (each in the model's order). (6) Rules has no priority, enable or edit in the app and none was added; Scheduled has no handled history and none was added.
+
+**NOT built:** keyboard walk, real-device, screen-reader or forced-colors checks; a drag-and-drop browser test; D17 to D21; any engine, schema, backup, sync or dialog change; `ACC` marks.
+
+## STATUS 2026-11-12 (superseded as newest by D16 above): LEDGER SIGNATURE D15 FINAL BILLS REFINEMENT (PHONE OVERVIEW HIERARCHY AND NEEDS REVIEW) BUILT AND TESTED LOCALLY; STILL UNCOMMITTED WITH THE REST OF D15, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW
 
 **Asked (after the first ChatGPT visual review):** put the cash summary before the long Coming up list on the Bills phone overview, add a three-date preview with View all upcoming, make the Upcoming page denser on a phone without hiding anything, and redesign the Needs review page (B-04). Household Services, Family and the Bills desktop were approved and not reopened.
 **Built (presentation only):** phone order attention, Expected cash needed, three-date preview (whole dates; View all upcoming (17) opens the existing Upcoming page; one tree chosen with useMediaQuery so Tab order equals reading order); denser phone rows on Upcoming (every line kept; week groups in one card); Needs review as a summary with jump buttons plus one card per existing group with dated rows, the amount in words and the same buttons and conditions.

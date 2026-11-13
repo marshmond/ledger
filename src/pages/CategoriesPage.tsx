@@ -9,6 +9,7 @@ import { formatCents, todayISO } from '../lib/money';
 import { monthOf } from '../lib/dates';
 import { readCollapsed, writeCollapsed } from './Collapsible';
 import { PageHeader } from '../ui/components';
+import './money.css';
 
 type Drag = { kind: 'group' | 'cat' | 'target'; id: number };
 
@@ -156,21 +157,27 @@ export default function CategoriesPage() {
   const month = monthOf(todayISO());
 
   return (
-    <>
+    <div className="mny-page mny-cats">
       <PageHeader
         title="Categories"
         description="The names and groups used by the budget and reports. Drag the ⠿ handles (or use ▲▼) to re-order; the Budget page follows this order."
         actions={manageable.length > 0 ? <button onClick={() => setAllFolds(!allFolded)}>{allFolded ? 'Expand all' : 'Collapse all'}</button> : undefined}
       />
+      <dl className="card mny-figs" aria-label="Categories at a glance">
+        <div className="mny-fig"><dt>Groups</dt><dd>{manageable.length}</dd></div>
+        <div className="mny-fig"><dt>Categories</dt><dd>{(cats ?? []).filter((c) => c.groupId !== SETUP_GROUP_ID).length}</dd></div>
+        <div className="mny-fig"><dt>Income categories</dt><dd>{(cats ?? []).filter((c) => c.kind === 'income').length}</dd></div>
+        <div className="mny-fig"><dt>Targets</dt><dd>{targets.length}</dd></div>
+      </dl>
       {groups.map((g) => {
         const gid = g.id!;
         const setup = gid === SETUP_GROUP_ID;
         const open = setup || !isFolded(gid);
         const list = catsOf(gid);
         return (
-          <div className={`card${drag?.kind === 'group' && drag.id === gid ? ' dragging' : ''}`} key={gid} {...groupDrop(gid)}>
-            <div className="row spread">
-              <span className="row">
+          <section className={`card flush mny-catgroup${drag?.kind === 'group' && drag.id === gid ? ' dragging' : ''}`} key={gid} aria-labelledby={`cat-g-${gid}`} {...groupDrop(gid)}>
+            <div className="mny-catgroup-head">
+              <span className="mny-catgroup-title">
                 {!setup && (
                   <span
                     className="drag-handle"
@@ -181,81 +188,91 @@ export default function CategoriesPage() {
                     onDragEnd={end}
                   >⠿</span>
                 )}
-                {setup ? <strong>{g.name}</strong> : (
-                  <button className="collapse-btn" aria-expanded={open} onClick={() => setFold(gid, open)}>
-                    <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{g.name}</strong>
-                    {!open && <span className="muted"> · {list.length} categor{list.length === 1 ? 'y' : 'ies'}</span>}
-                  </button>
-                )}
+                <h2 id={`cat-g-${gid}`} className="mny-h2 mny-h2--tight">
+                  {setup ? <strong>{g.name}</strong> : (
+                    <button className="collapse-btn" aria-expanded={open} onClick={() => setFold(gid, open)}>
+                      <span className="chev" aria-hidden="true">{open ? '▾' : '▸'}</span> <strong>{g.name}</strong>
+                    </button>
+                  )}
+                </h2>
+                {!setup && <span className="mny-count">{list.length} categor{list.length === 1 ? 'y' : 'ies'}</span>}
               </span>
-              <span className="row">
+              <span className="mny-catgroup-act">
                 {!setup && arrows(() => saveGroups(nudge(allGroupIds, gid, -1)), () => saveGroups(nudge(allGroupIds, gid, 1)), `group ${g.name}`)}
-                {!setup && <button className="link danger" onClick={() => removeGroup(gid)}>delete group</button>}
+                {!setup && <button className="link danger" aria-label={`Delete group ${g.name}`} onClick={() => removeGroup(gid)}>delete group</button>}
               </span>
             </div>
             {setup && (
-              <p className="muted">
+              <p className="muted mny-catgroup-note">
                 <strong>Initial setup</strong> is for entries that bring an account to its real balance (for example, add a transaction filed here to match what your bank shows today).
                 It changes the account’s balance but is left out of income, spending, the budget, reports, the forecast, and the flow diagram. It cannot be renamed or deleted.
               </p>
             )}
-            {!setup && open && list.map((c) => {
-              const ts = c.kind === 'income' ? [] : targetsOf(c.id!);
-              const tids = ts.map((t) => t.id!);
-              return (
-                <div key={c.id} className={drag?.kind === 'cat' && drag.id === c.id ? 'dragging' : ''} {...catDrop(gid, c.id!)}>
-                  <div className="row spread">
-                    <span className="row grow">
-                      <span
-                        className="drag-handle"
-                        draggable
-                        title="Drag to move this category"
-                        aria-hidden="true"
-                        onDragStart={(e) => start({ kind: 'cat', id: c.id! }, e.currentTarget.closest('.row.spread') as HTMLElement)(e)}
-                        onDragEnd={end}
-                      >⠿</span>
-                      <input
-                        defaultValue={c.name}
-                        onBlur={(e) => e.target.value.trim() && db.categories.update(c.id!, { name: e.target.value.trim() })}
-                      />
-                    </span>
-                    <span className="row">
-                      {arrows(() => saveCats(gid, nudge(list.map((x) => x.id!), c.id!, -1)), () => saveCats(gid, nudge(list.map((x) => x.id!), c.id!, 1)), c.name)}
-                      <select
-                        value={c.kind ?? 'expense'}
-                        onChange={(e) => db.categories.update(c.id!, { kind: e.target.value as 'expense' | 'income' })}
-                        title="Income categories feed Ready to Assign instead of being budgeted"
-                      >
-                        <option value="expense">Expense</option>
-                        <option value="income">Income</option>
-                      </select>
-                      <button className="link danger" onClick={() => removeCategory(c.id!)}>delete</button>
-                    </span>
-                  </div>
-                  {ts.map((t) => (
-                    <div
-                      key={t.id}
-                      className={`row target-line${drag?.kind === 'target' && drag.id === t.id ? ' dragging' : ''}`}
-                      {...targetDrop(c.id!, t.id!)}
-                    >
-                      <span
-                        className="drag-handle"
-                        draggable
-                        title="Drag to re-order this target"
-                        aria-hidden="true"
-                        onDragStart={(e) => start({ kind: 'target', id: t.id! }, e.currentTarget.closest('.target-line') as HTMLElement)(e)}
-                        onDragEnd={end}
-                      >⠿</span>
-                      <span className="muted">Target: {targetNeed(t, { carry: 0, assigned: 0, available: 0 }, month, formatCents).description}</span>
-                      {arrows(() => saveTargets(nudge(tids, t.id!, -1)), () => saveTargets(nudge(tids, t.id!, 1)), 'target')}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
             {!setup && open && (
-              <div className="row" style={{ marginTop: 6 }}>
+              <div role="list" className="mny-catlist">
+                {list.map((c) => {
+                  const ts = c.kind === 'income' ? [] : targetsOf(c.id!);
+                  const tids = ts.map((t) => t.id!);
+                  return (
+                    <div role="listitem" key={c.id} className={`mny-cat${drag?.kind === 'cat' && drag.id === c.id ? ' dragging' : ''}`} {...catDrop(gid, c.id!)}>
+                      <div className="mny-cat-row">
+                        <span className="mny-cat-name">
+                          <span
+                            className="drag-handle"
+                            draggable
+                            title="Drag to move this category"
+                            aria-hidden="true"
+                            onDragStart={(e) => start({ kind: 'cat', id: c.id! }, e.currentTarget.closest('.mny-cat-row') as HTMLElement)(e)}
+                            onDragEnd={end}
+                          >⠿</span>
+                          <input
+                            aria-label={`Name of category ${c.name}`}
+                            defaultValue={c.name}
+                            onBlur={(e) => e.target.value.trim() && db.categories.update(c.id!, { name: e.target.value.trim() })}
+                          />
+                        </span>
+                        <span className="mny-cat-act">
+                          {arrows(() => saveCats(gid, nudge(list.map((x) => x.id!), c.id!, -1)), () => saveCats(gid, nudge(list.map((x) => x.id!), c.id!, 1)), c.name)}
+                          <select
+                            aria-label={`Type of ${c.name}`}
+                            value={c.kind ?? 'expense'}
+                            onChange={(e) => db.categories.update(c.id!, { kind: e.target.value as 'expense' | 'income' })}
+                            title="Income categories feed Ready to Assign instead of being budgeted"
+                          >
+                            <option value="expense">Expense</option>
+                            <option value="income">Income</option>
+                          </select>
+                          <button className="link danger" aria-label={`Delete category ${c.name}`} onClick={() => removeCategory(c.id!)}>delete</button>
+                        </span>
+                      </div>
+                      {ts.map((t) => (
+                        <div
+                          key={t.id}
+                          className={`mny-target-line${drag?.kind === 'target' && drag.id === t.id ? ' dragging' : ''}`}
+                          {...targetDrop(c.id!, t.id!)}
+                        >
+                          <span
+                            className="drag-handle"
+                            draggable
+                            title="Drag to re-order this target"
+                            aria-hidden="true"
+                            onDragStart={(e) => start({ kind: 'target', id: t.id! }, e.currentTarget.closest('.mny-target-line') as HTMLElement)(e)}
+                            onDragEnd={end}
+                          >⠿</span>
+                          <span className="muted">Target: {targetNeed(t, { carry: 0, assigned: 0, available: 0 }, month, formatCents).description}</span>
+                          {arrows(() => saveTargets(nudge(tids, t.id!, -1)), () => saveTargets(nudge(tids, t.id!, 1)), `target for ${c.name}`)}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+                {list.length === 0 && <p className="muted mny-catgroup-note">No categories in this group yet.</p>}
+              </div>
+            )}
+            {!setup && open && (
+              <div className="mny-addrow">
                 <input
+                  aria-label={`New category in ${g.name}`}
                   placeholder="New category"
                   value={newCat[gid] ?? ''}
                   onChange={(e) => setNewCat({ ...newCat, [gid]: e.target.value })}
@@ -270,7 +287,7 @@ export default function CategoriesPage() {
                 >Add</button>
               </div>
             )}
-          </div>
+          </section>
         );
       })}
       {drag?.kind === 'group' && (
@@ -285,8 +302,8 @@ export default function CategoriesPage() {
         >Drop here to move to the end</div>
       )}
       <p className="muted">Targets are set on the <Link to="/budget">Budget</Link> page; here you can put them in order.</p>
-      <div className="row">
-        <input placeholder="New group" value={newGroup} onChange={(e) => setNewGroup(e.target.value)} />
+      <div className="card mny-addgroup">
+        <input aria-label="New group name" placeholder="New group" value={newGroup} onChange={(e) => setNewGroup(e.target.value)} />
         <button
           onClick={async () => {
             if (!newGroup.trim()) return;
@@ -295,6 +312,6 @@ export default function CategoriesPage() {
           }}
         >Add group</button>
       </div>
-    </>
+    </div>
   );
 }
