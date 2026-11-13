@@ -11,6 +11,7 @@ import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import { useTaxPlanData } from './useTaxPlanData';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { Kind, Lines, PlanHero } from './PlanParts';
 import './analysis.css';
 import './plan.css';
@@ -36,6 +37,8 @@ export default function GivingPage() {
   const [note, setNote] = useState('');
   const [other, setOther] = useState<number | null>(null);
   const [msg, setMsg] = useState('');
+  // D20.1A: the gift whose "Delete" was pressed, by id (never by position or name). Nothing is changed until the dialog's own Delete gift button is pressed.
+  const [askGift, setAskGift] = useState<number | null>(null);
 
   const y = useMemo(() => giftsInYear(donations, year), [donations, year]);
   const byCharity = useMemo(() => charityTotals(donations, year), [donations, year]);
@@ -50,6 +53,8 @@ export default function GivingPage() {
   const bunch = tables && typical > 0 ? bunching({ yearlyGiftCents: typical, otherItemizedCents: otherItemized, standardCents: tables.stdDeductionMFJ, marginalRate: rate }) : null;
   const years = [...new Set([thisYear, thisYear - 1, ...donations.map((d) => Number(d.date.slice(0, 4)))])].sort((a, b) => b - a);
   const charities = [...new Set(donations.map((d) => d.charity.trim()).filter(Boolean))];
+  // If the gift disappeared while the question was open (deleted on another device), there is nothing left to ask about and the dialog closes by itself.
+  const gift = askGift === null ? undefined : donations.find((d) => d.id === askGift);
 
   async function add() {
     if (amt <= 0 || !date) return;
@@ -131,7 +136,7 @@ export default function GivingPage() {
                         <td className="num" data-label="Value">{formatCents(d.amountCents)}</td>
                         <td className="num" data-label="Deductible (est.)">{formatCents(d.kind === 'cash' ? d.amountCents : d.longTerm === false ? Math.min(d.amountCents, d.basisCents ?? d.amountCents) : d.amountCents)}</td>
                         <td data-label="Receipt"><label className="chk pl-receipt"><input type="checkbox" aria-label="Receipt on file" checked={!!d.receipt} onChange={(e) => db.donations.update(d.id!, { receipt: e.target.checked })} /><span>{d.receipt ? 'On file' : 'Not on file'}</span></label></td>
-                        <td className="an-cell-act"><button className="link danger" aria-label={`Delete gift to ${d.charity || 'charity'} on ${d.date}`} onClick={() => confirm('Delete this gift?') && db.donations.delete(d.id!)}>delete</button></td>
+                        <td className="an-cell-act"><button className="link danger" aria-label={`Delete gift to ${d.charity || 'charity'} on ${d.date}`} onClick={() => setAskGift(d.id!)}>delete</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -183,6 +188,19 @@ export default function GivingPage() {
           </div>
         )}
       </Collapsible>
+
+      {gift && (
+        <ConfirmDialog
+          title="Delete gift?"
+          confirmLabel="Delete gift"
+          busyLabel="Deleting…"
+          onCancel={() => setAskGift(null)}
+          onConfirm={async () => { await db.donations.delete(gift.id!); setAskGift(null); }}
+        >
+          <p><strong>Gift to {gift.charity || 'charity'}</strong><br /><span className="muted small">{gift.date} · {formatCents(gift.amountCents)} · {KIND[gift.kind]}</span></p>
+          <p>This removes the gift from your giving log, so it is no longer counted in the totals and estimates on this page. An amount you already copied into your tax estimate is not changed.</p>
+        </ConfirmDialog>
+      )}
     </div>
   );
 }

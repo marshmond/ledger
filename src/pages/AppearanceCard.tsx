@@ -3,7 +3,9 @@ import { rovingIndex, rovingKeys } from '../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { COLOR_ROLES, PRESETS, CLASSIC, colorsOf, contrastNotes, isHex, loadPalette, savePalette, varsFor, withoutOptional, type Colors, type ColorKey, type PaletteChoice, type PaletteColors, type PaletteId } from '../palette';
-import { LIMIT_MESSAGE, addTheme, atLimit, checkThemeName, decodeTheme, encodeTheme, newThemeId, parseThemes, removeTheme, renameTheme, sameColors, uniqueName, updateTheme, type SavedTheme } from '../lib/savedThemes';
+import { LIMIT_MESSAGE, addTheme, atLimit, checkThemeName, decodeTheme, encodeTheme, newThemeId, parseThemes, renameTheme, sameColors, uniqueName, updateTheme, type SavedTheme } from '../lib/savedThemes';
+import { removeStoredTheme } from '../lib/savedRemoval';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { applyTheme, loadTheme } from '../theme';
 import ThemeToggle from './ThemeToggle';
 import { PageHeader } from '../ui/components';
@@ -56,6 +58,8 @@ export default function AppearanceCard() {
   const [code, setCode] = useState('');
   const [pasted, setPasted] = useState('');
   const [msg, setMsg] = useState('');
+  // D20.1A: the saved theme whose "delete" was pressed, by id. Nothing is changed until the dialog's own Delete theme button is pressed.
+  const [askDelete, setAskDelete] = useState<string | null>(null);
 
   const set = (c: PaletteChoice) => {
     setChoiceState(c);
@@ -70,6 +74,7 @@ export default function AppearanceCard() {
   const notes = current ? contrastNotes(current) : [];
   const active = themes.find((t) => t.id === choice.savedId);
   const changed = !!active && !!custom && !sameColors(custom, active);
+  const target = askDelete === null ? undefined : themes.find((t) => t.id === askDelete);
 
   const startCustom = (from: PaletteId) => set({ id: 'custom', custom: { light: { ...baseColors(from, false) }, dark: { ...baseColors(from, true) } } });
   const update = (key: ColorKey, hex: string) => {
@@ -187,7 +192,7 @@ export default function AppearanceCard() {
             {active && changed && <button className="primary" onClick={() => store(updateTheme(themes, active.id, custom))}>Update “{active.name}”</button>}
             <button onClick={() => openName('new')}>Save as new theme…</button>
             {active && <button className="link" onClick={() => openName('rename')}>rename</button>}
-            {active && <button className="link" onClick={async () => { if (confirm(`Delete the theme “${active.name}”? The colors stay on until you pick something else.`)) { await store(removeTheme(themes, active.id)); set({ id: 'custom', custom }); } }}>delete</button>}
+            {active && <button className="link" onClick={() => setAskDelete(active.id)}>delete</button>}
             <button className="link" onClick={copyCode}>copy theme code</button>
           </div>
           {naming && (
@@ -245,6 +250,25 @@ export default function AppearanceCard() {
             </div>
           </div>
         </SettingsSection>
+      )}
+
+      {target && (
+        <ConfirmDialog
+          title="Delete saved theme?"
+          confirmLabel="Delete theme"
+          busyLabel="Deleting…"
+          onCancel={() => setAskDelete(null)}
+          onConfirm={async () => {
+            // The list is read again now and only this id is taken out (see lib/savedRemoval.ts).
+            await removeStoredTheme(db, target.id);
+            // As before: if this theme was the one in use, its colors stay on as "My own colors" (no longer linked to a saved theme); nothing else about the colors changes.
+            if (choice.savedId === target.id && custom) set({ id: 'custom', custom });
+            setAskDelete(null);
+          }}
+        >
+          <p><strong>{target.name}</strong></p>
+          <p>The colors stay on until you pick something else. Your other saved themes and the built-in palettes are not changed. If you sync your devices, the theme is removed from them too.</p>
+        </ConfirmDialog>
       )}
     </>
   );

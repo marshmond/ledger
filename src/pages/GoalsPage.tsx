@@ -10,6 +10,7 @@ import { blendMix } from '../lib/retirement';
 import { solveGoal, type GoalSolution } from '../lib/goals';
 import { MoneyField, NumField } from './fields';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { Fields, Kind, PlanFigs } from './PlanParts';
 import './analysis.css';
 import './plan.css';
@@ -17,6 +18,9 @@ import './plan.css';
 function GoalCard({ goal, accounts, ctxFor }: { goal: Goal; accounts: InvAccount[]; ctxFor: (g: Goal) => Parameters<typeof solveGoal>[1] | null }) {
   const [sol, setSol] = useState<{ s: GoalSolution; key: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // D20.1A: asking "delete this goal?" is only a flag on this card. The card is keyed by the goal's id, so the question can only ever be about this goal,
+  // and it disappears with the card if the goal goes away (for example, deleted on another device). Nothing is changed until Delete goal is pressed.
+  const [askDelete, setAskDelete] = useState(false);
   const key = JSON.stringify(goal);
   const stale = sol && sol.key !== key;
   const year0 = Number(todayISO().slice(0, 4));
@@ -37,11 +41,12 @@ function GoalCard({ goal, accounts, ctxFor }: { goal: Goal; accounts: InvAccount
   const [open, setOpen] = useState(goal.annualCostCents <= 0);
   const nameId = `goal-${goal.id}`;
   return (
+    <>
     <article className="an-card pl-goal" aria-labelledby={nameId}>
       <h2 className="pl-vh" id={nameId}>Goal: {goal.name}</h2>
       <header className="pl-goal-head">
         <input aria-label="Goal name" className="pl-goal-name" value={goal.name} onChange={(e) => patch({ name: e.target.value })} />
-        <button className="link danger" aria-label={`Delete goal ${goal.name}`} onClick={() => confirm(`Delete "${goal.name}"?`) && db.goals.delete(goal.id!)}>delete</button>
+        <button className="link danger" aria-label={`Delete goal ${goal.name}`} onClick={() => setAskDelete(true)}>delete</button>
       </header>
       <ul className="an-chipline pl-goal-facts" aria-label="Goal summary">
         <li><span className="an-chip">Funded by <b>{acct ? acct.name : 'no account yet'}</b></span></li>
@@ -114,6 +119,19 @@ function GoalCard({ goal, accounts, ctxFor }: { goal: Goal; accounts: InvAccount
         </div>
       )}
     </article>
+    {askDelete && (
+      <ConfirmDialog
+        title="Delete goal?"
+        confirmLabel="Delete goal"
+        busyLabel="Deleting…"
+        onCancel={() => setAskDelete(false)}
+        onConfirm={async () => { await db.goals.delete(goal.id!); setAskDelete(false); }}
+      >
+        <p><strong>{goal.name || 'This goal'}</strong></p>
+        <p>This removes the goal and its settings from Ledger.{acct ? ` ${acct.name}, the account that funds it, is not changed.` : ' No account is changed.'}</p>
+      </ConfirmDialog>
+    )}
+    </>
   );
 }
 

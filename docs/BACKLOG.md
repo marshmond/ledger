@@ -4,7 +4,17 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest, later): LEDGER SIGNATURE D20 CORE (DIALOGS, CONFIRMATIONS, ERROR RECOVERY) APPROVED BY OWNER AND CHATGPT; RELEASE AUTHORIZED AS `feat(ui): improve dialogs confirmations and page recovery` (SHA and CI result are recorded in the release summary); native confirmations untouched (OD-6 open); D20.1 proposed, NOT authorized; D21 not started
+## STATUS 2026-11-13 (newest, latest): LEDGER SIGNATURE D20.1A (NATIVE CONFIRMATION MIGRATION, FOUNDATION AND LOW-RISK BATCH) BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; D20.1B, C, D AND D21 NOT STARTED
+
+**OD-6: Owner approved option (a), replacement of all 38 native confirmations, in controlled batches with high-risk workflows last.** Gate verified first: D20 core is released as `ff39a9a` (Actions run #111 success; `github-pages` deployment success for the same SHA; `main` = `origin/main`). Reports: `docs/LEDGER-SIGNATURE-D20.1A-REPORT.md`, inventory `docs/LEDGER-SIGNATURE-D20.1-OD6-INVENTORY.md`; pictures: `Documents/Ledger-Design-Concepts/D20.1A-Evidence`.
+
+**Built:** the first five native boxes (delete gift, goal, policy record, saved flow view, saved theme) became Ledger confirmation dialogs on the shared ConfirmDialog; a small helper (`src/lib/savedRemoval.ts`) removes a saved view or theme by id from a freshly read list. 33 new tests (15 related files, 343 tests pass; tsc and build clean; full suite not run locally). Checked in a real browser on an invented household (desktop Signature Light and Dark, phone 375, keyboard, native box never called). Actual native calls: 38 before, **33 remain** (historical tracker rule: 37 before, 32 now; baseline kept).
+
+**Judgment calls (please review):** (1) helper only for views and themes; (2) re-read of the stored list at confirmation instead of the screen copy; (3) a record that vanishes while its dialog is open closes the dialog silently; (4) focus falls to the page start after a delete because the opener disappears (same as before); (5) policy delete still filters the screen copy via the existing hook; (6) added two restating sentences (sync removal; tax estimate not changed); (7) tracker rule and baseline left as they are; (8) theme dialog seen on the own-colors palette only.
+
+**NOT built:** D20.1B (12), C (14), D (7) confirmations (assignments in the inventory); native alert() calls; the "Replace your colors" select; real-device, screen-reader, forced-colors checks. CF-03 is PARTIALLY MIGRATED, not complete; nothing is ACC. Before any D20.1D build, the existing and proposed save sequences must be documented and reviewed.
+
+## STATUS 2026-11-13 (earlier, D20 core, released as `ff39a9a`): LEDGER SIGNATURE D20 CORE (DIALOGS, CONFIRMATIONS, ERROR RECOVERY) APPROVED BY OWNER AND CHATGPT; RELEASE AUTHORIZED AS `feat(ui): improve dialogs confirmations and page recovery` (SHA and CI result are recorded in the release summary); native confirmations untouched (OD-6 open); D20.1 proposed, NOT authorized; D21 not started
 
 Gate verified first: D18.2 is released as `795bacf` (Actions run #110 success; `github-pages` deployment success for the same SHA; `main` = `origin/main`). Report: `docs/LEDGER-SIGNATURE-D20-REPORT.md`; pictures: `DocumentsLedger-Design-ConceptsD20-Evidence`.
 

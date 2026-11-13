@@ -34,6 +34,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D20 (2026-11-13, approved for release; built and tested locally) restyled the shared Modal and ConfirmDialog and added a recoverable page-error state: S-08 and S-11 read `BLT` with the marks actually recorded (section 1.17), CF-01 reads `BLT`, CF-03 is PENDING the OD-6 owner decision (nothing replaced), and no DL group changed status except where it already read `BLT`: the shared look reaches every dialog by inheritance, but only the representative sites in section 1.17 were looked at, so the other groups stay `NS` until each is checked. Nothing is `ACC`.**
 
+**D20.1A (2026-11-13, built and tested locally, uncommitted): owner approved OD-6 option (a) (replace all 38 native confirmations in controlled batches, high-risk last). Five low-risk native boxes were replaced by the shared ConfirmDialog (gift, goal, policy record, saved flow view, saved theme delete); CF-03 reads PARTIALLY MIGRATED (33 actual native calls remain; the historical rule counts 32; both are kept, see the inventory file). CF-03 stays `NS` (not accepted) and no dialog group changed status. D21 is not started.**
+
 **Phases** are those of the D4 roadmap (D5 to D21). D5 itself is the foundation (tokens, preset, this tracker, guards). D6 is the shared controls; D7 header and switcher; D8 Ledger navigation (gated); D9 Family color picker and member identity; D10 Quick Add; D11 Today and Tasks; D12 Ledger Home, Family overview, Household Finances; D13 Calendar; D14 Projects, Home & Assets, Contacts; D15 Services, Bills, Family detail; D16 Ledger everyday money; D17 Ledger analysis and Invest; D18 Ledger Plan; D19 Ledger More, documents, Settings; D20 dialogs and states sweep; D21 finishing.
 
 ## Roll-up
@@ -407,7 +409,7 @@ Inline (non-modal) forms in Ledger pages (transaction form, income setup, scenar
 |---|---|---|---|---|
 | CF-01 | Shared `ConfirmDialog` (`RemoveContact`, `DatesPage`, `ImportantContacts`, `MemberPage`, `BackupPage`, `LedgerPage`, `SyncPage` x2) | 8 in 7 files | D6, D20 | BLT |
 | CF-02 | Bills-local confirm component (`src/modules/bills/LifecycleCard.tsx`) | 1 | D15 | NS |
-| CF-03 | **Browser-native `confirm()`**: cannot be styled; replacing it changes behaviour (decision OD-6, gated, D20). **PENDING OWNER DECISION (OD-6 is open); audit and recommendation in `docs/LEDGER-SIGNATURE-D20-REPORT.md` section 9; nothing replaced.** The source has a 38th native call the counting rule does not match (`confirm(msg)` in `TasksPage.tsx`), and native `alert()` calls | 37 in 24 files (the rule counts 37; see the note: 38 real) | D20 | NS |
+| CF-03 | **Browser-native `confirm()`**: cannot be styled; replacing it changes behaviour. **PARTIALLY MIGRATED (D20.1A, 2026-11-13, built and tested locally, not accepted). OD-6: owner approved option (a), replacement of all 38 native confirmations, in controlled batches with high-risk workflows last.** 5 of 38 are now Ledger dialogs (gift, goal, policy record, saved flow view, saved theme); **33 actual native calls remain**, assigned to batches B (12), C (14) and D (7) in `docs/LEDGER-SIGNATURE-D20.1-OD6-INVENTORY.md`. Native `alert()` calls are outside OD-6 and untouched | 37 in 24 files (historical rule, the D4 baseline; it now measures 32 in 20 files); actual calls 38 at `ff39a9a`, 33 now | D20.1 | NS |
 
 ### 4.3 Pop-overs and suggestion lists (5)
 
@@ -473,7 +475,7 @@ Measured by `src/shell/uiBaseline.ts` at commit `8ab1789` plus the D5 change. Th
 | Hex colours in module CSS | 56 | 56 | 56 | 0 |
 | Own `<h1>` instead of `PageHeader` (files) | 13 | 13 | 13 | listed exceptions only |
 | `className="card…"` uses | 395 | 395 | not re-measured | n/a (restyled in place) |
-| Browser-native `confirm()` calls | 37 in 24 files | 37 in 24 files | 37 in 24 files | 0, or owner-accepted list (OD-6) |
+| Browser-native `confirm()` calls (historical rule; D20.1A measures 32 in 20 files; actual native calls: 38 at `ff39a9a`, 33 after D20.1A) | 37 in 24 files | 37 in 24 files | 37 in 24 files | 0 (OD-6 approved: all 38, batches A to D) |
 | `<Modal>` sites | 62 in 41 files | 62 in 41 files | 62 in 41 files | not above 62 (D11 made it 63 in 42: the phone Filters sheet; the baseline constant was raised with it) |
 | `!important` | 11 | 11 | 11 | not above 11 |
 

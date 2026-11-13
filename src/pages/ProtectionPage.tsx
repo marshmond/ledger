@@ -12,6 +12,7 @@ import Collapsible from './Collapsible';
 import { MoneyField, NumField } from './fields';
 import { useInsurance } from './useInsurance';
 import { PageHeader } from '../ui/components';
+import ConfirmDialog from '../shell/ConfirmDialog';
 import { Kind, Lines, PlanChecks, PlanHero, PlanJump } from './PlanParts';
 import './analysis.css';
 import './plan.css';
@@ -31,11 +32,15 @@ type Ins = ReturnType<typeof useInsurance>;
 function PolicyRow({ p, people, ins }: { p: Policy; people: { id?: number; name: string }[]; ins: Ins }) {
   const nameOf = (id: number | null) => (id === null ? 'Household' : people.find((x) => x.id === id)?.name ?? '?');
   const label = `${POLICY_LABEL[p.type]}${p.personId !== null ? `, ${nameOf(p.personId)}` : ''}`;
+  // D20.1A: asking "delete this policy record?" is only a flag on this row. The row is keyed by the policy's id, so the question can only be about this policy,
+  // and it disappears with the row if the policy goes away. Nothing is changed until Delete policy is pressed.
+  const [askDelete, setAskDelete] = useState(false);
   return (
+    <>
     <article className="an-card an-card--soft pl-policy" aria-label={label}>
       <header className="an-head" style={{ marginBottom: 'var(--sp-2)' }}>
         <h3 className="an-h2" style={{ fontSize: 'var(--fs-base)' }}>{POLICY_LABEL[p.type]}{p.personId !== null && <span className="muted"> · {nameOf(p.personId)}</span>} <Kind k="recorded">Recorded</Kind></h3>
-        <button className="link danger" aria-label={`Delete ${label}`} onClick={() => confirm('Delete this policy?') && ins.remove(p.id)}>delete</button>
+        <button className="link danger" aria-label={`Delete ${label}`} onClick={() => setAskDelete(true)}>delete</button>
       </header>
       <ul className="an-chipline pl-policy-facts" aria-label="Policy summary">
         <li><span className="an-chip">Coverage <b>{formatCents(p.coverageCents)}</b></span></li>
@@ -61,6 +66,19 @@ function PolicyRow({ p, people, ins }: { p: Policy; people: { id?: number; name:
       </div>
       <label className="f" style={{ marginTop: 'var(--sp-3)' }}>Notes<input value={p.note} onChange={(e) => ins.update(p.id, { note: e.target.value })} placeholder="Through employer, term ends 2040…" /></label>
     </article>
+    {askDelete && (
+      <ConfirmDialog
+        title="Delete policy?"
+        confirmLabel="Delete policy"
+        busyLabel="Deleting…"
+        onCancel={() => setAskDelete(false)}
+        onConfirm={async () => { await ins.remove(p.id); setAskDelete(false); }}
+      >
+        <p><strong>{label}</strong>{p.company && <><br /><span className="muted small">{p.company}</span></>}</p>
+        <p>This deletes the policy record from Ledger only. It does not cancel or change any coverage with the insurer. The protection check on this page stops counting it.</p>
+      </ConfirmDialog>
+    )}
+    </>
   );
 }
 
