@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PRESETS, parseChoice, type Colors } from '../palette';
+import { PRESETS, parseChoice, withoutOptional, type Colors } from '../palette';
 import { MAX_THEMES, addTheme, atLimit, checkThemeName, decodeTheme, encodeTheme, parseThemes, removeTheme, renameTheme, sameColors, uniqueName, updateTheme } from './savedThemes';
 
-const colors = { light: PRESETS[0].light, dark: PRESETS[0].dark };
-const other = { light: { ...PRESETS[1].light }, dark: { ...PRESETS[1].dark } };
+const colors = { light: withoutOptional(PRESETS[0].light), dark: withoutOptional(PRESETS[0].dark) };
+const other = { light: withoutOptional(PRESETS[1].light), dark: withoutOptional(PRESETS[1].dark) };
 
 describe('the saved themes list', () => {
   it('saves a copy, so later edits to the colors do not change the saved theme', () => {

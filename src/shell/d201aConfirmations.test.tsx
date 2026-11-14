@@ -7,7 +7,7 @@ import { FinanceDB } from '../db';
 import { addTheme, parseThemes } from '../lib/savedThemes';
 import { addView, parseViews } from '../lib/flowViews';
 import { removeStoredFlowView, removeStoredTheme } from '../lib/savedRemoval';
-import { CLASSIC } from '../palette';
+import { CLASSIC } from './legacyFixtures';
 import { all, parseHtml, textOf } from '../lib/a11yTestkit';
 import { BASELINE, measure } from './uiBaseline';
 import ConfirmDialog from './ConfirmDialog';

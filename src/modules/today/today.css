@@ -33,7 +33,7 @@
 .td-tools button.ghost:hover:not(:disabled) { background: var(--hover); }
 .td-tools button.primary { padding: 0 var(--sp-4); }
 
-/* "Next up": a bar in the primary-button colors (navy under Signature, the accent elsewhere), so the text color always matches its fill. */
+/* "Next up": a bar in the primary-button colors (navy in Signature Navy, each palette's own button color elsewhere), so the text color always matches its fill. */
 .td-hero { display: grid; gap: var(--sp-3); margin-bottom: var(--sp-4); }
 .td-next { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 9fr); overflow: hidden; border-radius: var(--r-lg); background: var(--btn-bg); color: var(--btn-ink); box-shadow: var(--shadow-1); }
 .td-next-now { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; padding: var(--sp-4) var(--sp-5); border-right: 1px solid color-mix(in srgb, var(--btn-ink) 25%, var(--btn-bg)); }

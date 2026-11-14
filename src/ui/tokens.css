@@ -1,8 +1,10 @@
 /*
- * Design tokens: the one place for sizes, spacing, corners, shadows and derived colors.
- * Base colors (--bg, --card, --fg, --muted, --line, --accent, --pos, --neg, --warn, --side-*) come from the chosen palette
- * (styles.css for Classic, src/palette.ts for the others). Everything below is derived from them, so every palette,
- * and every saved theme, keeps working with the new look.
+ * Design tokens: the one place for sizes, spacing, corners, type, the header and navigation, tables, dialogs and elevation.
+ * D21.1: these are the Ledger Signature design system and they are the SAME for every color palette. Palettes only choose colors:
+ * the base colors and the palette-specific extras (--bg, --card, --page, --surface, --fg, --muted, --line, --accent, --pos, --neg, --warn,
+ * --side-*, --btn-*, --viz-*, --hero-*, ...) are in src/ui/palette-base.css (Signature Navy, the default) and are set from src/palette.ts for
+ * the other palettes. A test (src/shell/d211Palettes.test.ts) fails if a palette ever sets a size, corner or layout variable.
+ * Everything derived from the colors is below.
  */
 :root {
   /* Type scale: six sizes. */
@@ -21,19 +23,19 @@
   --sp-5: 24px;
   --sp-6: 32px;
 
-  /* Two corner sizes (plus full pills for badges and chips). */
+  /* Corner sizes (plus full pills for badges and chips). */
   --r-sm: 8px;
-  --r-lg: 14px;
+  --r-lg: 16px;
 
-  /* Three levels of lift: cards, menus, dialogs. */
-  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-2: 0 6px 18px rgba(16, 24, 40, 0.14);
-  --shadow-3: 0 16px 40px rgba(16, 24, 40, 0.28);
+  /* Three levels of lift: cards, menus, dialogs. The light shadow's tint is the palette's (--shadow-rgb); dark mode uses black. */
+  --shadow-1: 0 1px 2px rgba(var(--shadow-rgb), 0.05);
+  --shadow-2: 0 1px 2px rgba(var(--shadow-rgb), 0.04), 0 8px 24px rgba(var(--shadow-rgb), 0.06);
+  --shadow-3: 0 2px 6px rgba(var(--shadow-rgb), 0.08), 0 24px 60px rgba(var(--shadow-rgb), 0.18);
 
   --control-h: 40px;
   --topbar-h: 56px;
 
-  /* Derived colors. */
+  /* Derived colors (from the palette's base colors). */
   --line-strong: color-mix(in srgb, var(--fg) 24%, var(--bg));
   --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
   --accent-line: color-mix(in srgb, var(--accent) 40%, var(--bg));
@@ -49,52 +51,32 @@
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
 
   /* ---------------------------------------------------------------------------------------------------------------------------
-     D5 (Ledger Signature foundation). Everything below is ADDITIVE: nothing in the app reads these yet except the page background
-     (styles.css: body uses --page). Each one is an alias of an existing colour, so every palette that does not set it (Classic, the
-     four older presets, any custom palette or saved theme) looks exactly as it did. The Signature preset (src/palette.ts) is the only
-     thing that gives them different values. Later phases (D6 onward) start using them screen by screen.
+     D21.1: the Signature design system, for every palette. Before D21.1 these were the old (Classic) values and only the Signature preset set the
+     ones below, from src/palette.ts; now they are the defaults and palettes only set colors. Surfaces, text tones, buttons, information, charts and
+     the Home panel's colors are palette variables (src/ui/palette-base.css); what follows is structure, and aliases of colors.
      --------------------------------------------------------------------------------------------------------------------------- */
 
-  /* Surfaces. --page is the canvas behind everything; --surface is a card or panel. Palettes that do not set them use --bg and --card. */
-  --page: var(--bg);
-  --surface: var(--card);
-  --surface-raised: var(--bg);   /* menus, overlays, popovers */
-  --surface-soft: color-mix(in srgb, var(--fg) 4%, var(--surface));    /* search field, tile, inset fill */
-  --surface-sunken: color-mix(in srgb, var(--fg) 8%, var(--surface));  /* segmented-control track, weekend tile */
-
-  /* Text and control borders. */
-  --fg-2: color-mix(in srgb, var(--fg) 78%, var(--muted));   /* secondary text, between --fg and --muted */
-  --control-line: var(--line-strong);                        /* chips, search, segmented controls: needs 3:1 against its surface */
-
-  /* Primary action. Links and the active tab stay --accent; the filled button may differ (navy in Signature). */
-  --btn-bg: var(--accent);
-  --btn-ink: var(--on-accent, #fff);
-
-  /* Informational (neither good nor bad). */
-  --info: var(--accent);
-  --info-soft: var(--accent-soft);
-
-  /* Type. --font-sans is today's system stack (Signature puts Inter first; no font file is shipped or loaded: see docs/LEDGER-SIGNATURE-D5-REPORT.md).
-     --fs-md is NOT defined here on purpose: five module rules already use var(--fs-md, 1.05rem) and three use var(--fs-md, 1rem), so defining it
-     for everyone would shrink or grow those headings. Signature sets it; D6 settles it for all. */
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Type. Inter first when the device has it (no font file is shipped or loaded), then the system stack. */
+  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --fs-micro: 0.6875rem;   /* 11: the one documented exception to the 12px floor (date-tile weekday/month label) */
   --fs-title: 2.125rem;    /* 34: page title (30 on a phone) */
   --fs-title-sm: 1.875rem; /* 30 */
   --fs-metric: 1.8rem;     /* ~29: a figure in a summary row */
   --fs-display: 3rem;      /* 48: the one Home net-worth figure. --fs-hero (40) is left alone because .hero already uses it */
+  --fs-md: 1rem;           /* module card and section titles */
 
-  /* Space and shape. --r-md equals the 8px that every existing var(--r-md, 8px) falls back to, so defining it changes nothing; Signature sets 10. */
+  /* Space and shape. */
   --sp-7: 48px;
   --r-xs: 6px;
-  --r-md: 8px;
+  --r-md: 10px;
   --r-xl: 20px;
   --r-pill: 999px;
   --control-h-sm: 36px;
 
   /* Family member identity colours: the eight approved values (src/modules/family/model.ts COLORS, identical to the Calendar swatches).
-     The stored value never changes; a darker-theme variant is chosen by id at display time. Identity only: pair with initials or the colour name. */
+     The stored value never changes; a darker-theme variant is chosen by id at display time. Identity only: pair with initials or the colour name.
+     They are the same in every palette (a member's colour must keep meaning one person); src/shell/d211Palettes.test.ts checks they stay readable on every palette. */
   --mc-blue: #4a7bd0;
   --mc-green: #2f8f6b;
   --mc-orange: #c0562f;
@@ -107,84 +89,64 @@
   --mc-tint-mix: 16%;  /* monogram tile fill: this much of the member colour mixed into the surface */
   --swatch-check: #ffffff; /* D9: the check mark on a chosen color swatch (white on the light-theme colors; the dark theme sets a dark one). Named without the mc- prefix because the D5 guard pins that prefix to the eight colors. */
 
-  /* ---------------------------------------------------------------------------------------------------------------------------
-     D6 (shared components). Appearance tokens for the shared layer. EVERY value below is exactly what the stylesheet did before D6, so
-     Classic, the four older presets and any custom palette or saved theme look as they did. Only the Signature preset (src/palette.ts
-     `extras`) gives them other values; that is how the shared components "speak Signature" without forcing it on anyone else.
-     src/shell/d6Shared.test.ts pins each default. Names avoid the prefixes the D5 test reserves for hex colours (surface, fg, control, btn, info).
-     --------------------------------------------------------------------------------------------------------------------------- */
-
-  /* Forms and buttons */
-  --field-bg: var(--bg);                  /* input, select, textarea fill */
-  --search-bg: var(--field-bg);           /* search boxes (Signature: the soft fill) */
-  --disabled-bg: var(--field-bg);         /* a disabled field (before D6 it looked like an enabled one) */
-  --disabled-ink: var(--fg);
-  --invalid-line: var(--control-line);    /* border of a field marked aria-invalid (Signature: the error colour) */
-  --label-fg: var(--muted);               /* field labels */
-  --ctl-accent: auto;                     /* tick of a check box or radio button (Signature: the accent) */
-  --w-btn: 500;                           /* button text weight */
-  --btn-bg-hover: color-mix(in srgb, var(--btn-bg) 88%, var(--fg));
+  /* Forms and buttons (colors that follow the palette are read through these aliases) */
+  --search-bg: var(--surface-soft);       /* search boxes: the soft fill */
+  --disabled-bg: var(--surface-sunken);
+  --disabled-ink: var(--muted);
+  --invalid-line: var(--neg);             /* border of a field marked aria-invalid */
+  --label-fg: var(--fg-2);                /* field labels */
+  --ctl-accent: var(--accent);            /* tick of a check box or radio button */
+  --w-btn: 600;                           /* button text weight */
   /* Headings */
-  --h1-size: var(--fs-xl);
-  --h1-weight: 650;
-  --h1-ls: -0.01em;
-  --h1-lh: 1.25;
-  --ui-eyebrow: none;                     /* the small module name above a page title (only drawn when a page passes one) */
+  --h1-size: var(--fs-title);
+  --h1-weight: 700;
+  --h1-ls: -0.03em;
+  --h1-lh: 1.1;
+  --ui-eyebrow: block;                    /* the small module name above a page title (only drawn when a page passes one) */
   /* Tables */
-  --th-bg: var(--bg);
-  --th-fg: var(--muted);
-  --th-fs: var(--fs-sm);
-  --th-tt: none;
-  --th-ls: normal;
-  /* Dialogs and toasts */
-  --scrim: rgba(0, 0, 0, 0.5);
-  --r-modal: var(--r-lg);
-  --toast-bg: var(--fg);
-  --toast-ink: var(--bg);
-  --toast-edge: var(--shadow-2);          /* Signature adds a hairline in dark mode */
-  /* Icons next to text: before D6 a few shared pieces used a text glyph (the empty-state circle). Signature draws a small line icon instead. */
-  --ui-glyph: none;
-  --ui-glyph-legacy: inline;
+  --th-bg: var(--surface-soft);
+  --th-fg: var(--fg-2);
+  --th-fs: var(--fs-xs);
+  --th-tt: uppercase;
+  --th-ls: 0.04em;
+  /* Dialogs */
+  --r-modal: 20px;
+  /* A small line icon next to text where a shared piece once used a text glyph. */
+  --ui-glyph: inline-block;
+  --ui-glyph-legacy: none;
+  /* Charts: the chart surface, text, grid and axis follow the palette's surface and text colors (the series colors are --viz-* in the palette). */
+  --viz-surface: var(--surface);
+  --viz-ink: var(--fg);
+  --viz-ink-2: var(--fg-2);
+  --viz-ink-3: var(--muted);
+  --viz-grid: var(--line);
+  --viz-axis: var(--line-strong);
 
-  /* ---------------------------------------------------------------------------------------------------------------------------
-     D7 (global header and module switcher). Same rule as D6: every value below is what the header did before D7, so Classic, the four
-     older presets and any custom palette keep the thin 36px bar (48px on a phone or touch screen). Only the Signature preset (src/palette.ts
-     SIGNATURE_SHARED) gives them other values. The header's HEIGHT is the one number the sticky layers below it depend on: styles.css
-     builds --bar-h from these three, and the Ledger sidebar, the page top bar, the table headings and the Tasks bulk bar all read --bar-h.
-     --------------------------------------------------------------------------------------------------------------------------- */
-  --hdr-h: 36px;          /* computer */
-  --hdr-h-touch: 48px;    /* touch screen wider than a phone (needs 44px controls) */
-  --hdr-h-phone: 48px;    /* 640px and narrower */
-  --hdr-ctl-h: 28px;      /* height of the controls in the bar (they are 44px on touch screens whatever this says) */
-  --hdr-ctl-r: var(--r-sm);
-  --hdr-ctl-line: var(--line);          /* border of the switcher button */
-  --hdr-search-bg: transparent;         /* the search entry: quiet button (Signature: a soft field) */
-  --hdr-search-line: transparent;
-  --hdr-search-w: auto;
-  --hdr-shadow: none;
-  --ui-brand: none;       /* the Ledger mark and name at the left of the bar */
-  --ui-modall: none;      /* the small "All modules" caption inside the switcher button */
-  --ui-kbd: none;         /* the Ctrl K hint inside the search entry */
+  /* The application header: 62px (60px on a phone), 40px controls, a soft search field with the Ctrl K hint, the Ledger mark and the "All modules" caption.
+     The header's HEIGHT is the one number the sticky layers below it depend on: styles.css builds --bar-h from these three. */
+  --hdr-h: 62px;
+  --hdr-h-touch: 62px;
+  --hdr-h-phone: 60px;
+  --hdr-ctl-h: 40px;
+  --hdr-ctl-r: var(--r-md);
+  --hdr-ctl-line: var(--control-line);
+  --hdr-search-bg: var(--surface-soft);
+  --hdr-search-line: var(--control-line);
+  --hdr-search-w: min(300px, 26vw);
+  --hdr-shadow: var(--shadow-1);
+  --ui-brand: flex;
+  --ui-modall: inline;
+  --ui-kbd: inline-block;
 
-  /* D8 (Ledger's desktop navigation bar under the header). Classic and the older presets get a 40px bar with words only; Signature a 46px bar with line icons.
-     styles.css adds this height to --bar-h wherever something sticks below the bar (the page's top bar and the table headings). */
-  --lnav-h: 40px;
-  --ui-lnav-ic: none;
+  /* The 46px Ledger navigation bar with line icons. */
+  --lnav-h: 46px;
+  --ui-lnav-ic: inline-flex;
 
-  /* D12 (Ledger Home, Family Overview, Household Finances). Same rule as D6 and D7: every value below makes the screen look as it did before D12, so Classic, the four
-     older presets and any custom palette are unchanged. Only the Signature preset (src/palette.ts SIGNATURE_SHARED) gives them other values.
-     The hero is the one dark panel on Ledger Home (the net-worth card); its text pairs are measured in src/pages/d12Contrast.test.ts. */
-  --hero-bg: var(--surface);          /* Home's net-worth panel (Signature: navy) */
-  --hero-ink: var(--fg);
-  --hero-ink-2: var(--muted);
-  --hero-line: var(--line);
-  --hero-pos: var(--pos-text);
-  --hero-neg: var(--neg-text);
-  --hero-label-tt: none;              /* the small label above the figure (Signature: capitals) */
-  --chart-spend: var(--chart-2);      /* the "Spent" columns of Income vs spending (the app's colour for spending money; Signature: navy) */
+  /* Home, Family overview, Household finances: the small label above the hero figure is in capitals. */
+  --hero-label-tt: uppercase;
 }
 
-/* A page title is one step smaller on a phone (only Signature reads this: --h1-size is --fs-xl for everyone else). */
+/* A page title is one step smaller on a phone. */
 @media (max-width: 640px) {
   :root { --fs-title: var(--fs-title-sm); }
 }
@@ -198,8 +160,8 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
-    --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.65);
+    --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-3: 0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.65);
     --mc-blue: #7aa2ee;
     --mc-green: #52c08f;
     --mc-orange: #e8946a;
@@ -213,8 +175,8 @@
 }
 :root[data-theme="dark"] {
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.5);
-  --shadow-3: 0 16px 40px rgba(0, 0, 0, 0.65);
+  --shadow-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.65);
   --mc-blue: #7aa2ee;
   --mc-green: #52c08f;
   --mc-orange: #e8946a;

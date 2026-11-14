@@ -96,7 +96,7 @@
 /* Priority: shape + weight + border style, never colour alone */
 .cal-chip.p-high { font-weight: 650; border-left-width: 5px; }
 .cal-chip.p-low { font-weight: 400; }
-.cal-chip.p-reminder { opacity: 0.78; border-left-style: dotted; background: color-mix(in srgb, var(--chip) 7%, var(--surface)); font-weight: 400; font-style: italic; }
+.cal-chip.p-reminder { color: var(--fg-2); border-left-style: dotted; background: color-mix(in srgb, var(--chip) 7%, var(--surface)); font-weight: 400; font-style: italic; }
 .cal-chip.derived { border-left-style: dashed; }
 .cal-chip.derived.p-reminder { border-left-style: dotted; }
 .cal-chip.done { text-decoration: line-through; opacity: 0.6; }
@@ -131,7 +131,8 @@
 .cal-cell.weekend { background: var(--surface-soft); }
 .cal-cell.out { background: var(--surface-sunken); }
 .cal-cell.out .cal-daynum { color: var(--muted); font-weight: 500; }
-.cal-cell.out .cal-chip { opacity: 0.85; }
+/* D21.1: days outside the month are de-emphasised by a sunken cell, a lighter chip fill and secondary text color, not by chip opacity (85% opacity put the small time and priority marks at 3.9 to 4.5:1). Chip edge color is unchanged. */
+.cal-cell.out .cal-chip { background: color-mix(in srgb, var(--chip) 8%, var(--surface-sunken)); color: var(--fg-2); }
 .cal-cell:hover { background: color-mix(in srgb, var(--fg) 5%, var(--surface)); }
 /* The selected day: a frame (shape), a heavier number, and aria-selected. Today: a filled number and the word "Today". Both together keep both marks. */
 .cal-cell.selected { box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; background: var(--accent-soft); }
@@ -203,7 +204,7 @@
 .cal-row-when { font-size: var(--fs-sm); color: var(--fg-2); padding-top: 1px; font-variant-numeric: tabular-nums; }
 .cal-row-dot { border-radius: 3px; background: var(--chip); }
 .cal-row.derived .cal-row-dot { background: repeating-linear-gradient(to bottom, var(--chip) 0 5px, transparent 5px 8px); }
-.cal-row.p-reminder { opacity: 0.8; font-style: italic; }
+.cal-row.p-reminder { color: var(--fg-2); font-style: italic; }
 .cal-row.done .cal-row-title { text-decoration: line-through; opacity: 0.6; }
 .cal-row-main { display: grid; gap: 1px; min-width: 0; }
 .cal-row-title { font-weight: 600; overflow-wrap: anywhere; }
@@ -321,5 +322,5 @@
 @media print { .cal-bar, .cal-head-actions, .cal-lm, .cal-side { display: none; } .cal-body.with-side { display: block; } }
 
 /* A project marker on a calendar item: small and quiet, so it never competes with the title. */
-.cal-chip-proj { flex: none; font-size: 0.7em; opacity: 0.7; }
+.cal-chip-proj { flex: none; font-size: 0.7em; }
 .cal-proj { color: var(--muted, inherit); }

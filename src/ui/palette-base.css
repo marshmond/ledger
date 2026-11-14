@@ -1,0 +1,65 @@
+/*
+ * D21.1: the default colors. This is Signature Navy, the palette every device uses until it chooses another: the same values as the
+ * `signature-navy` entry in src/palette.ts (PRESETS), which src/shell/d211Palettes.test.ts compares line by line, so the two cannot drift.
+ * Choosing another palette (or "My own colors") sets the same variables on the page from src/palette.ts; nothing else about the interface changes.
+ *
+ * Only COLORS live here. Sizes, corners, type, the header, navigation, tables and dialogs are in src/ui/tokens.css and src/styles.css and are
+ * the same for every palette. The dark values are written twice, once for "follow the device" and once for a forced dark choice
+ * (the same test fails if the two blocks ever differ).
+ */
+:root {
+  --bg: #FFFFFF; --card: #FFFFFF; --page: #EEF1F6; --surface: #FFFFFF;
+  --fg: #101B33; --muted: #566379; --line: #DFE5EE;
+  --accent: #267880; --pos: #23694F; --neg: #B0443B; --warn: #8F5D16;
+  --side-bg: #F6F8FB; --side-fg: #101B33; --side-active: #267880;
+  --on-accent: #FFFFFF; --on-pos: #FFFFFF; --on-warn: #FFFFFF;
+  --surface-raised: #FFFFFF; --surface-soft: #F6F8FB; --surface-sunken: #EEF2F8;
+  --fg-2: #37445B; --control-line: #7A879F; --field-bg: #FFFFFF;
+  --btn-bg: #0E1A33; --btn-bg-hover: #1C2D52; --btn-ink: #FFFFFF;
+  --info: #3B6BA3; --info-soft: #E6EEF8;
+  --shadow-rgb: 14, 26, 51;
+  --scrim: rgba(11, 18, 32, 0.55); --toast-bg: #0E1A33; --toast-ink: #FFFFFF; --toast-edge: var(--shadow-2);
+  --viz-s1: #1D3A6B; --viz-s2: #267880; --viz-s3: #A8730F; --viz-s4: #8391AA;
+  --viz-c1: #1D3A6B; --viz-c2: #267880; --viz-c3: #5FAAB2; --viz-c4: #8391AA; --viz-c5: #A8730F; --viz-c6: #B3BDCF;
+  --viz-hc1: #8FB0E6; --viz-hc2: #3A9AA4; --viz-hc3: #7DC8CF; --viz-hc4: #D0D8E6; --viz-hc5: #E5B865;
+  --hero-bg: #0E1A33; --hero-ink: #FFFFFF; --hero-ink-2: #B6C3DB; --hero-line: rgba(255, 255, 255, 0.16); --hero-pos: #8EE0B8; --hero-neg: #FFB3AB;
+  --chart-spend: #1D3A6B;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131D31; --card: #131D31; --page: #0B1220; --surface: #131D31;
+    --fg: #E9EEF7; --muted: #9AA8BF; --line: #26354F;
+    --accent: #6CC0C8; --pos: #72CBA3; --neg: #F2928A; --warn: #E5B865;
+    --side-bg: #0B1220; --side-fg: #E9EEF7; --side-active: #6CC0C8;
+    --on-accent: #111111; --on-pos: #111111; --on-warn: #111111;
+    --surface-raised: #182339; --surface-soft: #182339; --surface-sunken: #1E2B46;
+    --fg-2: #C3CDDF; --control-line: #6F82A3; --field-bg: #0E1727;
+    --btn-bg: #277A83; --btn-bg-hover: #216D75; --btn-ink: #FFFFFF;
+    --info: #8FB0E6; --info-soft: #1B2A47;
+    --shadow-rgb: 0, 0, 0;
+    --scrim: rgba(3, 7, 14, 0.7); --toast-bg: #223454; --toast-ink: #E9EEF7; --toast-edge: var(--shadow-2), inset 0 0 0 1px #3A4D72;
+    --viz-s1: #8FB0E6; --viz-s2: #3A9AA4; --viz-s3: #E5B865; --viz-s4: #D0D8E6;
+    --viz-c1: #8FB0E6; --viz-c2: #3A9AA4; --viz-c3: #7DC8CF; --viz-c4: #D0D8E6; --viz-c5: #E5B865; --viz-c6: #6F82A3;
+    --viz-hc1: #8FB0E6; --viz-hc2: #3A9AA4; --viz-hc3: #7DC8CF; --viz-hc4: #D0D8E6; --viz-hc5: #E5B865;
+    --hero-bg: #1B2D52; --hero-ink: #FFFFFF; --hero-ink-2: #B6C3DB; --hero-line: rgba(255, 255, 255, 0.16); --hero-pos: #8EE0B8; --hero-neg: #FFB3AB;
+    --chart-spend: #8FB0E6;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131D31; --card: #131D31; --page: #0B1220; --surface: #131D31;
+  --fg: #E9EEF7; --muted: #9AA8BF; --line: #26354F;
+  --accent: #6CC0C8; --pos: #72CBA3; --neg: #F2928A; --warn: #E5B865;
+  --side-bg: #0B1220; --side-fg: #E9EEF7; --side-active: #6CC0C8;
+  --on-accent: #111111; --on-pos: #111111; --on-warn: #111111;
+  --surface-raised: #182339; --surface-soft: #182339; --surface-sunken: #1E2B46;
+  --fg-2: #C3CDDF; --control-line: #6F82A3; --field-bg: #0E1727;
+  --btn-bg: #277A83; --btn-bg-hover: #216D75; --btn-ink: #FFFFFF;
+  --info: #8FB0E6; --info-soft: #1B2A47;
+  --shadow-rgb: 0, 0, 0;
+  --scrim: rgba(3, 7, 14, 0.7); --toast-bg: #223454; --toast-ink: #E9EEF7; --toast-edge: var(--shadow-2), inset 0 0 0 1px #3A4D72;
+  --viz-s1: #8FB0E6; --viz-s2: #3A9AA4; --viz-s3: #E5B865; --viz-s4: #D0D8E6;
+  --viz-c1: #8FB0E6; --viz-c2: #3A9AA4; --viz-c3: #7DC8CF; --viz-c4: #D0D8E6; --viz-c5: #E5B865; --viz-c6: #6F82A3;
+  --viz-hc1: #8FB0E6; --viz-hc2: #3A9AA4; --viz-hc3: #7DC8CF; --viz-hc4: #D0D8E6; --viz-hc5: #E5B865;
+  --hero-bg: #1B2D52; --hero-ink: #FFFFFF; --hero-ink-2: #B6C3DB; --hero-line: rgba(255, 255, 255, 0.16); --hero-pos: #8EE0B8; --hero-neg: #FFB3AB;
+  --chart-spend: #8FB0E6;
+}

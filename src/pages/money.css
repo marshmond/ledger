@@ -1,7 +1,7 @@
 /* ---- Money pages (D16) ----
    Check-in, Accounts, an account's page, Transactions, Budget, Scheduled, Rules, Import and Categories.
-   Presentation only: the figures, dates, statuses and actions are the pages' own. Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so Classic and the
-   older presets get the same composition; Signature adds its navy hero and soft table headings through the tokens. Dense data keeps its tables: the transaction and budget
+   Presentation only: the figures, dates, statuses and actions are the pages' own. Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so every palette
+   gets the same composition; the navy hero and soft table headings are Signature's, colored per palette through the tokens. Dense data keeps its tables: the transaction and budget
    tables stay real tables on a computer and become labeled rows on a phone. New classes use the "mny-" prefix. Nothing here changes the sticky offsets in styles.css. */
 
 .mny-page { display: grid; gap: var(--sp-5); min-width: 0; }

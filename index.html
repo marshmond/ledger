@@ -4,11 +4,12 @@
     <meta charset="UTF-8" />
     <!-- Apply a saved Light/Dark choice before first paint (no flash). "Device" stores nothing. -->
     <script>try{var t=localStorage.getItem("ledger-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t)}}catch(e){}</script>
-    <script>try{var p=JSON.parse(localStorage.getItem("ledger-palette-vars")||"null");if(p){var th=localStorage.getItem("ledger-theme");var dk=th==="dark"||(th!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var v=dk?p.dark:p.light;for(var k in v){document.documentElement.style.setProperty(k,v[k])}}}catch(e){}</script>
+    <!-- D21.1: apply the saved color palette's variables before first paint. Only a copy in today's format (v:2) is used; an older or damaged copy is ignored (the page then draws Signature Navy, the default in src/ui/palette-base.css) and the app rewrites it at startup. -->
+    <script>try{var p=JSON.parse(localStorage.getItem("ledger-palette-vars")||"null");if(p&&p.v===2){var th=localStorage.getItem("ledger-theme");var dk=th==="dark"||(th!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var v=dk?p.dark:p.light;for(var k in v){document.documentElement.style.setProperty(k,v[k])}}}catch(e){}</script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#1f6feb" />
-    <!-- D21: set the browser-bar colour before first paint for the saved Light/Dark and palette (Signature canvas, another preset, your own colors, or Classic's blue / dark grey). src/theme.ts keeps it in sync afterwards; its THEME_COLOR must match the two Classic values here (a test checks). -->
-    <script>try{var tc=document.querySelector('meta[name="theme-color"]'),th2=localStorage.getItem("ledger-theme"),dk2=th2==="dark"||(th2!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches),pv=JSON.parse(localStorage.getItem("ledger-palette-vars")||"null"),pc=pv&&(dk2?pv.dark:pv.light);tc.setAttribute("content",pc&&/^#[0-9a-f]{6}$/i.test(pc["--page"])?pc["--page"]:dk2?"#12151a":"#1f6feb")}catch(e){}</script>
+    <meta name="theme-color" content="#EEF1F6" />
+    <!-- D21.1: the browser-bar colour before first paint: the saved palette's canvas for the saved Light/Dark, or Signature Navy's (#EEF1F6 light, #0B1220 dark). src/theme.ts keeps it in sync afterwards; its THEME_COLOR must match these two values (a test checks). -->
+    <script>try{var tc=document.querySelector('meta[name="theme-color"]'),th2=localStorage.getItem("ledger-theme"),dk2=th2==="dark"||(th2!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches),pv=JSON.parse(localStorage.getItem("ledger-palette-vars")||"null"),pc=pv&&pv.v===2&&(dk2?pv.dark:pv.light);tc.setAttribute("content",pc&&/^#[0-9a-f]{6}$/i.test(pc["--page"])?pc["--page"]:dk2?"#0B1220":"#EEF1F6")}catch(e){}</script>
     <meta name="description" content="Personal finance and investment planning. Your data stays on your device." />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />

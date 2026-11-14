@@ -11,7 +11,7 @@
  *  - colours only through tokens (var(--surface), var(--control-line), the derived --pos-soft and so on), never a new hex;
  *  - new classes use the "ui-" prefix; module prefixes (cal-, bl-, as-, pj-, sv-, fm-, tk-, hh-, td-, ct-) stay in the module sheets;
  *  - no priority overrides (the important flag; the app has 11) and no cascade layers;
- *  - every class works under every palette: colours come from derived tokens, so Classic, the older presets and Signature all read well.
+ *  - every class works under every palette: colours come from derived tokens, so every palette reads well.
  *
  * Button guidance (the D4 rule, a design principle, not enforced by code): one visually dominant FILLED button (class "primary") per
  * functional region, such as the global Add button, the Save/Add button of a form or dialog, or the single principal action of an empty
@@ -21,7 +21,7 @@
 
 /* ---------- text roles ---------- */
 .ui-eyebrow { display: block; margin: 0 0 var(--sp-1); font-size: var(--fs-xs); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); }
-.ui-eyebrow--head { display: var(--ui-eyebrow); } /* above a page title: drawn only under Signature, so a page that passes one looks unchanged elsewhere */
+.ui-eyebrow--head { display: var(--ui-eyebrow); } /* above a page title: drawn for every palette (the Signature design system) */
 .ui-section-title { margin: 0; font-size: var(--fs-lg); font-weight: 650; letter-spacing: -0.01em; line-height: 1.3; }
 .ui-card-title { margin: 0; font-size: var(--fs-md, var(--fs-lg)); font-weight: 650; letter-spacing: -0.005em; line-height: 1.3; }
 .ui-desc { margin: var(--sp-1) 0 0; max-width: 60ch; color: var(--fg-2); }

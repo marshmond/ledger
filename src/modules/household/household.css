@@ -1,4 +1,4 @@
-/* Household finances (B5, restyled in D12). Colors come only from tokens, so Classic, the older presets and Signature (light and dark) all read well.
+/* Household finances (B5, restyled in D12). Colors come only from tokens, so every palette (light and dark) reads well.
    Three ideas get three treatments and are never added together: Expected (teal edge), Committed (dashed edge, plans), Recorded (navy edge, backed by a record).
    Certainty is always a WORD plus a shape (check, wave, question mark); the edge style only reinforces it. */
 .hh-main { padding-bottom: var(--sp-6, 48px); max-width: min(1220px, 100%); }

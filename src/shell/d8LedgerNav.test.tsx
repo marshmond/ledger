@@ -312,15 +312,15 @@ describe('D8 correction: the Transactions filter row sticks directly under the h
   });
 });
 
-describe('D8 tokens: only Signature changes the bar\'s size and icons', () => {
-  it('defaults: 40px bar, no icons', () => {
-    expect(tokens).toMatch(/--lnav-h: 40px;/);
-    expect(tokens).toMatch(/--ui-lnav-ic: none;/);
+// D21.1 SUPERSEDED RULE: "only Signature changes the bar's size and icons" (40px bar, no icons for everyone else). The approved requirement is that the Signature bar is the
+// bar for every palette. Replacement guard: the 46px bar with icons is the stylesheet default and no palette may set either token.
+describe('D8 tokens: the Signature navigation bar is the bar for every palette (D21.1)', () => {
+  it('defaults: 46px bar with line icons', () => {
+    expect(tokens).toMatch(/--lnav-h: 46px;/);
+    expect(tokens).toMatch(/--ui-lnav-ic: inline-flex;/);
   });
-  it('Signature sets 46px and shows the icons, in light and dark; no other preset sets either', () => {
-    const src = readFileSync('src/palette.ts', 'utf8');
-    expect(src).toMatch(/'--lnav-h': '46px', '--ui-lnav-ic': 'inline-flex'/);
-    expect(src.match(/--lnav-h/g)).toHaveLength(1);
-    for (const p of PRESETS.filter((x) => x.id !== 'signature')) expect(JSON.stringify(p)).not.toMatch(/lnav/);
+  it('no palette sets either token', () => {
+    for (const p of PRESETS) expect(JSON.stringify(p)).not.toMatch(/lnav/);
+    expect(readFileSync('src/palette.ts', 'utf8')).not.toMatch(/'--lnav-h'|'--ui-lnav-ic'/);
   });
 });

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { CLASSIC, PRESETS, contrastRatio, varsFor, type PaletteColors } from '../palette';
+import { PRESETS, contrastRatio, deriveExtras, varsFor, type PaletteColors } from '../palette';
+import { CLASSIC } from './legacyFixtures';
 import { dateTileModel, inlineDateText, isIsoDate } from '../ui/dateTileModel';
 import { DateInline, DateTile } from '../ui/DateTile';
 import { StatusChip, STATUS_TONES, TONE_ICON, statusChipClass } from '../ui/StatusChip';
@@ -26,7 +27,7 @@ const read = (f: string) => readFileSync(f, 'utf8');
 const tokens = read('src/ui/tokens.css');
 const styles = read('src/styles.css');
 const components = read('src/ui/components.css');
-const SIG = PRESETS.find((p) => p.id === 'signature')!;
+const SIG = PRESETS.find((p) => p.id === 'signature-navy')!;
 const text = (html: string) => html.replace(/<[^>]+>/g, '');
 
 // ---------------------------------------------------------------- 1a. the date tile
@@ -303,29 +304,33 @@ describe('D6 shared pieces: same words, same roles, same structure', () => {
   });
 });
 
-// ---------------------------------------------------------------- 3a. the older palettes cannot change
+// ---------------------------------------------------------------- 3a. the shared tokens are the Signature design system for every palette (D21.1)
 
-/** The new appearance tokens and the value each had before D6 (what the stylesheet used to say). */
+/*
+ * D21.1 SUPERSEDED RULE: this section used to pin that every shared-component token defaults to the OLD (Classic) value, so that Classic and the four older
+ * presets could not change, and that only the Signature preset set the new values. The approved requirement is now that Ledger Signature is the interface for
+ * every palette. Replacement guard: the same tokens are pinned below at their Signature values IN THE STYLESHEET, and src/shell/d211Palettes.test.ts fails if
+ * any palette ever sets one of them. The chart-fallback and --viz-* tests that follow were not relaxed.
+ */
+/** The shared-component tokens and the value each has now, for every palette (what only Signature got, through the palette code, before D21.1). */
 const D6_DEFAULTS: Record<string, string> = {
-  '--field-bg': 'var(--bg)', '--search-bg': 'var(--field-bg)', '--disabled-bg': 'var(--field-bg)', '--disabled-ink': 'var(--fg)',
-  '--invalid-line': 'var(--control-line)', '--label-fg': 'var(--muted)', '--ctl-accent': 'auto', '--w-btn': '500',
-  '--btn-bg-hover': 'color-mix(in srgb, var(--btn-bg) 88%, var(--fg))',
-  '--h1-size': 'var(--fs-xl)', '--h1-weight': '650', '--h1-ls': '-0.01em', '--h1-lh': '1.25', '--ui-eyebrow': 'none',
-  '--th-bg': 'var(--bg)', '--th-fg': 'var(--muted)', '--th-fs': 'var(--fs-sm)', '--th-tt': 'none', '--th-ls': 'normal',
-  '--scrim': 'rgba(0, 0, 0, 0.5)', '--r-modal': 'var(--r-lg)', '--toast-bg': 'var(--fg)', '--toast-ink': 'var(--bg)', '--toast-edge': 'var(--shadow-2)',
-  '--ui-glyph': 'none', '--ui-glyph-legacy': 'inline',
+  '--search-bg': 'var(--surface-soft)', '--disabled-bg': 'var(--surface-sunken)', '--disabled-ink': 'var(--muted)',
+  '--invalid-line': 'var(--neg)', '--label-fg': 'var(--fg-2)', '--ctl-accent': 'var(--accent)', '--w-btn': '600',
+  '--h1-size': 'var(--fs-title)', '--h1-weight': '700', '--h1-ls': '-0.03em', '--h1-lh': '1.1', '--ui-eyebrow': 'block',
+  '--th-bg': 'var(--surface-soft)', '--th-fg': 'var(--fg-2)', '--th-fs': 'var(--fs-xs)', '--th-tt': 'uppercase', '--th-ls': '0.04em',
+  '--r-modal': '20px', '--ui-glyph': 'inline-block', '--ui-glyph-legacy': 'none',
 };
 const rootBlock = (css: string) => css.match(/^:root \{([\s\S]*?)\n\}/m)?.[1] ?? '';
 const decls = (body: string) => Object.fromEntries([...body.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 
-describe('D6 older palettes are protected: every new appearance token defaults to the value the stylesheet used before', () => {
+describe('D6 shared tokens: the Signature values are the defaults for every palette', () => {
   const root = decls(rootBlock(tokens));
 
-  it('each new token is declared at :root with its pre-D6 value', () => {
+  it('each shared token is declared at :root with its Signature value', () => {
     for (const [k, v] of Object.entries(D6_DEFAULTS)) expect(root[k], k).toBe(v);
   });
 
-  it('the rules that read them reproduce the old declarations when the defaults apply (spot checks of the replaced lines)', () => {
+  it('the rules that read them are the ones the shared components were built on (spot checks of the lines)', () => {
     const has = (s: string) => expect(styles, s).toContain(s);
     has('h1 { font-size: var(--h1-size); line-height: var(--h1-lh); font-weight: var(--h1-weight); letter-spacing: var(--h1-ls);');
     has('.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);');
@@ -336,37 +341,30 @@ describe('D6 older palettes are protected: every new appearance token defaults t
     has('overflow: auto; background: var(--scrim); }');
   });
 
-  it('the pre-existing values these defaults stand on are unchanged (so "the old value" really is the old value)', () => {
-    expect(root['--r-md']).toBe('8px');
-    expect(root['--r-sm']).toBe('8px'); // controls moved from --r-sm to --r-md: same pixels for every palette that does not set --r-md
-    expect(root['--r-lg']).toBe('14px');
+  it('the sizes and corners these stand on are the Signature ones (10px controls, 16px cards, 20px dialogs, 1rem card titles, Inter first)', () => {
+    expect(root['--r-md']).toBe('10px');
+    expect(root['--r-sm']).toBe('8px');
+    expect(root['--r-lg']).toBe('16px');
+    expect(root['--fs-md']).toBe('1rem');
     expect(root['--fs-xl']).toBe('1.5rem');
-    expect(root['--control-line']).toBe('var(--line-strong)'); // inputs and buttons moved from --line-strong to --control-line: same colour
-    expect(root['--btn-bg']).toBe('var(--accent)');
-    expect(root['--btn-ink']).toBe('var(--on-accent, #fff)');
-    expect(root['--surface']).toBe('var(--card)');
-    expect(root['--surface-raised']).toBe('var(--bg)');
-    expect(root['--info']).toBe('var(--accent)');
-    expect(root['--info-soft']).toBe('var(--accent-soft)');
-  });
-
-  it('--fs-md is still NOT defined for everyone (D6 keeps the D5 decision: eight module rules would change); the card title falls back to --fs-lg', () => {
-    expect(root['--fs-md']).toBeUndefined();
+    expect(root['--font-sans']).toMatch(/^Inter, system-ui/);
     expect(styles).toContain('.card-head strong, .card-title { font-size: var(--fs-md, var(--fs-lg)); font-weight: 600; }');
   });
 
-  it('the page title is one step smaller on a phone only through --fs-title, which only Signature reads', () => {
+  it('the page title is one step smaller on a phone through --fs-title', () => {
     expect(tokens).toMatch(/@media \(max-width: 640px\) \{\s*:root \{ --fs-title: var\(--fs-title-sm\); \}\s*\}/);
-    expect(SIG.extras!.light['--h1-size']).toBe('var(--fs-title)');
+    expect(root['--h1-size']).toBe('var(--fs-title)');
   });
 
-  it('no older palette, and not Classic, sets any of the new tokens (only Signature does)', () => {
-    const newKeys = [...Object.keys(D6_DEFAULTS), '--r-lg', '--viz-surface', '--viz-s1'];
-    for (const p of PRESETS.filter((x) => x.id !== 'signature')) {
-      expect(Object.keys(p.extras ?? {}), p.id).toEqual([]);
-      for (const mode of ['light', 'dark'] as const) for (const k of newKeys) expect(varsFor(p[mode])[k], `${p.id} ${mode} ${k}`).toBeUndefined();
+  it('no palette sets any of the shared tokens: they are the same for all five palettes, and for custom colors', () => {
+    const shared = [...Object.keys(D6_DEFAULTS), '--r-lg', '--r-md', '--fs-md', '--font-sans', '--hdr-h', '--lnav-h'];
+    for (const p of PRESETS) {
+      for (const mode of ['light', 'dark'] as const) for (const k of shared) {
+        expect(varsFor(p[mode])[k], `${p.id} ${mode} ${k}`).toBeUndefined();
+        expect(p.extras[mode][k], `${p.id} ${mode} ${k}`).toBeUndefined();
+      }
     }
-    for (const k of newKeys) expect(varsFor(CLASSIC.light)[k]).toBeUndefined();
+    for (const k of shared) expect(varsFor(CLASSIC.light)[k]).toBeUndefined();
   });
 
   it('every chart variable keeps its old value as the fallback, in light and in both dark scopes, and series 5 to 8 are never overridable', () => {
@@ -403,7 +401,7 @@ type Vars = Record<string, string>;
 const hexOf = (h: string): [number, number, number] => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const mixHex = (a: string, b: string, pctOfA: number) => `#${hexOf(a).map((v, i) => Math.round(v * pctOfA + hexOf(b)[i] * (1 - pctOfA)).toString(16).padStart(2, '0')).join('')}`;
 /** Resolves a variable that is a hex or a var() chain to a hex, using the colours and extras that a palette puts on the page. */
-const sigVars = (mode: 'light' | 'dark'): Vars => ({ ...varsFor(SIG[mode]), ...SIG.extras![mode] });
+const sigVars = (mode: 'light' | 'dark'): Vars => ({ ...decls(rootBlock(tokens)), ...varsFor(SIG[mode]), ...SIG.extras[mode] });
 function resolve(vars: Vars, name: string, seen = 0): string {
   const v = vars[name];
   if (v === undefined || seen > 8) throw new Error(`cannot resolve ${name}`);
@@ -457,38 +455,36 @@ describe('D6 Ledger Signature: the new shared-component values are readable in l
   }
 
   it('light and dark define the same new variables; the shared ones are identical text, the colours differ by mode', () => {
-    expect(Object.keys(SIG.extras!.light).sort()).toEqual(Object.keys(SIG.extras!.dark).sort());
-    for (const k of ['--field-bg', '--btn-bg-hover', '--scrim', '--toast-bg', '--toast-ink', '--viz-s1', '--viz-s2', '--viz-s3', '--viz-s4']) expect(SIG.extras!.light[k], k).not.toBe(SIG.extras!.dark[k]);
-    for (const k of ['--r-lg', '--r-modal', '--w-btn', '--h1-weight', '--th-tt', '--ui-glyph']) expect(SIG.extras!.light[k], k).toBe(SIG.extras!.dark[k]);
+    expect(Object.keys(SIG.extras.light).sort()).toEqual(Object.keys(SIG.extras.dark).sort());
+    for (const k of ['--field-bg', '--btn-bg-hover', '--scrim', '--toast-bg', '--toast-ink', '--viz-s1', '--viz-s2', '--viz-s3', '--viz-s4']) expect(SIG.extras.light[k], k).not.toBe(SIG.extras.dark[k]);
   });
 
-  it('every new Signature variable is declared in the token file or is a chart variable (so none is a typo)', () => {
-    const declared = new Set(Object.keys(decls(rootBlock(tokens))));
-    for (const mode of ['light', 'dark'] as const) for (const k of Object.keys(SIG.extras![mode])) expect(declared.has(k) || k.startsWith('--viz-') || k === '--fs-md' || /^--shadow-[123]$/.test(k), k).toBe(true);
+  it('every palette variable is declared in the default colors file (so none is a typo)', () => {
+    const declared = new Set(Object.keys(decls(rootBlock(read('src/ui/palette-base.css')))));
+    for (const mode of ['light', 'dark'] as const) for (const k of Object.keys(SIG.extras[mode])) expect(declared.has(k), k).toBe(true);
   });
 });
 
 describe('D6 chip, tile and notice tones read on every palette (the tint text pairs used by the shared classes)', () => {
-  const sets: Array<[string, 'light' | 'dark', PaletteColors]> = [];
+  const sets: Array<[string, 'light' | 'dark', PaletteColors, Record<string, string>]> = [];
   for (const mode of ['light', 'dark'] as const) {
-    sets.push(['classic', mode, CLASSIC[mode]]);
-    for (const p of PRESETS) sets.push([p.id, mode, p[mode]]);
+    sets.push(['classic (as custom colors)', mode, CLASSIC[mode], deriveExtras(CLASSIC[mode], mode === 'dark')]);
+    for (const p of PRESETS) sets.push([p.id, mode, p[mode], p.extras[mode]]);
   }
-  for (const [id, mode, c] of sets) {
+  for (const [id, mode, c, sig] of sets) {
     it(`${id} ${mode}: status text on its own tint, date-tile labels on their tints, and the small labels on the soft fills`, () => {
-      const sig = id === 'signature' ? SIG.extras![mode] : null;
       const pairs: Array<[string, string, string]> = [];
       for (const [tone, pct] of [['accent', 0.12], ['pos', 0.13], ['neg', 0.13], ['warn', 0.14]] as const) {
         const tint = mixHex(c[tone], c.bg, pct);
         pairs.push([`${tone} text on ${tone} tint`, mixHex(c[tone], c.fg, 0.78), tint]);
       }
-      const info = sig?.['--info'] ?? c.accent;
-      const infoSoft = sig?.['--info-soft'] ?? mixHex(c.accent, c.bg, 0.12);
+      const info = sig['--info'];
+      const infoSoft = sig['--info-soft'];
       pairs.push(['info text on info tint', mixHex(info, c.fg, 0.78), infoSoft]);
       const surface = c.surface ?? c.card;
-      const soft = sig?.['--surface-soft'] ?? mixHex(c.fg, surface, 0.04);
-      const sunken = sig?.['--surface-sunken'] ?? mixHex(c.fg, surface, 0.08);
-      const fg2 = sig?.['--fg-2'] ?? mixHex(c.fg, c.muted, 0.78);
+      const soft = sig['--surface-soft'];
+      const sunken = sig['--surface-sunken'];
+      const fg2 = sig['--fg-2'];
       pairs.push(['default tile label (quiet text) on the soft fill', c.muted, soft], ['weekend tile label on the sunken fill', c.muted, sunken], ['neutral chip text on the sunken fill', fg2, sunken], ['segmented option text on the track', fg2, sunken], ['selected segment text on the card', c.fg, surface]);
       for (const [name, fg, bg] of pairs) expect(contrastRatio(fg, bg), `${id} ${mode}: ${name}`).toBeGreaterThanOrEqual(4.5);
     });
@@ -514,7 +510,8 @@ describe('D6 src/ui/components.css follows the rules for the shared stylesheet',
     expect(odd).toEqual([]);
   });
   it('is still imported right after the tokens, and defines its two animations only here (reduced motion switches animation off app-wide)', () => {
-    expect(styles.split('\n').slice(0, 2)).toEqual(["@import './ui/tokens.css';", "@import './ui/components.css';"]);
+    // D21.1: the default colors (palette-base.css) sit between the tokens and the shared components.
+    expect(styles.split('\n').slice(0, 3)).toEqual(["@import './ui/tokens.css';", "@import './ui/palette-base.css';", "@import './ui/components.css';"]);
     expect(styles).toMatch(/prefers-reduced-motion: reduce\) \{\s*\*, \*::before, \*::after \{ transition: none !important; animation: none !important;/);
     expect([...code.matchAll(/@keyframes ([a-z-]+)/g)].map((m) => m[1])).toEqual(['ui-spin']);
   });

@@ -1,50 +1,18 @@
 @import './ui/tokens.css';
+@import './ui/palette-base.css';
 @import './ui/components.css';
 
 :root {
-  --bg: #ffffff;
-  --fg: #1c2024;
-  --muted: #5d6779; /* ST-S3 (AX-04): was #667085, 4.0 to 4.3 on tinted backgrounds; now 4.6 or more everywhere */
-  --line: #e4e7ec;
-  --card: #f8f9fb;
-  --accent: #1a5fd0;
-  --neg: #c02424; /* ST-S3: was #c92a2a (4.4 on its own tint); --pos and --warn likewise */
-  --pos: #187636;
-  --warn: #8c5200;
-  font-family: var(--font-sans); /* D5: the same system stack as before (src/ui/tokens.css); Signature puts Inter first, with no font file shipped */
+  font-family: var(--font-sans); /* the Signature type stack (src/ui/tokens.css): Inter when the device has it, no font file shipped */
   color-scheme: light dark;
 }
 /* Theme: "Device" follows the OS setting; a forced choice sets data-theme on <html> (see src/theme.ts).
-   The dark values are declared under both scopes below: the media query (only when not forced light) and the forced-dark scope.
-   Classic's dark accent is light, so its button text is dark (--on-accent) to keep AA contrast. */
+   The colors themselves (Signature Navy, the default) are in src/ui/palette-base.css, written for both scopes there: the media query
+   (only when not forced light) and the forced-dark scope. Another palette sets the same variables from src/palette.ts. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #12151a;
-    --fg: #e8eaed;
-    --muted: #98a2b3;
-    --line: #2a2f38;
-    --card: #1a1e25;
-    --accent: #5b9bff;
-    --on-accent: #0b1220;
-    --neg: #ff7b72;
-    --pos: #56d364;
-    --warn: #e3b341;
-  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
 }
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #12151a;
-  --fg: #e8eaed;
-  --muted: #98a2b3;
-  --line: #2a2f38;
-  --card: #1a1e25;
-  --accent: #5b9bff;
-  --on-accent: #0b1220;
-  --neg: #ff7b72;
-  --pos: #56d364;
-  --warn: #e3b341;
-}
+:root[data-theme="dark"] { color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -63,7 +31,7 @@ p a, li a, .prose a { text-decoration: underline; text-underline-offset: 3px; te
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-4); margin-bottom: var(--sp-4); box-shadow: var(--shadow-1); } /* D6: --surface is --card for every palette except Signature (white card on a grey canvas) */
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-2); }
-.card-head strong, .card-title { font-size: var(--fs-md, var(--fs-lg)); font-weight: 600; } /* D6: --fs-md exists only under Signature (1rem); everywhere else this is still --fs-lg */
+.card-head strong, .card-title { font-size: var(--fs-md, var(--fs-lg)); font-weight: 600; } /* --fs-md (1rem) is defined in src/ui/tokens.css; --fs-lg stays as the fallback only */
 .card-head h2.card-title { margin: 0; line-height: inherit; } /* ST-S3 (AX-03): card titles are real h2 headings; same look as the old strong */
 .card-link { font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
 .card-link::after { content: ' ›'; }
@@ -72,7 +40,7 @@ p a, li a, .prose a { text-decoration: underline; text-underline-offset: 3px; te
 .spread { justify-content: space-between; }
 
 /* Controls: one height, one border, a clear focus ring. */
-/* D6: every value here reads a token whose default is the old value (src/ui/tokens.css), so only the Signature preset looks different. */
+/* D6: every value here reads a token (src/ui/tokens.css); since D21.1 the tokens are the Signature values for every palette. */
 input, select, button, textarea { font: inherit; color: var(--fg); border: 1px solid var(--control-line); border-radius: var(--r-md); background: var(--bg); padding: 0 var(--sp-3); }
 input, select, textarea { background: var(--field-bg); }
 input[type="search"], .searchinput { background: var(--search-bg); }
@@ -150,7 +118,7 @@ input.assign { width: 110px; text-align: right; }
 .rta-zero .rta-amt { color: var(--muted); }
 
 /* ---- charts (palette from the validated reference set; dark values are separately stepped, not inverted) ---- */
-/* D6: each chart variable reads an optional --viz-* variable and falls back to the value it always had, so only Signature (which sets the --viz-* ones in src/palette.ts) changes.
+/* D6: each chart variable reads a --viz-* variable (set by the palette, src/palette.ts) and keeps the value it always had as its fallback (used by custom palettes' charts too).
    --viz-s5 to --viz-s8 are never set by any palette, so series 5 to 8 keep their validated hues everywhere (D4 open decision OD-8). */
 .viz {
   --surface-1: var(--viz-surface, #fcfcfb); --ink: var(--viz-ink, #0b0b0b); --ink-2: var(--viz-ink-2, #52514e); --ink-3: var(--viz-ink-3, #898781);
@@ -374,7 +342,7 @@ body:has(.modal-back) .toasts { z-index: 90; }
 .toast button.link:hover:not(:disabled) { background: color-mix(in srgb, var(--toast-ink) 18%, transparent); }
 
 /* ---- home dashboard: a grid of cards you can reorder ---- */
-/* D12: each Home chart color reads an optional --viz-c* variable and falls back to the value it always had, so only Signature (src/palette.ts) changes. */
+/* D12: each Home chart color reads a --viz-c* variable (set by the palette, src/palette.ts) and keeps the value it always had as its fallback. */
 :root { --chart-1: var(--viz-c1, #3f7fd9); --chart-2: var(--viz-c2, #e08a2b); --chart-3: var(--viz-c3, #3aa17e); --chart-4: var(--viz-c4, #9b6ad6); --chart-5: var(--viz-c5, #d65f7a); --chart-6: var(--viz-c6, #7a8794); }
 .home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); }
 .hc { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
@@ -405,7 +373,7 @@ body:has(.modal-back) .toasts { z-index: 90; }
 .legend.inline { display: flex; gap: var(--sp-4); justify-content: center; margin-top: var(--sp-1); flex: none; }
 .swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 .col-a { fill: var(--pos); }
-.col-b { fill: var(--chart-spend); } /* D12: the app's color for spending (token; Classic keeps chart-2) */
+.col-b { fill: var(--chart-spend); } /* D12: the app's color for spending (token, set by each palette) */
 .col-a-sw { background: var(--pos); }
 .col-b-sw { background: var(--chart-spend); }
 .paired { width: 100%; height: auto; display: block; }

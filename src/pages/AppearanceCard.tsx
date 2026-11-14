@@ -2,22 +2,68 @@ import { useState, type CSSProperties } from 'react';
 import { rovingIndex, rovingKeys } from '../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { COLOR_ROLES, PRESETS, CLASSIC, colorsOf, contrastNotes, isHex, loadPalette, savePalette, varsFor, withoutOptional, type Colors, type ColorKey, type PaletteChoice, type PaletteColors, type PaletteId } from '../palette';
+import { COLOR_ROLES, PRESETS, colorsOf, contrastNotes, customVars, isHex, loadPalette, savePalette, varsOf, withoutOptional, type Colors, type ColorKey, type PaletteChoice, type PaletteId } from '../palette';
 import { LIMIT_MESSAGE, addTheme, atLimit, checkThemeName, decodeTheme, encodeTheme, newThemeId, parseThemes, renameTheme, sameColors, uniqueName, updateTheme, type SavedTheme } from '../lib/savedThemes';
 import { removeStoredTheme } from '../lib/savedRemoval';
 import ConfirmDialog from '../shell/ConfirmDialog';
-import { applyTheme, loadTheme } from '../theme';
-import ThemeToggle from './ThemeToggle';
+import { THEME_LABEL, applyTheme, loadTheme, saveTheme, type Theme } from '../theme';
 import { PageHeader } from '../ui/components';
 import { Pill, SettingsSection, SubHeading } from './SettingsParts';
 
-const NAMES: Record<PaletteId, string> = { classic: 'Classic blue', teal: 'Calm teal', navy: 'Deep navy and gold', forest: 'Forest green and stone', slate: 'Slate and indigo', signature: 'Ledger Signature', custom: 'My own colors' };
-const BLURB: Record<string, string> = { classic: 'The original look: clean white and blue.', ...Object.fromEntries(PRESETS.map((p) => [p.id, p.blurb])), custom: 'Pick every color yourself, for light and dark.' };
-/** A palette still being rolled out is labelled "preview" (set `preview` on its entry in src/palette.ts; removing the flag removes the label everywhere). */
-const PREVIEW = new Set<PaletteId>(PRESETS.filter((p) => p.preview).map((p) => p.id));
-const label = (id: PaletteId) => (PREVIEW.has(id) ? `${NAMES[id]} (preview)` : NAMES[id]);
+/** D21.1: Ledger has one interface, Ledger Signature. Palettes choose colors only, so there is no "old look" to pick: five palettes, saved themes, and "My own colors". */
+const NAMES: Record<PaletteId, string> = { ...(Object.fromEntries(PRESETS.map((p) => [p.id, p.name])) as Record<string, string>), custom: 'My own colors' } as Record<PaletteId, string>;
+const BLURB: Record<string, string> = { ...Object.fromEntries(PRESETS.map((p) => [p.id, p.blurb])), custom: 'Pick every color yourself, for light and dark.' };
+const label = (id: PaletteId) => NAMES[id];
 
-const dots = (c: PaletteColors) => [c.page ?? c.bg, c.surface ?? c.card, c.accent, c.pos, c.neg, c.sideBg];
+const MODES: { id: Theme; icon: string; hint: string }[] = [
+  { id: 'light', icon: '☀', hint: 'Always light' },
+  { id: 'dark', icon: '☾', hint: 'Always dark' },
+  { id: 'device', icon: '◐', hint: 'Follows your phone or computer' },
+];
+
+/** The colors a small picture of the interface needs, read straight from the variables (the picture is a few shapes, not words). */
+function Half({ vars, name }: { vars: Record<string, string>; name: string }) {
+  return (
+    <span className="pp-half" style={vars as CSSProperties}>
+      <span className="pp-bar"><b /><i className="on" /><i /><i /></span>
+      <span className="pp-page">
+        <span className="pp-hero"><i /><i /></span>
+        <span className="pp-card">
+          <i className="t" /><i className="s" />
+          <span className="pp-row"><u className="pos" /><u className="neg" /><u className="warn" /><em /></span>
+        </span>
+      </span>
+      <span className="pp-cap">{name}</span>
+    </span>
+  );
+}
+
+/** A picture of one palette in Light (left) and Dark (right), drawn with that palette's own colors. Decoration: the card's name says everything. */
+function PalettePreview({ light, dark }: { light: Record<string, string>; dark: Record<string, string> }) {
+  return (
+    <span className="pp" aria-hidden="true">
+      <Half vars={light} name="Light" />
+      <Half vars={dark} name="Dark" />
+    </span>
+  );
+}
+
+/** Light, Dark or Device: three radio buttons (the same choice as the button in the Ledger menu bar, which cycles through them). */
+function ModePicker() {
+  const [mode, setMode] = useState<Theme>(() => loadTheme());
+  const choose = (t: Theme) => { saveTheme(t); applyTheme(t); setMode(t); };
+  return (
+    <div className="se-modes" role="radiogroup" aria-label="Appearance mode" onKeyDown={rovingKeys}>
+      {MODES.map((m) => (
+        <button key={m.id} role="radio" aria-checked={mode === m.id} tabIndex={mode === m.id ? 0 : -1} className={`se-mode-opt ${mode === m.id ? 'on' : ''}`} onClick={() => choose(m.id)}>
+          <span className="se-mode-ic" aria-hidden="true">{m.icon}</span>
+          <strong>{THEME_LABEL[m.id]}</strong>
+          <span className="muted se-mode-hint">{m.hint}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** One row of the color map: a name, what it colors, a color picker, and the hex code. */
 function ColorRow({ role, value, onChange }: { role: (typeof COLOR_ROLES)[number]; value: string; onChange: (hex: string) => void }) {
@@ -49,7 +95,7 @@ function ColorRow({ role, value, onChange }: { role: (typeof COLOR_ROLES)[number
 export default function AppearanceCard() {
   const [choice, setChoiceState] = useState<PaletteChoice>(() => loadPalette());
   const [editing, setEditing] = useState<'light' | 'dark'>('light');
-  const [base, setBase] = useState<PaletteId>('classic');
+  const [base, setBase] = useState<PaletteId>(() => (choice.id === 'custom' ? 'signature-navy' : choice.id));
   const saved = useLiveQuery(async () => parseThemes((await db.settings.get('savedThemes'))?.value), []);
   const themes: SavedTheme[] = saved ?? [];
   const [naming, setNaming] = useState<null | 'new' | 'rename'>(null);
@@ -68,9 +114,12 @@ export default function AppearanceCard() {
     savePalette(c);
     applyTheme(loadTheme()); // re-applies the colors for the mode now in effect
   };
-  // A palette of your own has the twelve colors in the map. Starting from a preset that also sets a separate canvas and card color (Signature) drops those two,
-  // so "Page background" and "Cards and panels" in the map still change the whole page, as they always have.
-  const baseColors = (id: PaletteId, dark: boolean): Colors => withoutOptional(colorsOf({ id, custom: choice.custom }, dark) ?? CLASSIC[dark ? 'dark' : 'light']);
+  // A palette of your own has the twelve colors in the map. A palette has a separate canvas and card color; starting from one puts the canvas in "Page background" and the card
+  // color in "Cards and panels", so your colors begin as the same composition (and "Page background" in the map still changes the whole canvas, as it always has).
+  const baseColors = (id: PaletteId, dark: boolean): Colors => {
+    const c = colorsOf({ id, custom: choice.custom }, dark);
+    return { ...withoutOptional(c), bg: c.page ?? c.bg, card: c.surface ?? c.card };
+  };
   const custom = choice.id === 'custom' && choice.custom ? choice.custom : null;
   const current = custom ? custom[editing] : null;
   const notes = current ? contrastNotes(current) : [];
@@ -120,46 +169,43 @@ export default function AppearanceCard() {
     try { await navigator.clipboard.writeText(text); setMsg('Theme code copied. Paste it into another copy of the app.'); } catch { setMsg('Copy the code from the box below.'); }
   }
 
-  const paletteIds = ['classic', ...PRESETS.map((p) => p.id), 'custom'] as PaletteId[];
+  const paletteIds = [...PRESETS.map((p) => p.id), 'custom'] as PaletteId[];
   const inUse = (id: PaletteId) => (id === 'custom' ? choice.id === 'custom' && !active : choice.id === id);
   const nowName = active ? active.name : choice.id === 'custom' ? NAMES.custom : label(choice.id);
+  /** Both modes of a palette as the variables its picture uses. "My own colors" with nothing chosen yet shows the palette it would start from. */
+  const previewOf = (id: PaletteId) => {
+    const c: PaletteChoice = id === 'custom' ? (custom ? { id: 'custom', custom } : { id: base }) : { id };
+    return { light: varsOf(c, false), dark: varsOf(c, true) };
+  };
 
   return (
     <>
-      <PageHeader title="Appearance" description="Light or dark, the color palette, and themes you have saved." />
+      <PageHeader title="Appearance" description="Choose a color palette and Light, Dark or Device mode." />
       <p className="se-now" role="status">
         <span className="se-now-label">Colors right now</span>
         <strong className="se-now-value">{nowName}</strong>
       </p>
 
-      <SettingsSection id="mode" title="Mode" badge={<Pill tone="quiet">This device only</Pill>}
-        intro="Mode follows your phone or computer (Device), or you can force Light or Dark. Colors are chosen separately, below. Both are remembered on this device only, except your saved themes, which are kept with your data.">
-        <div className="se-mode">
-          <ThemeToggle />
-          <ul className="se-points">
-            <li><strong>Device</strong> follows the light or dark setting of your phone or computer.</li>
-            <li><strong>Light</strong> and <strong>Dark</strong> stay as chosen, whatever the device does.</li>
-            <li>The button cycles Device, Light, Dark. The same button is in the Ledger menu bar.</li>
-          </ul>
-        </div>
-      </SettingsSection>
-
-      <SettingsSection id="palettes" title="Color palettes" intro="Each card shows the palette in light (top row of dots) and dark (bottom row). Choose one to use it everywhere in Ledger.">
+      <SettingsSection id="palettes" title="Color palette" badge={<Pill tone="quiet">This device only</Pill>}
+        intro="Every palette gives Ledger the same layout; only the colors change. Each picture shows the palette in Light (left) and Dark (right).">
         <div className="pal-grid se-pals" role="radiogroup" aria-label="Color palette" onKeyDown={rovingKeys}>
           {paletteIds.map((id) => {
-            const sample = id === 'custom' ? (custom?.light ?? CLASSIC.light) : id === 'classic' ? CLASSIC.light : PRESETS.find((p) => p.id === id)!.light;
-            const sampleDark = id === 'custom' ? (custom?.dark ?? CLASSIC.dark) : id === 'classic' ? CLASSIC.dark : PRESETS.find((p) => p.id === id)!.dark;
             const on = inUse(id);
+            const pv = previewOf(id);
             return (
               <button key={id} role="radio" aria-checked={on} tabIndex={(on) ? 0 : -1} className={`pal ${on ? 'on' : ''}`} onClick={() => (id === 'custom' ? (custom ? set({ id: 'custom', custom }) : startCustom(base)) : set({ id }))}>
+                <PalettePreview light={pv.light} dark={pv.dark} />
                 <span className="se-pal-head"><strong>{label(id)}</strong>{on && <Pill tone="ok">In use</Pill>}</span>
-                <span className="swatches" aria-hidden="true">{dots(sample).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
-                <span className="swatches" aria-hidden="true">{dots(sampleDark).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
                 <span className="muted se-pal-blurb">{BLURB[id]}</span>
               </button>
             );
           })}
         </div>
+      </SettingsSection>
+
+      <SettingsSection id="mode" title="Appearance mode" badge={<Pill tone="quiet">This device only</Pill>}
+        intro="Light and Dark stay as chosen. Device follows the light or dark setting of your phone or computer. The same choice is the button in the Ledger menu bar. Your palette stays the same in every mode.">
+        <ModePicker />
       </SettingsSection>
 
       <SettingsSection id="themes" title="My themes" badge={<Pill tone="info">Synced with your data</Pill>}
@@ -169,8 +215,7 @@ export default function AppearanceCard() {
             {themes.map((t, i) => (
               <button key={t.id} role="radio" aria-checked={choice.savedId === t.id} tabIndex={rovingIndex(i, themes.findIndex((x) => x.id === choice.savedId))} className={`pal ${choice.savedId === t.id ? 'on' : ''}`} onClick={() => set({ id: 'custom', custom: { light: { ...t.light }, dark: { ...t.dark } }, savedId: t.id })}>
                 <span className="se-pal-head"><strong>{t.name}</strong>{choice.savedId === t.id && <Pill tone="ok">In use</Pill>}</span>
-                <span className="swatches" aria-hidden="true">{dots(t.light).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
-                <span className="swatches" aria-hidden="true">{dots(t.dark).map((c, i) => <i key={i} style={{ background: c }} />)}</span>
+                <PalettePreview light={customVars(t.light, false)} dark={customVars(t.dark, true)} />
               </button>
             ))}
           </div>
@@ -213,7 +258,7 @@ export default function AppearanceCard() {
             </div>
             <label className="row">Start over from
               <select value={base} onChange={(e) => setAskBase(e.target.value as PaletteId)}>
-                {(['classic', ...PRESETS.map((p) => p.id)] as PaletteId[]).map((id) => <option key={id} value={id}>{label(id)}</option>)}
+                {PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
           </div>
@@ -230,7 +275,7 @@ export default function AppearanceCard() {
                 <ul className="warn se-warn">{notes.map((n, i) => <li key={i}>{n.message} (contrast {n.ratio.toFixed(1)}, aim for {n.min} or more)</li>)}</ul>
               ) : <p className="muted small">Nothing hard to read in {editing} mode.</p>}
               <SubHeading>Preview ({editing} mode)</SubHeading>
-              <div className="samples se-sample" style={varsFor(current) as CSSProperties}>
+              <div className="samples se-sample" style={customVars(current, editing === 'dark') as CSSProperties}>
                 <div className="se-sample-bar">
                   <strong>Ledger</strong>
                   <span className="on">Money</span>

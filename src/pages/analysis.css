@@ -1,7 +1,7 @@
 /* ---- Financial analysis, Invest and debt pages (D17) ----
    Forecast, Reports (Trends and Flow diagram), Net worth, Investments (three views), Debt and Payoff.
-   Presentation only: every figure, date, assumption and action is the page's own. Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so Classic and the older
-   presets get the same composition; Signature adds its navy hero and soft table headings through the tokens. New classes use the "an-" prefix.
+   Presentation only: every figure, date, assumption and action is the page's own. Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so every palette
+   gets the same composition; the navy hero and soft table headings are Signature's, and each palette colors them through the tokens. New classes use the "an-" prefix.
    Kinds of figure are told apart by a WORD and a line style as well as color: actual (solid), projected (dashed), your assumption (dotted), not known (warning edge). Positive and
    negative amounts are never colored just for their sign; a word or a sign says which way they go. */
 

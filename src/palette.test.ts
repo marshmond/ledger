@@ -36,9 +36,10 @@ describe('built-in palettes', () => {
       });
     }
   }
-  it('has five presets (four older ones and Ledger Signature, D5) with unique ids', () => {
+  it('has five palettes (D21.1: Signature Navy, Coastal Slate, Evergreen, Warm Stone, Midnight Plum) with unique ids, Signature Navy first', () => {
     expect(new Set(PRESETS.map((p) => p.id)).size).toBe(5);
-    expect(PRESETS.map((p) => p.id)).toEqual(['teal', 'navy', 'forest', 'slate', 'signature']);
+    expect(PRESETS.map((p) => p.id)).toEqual(['signature-navy', 'coastal-slate', 'evergreen', 'warm-stone', 'midnight-plum']);
+    expect(PRESETS.map((p) => p.name)).toEqual(['Signature Navy', 'Coastal Slate', 'Evergreen', 'Warm Stone', 'Midnight Plum']);
   });
 });
 
@@ -53,26 +54,31 @@ describe('warning about unreadable custom colors', () => {
 
 describe('variables and storage', () => {
   it('turns colors into CSS variables, including readable text on buttons', () => {
-    const v = varsFor(PRESETS[0].light);
-    expect(v['--accent']).toBe('#0F766E');
+    const v = varsFor(PRESETS[2].light); // Evergreen
+    expect(v['--accent']).toBe('#2F6A55');
     expect(v['--on-accent']).toBe('#FFFFFF');
-    expect(v['--side-bg']).toBe(PRESETS[0].light.sideBg);
-    expect(varsFor(PRESETS[0].dark)['--on-accent']).toBe('#111111');
+    expect(v['--side-bg']).toBe(PRESETS[2].light.sideBg);
+    expect(varsFor(PRESETS[2].dark)['--on-accent']).toBe('#111111');
   });
-  it('Classic means no overrides', () => {
-    expect(colorsOf(DEFAULT_CHOICE, false)).toBeNull();
-    expect(resolvedVars(DEFAULT_CHOICE)).toBeNull();
+  it('Signature Navy is the default, and every choice resolves to variables', () => {
+    expect(DEFAULT_CHOICE).toEqual({ id: 'signature-navy' });
+    expect(colorsOf(DEFAULT_CHOICE, false).accent).toBe('#267880');
+    expect(resolvedVars(DEFAULT_CHOICE).light['--page']).toBe('#EEF1F6');
   });
-  it('saves a choice with its resolved variables for the pre-paint script, and clears them for Classic', () => {
+  it('saves a choice with its resolved variables for the pre-paint script (version 2)', () => {
     const s = store();
-    savePalette({ id: 'navy' }, s);
-    expect(JSON.parse(s.m.get(PALETTE_KEY)!)).toEqual({ id: 'navy' });
+    savePalette({ id: 'coastal-slate' }, s);
+    expect(JSON.parse(s.m.get(PALETTE_KEY)!)).toEqual({ id: 'coastal-slate' });
     const vars = JSON.parse(s.m.get(PALETTE_VARS_KEY)!);
-    expect(vars.light['--accent']).toBe('#1E3A8A');
-    expect(vars.dark['--accent']).toBe('#7DA2FF');
-    expect(loadPalette(s)).toEqual({ id: 'navy' });
+    expect(vars.v).toBe(2);
+    expect(vars.light['--accent']).toBe('#376679');
+    expect(vars.dark['--accent']).toBe('#8DB5C7');
+    expect(loadPalette(s)).toEqual({ id: 'coastal-slate' });
+  });
+  it('choosing Signature Navy is stored explicitly (so a backup carries it, and it can be told from never choosing)', () => {
+    const s = store();
     savePalette(DEFAULT_CHOICE, s);
-    expect(s.m.size).toBe(0);
+    expect(s.m.get(PALETTE_KEY)).toBe('{"id":"signature-navy"}');
     expect(loadPalette(s)).toEqual(DEFAULT_CHOICE);
   });
   it('round trips a custom palette', () => {
@@ -82,15 +88,15 @@ describe('variables and storage', () => {
     const back = loadPalette(s);
     expect(back.id).toBe('custom');
     expect(back.custom!.light.accent).toBe('#AA3377');
-    expect(colorsOf(back, true)!.accent).toBe('#FF88CC');
+    expect(colorsOf(back, true).accent).toBe('#FF88CC');
   });
-  it('ignores damaged or unknown saved values', () => {
+  it('ignores damaged or unknown saved values (falls back to Signature Navy)', () => {
     expect(parseChoice('not json')).toEqual(DEFAULT_CHOICE);
     expect(parseChoice(JSON.stringify({ id: 'neon' }))).toEqual(DEFAULT_CHOICE);
     expect(parseChoice(JSON.stringify({ id: 'custom', custom: { light: {}, dark: {} } }))).toEqual(DEFAULT_CHOICE);
     expect(parseChoice(null)).toEqual(DEFAULT_CHOICE);
     const throwing = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); }, removeItem: () => { throw new Error('blocked'); } };
     expect(loadPalette(throwing)).toEqual(DEFAULT_CHOICE);
-    expect(() => savePalette({ id: 'teal' }, throwing)).not.toThrow();
+    expect(() => savePalette({ id: 'evergreen' }, throwing)).not.toThrow();
   });
 });

@@ -147,20 +147,21 @@ describe('D12 Home: no new derived figure', () => {
   });
 });
 
-describe('D12 Home: the look is Signature-only and Classic is unchanged', () => {
-  it('the new tokens read exactly as the old look under every palette that does not set them', () => {
-    const t = src('src/ui/tokens.css');
-    expect(t).toMatch(/--hero-bg: var\(--surface\);/);
-    expect(t).toMatch(/--hero-ink: var\(--fg\);/);
-    expect(t).toMatch(/--chart-spend: var\(--chart-2\);/);
-    for (const p of PRESETS.filter((x) => x.id !== 'signature')) for (const dark of [false, true]) expect(Object.keys(extrasOf({ id: p.id }, dark)).filter((k) => /^--(hero|chart|viz-c)/.test(k)), p.id).toEqual([]);
+// D21.1 SUPERSEDED RULE: "the look is Signature-only and Classic is unchanged" (the hero, chart-spend and category tokens read the old Classic values for every palette that did not set them).
+// The approved requirement is that the Signature Home is the Home for every palette. Replacement guard: every palette sets the whole hero and chart set (colors only), and the default colors
+// file carries Signature Navy's.
+describe('D12 Home: the Signature Home is the Home for every palette (D21.1)', () => {
+  it('every palette sets the hero, chart-spend and category colors for light and dark; the default colors file has them too', () => {
+    const base = src('src/ui/palette-base.css');
+    for (const k of ['--hero-bg', '--hero-ink', '--chart-spend', '--viz-c1', '--viz-hc1']) expect(base, k).toContain(k + ':');
+    for (const p of PRESETS) for (const dark of [false, true]) expect(Object.keys(extrasOf({ id: p.id }, dark)).filter((k) => /^--(hero|chart|viz-c)/.test(k)).length, p.id).toBeGreaterThanOrEqual(13);
   });
   it('the chart colors fall back to the values they always had', () => {
     expect(src('src/styles.css')).toContain('--chart-1: var(--viz-c1, #3f7fd9); --chart-2: var(--viz-c2, #e08a2b); --chart-3: var(--viz-c3, #3aa17e); --chart-4: var(--viz-c4, #9b6ad6); --chart-5: var(--viz-c5, #d65f7a); --chart-6: var(--viz-c6, #7a8794)');
   });
   it('Signature gives the hero a dark fill in both modes and a navy-to-teal category ramp with navy spending', () => {
     for (const dark of [false, true]) {
-      const e = extrasOf({ id: 'signature' }, dark);
+      const e = extrasOf({ id: 'signature-navy' }, dark);
       expect(e['--hero-bg']).toMatch(/^#[0-9A-F]{6}$/i);
       expect(e['--hero-ink']).toBe('#FFFFFF');
       expect(['--viz-c1', '--viz-c2', '--viz-c3', '--viz-c4', '--viz-c5', '--viz-c6'].every((k) => /^#[0-9A-F]{6}$/i.test(e[k]))).toBe(true);

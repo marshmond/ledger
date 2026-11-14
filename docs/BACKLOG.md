@@ -4,7 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest, latest): LEDGER SIGNATURE D21 (FINISHING AND RELEASE READINESS) BUILT AND TESTED LOCALLY, UNCOMMITTED; THE SIGNATURE DEFAULT WAS NOT SWITCHED (OWNER DECISION NEEDED); D21 IS NOT COMPLETE; NOTHING IS ACC
+## STATUS 2026-11-14 (newest, latest): LEDGER SIGNATURE D21.1 (UNIVERSAL DESIGN SYSTEM AND APPEARANCE UNIFICATION) APPROVED FOR RELEASE BY OWNER AND CHATGPT AND RELEASED AS `feat(ui): make Ledger Signature the universal appearance` (SHA and CI result in the release summary); NOTHING IS ACC; NEXT PHASE: R0 PRODUCT ASSESSMENT AND STRATEGIC ROADMAP (NOT STARTED)
+
+**What was asked:** make Ledger Signature the one permanent interface (no old-look choice), Signature Navy the default, four more curated palettes, Light/Dark/Device and custom colors kept, a safe transition of saved choices, visual and accessibility verification, report, stop before commit. Gate verified first: D21 is committed and deployed (`582ce64`, run #114 success); only the three protected untracked files present.
+
+**What was built:** Signature structure is now the stylesheet default (`src/ui/tokens.css`); default colors in new `src/ui/palette-base.css`; five palettes (Signature Navy, Coastal Slate, Evergreen, Warm Stone, Midnight Plum) in `src/palette.ts`, colors only, shared status colors; an adapter for custom themes; older ids mapped (Classic/Signature/Deep navy and gold to Signature Navy, Calm teal and Forest green to Evergreen, Slate and indigo to Coastal Slate) by a one-time repeat-safe transition that keeps the old id and deletes nothing; Settings > Appearance rebuilt; browser-bar and manifest colors are Signature Navy's. No schema, backup-format, sync, engine or dependency change.
+
+**Verified:** Signature Navy pixel-identical to the approved prior Signature on 52 of 56 captures (the 4 that differ are the redesigned Appearance page). 288 files, 5,667 tests pass (was 287 / 5,477); `tsc` and build clean; 48 of 48 real-browser checks (Chromium, emulated widths); automated contrast sweep of 21,909 text elements; evidence sheet `Documents\Ledger-Design-Concepts\D21.1-Evidence\sheet.html`. Report: `docs/LEDGER-SIGNATURE-D21.1-REPORT.md`.
+
+**Judgment calls (please review):** (1) Mapping of older presets (Calm teal and Forest green to Evergreen; Slate and indigo to Coastal Slate; navy family to Signature Navy). (2) Working colors differ from your starting colors where needed for contrast (darker link colors; Signature Navy keeps its approved `#0E1A33` button). (3) Status colors are shared by all palettes. (4) Starting "My own colors" from a palette now keeps its canvas and card colors. (5) Older pre-paint copies are ignored, so a device that had a non-default palette may show Signature Navy for a moment, once. (6) Superseded Classic-pinning tests were replaced, not relaxed (report 16a). (7) Manifest and bar colors changed to Signature Navy's canvas.
+
+**Final correction (2026-11-14, uncommitted):** Calendar out-of-month, reminder and projected-mark opacity removed (calendar.css only), 0 failing text elements measured in all palettes and modes; 289 files, 5,680 tests pass; ZIP review package in the evidence folder (report section 21).
+
+**NOT built / open:** the "Fix automatically" proposal for unreadable custom themes; removal of dead `var(--x, old)` fallbacks; real-device, screen-reader, forced-colors, Safari and Firefox checks; owner acceptance of anything; the three native `alert()` calls and NC-18, 19 and 22 transactions (still separate, unauthorized).
+
+## STATUS 2026-11-13 (superseded by D21.1 above; D21 is committed and deployed `582ce64`, run #114 success): LEDGER SIGNATURE D21 (FINISHING AND RELEASE READINESS) BUILT AND TESTED LOCALLY, UNCOMMITTED; THE SIGNATURE DEFAULT WAS NOT SWITCHED (OWNER DECISION NEEDED); D21 IS NOT COMPLETE; NOTHING IS ACC
 
 **What was asked:** make Signature the default for genuinely new devices without disturbing saved choices; browser-bar colour; shell and cross-app finishing; accessibility, responsive and regression verification; coverage and readiness assessment; stop before commit. Gate verified first: D20.1B committed and deployed (`21a20a1`, run #113 success), tree holds only the three protected untracked files.
 

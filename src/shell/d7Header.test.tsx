@@ -23,7 +23,6 @@ vi.mock('./QuickAdd', () => ({ default: () => createElement('button', { classNam
 const css = readFileSync('src/styles.css', 'utf8');
 const tokens = readFileSync('src/ui/tokens.css', 'utf8');
 const bar = readFileSync('src/core/ModuleBar.tsx', 'utf8');
-const SIG = PRESETS.find((p) => p.id === 'signature')!;
 
 async function registered() {
   const { registerModules } = await import('../modules');
@@ -207,31 +206,22 @@ describe('D7 stylesheet: the sticky layers still hang from one number, and the l
   });
 });
 
-describe('D7 tokens: only Signature changes the header; every other palette keeps the thin bar', () => {
-  const decl = (k: string) => tokens.match(new RegExp(`${k}:\\s*([^;]+);`))?.[1].trim();
-  it('the defaults are what the header was before D7', () => {
-    expect(decl('--hdr-h')).toBe('36px');
-    expect(decl('--hdr-h-touch')).toBe('48px');
-    expect(decl('--hdr-h-phone')).toBe('48px');
-    expect(decl('--hdr-ctl-h')).toBe('28px');
-    for (const k of ['--ui-brand', '--ui-modall', '--ui-kbd']) expect(decl(k), k).toBe('none');
-    expect(decl('--hdr-shadow')).toBe('none');
+// D21.1 SUPERSEDED RULE: "only Signature changes the header; every other palette keeps the thin bar" (36px bar, 28px controls, no brand mark). The approved requirement is that the
+// Signature header is the header for every palette. Replacement guard: the Signature header tokens are the stylesheet defaults, and no palette may set one (also pinned in d211Palettes.test.ts).
+describe('D7 tokens: the Signature header is the header for every palette (D21.1)', () => {
+  const decl = (k: string) => tokens.match(new RegExp(`${k}:\s*([^;]+);`))?.[1].trim();
+  it('the defaults are the Signature header: 62px (60px on a phone), 40px controls, the brand mark, All modules caption and Ctrl K hint', () => {
+    expect(decl('--hdr-h')).toBe('62px');
+    expect(decl('--hdr-h-touch')).toBe('62px');
+    expect(decl('--hdr-h-phone')).toBe('60px');
+    expect(decl('--hdr-ctl-h')).toBe('40px');
+    expect([decl('--ui-brand'), decl('--ui-modall'), decl('--ui-kbd')]).toEqual(['flex', 'inline', 'inline-block']);
+    expect(decl('--hdr-shadow')).toBe('var(--shadow-1)');
   });
 
-  it('Signature sets the 62px / 60px header with 40px controls, in light and dark alike', () => {
-    for (const mode of ['light', 'dark'] as const) {
-      const e = SIG.extras![mode];
-      expect(e['--hdr-h'], mode).toBe('62px');
-      expect(e['--hdr-h-touch'], mode).toBe('62px');
-      expect(e['--hdr-h-phone'], mode).toBe('60px');
-      expect(e['--hdr-ctl-h'], mode).toBe('40px');
-      expect([e['--ui-brand'], e['--ui-modall'], e['--ui-kbd']], mode).toEqual(['flex', 'inline', 'inline-block']);
-    }
-  });
-
-  it('no other preset sets any header token', () => {
-    for (const p of PRESETS.filter((x) => x.id !== 'signature')) {
-      for (const mode of ['light', 'dark'] as const) expect(Object.keys(p.extras?.[mode] ?? {}).filter((k) => /^--(hdr|ui-brand|ui-modall|ui-kbd)/.test(k)), `${p.id} ${mode}`).toEqual([]);
+  it('no palette sets any header token', () => {
+    for (const p of PRESETS) {
+      for (const mode of ['light', 'dark'] as const) expect(Object.keys(p.extras[mode]).filter((k) => /^--(hdr|ui-brand|ui-modall|ui-kbd)/.test(k)), `${p.id} ${mode}`).toEqual([]);
     }
   });
 });

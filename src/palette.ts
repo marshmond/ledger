@@ -1,7 +1,12 @@
 /**
- * Color palettes. "Classic" is the original look (no overrides). The others, and a custom palette you build yourself, set CSS variables
- * on the page for light and dark separately. The choice is remembered per device in localStorage; index.html applies the saved values
- * before first paint so there is no flash.
+ * Color palettes (D21.1). Ledger has ONE design system, Ledger Signature: layout, type, corners, header, navigation, tables, dialogs and charts' structure all live in
+ * the stylesheets (src/ui/tokens.css, src/ui/palette-base.css, src/styles.css) and are the same for everyone. A palette only chooses COLORS, for Light and Dark:
+ * five curated palettes (Signature Navy is the default, and is what the stylesheet itself draws when nothing is saved) and "My own colors" (a custom palette built
+ * from twelve colors, with the rest derived, see `deriveExtras`). Light, Dark and Device mode is separate (src/theme.ts).
+ *
+ * The choice is remembered per device in localStorage. index.html applies the saved values before first paint so there is no flash.
+ * Older saved choices (Classic, Calm teal, Deep navy and gold, Forest green and stone, Slate and indigo, and the earlier "signature") are read through
+ * LEGACY_PALETTE_MAP: nothing is deleted, and `migrateStoredPalette` rewrites the stored choice once, keeping the old id in `from`.
  */
 
 export interface Colors {
@@ -32,7 +37,7 @@ export interface Colors {
 }
 
 /**
- * D5: a preset may also set two OPTIONAL roles. They are deliberately not part of `Colors` or COLOR_ROLES, so the colour map, saved themes, theme codes,
+ * A preset also sets two OPTIONAL roles. They are deliberately not part of `Colors` or COLOR_ROLES, so the colour map, saved themes, theme codes,
  * stored custom palettes and every existing signature keep working untouched.
  */
 export interface PaletteColors extends Colors {
@@ -72,138 +77,190 @@ export const COLOR_ROLES: ColorRole[] = [
   { key: 'sideActive', label: 'Menu bar highlight', help: 'The section you are in.' },
 ];
 
+export type PresetId = 'signature-navy' | 'coastal-slate' | 'evergreen' | 'warm-stone' | 'midnight-plum';
+export type PaletteId = PresetId | 'custom';
+
+/** The ids earlier versions stored. They are only ever READ (never written), and each maps to one of the five palettes. */
+export type LegacyPaletteId = 'classic' | 'signature' | 'navy' | 'teal' | 'forest' | 'slate';
+export const LEGACY_PALETTE_MAP: Record<LegacyPaletteId, PresetId> = {
+  classic: 'signature-navy',   // Classic stored nothing; accepted in case a copy ever stored it
+  signature: 'signature-navy', // the same look, new name
+  navy: 'signature-navy',      // "Deep navy and gold": the navy family
+  teal: 'evergreen',           // "Calm teal": soft, natural, green-teal
+  forest: 'evergreen',         // "Forest green and stone"
+  slate: 'coastal-slate',      // "Slate and indigo": cool grey-blue
+};
+export const isLegacyId = (id: unknown): id is LegacyPaletteId => typeof id === 'string' && Object.prototype.hasOwnProperty.call(LEGACY_PALETTE_MAP, id);
+
+/**
+ * The variables a palette may set besides the twelve colours (and --page, --surface, --on-*). All are COLOURS (or colour-bearing shadows/strings), never sizes or
+ * layout: structure is the same for every palette, and a test pins that. Every preset sets every one of these for both modes, and `deriveExtras` sets every one for
+ * custom palettes, so switching palettes never leaves one behind.
+ */
+export const EXTRA_KEYS = [
+  '--surface-raised', '--surface-soft', '--surface-sunken', '--fg-2', '--control-line', '--field-bg',
+  '--btn-bg', '--btn-bg-hover', '--btn-ink', '--info', '--info-soft', '--shadow-rgb',
+  '--scrim', '--toast-bg', '--toast-ink', '--toast-edge',
+  '--viz-s1', '--viz-s2', '--viz-s3', '--viz-s4',
+  '--viz-c1', '--viz-c2', '--viz-c3', '--viz-c4', '--viz-c5', '--viz-c6',
+  '--viz-hc1', '--viz-hc2', '--viz-hc3', '--viz-hc4', '--viz-hc5',
+  '--hero-bg', '--hero-ink', '--hero-ink-2', '--hero-line', '--hero-pos', '--hero-neg', '--chart-spend',
+] as const;
+export type ExtraKey = (typeof EXTRA_KEYS)[number];
+type Extras = Record<ExtraKey, string>;
+
 export interface PaletteDef {
   id: PresetId;
   name: string;
   blurb: string;
   light: PaletteColors;
   dark: PaletteColors;
-  /** Shown in Settings > Appearance as "preview" while the screens are still being redesigned for it. Remove the flag to remove the label. */
-  preview?: boolean;
-  /**
-   * Extra CSS variables only this preset sets (light and dark), on top of the twelve colours: tokens that have no palette role, such as the
-   * control border, the navy button, shadows and the font stack. Nothing is stored for them: they are derived from the preset id each time.
-   */
-  extras?: { light: Record<string, string>; dark: Record<string, string> };
+  extras: { light: Record<string, string>; dark: Record<string, string> };
 }
 
-export type PresetId = 'teal' | 'navy' | 'forest' | 'slate' | 'signature';
-export type PaletteId = 'classic' | PresetId | 'custom';
+// ---------- the five palettes ----------
 
-/**
- * D6: the Signature appearance tokens that are the same in light and dark. They are the shared components' look (src/ui/tokens.css gives each its
- * old value, so only this preset changes): larger card and dialog corners, white fields, soft search box, a stronger error border and label colour,
- * the accent tick on check boxes, bold buttons, a larger tighter page title, soft table headings in small capitals, a small line icon where
- * Classic shows a text glyph, and the chart surface, text, grid and axis (series 1 to 4 differ by mode, below). Values that name other variables
- * (var(--surface) and so on) are resolved on the page, so they follow the colours of whichever mode is on.
- */
-const SIGNATURE_SHARED: Record<string, string> = {
-  '--r-lg': '16px', '--r-modal': '20px',
-  '--search-bg': 'var(--surface-soft)', '--disabled-bg': 'var(--surface-sunken)', '--disabled-ink': 'var(--muted)',
-  '--invalid-line': 'var(--neg)', '--label-fg': 'var(--fg-2)', '--ctl-accent': 'var(--accent)', '--w-btn': '600',
-  '--h1-size': 'var(--fs-title)', '--h1-weight': '700', '--h1-ls': '-0.03em', '--h1-lh': '1.1', '--ui-eyebrow': 'block',
-  '--th-bg': 'var(--surface-soft)', '--th-fg': 'var(--fg-2)', '--th-fs': 'var(--fs-xs)', '--th-tt': 'uppercase', '--th-ls': '0.04em',
-  '--ui-glyph': 'inline-block', '--ui-glyph-legacy': 'none',
-  '--viz-surface': 'var(--surface)', '--viz-ink': 'var(--fg)', '--viz-ink-2': 'var(--fg-2)', '--viz-ink-3': 'var(--muted)',
-  '--viz-grid': 'var(--line)', '--viz-axis': 'var(--line-strong)',
-  // D7: the 62px (60px phone) application header, 40px controls, a soft search field with the Ctrl K hint, the Ledger mark and the "All modules" caption.
-  '--hdr-h': '62px', '--hdr-h-touch': '62px', '--hdr-h-phone': '60px', '--hdr-ctl-h': '40px', '--hdr-ctl-r': 'var(--r-md)',
-  '--hdr-ctl-line': 'var(--control-line)', '--hdr-search-bg': 'var(--surface-soft)', '--hdr-search-line': 'var(--control-line)', '--hdr-search-w': 'min(300px, 26vw)',
-  '--hdr-shadow': 'var(--shadow-1)', '--ui-brand': 'flex', '--ui-modall': 'inline', '--ui-kbd': 'inline-block',
-  // D8: the 46px Ledger navigation bar with line icons.
-  '--lnav-h': '46px', '--ui-lnav-ic': 'inline-flex',
-  // D12: the dark Home hero panel's text colors (the panel's own fill differs by mode, below), and its small capitals label.
-  '--hero-ink': '#FFFFFF', '--hero-ink-2': '#B6C3DB', '--hero-line': 'rgba(255, 255, 255, 0.16)', '--hero-pos': '#8EE0B8', '--hero-neg': '#FFB3AB', '--hero-label-tt': 'uppercase',
-  // The net-worth chart's stacked bars on the dark panel: the light ramp (the panel is dark in both modes).
-  '--viz-hc1': '#8FB0E6', '--viz-hc2': '#3A9AA4', '--viz-hc3': '#7DC8CF', '--viz-hc4': '#D0D8E6', '--viz-hc5': '#E5B865',
+/** What one mode of a palette is made of. The status colours (good, bad, warning, informational) are SHARED by all five palettes: a gain, a loss or a warning means the same thing everywhere. */
+interface ModeSpec {
+  page: string; surface: string; raised: string; soft: string; sunken: string; field: string;
+  fg: string; fg2: string; muted: string; line: string; control: string;
+  accent: string; sideBg: string;
+  btn: string; btnHover: string;
+  shadowRgb: string; scrim: string; toastBg: string; toastInk: string; toastEdge: string;
+  s: [string, string, string, string];
+  c: [string, string, string, string, string, string];
+  hc: [string, string, string, string, string];
+  heroBg: string; heroInk2: string; spend: string;
+}
+
+const STATUS = {
+  light: { pos: '#23694F', neg: '#B0443B', warn: '#8F5D16', info: '#3B6BA3', infoSoft: '#E6EEF8' },
+  dark: { pos: '#72CBA3', neg: '#F2928A', warn: '#E5B865', info: '#8FB0E6', infoSoft: '#1B2A47' },
 };
+/** The text and lines on the dark Home panel (the panel is dark in both modes). The good and bad tints are the same everywhere. */
+const HERO = { ink: '#FFFFFF', line: 'rgba(255, 255, 255, 0.16)', pos: '#8EE0B8', neg: '#FFB3AB' };
+
+function build(id: PresetId, name: string, blurb: string, L: ModeSpec, D: ModeSpec): PaletteDef {
+  const one = (m: ModeSpec, dark: boolean): { colors: PaletteColors; extras: Extras } => {
+    const st = STATUS[dark ? 'dark' : 'light'];
+    const colors: PaletteColors = {
+      bg: m.surface, card: m.surface, fg: m.fg, muted: m.muted, line: m.line, accent: m.accent, pos: st.pos, neg: st.neg, warn: st.warn,
+      sideBg: m.sideBg, sideFg: m.fg, sideActive: m.accent, page: m.page, surface: m.surface,
+    };
+    const extras: Extras = {
+      '--surface-raised': m.raised, '--surface-soft': m.soft, '--surface-sunken': m.sunken, '--fg-2': m.fg2, '--control-line': m.control, '--field-bg': m.field,
+      '--btn-bg': m.btn, '--btn-bg-hover': m.btnHover, '--btn-ink': '#FFFFFF', '--info': st.info, '--info-soft': st.infoSoft, '--shadow-rgb': m.shadowRgb,
+      '--scrim': m.scrim, '--toast-bg': m.toastBg, '--toast-ink': m.toastInk, '--toast-edge': m.toastEdge,
+      '--viz-s1': m.s[0], '--viz-s2': m.s[1], '--viz-s3': m.s[2], '--viz-s4': m.s[3],
+      '--viz-c1': m.c[0], '--viz-c2': m.c[1], '--viz-c3': m.c[2], '--viz-c4': m.c[3], '--viz-c5': m.c[4], '--viz-c6': m.c[5],
+      '--viz-hc1': m.hc[0], '--viz-hc2': m.hc[1], '--viz-hc3': m.hc[2], '--viz-hc4': m.hc[3], '--viz-hc5': m.hc[4],
+      '--hero-bg': m.heroBg, '--hero-ink': HERO.ink, '--hero-ink-2': m.heroInk2, '--hero-line': HERO.line, '--hero-pos': HERO.pos, '--hero-neg': HERO.neg, '--chart-spend': m.spend,
+    };
+    return { colors, extras };
+  };
+  const l = one(L, false);
+  const d = one(D, true);
+  return { id, name, blurb, light: l.colors, dark: d.colors, extras: { light: l.extras, dark: d.extras } };
+}
 
 export const PRESETS: PaletteDef[] = [
-  {
-    id: 'teal',
-    name: 'Calm teal',
-    blurb: 'Soft warm white with a deep teal accent. Calm and easy on the eyes.',
-    light: { bg: '#FAFAF8', card: '#F1F4F2', fg: '#1B2421', muted: '#566761', line: '#DCE4E0', accent: '#0F766E', pos: '#15803D', neg: '#B91C1C', warn: '#B45309', sideBg: '#EDF2EF', sideFg: '#1B2421', sideActive: '#0F766E' },
-    dark: { bg: '#101614', card: '#18211E', fg: '#E6EEEA', muted: '#9DB0A8', line: '#26332F', accent: '#2DD4BF', pos: '#4ADE80', neg: '#F87171', warn: '#FBBF24', sideBg: '#0C1210', sideFg: '#E6EEEA', sideActive: '#2DD4BF' },
-  },
-  {
-    id: 'navy',
-    name: 'Deep navy and gold',
-    blurb: 'A classic private-bank look: navy menu bar, white content, gold highlights.',
-    light: { bg: '#FFFFFF', card: '#F4F6FA', fg: '#14213D', muted: '#555F7A', line: '#DFE3EC', accent: '#1E3A8A', pos: '#166534', neg: '#B91C1C', warn: '#8A6508', sideBg: '#14213D', sideFg: '#E8ECF4', sideActive: '#E9C46A' },
-    dark: { bg: '#0E1420', card: '#161E2E', fg: '#E8ECF4', muted: '#A2AEC8', line: '#25304A', accent: '#7DA2FF', pos: '#4ADE80', neg: '#F87171', warn: '#E9C46A', sideBg: '#0A0F19', sideFg: '#E8ECF4', sideActive: '#E9C46A' },
-  },
-  {
-    id: 'forest',
-    name: 'Forest green and stone',
-    blurb: 'Grounded stone neutrals with a confident green accent.',
-    light: { bg: '#FBFAF7', card: '#F2F0EA', fg: '#22251F', muted: '#5C6155', line: '#E1DED3', accent: '#2F6B3A', pos: '#2F6B3A', neg: '#B3261E', warn: '#9A5805', sideBg: '#EFEBE0', sideFg: '#22251F', sideActive: '#2F6B3A' },
-    dark: { bg: '#131512', card: '#1C1F1B', fg: '#E9ECE5', muted: '#A3AA9B', line: '#2B2F28', accent: '#6FCF83', pos: '#6FCF83', neg: '#F2A29B', warn: '#E8B44A', sideBg: '#0E100D', sideFg: '#E9ECE5', sideActive: '#6FCF83' },
-  },
-  {
-    id: 'slate',
-    name: 'Slate and indigo',
-    blurb: 'Modern, neutral grey-blues with an indigo accent. Crisp and clean.',
-    light: { bg: '#FFFFFF', card: '#F5F6F8', fg: '#1A1D24', muted: '#585F6C', line: '#E3E6EB', accent: '#4F46E5', pos: '#15803D', neg: '#B91C1C', warn: '#B45309', sideBg: '#F1F2F5', sideFg: '#1A1D24', sideActive: '#4F46E5' },
-    dark: { bg: '#0F1115', card: '#171A21', fg: '#E7E9EE', muted: '#A0A7B4', line: '#272B35', accent: '#8B93FF', pos: '#4ADE80', neg: '#F87171', warn: '#FBBF24', sideBg: '#0B0D11', sideFg: '#E7E9EE', sideActive: '#8B93FF' },
-  },
-  {
-    // D5: Ledger Signature (navy and muted teal on a cool grey canvas). Opt-in; Classic stays the default until a later phase. Values are the D4 proposals,
-    // re-measured in src/palette.test.ts and src/shell/signatureTokens.test.ts. `bg` is the white ground that inputs, buttons and table headings sit on;
-    // the grey canvas is `page`, and cards are `surface`. Until a screen is restyled it simply reads these twelve colours, so it stays legible.
-    id: 'signature',
-    name: 'Ledger Signature',
-    blurb: 'Navy and muted teal on a cool grey canvas, with white cards. The new look, still being rolled out screen by screen.',
-    preview: true,
-    light: { bg: '#FFFFFF', card: '#FFFFFF', fg: '#101B33', muted: '#566379', line: '#DFE5EE', accent: '#267880', pos: '#23694F', neg: '#B0443B', warn: '#8F5D16', sideBg: '#F6F8FB', sideFg: '#101B33', sideActive: '#267880', page: '#EEF1F6', surface: '#FFFFFF' },
-    dark: { bg: '#131D31', card: '#131D31', fg: '#E9EEF7', muted: '#9AA8BF', line: '#26354F', accent: '#6CC0C8', pos: '#72CBA3', neg: '#F2928A', warn: '#E5B865', sideBg: '#0B1220', sideFg: '#E9EEF7', sideActive: '#6CC0C8', page: '#0B1220', surface: '#131D31' },
-    extras: {
-      light: {
-        '--surface-raised': '#FFFFFF', '--surface-soft': '#F6F8FB', '--surface-sunken': '#EEF2F8',
-        '--fg-2': '#37445B', '--control-line': '#7A879F',
-        '--btn-bg': '#0E1A33', '--btn-ink': '#FFFFFF',
-        '--info': '#3B6BA3', '--info-soft': '#E6EEF8',
-        '--shadow-1': '0 1px 2px rgba(14, 26, 51, 0.05)',
-        '--shadow-2': '0 1px 2px rgba(14, 26, 51, 0.04), 0 8px 24px rgba(14, 26, 51, 0.06)',
-        '--shadow-3': '0 2px 6px rgba(14, 26, 51, 0.08), 0 24px 60px rgba(14, 26, 51, 0.18)',
-        '--r-md': '10px', '--fs-md': '1rem',
-        '--font-sans': "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-        ...SIGNATURE_SHARED,
-        '--field-bg': '#FFFFFF', '--btn-bg-hover': '#1C2D52',
-        '--scrim': 'rgba(11, 18, 32, 0.55)', '--toast-bg': '#0E1A33', '--toast-ink': '#FFFFFF', '--toast-edge': 'var(--shadow-2)',
-        '--viz-s1': '#1D3A6B', '--viz-s2': '#267880', '--viz-s3': '#A8730F', '--viz-s4': '#8391AA',
-        // D12: Home's category colors are a navy-to-teal ramp, so blue, orange, green and purple keep one meaning (a Family member). Spending is navy; income stays the positive color.
-        '--hero-bg': '#0E1A33', '--chart-spend': '#1D3A6B',
-        '--viz-c1': '#1D3A6B', '--viz-c2': '#267880', '--viz-c3': '#5FAAB2', '--viz-c4': '#8391AA', '--viz-c5': '#A8730F', '--viz-c6': '#B3BDCF',
-      },
-      dark: {
-        '--surface-raised': '#182339', '--surface-soft': '#182339', '--surface-sunken': '#1E2B46',
-        '--fg-2': '#C3CDDF', '--control-line': '#6F82A3',
-        '--btn-bg': '#277A83', '--btn-ink': '#FFFFFF',
-        '--info': '#8FB0E6', '--info-soft': '#1B2A47',
-        '--shadow-1': '0 1px 2px rgba(0, 0, 0, 0.4)',
-        '--shadow-2': '0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45)',
-        '--shadow-3': '0 2px 6px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.65)',
-        '--r-md': '10px', '--fs-md': '1rem',
-        '--font-sans': "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-        ...SIGNATURE_SHARED,
-        '--field-bg': '#0E1727', '--btn-bg-hover': '#216D75',
-        '--scrim': 'rgba(3, 7, 14, 0.7)', '--toast-bg': '#223454', '--toast-ink': '#E9EEF7', '--toast-edge': 'var(--shadow-2), inset 0 0 0 1px #3A4D72',
-        '--viz-s1': '#8FB0E6', '--viz-s2': '#3A9AA4', '--viz-s3': '#E5B865', '--viz-s4': '#D0D8E6',
-        '--hero-bg': '#1B2D52', '--chart-spend': '#8FB0E6',
-        '--viz-c1': '#8FB0E6', '--viz-c2': '#3A9AA4', '--viz-c3': '#7DC8CF', '--viz-c4': '#D0D8E6', '--viz-c5': '#E5B865', '--viz-c6': '#6F82A3',
-      },
+  // 1. Signature Navy: the approved Ledger Signature look, unchanged (D5 to D21 values; src/ui/palette-base.css repeats them as the stylesheet default, and a test compares the two).
+  build('signature-navy', 'Signature Navy', 'The Ledger look: deep navy and muted teal on a cool grey canvas, with white cards.',
+    {
+      page: '#EEF1F6', surface: '#FFFFFF', raised: '#FFFFFF', soft: '#F6F8FB', sunken: '#EEF2F8', field: '#FFFFFF',
+      fg: '#101B33', fg2: '#37445B', muted: '#566379', line: '#DFE5EE', control: '#7A879F',
+      accent: '#267880', sideBg: '#F6F8FB', btn: '#0E1A33', btnHover: '#1C2D52',
+      shadowRgb: '14, 26, 51', scrim: 'rgba(11, 18, 32, 0.55)', toastBg: '#0E1A33', toastInk: '#FFFFFF', toastEdge: 'var(--shadow-2)',
+      s: ['#1D3A6B', '#267880', '#A8730F', '#8391AA'], c: ['#1D3A6B', '#267880', '#5FAAB2', '#8391AA', '#A8730F', '#B3BDCF'],
+      hc: ['#8FB0E6', '#3A9AA4', '#7DC8CF', '#D0D8E6', '#E5B865'], heroBg: '#0E1A33', heroInk2: '#B6C3DB', spend: '#1D3A6B',
     },
-  },
+    {
+      page: '#0B1220', surface: '#131D31', raised: '#182339', soft: '#182339', sunken: '#1E2B46', field: '#0E1727',
+      fg: '#E9EEF7', fg2: '#C3CDDF', muted: '#9AA8BF', line: '#26354F', control: '#6F82A3',
+      accent: '#6CC0C8', sideBg: '#0B1220', btn: '#277A83', btnHover: '#216D75',
+      shadowRgb: '0, 0, 0', scrim: 'rgba(3, 7, 14, 0.7)', toastBg: '#223454', toastInk: '#E9EEF7', toastEdge: 'var(--shadow-2), inset 0 0 0 1px #3A4D72',
+      s: ['#8FB0E6', '#3A9AA4', '#E5B865', '#D0D8E6'], c: ['#8FB0E6', '#3A9AA4', '#7DC8CF', '#D0D8E6', '#E5B865', '#6F82A3'],
+      hc: ['#8FB0E6', '#3A9AA4', '#7DC8CF', '#D0D8E6', '#E5B865'], heroBg: '#1B2D52', heroInk2: '#B6C3DB', spend: '#8FB0E6',
+    }),
+
+  // 2. Coastal Slate: cool, understated, professional. Primary #34475A, accent family #668999 (the link colour is a darker step of it so text reads at 4.5:1).
+  build('coastal-slate', 'Coastal Slate', 'Cool and understated: slate blue with a soft sea-glass accent. Professional and calm.',
+    {
+      page: '#F1F4F6', surface: '#FFFFFF', raised: '#FFFFFF', soft: '#F7F9FA', sunken: '#EAEFF2', field: '#FFFFFF',
+      fg: '#17222D', fg2: '#364552', muted: '#546370', line: '#DCE2E8', control: '#76879A',
+      accent: '#376679', sideBg: '#F7F9FA', btn: '#34475A', btnHover: '#2A3A4A',
+      shadowRgb: '27, 41, 58', scrim: 'rgba(14, 21, 30, 0.55)', toastBg: '#2A3A4A', toastInk: '#FFFFFF', toastEdge: 'var(--shadow-2)',
+      s: ['#34475A', '#3F7087', '#A8730F', '#8493A0'], c: ['#34475A', '#5F8393', '#9DB6C2', '#8D9BA8', '#A8730F', '#B8C3CC'],
+      hc: ['#A9C0D4', '#7FA4B7', '#B8D3DD', '#D5DEE6', '#E5B865'], heroBg: '#2A3A4A', heroInk2: '#BFCBD6', spend: '#34475A',
+    },
+    {
+      page: '#0D141B', surface: '#151E27', raised: '#1A2530', soft: '#1A2530', sunken: '#212E3B', field: '#0F1820',
+      fg: '#E8EDF1', fg2: '#C4CFD9', muted: '#98A8B6', line: '#27333F', control: '#6E8091',
+      accent: '#8DB5C7', sideBg: '#0D141B', btn: '#436C80', btnHover: '#3B6073',
+      shadowRgb: '0, 0, 0', scrim: 'rgba(3, 7, 12, 0.7)', toastBg: '#243645', toastInk: '#E8EDF1', toastEdge: 'var(--shadow-2), inset 0 0 0 1px #3B5063',
+      s: ['#7FA6BC', '#4D8399', '#E5B865', '#CBD6DF'], c: ['#9DBBCC', '#6C98AC', '#A7C6D3', '#CBD6DF', '#E5B865', '#6E8091'],
+      hc: ['#A9C0D4', '#7FA4B7', '#B8D3DD', '#D5DEE6', '#E5B865'], heroBg: '#1F3042', heroInk2: '#B9C7D3', spend: '#9DBBCC',
+    }),
+
+  // 3. Evergreen: natural, grounded, sophisticated. Primary #24483D, accent family #729481.
+  build('evergreen', 'Evergreen', 'Natural and grounded: deep forest green with a soft sage accent on a pale green-grey canvas.',
+    {
+      page: '#F0F4EF', surface: '#FFFFFF', raised: '#FFFFFF', soft: '#F6F9F5', sunken: '#E8EEE7', field: '#FFFFFF',
+      fg: '#16241F', fg2: '#34453D', muted: '#52645A', line: '#DAE3D9', control: '#738679',
+      accent: '#2F6A55', sideBg: '#F6F9F5', btn: '#24483D', btnHover: '#1B382F',
+      shadowRgb: '20, 45, 36', scrim: 'rgba(9, 21, 17, 0.55)', toastBg: '#24483D', toastInk: '#FFFFFF', toastEdge: 'var(--shadow-2)',
+      s: ['#24483D', '#3F7A5F', '#A8730F', '#7F9488'], c: ['#24483D', '#4F8068', '#8DB59F', '#8FA397', '#A8730F', '#B8C6BC'],
+      hc: ['#9FC4B0', '#6FA58A', '#B5D6C5', '#D3E0D8', '#E5B865'], heroBg: '#1F3F35', heroInk2: '#B7CCC2', spend: '#24483D',
+    },
+    {
+      page: '#0C1411', surface: '#131E19', raised: '#18251F', soft: '#18251F', sunken: '#1F2E27', field: '#0E1814',
+      fg: '#E6EEE9', fg2: '#C2D0C8', muted: '#96A89E', line: '#25352D', control: '#6C8277',
+      accent: '#7FBF9F', sideBg: '#0C1411', btn: '#2B7258', btnHover: '#246049',
+      shadowRgb: '0, 0, 0', scrim: 'rgba(3, 9, 6, 0.7)', toastBg: '#213A30', toastInk: '#E6EEE9', toastEdge: 'var(--shadow-2), inset 0 0 0 1px #3A584B',
+      s: ['#8FBBA4', '#4F8F70', '#E5B865', '#D3E0D8'], c: ['#9FC4B0', '#6FA58A', '#B5D6C5', '#D3E0D8', '#E5B865', '#6C8277'],
+      hc: ['#9FC4B0', '#6FA58A', '#B5D6C5', '#D3E0D8', '#E5B865'], heroBg: '#1B3A2E', heroInk2: '#B7CCC2', spend: '#9FC4B0',
+    }),
+
+  // 4. Warm Stone: warm, soft, approachable. Primary #51493F, accent family #9F816B.
+  build('warm-stone', 'Warm Stone', 'Warm and soft: taupe and clay on a pale sand canvas. Approachable without being playful.',
+    {
+      page: '#F7F4EE', surface: '#FFFFFF', raised: '#FFFFFF', soft: '#FBF9F5', sunken: '#F0ECE4', field: '#FFFFFF',
+      fg: '#26211B', fg2: '#4A4238', muted: '#645A4F', line: '#E4DED3', control: '#847968',
+      accent: '#7A5C46', sideBg: '#FBF9F5', btn: '#51493F', btnHover: '#3F3830',
+      shadowRgb: '60, 48, 36', scrim: 'rgba(26, 20, 14, 0.55)', toastBg: '#3F3830', toastInk: '#FFFFFF', toastEdge: 'var(--shadow-2)',
+      s: ['#51493F', '#2A7F7F', '#A8730F', '#9A9183'], c: ['#51493F', '#9F816B', '#C4AE9C', '#A9A196', '#3E7A80', '#D8D0C3'],
+      hc: ['#D1BBA8', '#B99A80', '#E3D2C3', '#EDE6DC', '#8CC1C5'], heroBg: '#3F382F', heroInk2: '#D1C8BB', spend: '#51493F',
+    },
+    {
+      page: '#14110E', surface: '#1D1915', raised: '#231F1A', soft: '#231F1A', sunken: '#2B2620', field: '#16130F',
+      fg: '#EDE8E0', fg2: '#D0C8BC', muted: '#A39A8D', line: '#332D26', control: '#857A6C',
+      accent: '#D1AE93', sideBg: '#14110E', btn: '#8A6A52', btnHover: '#7B5E47',
+      shadowRgb: '0, 0, 0', scrim: 'rgba(8, 6, 4, 0.7)', toastBg: '#3A332B', toastInk: '#EDE8E0', toastEdge: 'var(--shadow-2), inset 0 0 0 1px #544A3F',
+      s: ['#C9A68B', '#8E6E57', '#6FB5C9', '#E4DCCF'], c: ['#D1AE93', '#B8967C', '#E3D2C3', '#D8D0C3', '#7DC0C6', '#857A6C'],
+      hc: ['#D1BBA8', '#B99A80', '#E3D2C3', '#EDE6DC', '#8CC1C5'], heroBg: '#332C25', heroInk2: '#D1C8BB', spend: '#D1AE93',
+    }),
+
+  // 5. Midnight Plum: rich and contemporary. Primary #40334E, accent family #8D789F.
+  build('midnight-plum', 'Midnight Plum', 'Rich and contemporary: deep plum with a soft lilac accent on a pale lavender-grey canvas.',
+    {
+      page: '#F3F0F6', surface: '#FFFFFF', raised: '#FFFFFF', soft: '#F8F6FA', sunken: '#ECE8F0', field: '#FFFFFF',
+      fg: '#1F1828', fg2: '#443A52', muted: '#5C5369', line: '#E2DCE8', control: '#80748E',
+      accent: '#6B5580', sideBg: '#F8F6FA', btn: '#40334E', btnHover: '#31263D',
+      shadowRgb: '40, 28, 58', scrim: 'rgba(20, 12, 30, 0.55)', toastBg: '#31263D', toastInk: '#FFFFFF', toastEdge: 'var(--shadow-2)',
+      s: ['#40334E', '#6A4F8C', '#A8730F', '#8F859C'], c: ['#40334E', '#8D789F', '#B9A9C9', '#A59BB3', '#2F7F85', '#D5CCDE'],
+      hc: ['#C9B8DA', '#A58FBB', '#DCCFE8', '#EAE3F0', '#8CC9CD'], heroBg: '#33283F', heroInk2: '#CABFD6', spend: '#40334E',
+    },
+    {
+      page: '#120E18', surface: '#1B1624', raised: '#211B2B', soft: '#211B2B', sunken: '#2A2336', field: '#150F1C',
+      fg: '#EDE8F3', fg2: '#CFC6DC', muted: '#A094B2', line: '#30283C', control: '#85799A',
+      accent: '#C0A8DA', sideBg: '#120E18', btn: '#76599A', btnHover: '#684D89',
+      shadowRgb: '0, 0, 0', scrim: 'rgba(6, 3, 10, 0.7)', toastBg: '#34293F', toastInk: '#EDE8F3', toastEdge: 'var(--shadow-2), inset 0 0 0 1px #4F4163',
+      s: ['#B79BD6', '#7A5F98', '#E5B865', '#E1D8EB'], c: ['#C0A8DA', '#9C84B8', '#DCCFE8', '#D5CCDE', '#7DC4C9', '#85799A'],
+      hc: ['#C9B8DA', '#A58FBB', '#DCCFE8', '#EAE3F0', '#8CC9CD'], heroBg: '#2D2340', heroInk2: '#CABFD6', spend: '#C0A8DA',
+    }),
 ];
 
-/** The original look, as the page's default styles define it (used as a starting point for your own colors). */
-export const CLASSIC: { light: Colors; dark: Colors } = {
-  // ST-S3 (AX-04): these light values now match the Classic stylesheet (src/styles.css), which was darkened a little for contrast. Before, Classic's own values here
-  // (accent #1F6FEB, muted #667085, warn #B26A00) fell under 4.5:1 for links and quiet text, and a custom palette started from them inherited that.
-  light: { bg: '#FFFFFF', card: '#F8F9FB', fg: '#1C2024', muted: '#5D6779', line: '#E4E7EC', accent: '#1A5FD0', pos: '#187636', neg: '#C02424', warn: '#8C5200', sideBg: '#F8F9FB', sideFg: '#1C2024', sideActive: '#1A5FD0' },
-  dark: { bg: '#12151A', card: '#1A1E25', fg: '#E8EAED', muted: '#98A2B3', line: '#2A2F38', accent: '#5B9BFF', pos: '#56D364', neg: '#FF7B72', warn: '#E3B341', sideBg: '#1A1E25', sideFg: '#E8EAED', sideActive: '#5B9BFF' },
-};
+export const DEFAULT_PRESET: PresetId = 'signature-navy';
 
 export interface PaletteChoice {
   id: PaletteId;
@@ -211,9 +268,11 @@ export interface PaletteChoice {
   custom?: { light: Colors; dark: Colors };
   /** The saved theme these colors came from (see lib/savedThemes.ts), so it can be updated. */
   savedId?: string;
+  /** Set once when an older stored choice was moved to one of the five palettes: the id it had (kept, never deleted, so nothing about the old choice is lost). */
+  from?: string;
 }
 
-export const DEFAULT_CHOICE: PaletteChoice = { id: 'classic' };
+export const DEFAULT_CHOICE: PaletteChoice = { id: DEFAULT_PRESET };
 
 // ---------- color math ----------
 
@@ -244,6 +303,14 @@ export function contrastRatio(a: string, b: string): number {
 /** Black or white, whichever reads better on top of the given color (for text on buttons). */
 export const onColor = (bg: string): string => (contrastRatio('#FFFFFF', bg) >= contrastRatio('#111111', bg) ? '#FFFFFF' : '#111111');
 
+/** `t` of the way from `a` to `b` (0 gives a, 1 gives b), as an uppercase hex colour. */
+export function mixHex(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = rgb(a);
+  const [br, bg, bb] = rgb(b);
+  const h = (x: number, y: number) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+  return `#${h(ar, br)}${h(ag, bg)}${h(ab, bb)}`.toUpperCase();
+}
+
 export interface ContrastNote {
   key: ColorKey;
   ratio: number;
@@ -270,9 +337,60 @@ export function contrastNotes(c: Colors): ContrastNote[] {
   });
 }
 
+// ---------- custom palettes: the adapter ----------
+
+/**
+ * A custom palette (and every saved theme) stores only the twelve colours. The rest of what the Signature interface reads is DERIVED here from those twelve, in plain
+ * terms: buttons use the accent, raised surfaces and fields use the page background, the chart colours are a fixed readable set, and the dark Home panel is a dark tone
+ * of the text colour (light mode) or of the accent (dark mode) with text that is checked against it. Nothing stored is changed; a theme made years ago renders through this.
+ */
+export function deriveExtras(c: Colors, dark: boolean): Extras {
+  const accentSoft = mixHex(c.bg, c.accent, 0.12);
+  // The dark Home panel. Candidate first; if its text could not reach 7:1 (an unusual palette), darken it until it does.
+  let heroBg = dark ? mixHex(c.bg, c.accent, 0.22) : mixHex(c.bg, c.fg, 0.9);
+  for (let i = 0; i < 6 && contrastRatio(onColor(heroBg), heroBg) < 7; i++) heroBg = mixHex(heroBg, '#000000', 0.25);
+  const heroInk = onColor(heroBg);
+  const readable = (tint: string, fallback: string) => (contrastRatio(tint, heroBg) >= 4.5 ? tint : fallback);
+  const heroInk2 = readable(mixHex(heroInk, heroBg, 0.3), heroInk);
+  const heroPos = readable(mixHex(c.pos, heroInk, 0.45), heroInk);
+  const heroNeg = readable(mixHex(c.neg, heroInk, 0.45), heroInk);
+  const ramp = dark
+    ? ['#7AA2EE', '#E8946A', '#52C08F', '#B894E8', '#EE86C0', '#A3ACBB'] // light steps of fixed, distinct hues
+    : ['#3F7FD9', '#E08A2B', '#3AA17E', '#9B6AD6', '#D65F7A', '#7A8794'];
+  const series = dark ? ['#3987E5', '#D95926', '#199E70', '#C98500'] : ['#2A78D6', '#EB6834', '#1BAF7A', '#EDA100'];
+  return {
+    '--surface-raised': c.bg,
+    '--surface-soft': mixHex(c.card, c.fg, 0.04),
+    '--surface-sunken': mixHex(c.card, c.fg, 0.08),
+    '--fg-2': mixHex(c.fg, c.muted, 0.22),
+    '--control-line': mixHex(c.bg, c.fg, 0.24),
+    '--field-bg': c.bg,
+    '--btn-bg': c.accent,
+    '--btn-bg-hover': mixHex(c.accent, c.fg, 0.12),
+    '--btn-ink': onColor(c.accent),
+    '--info': c.accent,
+    '--info-soft': accentSoft,
+    '--shadow-rgb': dark ? '0, 0, 0' : '16, 24, 40',
+    '--scrim': dark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+    '--toast-bg': c.fg,
+    '--toast-ink': c.bg,
+    '--toast-edge': 'var(--shadow-2)',
+    '--viz-s1': series[0], '--viz-s2': series[1], '--viz-s3': series[2], '--viz-s4': series[3],
+    '--viz-c1': ramp[0], '--viz-c2': ramp[1], '--viz-c3': ramp[2], '--viz-c4': ramp[3], '--viz-c5': ramp[4], '--viz-c6': ramp[5],
+    '--viz-hc1': ramp[0], '--viz-hc2': ramp[1], '--viz-hc3': ramp[2], '--viz-hc4': ramp[3], '--viz-hc5': ramp[4],
+    '--hero-bg': heroBg,
+    '--hero-ink': heroInk,
+    '--hero-ink-2': heroInk2,
+    '--hero-line': heroInk === '#FFFFFF' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(17, 17, 17, 0.2)',
+    '--hero-pos': heroPos,
+    '--hero-neg': heroNeg,
+    '--chart-spend': ramp[1],
+  };
+}
+
 // ---------- applying ----------
 
-/** CSS variables for a set of colors. `--page` and `--surface` are always written: they fall back to `bg` and `card` (also when a stored value is not a valid hex), so an older palette looks as it always did. */
+/** CSS variables for a set of colors. `--page` and `--surface` are always written: they fall back to `bg` and `card` (also when a stored value is not a valid hex). */
 export function varsFor(c: PaletteColors): Record<string, string> {
   return {
     '--bg': c.bg,
@@ -295,35 +413,35 @@ export function varsFor(c: PaletteColors): Record<string, string> {
   };
 }
 
-export function colorsOf(choice: PaletteChoice, dark: boolean): PaletteColors | null {
-  if (choice.id === 'classic') return null;
-  if (choice.id === 'custom') return choice.custom ? (dark ? choice.custom.dark : choice.custom.light) : null;
-  const p = PRESETS.find((x) => x.id === choice.id);
-  return p ? (dark ? p.dark : p.light) : null;
+export function colorsOf(choice: PaletteChoice, dark: boolean): PaletteColors {
+  if (choice.id === 'custom' && choice.custom) return dark ? choice.custom.dark : choice.custom.light;
+  const p = PRESETS.find((x) => x.id === choice.id) ?? PRESETS[0];
+  return dark ? p.dark : p.light;
 }
 
-/** The extra variables a preset sets on top of its colours (none for Classic, the other presets and custom palettes). */
+/** The extra variables beyond the twelve colours: the preset's own, or (custom palettes) derived from the twelve. */
 export function extrasOf(choice: PaletteChoice, dark: boolean): Record<string, string> {
-  if (choice.id === 'classic' || choice.id === 'custom') return {};
-  const p = PRESETS.find((x) => x.id === choice.id);
-  return p?.extras ? p.extras[dark ? 'dark' : 'light'] : {};
+  if (choice.id === 'custom' && choice.custom) return deriveExtras(dark ? choice.custom.dark : choice.custom.light, dark);
+  const p = PRESETS.find((x) => x.id === choice.id) ?? PRESETS[0];
+  return { ...p.extras[dark ? 'dark' : 'light'] };
 }
 
-/** Every variable for one mode: the colours, then the preset's extras. Null for Classic. */
-export function varsOf(choice: PaletteChoice, dark: boolean): Record<string, string> | null {
-  const c = colorsOf(choice, dark);
-  return c ? { ...varsFor(c), ...extrasOf(choice, dark) } : null;
+/** Every variable for one mode: the colours, then the extras. */
+export function varsOf(choice: PaletteChoice, dark: boolean): Record<string, string> {
+  return { ...varsFor(colorsOf(choice, dark)), ...extrasOf(choice, dark) };
 }
 
-/** Both schemes resolved to CSS variables (what index.html reads before first paint). */
-export function resolvedVars(choice: PaletteChoice): { light: Record<string, string>; dark: Record<string, string> } | null {
-  const l = varsOf(choice, false);
-  const d = varsOf(choice, true);
-  return l && d ? { light: l, dark: d } : null;
+/** Variables for a set of twelve colours as a custom palette (used by the editor's preview). */
+export const customVars = (c: Colors, dark: boolean): Record<string, string> => ({ ...varsFor(c), ...deriveExtras(c, dark) });
+
+/** Both schemes resolved to CSS variables (what index.html reads before first paint). `v` marks the format: an older copy without it is ignored by index.html and rewritten by the app. */
+export function resolvedVars(choice: PaletteChoice): { v: number; light: Record<string, string>; dark: Record<string, string> } {
+  return { v: VARS_VERSION, light: varsOf(choice, false), dark: varsOf(choice, true) };
 }
 
 export const PALETTE_KEY = 'ledger-palette';
 export const PALETTE_VARS_KEY = 'ledger-palette-vars';
+export const VARS_VERSION = 2;
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -332,18 +450,20 @@ export function validColors(c: unknown): c is Colors {
   return COLOR_ROLES.every((r) => typeof (c as Record<string, unknown>)[r.key] === 'string' && isHex((c as Record<string, string>)[r.key]));
 }
 
-/** Reads a saved choice, tolerating anything odd in storage (it falls back to Classic). */
+/** Reads a saved choice, tolerating anything odd in storage (it falls back to Signature Navy). An older id is read as the palette it maps to; `from` keeps the old id. */
 export function parseChoice(raw: unknown): PaletteChoice {
   try {
     const o = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!o || typeof o !== 'object') return DEFAULT_CHOICE;
     const id = (o as { id?: unknown }).id;
+    const from = (o as { from?: unknown }).from;
     if (id === 'custom') {
       const c = (o as { custom?: { light?: unknown; dark?: unknown } }).custom;
       const savedId = (o as { savedId?: unknown }).savedId;
       return c && validColors(c.light) && validColors(c.dark) ? { id: 'custom', custom: { light: c.light, dark: c.dark }, ...(typeof savedId === 'string' ? { savedId } : {}) } : DEFAULT_CHOICE;
     }
-    return PRESETS.some((p) => p.id === id) ? { id: id as PresetId } : DEFAULT_CHOICE;
+    if (isLegacyId(id)) return { id: LEGACY_PALETTE_MAP[id], from: id };
+    return PRESETS.some((p) => p.id === id) ? { id: id as PresetId, ...(typeof from === 'string' ? { from } : {}) } : DEFAULT_CHOICE;
   } catch {
     return DEFAULT_CHOICE;
   }
@@ -360,32 +480,57 @@ export function loadPalette(storage?: StorageLike): PaletteChoice {
 export function savePalette(choice: PaletteChoice, storage?: StorageLike): void {
   try {
     const s = storage ?? localStorage;
-    const vars = resolvedVars(choice);
-    if (!vars) {
-      s.removeItem(PALETTE_KEY);
-      s.removeItem(PALETTE_VARS_KEY);
-      return;
-    }
     s.setItem(PALETTE_KEY, JSON.stringify(choice));
-    s.setItem(PALETTE_VARS_KEY, JSON.stringify(vars));
+    s.setItem(PALETTE_VARS_KEY, JSON.stringify(resolvedVars(choice)));
   } catch {
     /* storage unavailable: the choice just will not persist */
   }
 }
 
-/** Every variable any palette can set, so switching palettes never leaves one behind. */
-const ALL_VARS = [...new Set([...Object.keys(varsFor(PRESETS[0].light)), ...PRESETS.flatMap((p) => [...Object.keys(p.extras?.light ?? {}), ...Object.keys(p.extras?.dark ?? {})])])];
+/**
+ * One-time, repeat-safe transition of what an older version stored. Returns what it did:
+ *  - 'none'     nothing is stored (the device uses Signature Navy; nothing is written).
+ *  - 'current'  the stored choice and its pre-paint copy are already in today's format (nothing is written).
+ *  - 'migrated' an older palette id (Classic, Calm teal, ...) was replaced by the palette it maps to; the old id is kept in `from`.
+ *  - 'refreshed' the choice was fine but its pre-paint copy was missing or in an older format (for example after restoring an old backup): the copy was rebuilt.
+ *  - 'unreadable' the stored value is damaged or from a newer copy of the app: it is LEFT AS IT IS (not deleted) and the device uses Signature Navy.
+ * Custom colours and saved themes are never touched.
+ */
+export function migrateStoredPalette(storage?: StorageLike): 'none' | 'current' | 'migrated' | 'refreshed' | 'unreadable' {
+  try {
+    const s = storage ?? localStorage;
+    const raw = s.getItem(PALETTE_KEY);
+    if (raw === null) return 'none';
+    let o: unknown;
+    try { o = JSON.parse(raw); } catch { return 'unreadable'; }
+    const id = o && typeof o === 'object' ? (o as { id?: unknown }).id : undefined;
+    const choice = parseChoice(o);
+    const known = id === 'custom' ? choice.id === 'custom' : isLegacyId(id) || PRESETS.some((p) => p.id === id);
+    if (!known) return 'unreadable';
+    if (isLegacyId(id)) {
+      savePalette(choice, s);
+      return 'migrated';
+    }
+    let cached: { v?: unknown } | null = null;
+    try { cached = JSON.parse(s.getItem(PALETTE_VARS_KEY) ?? 'null'); } catch { /* rebuilt below */ }
+    if (!cached || cached.v !== VARS_VERSION) {
+      s.setItem(PALETTE_VARS_KEY, JSON.stringify(resolvedVars(choice)));
+      return 'refreshed';
+    }
+    return 'current';
+  } catch {
+    return 'unreadable';
+  }
+}
 
-/** Sets (or clears) the palette's variables on the page for the current light or dark mode, and the phone browser-bar color. */
+/** Every variable any palette can set, so switching palettes never leaves one behind. */
+const ALL_VARS: string[] = [...new Set([...Object.keys(varsFor(PRESETS[0].light)), ...EXTRA_KEYS])];
+
+/** Sets the palette's variables on the page for the current light or dark mode, and the phone browser-bar color. */
 export function applyPalette(choice: PaletteChoice, dark: boolean): void {
   const root = document.documentElement;
-  const c = colorsOf(choice, dark);
-  if (!c) {
-    for (const k of ALL_VARS) root.style.removeProperty(k);
-    return;
-  }
-  const vars = { ...varsFor(c), ...extrasOf(choice, dark) };
-  // A variable this palette does not set must not keep an earlier palette's value (for example Signature's navy button after switching away).
+  const vars = varsOf(choice, dark);
+  // A variable this palette does not set must not keep an earlier palette's value.
   for (const k of ALL_VARS) if (!(k in vars)) root.style.removeProperty(k);
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', vars['--page']));

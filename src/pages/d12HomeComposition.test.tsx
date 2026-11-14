@@ -117,15 +117,15 @@ describe('D12 refinement: the top panel', () => {
     expect(h).toContain('Up <strong class="pos">+$2,500.00</strong> since 2026-01-01');
   });
 
-  it('inside the dark panel the chart reads the panel colors through local variables and a light ramp; the other presets have no such ramp', () => {
+  it('inside the dark panel the chart reads the panel colors through local variables and a light ramp; every palette has such a ramp (D21.1)', () => {
     const css = src('src/pages/home.css');
     expect(css).toMatch(/\.home-hero \.nwchart \{ --fg: var\(--hero-ink\); --muted: var\(--hero-ink-2\); --line: var\(--hero-line\); --card: var\(--hero-bg\);/);
     expect(css).toMatch(/--nw-1: var\(--viz-hc1, var\(--chart-1\)\)/);
     expect(src('src/ui/charts.tsx')).toContain("color: 'var(--nw-1, var(--chart-1))'");
     for (const dark of [false, true]) {
-      const e = extrasOf({ id: 'signature' }, dark);
+      const e = extrasOf({ id: 'signature-navy' }, dark);
       expect(['--viz-hc1', '--viz-hc2', '--viz-hc3', '--viz-hc4', '--viz-hc5'].every((k) => /^#[0-9A-F]{6}$/i.test(e[k]))).toBe(true);
     }
-    for (const p of PRESETS.filter((x) => x.id !== 'signature')) expect(Object.keys(extrasOf({ id: p.id }, false)).filter((k) => k.startsWith('--viz-hc'))).toEqual([]);
+    for (const p of PRESETS) for (const dark of [false, true]) expect(Object.keys(extrasOf({ id: p.id }, dark)).filter((k) => k.startsWith('--viz-hc')), p.id).toHaveLength(5);
   });
 });

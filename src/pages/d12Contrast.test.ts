@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSIC, PRESETS, contrastRatio, extrasOf, varsFor, type PaletteColors } from '../palette';
+import { PRESETS, contrastRatio, deriveExtras, extrasOf, varsFor, type PaletteColors } from '../palette';
+import { CLASSIC, LEGACY_PRESETS } from '../shell/legacyFixtures';
 
 /**
  * D12. The words on Ledger Home's dark net-worth panel (the "hero"), and the bar flag and "so far" text that D12 adds, measured for Classic and every built-in palette,
@@ -12,8 +13,11 @@ const mix = (a: string, b: string, pctOfA: number) => `#${hex(a).map((v, i) => M
 
 interface Set { name: string; c: PaletteColors; extras: Record<string, string> }
 const sets: Set[] = [
-  { name: 'classic light', c: CLASSIC.light, extras: {} },
-  { name: 'classic dark', c: CLASSIC.dark, extras: {} },
+  // D21.1: Classic and the four older presets now exist only as stored custom themes; they render through the adapter (deriveExtras), so that is what is measured.
+  ...[{ id: 'classic', light: CLASSIC.light, dark: CLASSIC.dark }, ...LEGACY_PRESETS].flatMap((p) => [
+    { name: `${p.id} (custom) light`, c: p.light as PaletteColors, extras: deriveExtras(p.light, false) },
+    { name: `${p.id} (custom) dark`, c: p.dark as PaletteColors, extras: deriveExtras(p.dark, true) },
+  ]),
   ...PRESETS.flatMap((p) => [
     { name: `${p.id} light`, c: p.light, extras: extrasOf({ id: p.id }, false) },
     { name: `${p.id} dark`, c: p.dark, extras: extrasOf({ id: p.id }, true) },

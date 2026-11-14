@@ -1,7 +1,7 @@
 /* ---- Ledger Home (D12, composition refined) ----
    A fixed top (one full-width panel for net worth and the month, Needs attention, Get started) and two columns of sections: a wide analysis column and a narrow
-   supporting column. Presentation only: every figure comes from the same readers, and the colors come from tokens (src/ui/tokens.css), so Classic and the older presets
-   get the same composition with plain card colors; only Signature makes the top panel dark. */
+   supporting column. Presentation only: every figure comes from the same readers, and the colors come from tokens (src/ui/tokens.css), so every palette gets the
+   same composition, with the top panel dark in all of them (the panel colors are palette tokens). */
 .home-page { display: grid; gap: var(--sp-5); min-width: 0; }
 .home-page > * { margin: 0; min-width: 0; }
 .home-page .card-head { margin-bottom: var(--sp-3); }

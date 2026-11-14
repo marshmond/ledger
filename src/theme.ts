@@ -2,17 +2,21 @@
  * Light / Dark / Device theme. "Device" (the default) follows the OS setting; a forced choice sets data-theme on <html>.
  * The choice is remembered per device in localStorage; if storage is unavailable the app still works (it just forgets).
  * index.html applies the saved choice before first paint so there is no flash of the wrong theme.
+ * The color palette (Signature Navy by default, src/palette.ts) is separate: mode and palette are two independent choices.
  */
 
-import { applyPalette, loadPalette } from './palette';
+import { applyPalette, loadPalette, migrateStoredPalette } from './palette';
 
 export type Theme = 'device' | 'light' | 'dark';
 
 export const THEME_KEY = 'ledger-theme';
 const ORDER: Theme[] = ['device', 'light', 'dark'];
 
-/** Meta theme-color values (browser bar on phones). Match --accent-ish brand blue in light, page background in dark. */
-export const THEME_COLOR = { light: '#1f6feb', dark: '#12151a' } as const;
+/**
+ * Meta theme-color values (the browser bar on phones): the page canvas of Signature Navy, the default palette. index.html sets the same values before first paint
+ * (a test checks they match), and applyPalette replaces them with the chosen palette's canvas.
+ */
+export const THEME_COLOR = { light: '#EEF1F6', dark: '#0B1220' } as const;
 
 export const nextTheme = (t: Theme): Theme => ORDER[(ORDER.indexOf(t) + 1) % ORDER.length];
 
@@ -54,12 +58,13 @@ export function applyTheme(t: Theme): void {
   const dark = isDark(t, deviceDark);
   const color = dark ? THEME_COLOR.dark : THEME_COLOR.light;
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', color));
-  // A chosen color palette (Calm teal, a custom one, ...) overrides the colors for the light or dark mode now in effect.
+  // The chosen color palette (Signature Navy unless another was picked) sets the colors for the light or dark mode now in effect, and the browser-bar color.
   applyPalette(loadPalette(), dark);
 }
 
-/** Call once at startup: applies the saved theme and re-syncs when the device setting changes while on "Device". */
+/** Call once at startup: moves an older saved palette choice to today's format (once, safely repeatable), applies the saved theme, and re-syncs when the device setting changes while on "Device". */
 export function initTheme(): Theme {
+  migrateStoredPalette();
   const t = loadTheme();
   applyTheme(t);
   if (typeof matchMedia === 'function') {

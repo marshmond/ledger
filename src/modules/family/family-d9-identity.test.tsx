@@ -8,7 +8,8 @@ import { createStore } from '../../core/store';
 import type { ModuleRecord } from '../../core/entities';
 import { installTracking } from '../../lib/sync/track';
 import { accessibleName, all, byTag, parseHtml, textOf, unnamedFields, type El } from '../../lib/a11yTestkit';
-import { CLASSIC, PRESETS, contrastRatio, extrasOf, varsFor } from '../../palette';
+import { PRESETS, contrastRatio, deriveExtras, extrasOf, varsFor } from '../../palette';
+import { CLASSIC } from '../../shell/legacyFixtures';
 import { MemberChip, MemberDot, MemberMark, memberChipClass, memberDotClass, memberMarkClass } from '../../ui/MemberIdentity';
 import { MEMBER_COLOR_IDS, isMemberColorId, memberColorToken, memberInitials } from '../../ui/memberIdentityModel';
 import { createEvent } from '../calendar/data';
@@ -425,7 +426,7 @@ describe('D9 color lookup, dark variants and the swatch check mark', () => {
 /** The values a palette puts on the page for one mode, with the stylesheet's own defaults for the roles a palette does not set. */
 function roles(p: 'classic' | (typeof PRESETS)[number]['id'], mode: 'light' | 'dark') {
   const colors = p === 'classic' ? CLASSIC[mode] : PRESETS.find((x) => x.id === p)![mode];
-  const v = { ...varsFor(colors as never), ...(p === 'classic' ? {} : extrasOf({ id: p } as never, mode === 'dark')) } as Record<string, string>;
+  const v = { ...varsFor(colors as never), ...(p === 'classic' ? deriveExtras(CLASSIC[mode], mode === 'dark') : extrasOf({ id: p } as never, mode === 'dark')) } as Record<string, string>;
   const surface = v['--surface'];
   const fg = v['--fg'];
   return {
@@ -468,10 +469,10 @@ describe('D9 contrast, measured on every palette in light and dark', () => {
       });
     }
   }
-  it('Signature draws its dashed No color edge at 3:1 or better (the shared control line)', () => {
-    for (const mode of ['light', 'dark'] as const) {
-      const r = roles('signature', mode);
-      expect(contrastRatio(r.control, r.surface), mode).toBeGreaterThanOrEqual(3);
+  it('every palette draws its dashed No color edge at 3:1 or better (the shared control line)', () => {
+    for (const p of PRESETS) for (const mode of ['light', 'dark'] as const) {
+      const r = roles(p.id, mode);
+      expect(contrastRatio(r.control, r.surface), `${p.id} ${mode}`).toBeGreaterThanOrEqual(3);
     }
   });
 });

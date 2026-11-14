@@ -92,7 +92,7 @@ to Twelve Data using your own key.
 | **Import** | CSV import with duplicate protection and undo |
 | **Data & Backups** | App-wide (Settings > Data & Backups): plain or encrypted export/restore of ALL of Ledger (Finance, Tasks, Calendar, Projects, Home & Assets, Household Services, contacts), by-area summary, checks before restore |
 
-Under **Settings > Appearance** (the app-wide Settings, reached from the top bar; it applies to every module) you can choose Light / Dark / Device and a color palette (Calm teal, Deep navy and gold, Forest green and stone, Slate and indigo, or your own colors picked from a color map, with warnings if text would be hard to read). Both are remembered on each device. Sections on the Income, Transactions, and Debt screens can be collapsed, and the app remembers what you collapsed on each device.
+Under **Settings > Appearance** (the app-wide Settings, reached from the top bar; it applies to every module) you can choose Light / Dark / Device and a color palette (Signature Navy, the default; Coastal Slate; Evergreen; Warm Stone; Midnight Plum; or your own colors picked from a color map, with warnings if text would be hard to read). Every palette gives Ledger the same layout; only the colors change. Both are remembered on each device. Sections on the Income, Transactions, and Debt screens can be collapsed, and the app remembers what you collapsed on each device.
 
 Everything is a planning aid, not tax, legal, or investment advice. Return assumptions are yours to set and are not predictions.
 

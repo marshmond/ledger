@@ -72,11 +72,39 @@
 @media (min-width: 720px) { .se-prefs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---------- Appearance ---------- */
-.se-mode { display: grid; gap: var(--sp-3); justify-items: start; margin-top: var(--sp-3); }
-.se-mode .se-points { margin: 0; }
+/* Appearance mode: three radio buttons */
+.se-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: var(--sp-3); margin-top: var(--sp-2); }
+.se-mode-opt { display: grid; grid-template-columns: auto 1fr; align-items: center; justify-items: start; column-gap: var(--sp-3); row-gap: 2px; height: auto; padding: var(--sp-3) var(--sp-4); text-align: left; border: 1px solid var(--control-line); border-radius: var(--r-md); background: var(--surface); }
+.se-mode-opt:hover:not(:disabled) { background: var(--surface-soft); }
+.se-mode-opt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.se-mode-ic { grid-row: 1 / span 2; font-size: var(--fs-lg); line-height: 1; width: 28px; text-align: center; color: var(--accent-text); }
+.se-mode-hint { grid-column: 2; font-size: var(--fs-sm); font-weight: 400; }
+
+/* A palette's picture: Light and Dark halves drawn with the palette's own colors (the variables are set on each half, so the shapes read them directly). */
+.pp { display: grid; grid-template-columns: 1fr 1fr; width: 100%; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; margin-bottom: var(--sp-2); }
+.pp-half { display: block; background: var(--page); color: var(--fg); min-width: 0; }
+.pp-half + .pp-half { border-left: 1px solid var(--line); }
+.pp-bar { display: flex; align-items: center; gap: 5px; padding: 6px 7px; background: var(--side-bg); border-bottom: 1px solid var(--line); }
+.pp-bar b { width: 9px; height: 9px; border-radius: var(--r-xs); background: var(--accent); }
+.pp-bar i { display: block; width: 14px; height: 4px; border-radius: var(--r-pill); background: var(--muted); opacity: 0.7; }
+.pp-bar i.on { background: var(--accent); opacity: 1; }
+.pp-page { display: grid; gap: 6px; padding: 8px 7px 6px; }
+.pp-hero { display: flex; flex-direction: column; gap: 4px; padding: 7px; border-radius: var(--r-xs); background: var(--hero-bg); }
+.pp-hero i { display: block; height: 4px; border-radius: var(--r-pill); background: var(--hero-ink); }
+.pp-hero i + i { width: 55%; background: var(--hero-ink-2); }
+.pp-card { display: flex; flex-direction: column; gap: 4px; padding: 7px; border: 1px solid var(--line); border-radius: var(--r-xs); background: var(--surface); }
+.pp-card i { display: block; height: 4px; border-radius: var(--r-pill); background: var(--fg); width: 70%; }
+.pp-card i.s { width: 45%; background: var(--muted); }
+.pp-row { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.pp-row u { width: 7px; height: 7px; border-radius: 50%; }
+.pp-row u.pos { background: var(--pos); }
+.pp-row u.neg { background: var(--neg); }
+.pp-row u.warn { background: var(--warn); }
+.pp-row em { margin-left: auto; width: 22px; height: 9px; border-radius: var(--r-xs); background: var(--btn-bg); }
+.pp-cap { display: block; padding: 0 7px 6px; font-size: var(--fs-xs); font-weight: 600; color: var(--muted); }
 .se-pals { margin: 0; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
-.se-pals .pal { height: 100%; align-content: start; display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); border: 1px solid var(--control-line); border-radius: var(--r-md); background: var(--surface); }
-.se-pals .pal.on { border: 2px solid var(--accent); background: var(--accent-soft); }
+.se-pals .pal { height: 100%; align-content: start; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: var(--sp-1); border: 1px solid var(--control-line); border-radius: var(--r-md); background: var(--surface); }
+.se-pals .pal.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); } /* the chosen card is ringed with an inset line, so choosing never changes a card's size and nothing moves */
 .se-pal-head { min-height: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-1) var(--sp-2); width: 100%; }
 .se-pal-blurb { font-size: var(--fs-sm); }
 .se-role-help { font-size: var(--fs-sm); }

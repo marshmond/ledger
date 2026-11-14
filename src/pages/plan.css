@@ -1,8 +1,8 @@
 /* ---- Financial planning pages (D18) ----
    Income, Paycheck, Tax planning, Affordability, Projections, Retirement, Roth, Goals, Giving and Protection.
    Presentation only: every figure, input, assumption and action is the page's own. This file adds to analysis.css (the "an-" classes of D17); it never replaces them.
-   Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so Classic and the older presets get the same composition and Signature adds its navy panel
-   and soft headings through the tokens. New classes use the "pl-" prefix.
+   Colors, sizes, radii and shadows come from tokens (src/ui/tokens.css), so every palette gets the same composition, with the dark panel
+   and soft headings colored through the tokens. New classes use the "pl-" prefix.
    Kinds of figure are told apart by a WORD first (Estimate, Projected, Simulated, Your inputs, Recorded, Guideline, Possible action) and a border style second. Status is a word
    (Done, To do, Within guideline, Covered, Below...) as well as a mark; refund or amount due, and gain or loss, are never colored just for their sign. */
 
