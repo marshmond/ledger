@@ -199,25 +199,26 @@ export default function ProfileEditor({
             taxes each item reduces. Defaults follow standard rules; change them to match your pay stub or W-2.
           </p>
           {d.deductions.length > 0 && (
+            <div className="an-tablewrap">
             <table>
               <thead><tr><th>Item</th><th>Amount</th><th>Reduces tax on</th><th className="hide-sm">Bonus</th><th></th></tr></thead>
               <tbody>
                 {d.deductions.map((x) => (
                   <tr key={x.id}>
                     <td>
-                      <input value={x.name} onChange={(e) => setDed(x.id, { name: e.target.value })} />
+                      <input aria-label={`Deduction name: ${x.name || 'unnamed'}`} value={x.name} onChange={(e) => setDed(x.id, { name: e.target.value })} />
                       {HELP[x.type] && <div className="muted">{HELP[x.type]}</div>}
                     </td>
                     <td>
                       <div className="row">
-                        <select value={x.mode} onChange={(e) => setDed(x.id, { mode: e.target.value as 'percent' | 'fixed', value: 0 })}>
+                        <select aria-label={`How ${x.name || 'this deduction'} is figured`} value={x.mode} onChange={(e) => setDed(x.id, { mode: e.target.value as 'percent' | 'fixed', value: 0 })}>
                           <option value="percent">% of gross</option>
                           <option value="fixed">$ fixed</option>
                         </select>
                         {x.mode === 'percent' ? (
-                          <NumField value={x.value} onChange={(n) => setDed(x.id, { value: n })} width={80} />
+                          <NumField ariaLabel={`${x.name || 'Deduction'} amount, percent of gross`} value={x.value} onChange={(n) => setDed(x.id, { value: n })} width={80} />
                         ) : (
-                          <MoneyField cents={x.value} onChange={(c) => setDed(x.id, { value: c })} width={100} />
+                          <MoneyField ariaLabel={`${x.name || 'Deduction'} amount, fixed`} cents={x.value} onChange={(c) => setDed(x.id, { value: c })} width={100} />
                         )}
                       </div>
                     </td>
@@ -238,6 +239,7 @@ export default function ProfileEditor({
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           <div className="row" style={{ marginTop: 6 }}>
             {ADD.filter(([t]) => (t !== 'hsa' || hsa) && (t !== 'espp' || espp)).map(([t, l]) => (

@@ -97,7 +97,8 @@
 .an-checks .chk { margin: 0; }
 
 /* ---- tables: dense on a computer, labeled rows on a phone ---- */
-.an-tablewrap { overflow-x: auto; max-width: 100%; }
+/* D21: `position: relative` so the screen-reader-only text inside a wide table is clipped with the table instead of widening the whole page (it did at 800 to 1024 px on Income). */
+.an-tablewrap { overflow-x: auto; max-width: 100%; position: relative; }
 .an-table td, .an-table th { vertical-align: top; }
 .an-table td.num, .an-table th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .an-table tbody tr:last-child td { border-bottom: none; }

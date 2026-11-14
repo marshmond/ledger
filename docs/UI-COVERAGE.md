@@ -1,4 +1,4 @@
-BLT |BLT |BLT |BLT |BLT |# Ledger UI coverage tracker (Ledger Signature rollout)
+# Ledger UI coverage tracker (Ledger Signature rollout)
 
 Created in **D5** (2026-11-10, uncommitted until the owner approves). Source of the inventory: the D4 blueprint (`D4-APPLICATION-COVERAGE.md`, 2026-11-10, counted at commit `8ab1789`), re-checked against the source in D5. This file holds route names, file names and ticks only. No data, no balances, no screenshots.
 
@@ -33,6 +33,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 **D18 (2026-11-13, built and tested locally, uncommitted) redesigned the ten Financial Planning pages: Income, Tax planning, Giving, Afford (both views), Paycheck, Projections, Retirement, Goals, Protection and Roth: L-17 to L-26 read `BLT` with the marks actually recorded (section 1.15), IV-27 and IV-28 read `BLT`, and W-21, W-22 and W-23 read `BLT` for the parts section 1.15 names. Nothing is `ACC`: no real phone, screen reader, forced-colors or Safari/Firefox check was done, and `Kbd` is not recorded for any D18 page (only the in-page jump buttons were driven by script). The native `confirm()` calls on these pages remain (D20).**
 
 **D20 (2026-11-13, approved for release; built and tested locally) restyled the shared Modal and ConfirmDialog and added a recoverable page-error state: S-08 and S-11 read `BLT` with the marks actually recorded (section 1.17), CF-01 reads `BLT`, CF-03 is PENDING the OD-6 owner decision (nothing replaced), and no DL group changed status except where it already read `BLT`: the shared look reaches every dialog by inheritance, but only the representative sites in section 1.17 were looked at, so the other groups stay `NS` until each is checked. Nothing is `ACC`.**
+
+**D21 (2026-11-13, built and tested locally, uncommitted; D20.1B is committed and deployed as `21a20a1`, run #113 success): finishing work, NOT a release. The Signature default was NOT switched (an explicit Classic choice cannot be told from never choosing; owner decision needed, report section 5). Browser-bar colour now set before first paint (S-20, section 1.18); one table-overflow fix and 18 field names; a scripted width and accessibility sweep. No row changed status except S-20 (`NS` to `BLT`, marks `L`, `D`, `Func`); the roll-up is unchanged and nothing is `ACC`. Report: `docs/LEDGER-SIGNATURE-D21-REPORT.md`.**
 
 **D20.1B (2026-11-13, built and tested locally, uncommitted): the remaining 33 native confirmations became Ledger confirmation dialogs (the planned B, C and D batches in one cycle); 0 actual browser-native `confirm()` calls remain (the historical rule also reads 0; its D4 baseline stays 37 in 24 files). CF-03 reads `BLT` (built, pending owner acceptance); nothing is `ACC`, no dialog group changed status, D21 is not started. Report: `docs/LEDGER-SIGNATURE-D20.1B-REPORT.md`.**
 
@@ -77,12 +79,12 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-17 | Theme toggle (Device, Light, Dark) | `src/pages/ThemeToggle.tsx` | D8, D19 | BLT | Y | Y | . | Y | Y | Y |
 | S-18 | Unknown-address fallback and legacy redirects | `src/core/legacy.ts` | all | NS | . | . | . | . | . | . |
 | S-19 | Print styles | `src/styles.css`, `src/pages/docs.css` | D19 | BLT | Y | Y | . | . | . | Y |
-| S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | NS | . | . | . | . | . | . |
+| S-20 | App identity: browser-bar colour, manifest, icons | `src/theme.ts` | D5, D21 | BLT | Y | Y | . | . | . | Y |
 | S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline; member identity mark, dot and chip (D9) | `src/ui/components.tsx`, `src/ui/MemberIdentity.tsx` | D6, D9 | BLT | Y | Y | . | Y | . | Y |
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
 | S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | Y | Y | Y | Y | . | Y |
 
-S-20 note: D5 deliberately left the browser-bar colour, `index.html` and the manifest alone (the default look is unchanged). When Signature is selected the bar takes the Signature canvas colour at run time; the fixed values move in D21.
+S-20 note: D5 deliberately left the browser-bar colour, `index.html` and the manifest alone (the default look is unchanged). When Signature is selected the bar takes the Signature canvas colour at run time. **D21:** `index.html` now also sets the bar colour before first paint from the saved mode and palette (no flash of Classic blue for a Signature device). The fixed fallback values (`THEME_COLOR`, the static meta tag, the manifest) stay Classic's, because the default look has not changed; they move only if the owner approves the default switch (report section 5).
 
 ### 1.1 D6 evidence behind the marks above, and what was seen on the routed pages (no routed row changed)
 
@@ -344,6 +346,15 @@ D19 (2026-11-13) recomposed More (grouped destinations with a backup notice), Ye
 - **Func:** every exact-cents amount (28 distinct on Review, 34 on Tax package) and every input value (16 on Guide, 11 on Calendar settings) is the same before and after; clicked through the real controls: More links and Back, Review year change, Guide edit and persistence and Show balances (screen and print), Tax year change, one CSV (name and header) and Download all (one file per section with rows), General landing change and restore (and no write on open), Appearance preset switch, mode cycle, editor, save, rename and delete of a disposable theme, Calendar settings change and reset, plain and encrypted backup export, short and wrong passphrase refusals, restore preview, Cancel, and one confirmed restore of a disposable file into the disposable profile, Sync not set up, check, send, healthy, conflicts, clear (with Cancel), failed sync, stop (with Cancel).
 - **S-19 (print):** Review, Guide and Tax package printed on white from a dark screen, with no header, menus or buttons; Guide shows typed answers as text and blank lines for empty ones; balances print only when Show balances is on.
 - **Not recorded:** Kbd (no Tab walk), contrast measurement, forced colors, real devices, screen readers, Safari and Firefox, a real PDF page-break review of long documents.
+
+### 1.18 D21 evidence: browser-bar colour and the width/accessibility sweep (built, NOT committed; nothing is `ACC`)
+
+D21 (2026-11-13) did **not** change the default appearance (the owner decision is open: Classic is stored as "nothing", so an explicit Classic choice cannot be told from never choosing; report section 5). What changed: the browser-bar colour is now set from the saved Light/Dark and palette **before first paint** (`index.html`; `THEME_COLOR` and the manifest are unchanged), the Income Deductions table can no longer widen the page between 800 and 1024 px, and 18 unnamed form fields on Income and Debt payoff got spoken names. Report: `docs/LEDGER-SIGNATURE-D21-REPORT.md`; pictures: `Documents\Ledger-Design-Concepts\D21-Evidence`.
+
+- **S-20 (browser-bar colour):** the value the script writes was checked in the live browser for Signature light (`#EEF1F6`) and dark (`#0B1220`) and for Classic light (`#1f6feb`) and dark (`#12151a`); Settings > Appearance clicks to Classic and back to Signature updated it each time. Marks: `L`, `D` and `Func` (new tests) only. **Not recorded:** a real phone browser (dynamic toolbar colour differs by browser and operating system), the installed-app splash colour (the manifest cannot change at run time), Safari and Firefox.
+- **Scripted sweep (not a visual review):** every static route (50) and 20 dynamic addresses (the nine patterns, from the invented household): Signature dark at 1440, 1024, 800, 640, 375 and 320; Signature light at 1440, 800, 375 and 320; Classic light at 800 and 375; Classic dark at 375. Dynamic addresses: Signature light 320, dark 375, 800 and 1440. Measured per page: page wider than the window, element past the right edge, one visible `h1`, buttons and links without a name, fields without a label, an error banner. Found and fixed: Income at 800 and 1024 (page 1033 px wide), 18 unnamed fields. After the fix every combination above that was re-run reads clean (Income itself re-measured at 800; Signature light 800, 1440 and 320 and all the Classic runs include it). **No row's `L`, `D`, `375` or `1440` mark was changed by this sweep**: a script is not a visual check.
+- **Keyboard (real keys, 1440, Signature dark):** a 14-stop Tab walk on Today (every stop had a 2 px outline, in reading order, scrolled into view) and Search opened from its button, Tab stayed inside, Escape closed it and focus returned to the Search button. `Kbd` marks were NOT added: S-06 already carries `Y`, and two checks are not a per-row walk.
+- **Not recorded:** a real phone (the pane's emulation uses a mouse pointer, so the app's `pointer: coarse` 44 px rule was not exercised), a screen reader, forced colors, reduced motion in a browser, Safari and Firefox, contrast measurement, the 59/59 final sweep with an owner look at each page.
 
 ## 3. In-page views (31)
 

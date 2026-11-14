@@ -4,7 +4,19 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-13 (newest, latest): LEDGER SIGNATURE D20.1B (THE REMAINING 33 NATIVE CONFIRMATIONS) APPROVED FOR RELEASE BY OWNER AND CHATGPT (release SHA and CI recorded in the release summary); OD-6: ALL 38 MIGRATED, 0 NATIVE confirm() CALLS REMAIN; CF-03 BUILT, AWAITING FINAL OWNER ACCEPTANCE; D21 NOT STARTED
+## STATUS 2026-11-13 (newest, latest): LEDGER SIGNATURE D21 (FINISHING AND RELEASE READINESS) BUILT AND TESTED LOCALLY, UNCOMMITTED; THE SIGNATURE DEFAULT WAS NOT SWITCHED (OWNER DECISION NEEDED); D21 IS NOT COMPLETE; NOTHING IS ACC
+
+**What was asked:** make Signature the default for genuinely new devices without disturbing saved choices; browser-bar colour; shell and cross-app finishing; accessibility, responsive and regression verification; coverage and readiness assessment; stop before commit. Gate verified first: D20.1B committed and deployed (`21a20a1`, run #113 success), tree holds only the three protected untracked files.
+
+**Finding that stopped Workstream A:** a Classic choice is stored as nothing, so it cannot be told from never choosing. Palette and mode are device-only; a Classic backup carries no palette. Options (report section 5): A keep Classic default; B flip now; **C two steps (recommended)**: save Classic explicitly and pin devices that already have data, then flip later; D flip only when the device looks new (a guess; not recommended). Today's behavior is pinned by `src/shell/d21Appearance.test.ts`.
+
+**What was built:** browser-bar colour set before first paint from the saved mode and palette (`index.html`); `.an-tablewrap` positioned (Income was 1033 px wide at an 800 px window); Income Deductions table in the scroll box; 18 unnamed fields named on Income and Debt payoff; 20 new tests; report `docs/LEDGER-SIGNATURE-D21-REPORT.md`; tracker S-20 `BLT`. 287 files, 5,477 tests pass; tsc and build clean. Scripted sweep: 50 static routes and 20 dynamic addresses, 1440 to 320, Signature light and dark and Classic; clean after the fixes.
+
+**Judgment calls (please review):** (1) Signature's bar colour is its canvas colour, not the D4 note's navy, to match the header. (2) `THEME_COLOR`, the static meta tag and the manifest stay Classic's until the default decision. (3) Touch-target counts from the emulated phone were NOT treated as defects (the app already enlarges link buttons on touch screens); checkboxes (24 px) and Tasks "Mark done" (28 px) need a real phone. (4) The tracker guard list in `uiCoverage.test.ts` gained S-20 deliberately. (5) A stray prefix on the tracker's first line was removed.
+
+**NOT built / not done:** the default switch; a full 59-page visual review; real phone, screen reader, forced colors, reduced motion in a browser, Safari and Firefox; Income at 1024 re-measure; Income Deductions restyle; the three native `alert()` calls and the NC-18/19/22 transactions (both recorded follow-ups); owner acceptance of anything.
+
+## STATUS 2026-11-13 (superseded by D21 above; D20.1B is committed and deployed `21a20a1`, run #113 success): LEDGER SIGNATURE D20.1B (THE REMAINING 33 NATIVE CONFIRMATIONS) APPROVED FOR RELEASE BY OWNER AND CHATGPT (release SHA and CI recorded in the release summary); OD-6: ALL 38 MIGRATED, 0 NATIVE confirm() CALLS REMAIN; CF-03 BUILT, AWAITING FINAL OWNER ACCEPTANCE; D21 NOT STARTED
 
 **What was asked:** finish the owner-approved OD-6 migration in one cycle (the planned B, C and D batches together): replace the remaining 33 browser-native confirm() boxes with Ledger Signature dialogs, protecting actual household data and not changing financial behavior. Gate verified first: D20.1A is released as `e24407b` (Actions run #112 success; `github-pages` deployment success for the same SHA; `main` = `origin/main`).
 
