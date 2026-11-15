@@ -15,8 +15,12 @@ interface CheckinStore {
   completed: string[];
 }
 
-/** The monthly check-in for this month: steps (with your ticks applied), progress, and the streak of completed months. */
-export function useCheckin() {
+/**
+ * The monthly check-in for this month: steps (with your ticks applied), progress, and the streak of completed months.
+ * `remember: false` (R1.1 "Needs you") reads only: the one write this hook makes on its own, remembering that a month's check-in was finished, is skipped.
+ * Every earlier caller leaves the option out and behaves exactly as before.
+ */
+export function useCheckin({ remember = true }: { remember?: boolean } = {}) {
   const today = todayISO();
   const month = monthOf(today);
   const budget = useLiveQuery(() => loadBudget(db, month), [month]);
@@ -76,8 +80,8 @@ export function useCheckin() {
 
   // remember a finished month
   useEffect(() => {
-    if (ready && prog.complete && !doneMonths.includes(month)) db.settings.put({ key: 'checkin', value: { ...store, completed: [...doneMonths, month] } });
-  }, [ready, prog.complete, month]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (remember && ready && prog.complete && !doneMonths.includes(month)) db.settings.put({ key: 'checkin', value: { ...store, completed: [...doneMonths, month] } });
+  }, [remember, ready, prog.complete, month]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setMark = (id: string, on: boolean) => db.settings.put({ key: 'checkin', value: { ...store, marks: { ...store.marks, [month]: { ...marks, [id]: on } } } });
   return { ready, month, steps, progress: prog, completed: doneMonths, streak: streak(doneMonths, month), setMark, marks };

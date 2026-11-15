@@ -2,6 +2,7 @@ import type { ModuleDef } from '../../core/registry';
 import { lazyModule } from '../../core/lazyModule';
 import { HOUSEHOLD_BASE } from './model';
 import { HOUSEHOLD_TODAY_CARDS } from './todayCards';
+import { householdAttention } from './attention';
 import { householdSearchSource } from './searchSource';
 
 /**
@@ -15,5 +16,5 @@ export const householdModule: ModuleDef = {
   Component: lazyModule(() => import('./HouseholdModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { todayCards: HOUSEHOLD_TODAY_CARDS, searchSource: householdSearchSource },
+  contributes: { todayCards: HOUSEHOLD_TODAY_CARDS, attention: householdAttention, searchSource: householdSearchSource },
 };

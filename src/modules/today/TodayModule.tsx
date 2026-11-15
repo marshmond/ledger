@@ -1,7 +1,7 @@
 import Main from '../../shell/Main';
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ModuleBase } from '../../core/router';
+import { ModuleBase, useLocation } from '../../core/router';
 import { allTodayCards } from '../../core/registry';
 import BackupReminder from '../../shell/BackupReminder';
 import { ToastProvider } from '../../ui/Toast';
@@ -18,6 +18,8 @@ import {
   readLegacy, saveArrangement, showCard, unitTitle, type PlacedCard, type PlacedUnit, type TodayArrangement,
 } from './composition';
 import { LOOK_AHEAD_CHOICES, OVERDUE_ROWS_CHOICES, loadTodaySettings, saveTodaySettings } from './settings';
+import { AttentionProviders } from '../../core/AttentionProviders';
+import { NEEDS_PATH, NeedsYouPage, NeedsYouSlot } from './NeedsYou';
 import { TodayDataProvider } from './TodayData';
 import { TodayHero } from './TodayHero';
 import { PHONE_QUERY, headingDate } from './todayModel';
@@ -36,13 +38,22 @@ export default function TodayModule() {
         <div className="shell-main">
           <BackupReminder />
           <Main className="main cal-main">
-            <TodayDataProvider today={today}>
-              <TodayScreen today={today} />
-            </TodayDataProvider>
+            <TodayRoutes today={today} />
           </Main>
         </div>
       </ToastProvider>
     </ModuleBase>
+  );
+}
+
+/** R1.1: Today, or (at `/today/needs`) the full "Needs you" list. The list page does not load the calendar data Today draws from. */
+function TodayRoutes({ today }: { today: string }) {
+  const { pathname } = useLocation();
+  if (pathname === NEEDS_PATH) return <NeedsYouPage />;
+  return (
+    <TodayDataProvider today={today}>
+      <TodayScreen today={today} />
+    </TodayDataProvider>
   );
 }
 
@@ -61,6 +72,9 @@ function TodayScreen({ today }: { today: string }) {
   const [empty, setEmpty] = useState<Record<string, boolean>>({});
   const [noticeOff, setNoticeOff] = useState(() => { try { return localStorage.getItem(NOTICE_KEY) === '1'; } catch { return false; } });
   const settings = useLiveQuery(() => loadTodaySettings(), []);
+  // R1.1: "Needs you" is not a card and not part of the saved arrangement (nothing about the arrangement changed). It sits at the top of the side column, or above the agenda on one column.
+  // The slot reads and ranks in its OWN component (like a card), so a change in any module re-renders only it, not the whole screen; it reports whether it is drawn, so the grid knows.
+  const [needsShown, setNeedsShown] = useState(false);
 
   const arrangement = loaded.arrangement;
   // On a phone Cash outlook is drawn once, after Overdue (composition.ts, PHONE_PROMOTED); elsewhere the arrangement decides.
@@ -189,6 +203,7 @@ function TodayScreen({ today }: { today: string }) {
               {OVERDUE_ROWS_CHOICES.map((n) => <option key={n} value={n}>{n} items</option>)}
             </select>
           </label>
+          <p className="muted small td-msg">Needs you is not part of this arrangement: it stays at the top of the side column (above the agenda on a phone), and it only appears when something needs attention.</p>
           {hiddenCards.length > 0
             ? <div className="row td-hidden-row"><span className="muted">Hidden cards:</span>{hiddenCards.map((id) => <button key={id} onClick={() => update(showCard(arrangement, id))}>+ {titleOf(id)}</button>)}</div>
             : <p className="muted td-msg td-hidden-row">Every card is on the page.</p>}
@@ -199,8 +214,10 @@ function TodayScreen({ today }: { today: string }) {
       <TodayHero today={today} hideAmounts={hideAmounts} />
 
       {/* The wrapper is the size container: the two columns appear when THIS area is wide enough (a sidebar or a narrow window can take width the screen alone would not show). */}
+      <AttentionProviders today={today}>
       <div className="td-cols-wrap">
-        <div className="td-cols">
+        <div className="td-cols" data-needs={needsShown ? 'on' : 'off'}>
+          <NeedsYouSlot today={today} hideAmounts={hideAmounts} onShown={setNeedsShown} />
           <div className="td-col td-col--agenda" data-col="agenda">
             {comp.agenda.map((c) => slot(c, agendaBar(c)))}
           </div>
@@ -209,6 +226,7 @@ function TodayScreen({ today }: { today: string }) {
           </div>
         </div>
       </div>
+      </AttentionProviders>
     </>
   );
 }

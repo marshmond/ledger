@@ -228,3 +228,30 @@
 @media (max-width: 380px) {
   .td-stat-label .ui-icon { display: none; }
 }
+
+/* ---- R1.1: Needs you. One section (not a card in the saved arrangement) at the top of the side column, or above the agenda on one column. ---- */
+.td-needs { min-width: 0; }
+.td-needs-card { margin-bottom: var(--sp-4); }
+.td-needs .td-needs-card { margin-bottom: 0; }
+.td-need-item + .td-need-item { border-top: 1px solid var(--line); }
+.td-need { display: flex; flex-direction: column; gap: 2px; min-height: 44px; padding: var(--sp-2) var(--sp-4); color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.td-need:hover { background: var(--hover); text-decoration: none; }
+.td-need:hover .td-need-title { text-decoration: underline; }
+.td-need:focus-visible { outline-offset: -2px; border-radius: var(--r-md, 8px); }
+.td-need-top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.td-need-title { font-weight: 600; min-width: 0; }
+.td-need-sub { font-size: var(--fs-sm); color: var(--fg-2); }
+.td-need-src { font-weight: 600; color: var(--muted); margin-right: var(--sp-1); }
+.td-need-src::after { content: ' ·'; }
+.td-need-prov { font-size: var(--fs-sm); color: var(--muted); }
+.td-needs-card .badge { flex: none; }
+.td-needs-page { max-width: 52rem; }
+@container (min-width: 880px) {
+  .td-cols[data-needs='on'] { grid-template-rows: auto minmax(0, 1fr); }
+  .td-cols[data-needs='on'] > .td-needs { grid-column: 2; grid-row: 1; }
+  .td-cols[data-needs='on'] > .td-col--agenda { grid-column: 1; grid-row: 1 / span 2; }
+  .td-cols[data-needs='on'] > .td-col--side { grid-column: 2; grid-row: 2; }
+}
+@media (max-width: 640px) {
+  .td-need { padding-inline: var(--sp-3); }
+}

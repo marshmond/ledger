@@ -8,6 +8,7 @@ import { billsSearchSource } from './searchSource';
 import { billsDueProvider } from './dueProvider';
 import { billsTxnReferences } from './txnReferences';
 import { BILLS_TODAY_CARDS } from './todayCards';
+import { billsAttention } from './attention';
 
 /**
  * Bills & Subscriptions, module #7: what you expect to pay regularly, to whom, how often and roughly how much.
@@ -20,5 +21,5 @@ export const billsModule: ModuleDef = {
   Component: lazyModule(() => import('./BillsModule')),
   routePaths: ['/', '/list', '/upcoming', '/review', '/o/:id'],
   nav: [],
-  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, dueProvider: billsDueProvider, txnReferences: billsTxnReferences, contactReferences: billsContactReferences },
+  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, attention: billsAttention, dueProvider: billsDueProvider, txnReferences: billsTxnReferences, contactReferences: billsContactReferences },
 };

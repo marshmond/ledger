@@ -8,6 +8,7 @@ import { serviceRecords } from './records';
 import { servicesSearchSource } from './searchSource';
 import { servicesTxnReferences } from './txnReferences';
 import { SERVICES_TODAY_CARDS } from './todayCards';
+import { servicesAttention } from './attention';
 
 /** Household Services, module #6: who comes to the house (cleaners, lawn care, repair people), how often, and when they are next due. */
 export const servicesModule: ModuleDef = {
@@ -17,5 +18,5 @@ export const servicesModule: ModuleDef = {
   Component: lazyModule(() => import('./ServicesModule')),
   routePaths: ['/', '/a/:id', '/providers/:contactId', '/v/:id'],
   nav: [],
-  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences, contactReferences: servicesContactReferences },
+  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, attention: servicesAttention, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences, contactReferences: servicesContactReferences },
 };

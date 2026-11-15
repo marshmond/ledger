@@ -11,6 +11,7 @@ contributes: {
   quickAdd?: QuickAddDef;
   txnReferences?: TxnReferenceProvider; // ST-S2: see "txnReferences" below
   contactReferences?: ContactReferenceProvider; // C2: see "contactReferences" below
+  attention?: AttentionSource; // R1.1: see "attention" below
 }
 ```
 
@@ -129,6 +130,33 @@ contributes: { contactReferences?: { label: string; find(ctx: { ids: ReadonlySet
 | Failure | Throw. The caller says "could not check" and never "nothing found". An item the shared reader cannot understand is dropped and makes the result unverified. |
 
 Registered by Family (member, important contact), Calendar (event `contactIds`), Tasks (`contactIds`), Projects (`vendorContactIds`, commitment `vendorContactId`), Home & Assets (asset `contacts`, service and warranty `providerContactId`), Household Services (arrangement `providerContactId` and `extraContactIds`, visit `providerContactId`) and Bills & Subscriptions (`providerContactId`). Contacts registers none (it owns no records). A module that adds a Contact field must add or extend its reader; `unlistedMentions()` shows the gap on the Contact page until it does. **Removal** (`src/core/contactRemoval.ts`) never relies on these readers alone: it needs the complete layer-1 scan and the older text rule to find nothing as well, and any reader that cannot run blocks it.
+
+## `attention`: what needs the household's attention (R1.1 "Needs you")
+
+Added in R1.1. A module that already works out "this is unresolved" (an overdue maintenance task, a bill not confirmed paid, a Ledger alert) offers those findings as plain, **read-only** items. Today ranks every module's items in one list ("Needs you": the five most important on Today, the rest at `#/today/needs`). Nothing is stored, synced or backed up, nothing is dismissed here, and an item disappears when what it points at is sorted out, because the source is read again. The contract and the pure ranking live in `src/core/attention.ts`; the live-query helper is `src/core/liveAttention.ts`.
+
+```ts
+contributes: { attention?: { useItems(today: string): { items: AttentionItem[]; ready: boolean; failed?: boolean } } }
+// for a module whose logic is a plain async reader (every module except Ledger):
+attention: liveAttention('assets', (today) => readAssetsAttention(today))
+```
+
+| Field of an item | Rule |
+|---|---|
+| `id` | `<module id>:<stable parts>`: built from record ids and condition names, never from wording. It is the list key. A repeated id is one item. |
+| `condition` | A canonical name for the underlying condition (`task:12:overdue`) **only** when another module can report the same one; two items with the same non-null `condition` are shown once. Otherwise `null`. Titles and reasons are never compared. |
+| `kind` | `overdue`, `broken`, `deadline` (uses `date`), `review`, `info`. Urgency comes from the kind and the date, never from missing information. |
+| `severity` | `'serious'` only when the **source module already** treats the item as serious (a Ledger "warn" alert, a billing record that disagrees). Never promoted by the list. |
+| `date` | The source's own date (due, end, renewal, target) or `null`. |
+| `title`, `reason` | A record's own name and one plain sentence. **Never an amount**: an item that shows one is dropped (and reported to the console) by `attentionProblem`. |
+| `href` | A hash address inside Ledger (`#/assets/4`). Never external. |
+| `provenance` | Which existing reader produced it, in plain words (shown on the full list). |
+
+Ranking (documented in the file header and pinned by `src/core/attention.test.ts`): tier 1 overdue, broken, serious, or a deadline already past; tier 2 a deadline within 7 days; tier 3 everything else that needs a look; tier 4 informational (nothing emits these today). Within a tier: date, then module id, then item id.
+
+Rules for a source: call the module's EXISTING reader (the one its Today card or Overview page uses) and map what comes back; **do not recompute** any rule or figure; write nothing, start no timer and make no network call (a guard test in `src/modules/today/needsYouUi.test.tsx` checks the six adapters); omit what is only informational; keep to counts, dates and the household's own record names. Add a test that the adapter's items agree with the module's own reader (see `src/modules/today/needsYou.test.ts`). The registry is fixed at start-up, so the hooks of all sources run in the same order on every render.
+
+Registered by Ledger (alerts, minus dismissed and snoozed ones, and with amount-free wording), Home & Assets, Household Services, Bills & Subscriptions, Household finances and Projects. Tasks and Calendar are not sources: their overdue items are already Today's own agenda.
 
 ## Family's search source and Add-box destinations (Family Management F5)
 

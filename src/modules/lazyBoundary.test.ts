@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { allDueProviders } from '../core/dueProvider';
-import { allModules, allQuickAdds, allSearchSources, allTodayCards, allTxnReferenceProviders } from '../core/registry';
+import { allAttentionSources, allModules, allQuickAdds, allSearchSources, allTodayCards, allTxnReferenceProviders } from '../core/registry';
 import { registerModules } from './index';
 import { LEDGER_ROUTES } from './ledger/LedgerModule';
 import { LEDGER_ROUTE_PATHS } from './ledger/routePaths';
@@ -61,6 +61,17 @@ describe('what the first download is allowed to contain', () => {
     expect(pages).toEqual([]);
   });
 
+  it('R1.1: the Needs-you sources are in the first download but bring no module screen with them (their loaders were already there for the Today cards)', () => {
+    for (const m of ['ledger', 'assets', 'services', 'bills', 'household', 'projects']) expect(files, m).toContain(`modules/${m}/attention.ts`);
+    expect(files).toContain('core/attention.ts');
+    expect(files).toContain('modules/today/useNeedsYou.ts');
+    // none of the new files imports a screen, a page, Settings or a Module component, directly
+    for (const f of ['core/attention.ts', 'core/liveAttention.ts', 'modules/today/useNeedsYou.ts', 'modules/today/NeedsYou.tsx', ...['ledger', 'assets', 'services', 'bills', 'household', 'projects'].map((m) => `modules/${m}/attention.ts`)]) {
+      const direct = staticImports(join(SRC, f)).map(rel);
+      expect(direct.filter((x) => /Module\.tsx$|^pages\/[A-Za-z]+Page\.tsx$|SettingsPage/.test(x) && x !== 'modules/today/TodayModule.tsx'), f).toEqual([]);
+    }
+  });
+
   it('Today stays in the first download: it is where the app opens, and it needs no second request', () => {
     expect(files).toContain('modules/today/TodayModule.tsx');
   });
@@ -82,6 +93,10 @@ describe('every module is registered, with its background contributions, without
   it('Today cards from every module that offers one', () => {
     const ids = allTodayCards().map((c) => c.id);
     for (const id of ['today.agenda', 'ledger.attention', 'projects.attention', 'assets.attention', 'services.attention', 'bills.attention', 'household.attention']) expect(ids).toContain(id);
+  });
+
+  it('Needs-you sources from the six modules that raise attention, registered without any screen being opened', () => {
+    expect(allAttentionSources().map((x) => x.moduleId)).toEqual(['ledger', 'projects', 'assets', 'services', 'bills', 'household']);
   });
 
   it('search sources, so search answers before any module is visited', () => {

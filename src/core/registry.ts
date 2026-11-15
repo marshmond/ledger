@@ -7,6 +7,7 @@ import type { RecordId } from './entities';
 import { registerDueProvider, type DueProvider } from './dueProvider';
 import type { TxnReferenceProvider } from './txnDependents';
 import type { ContactReferenceProvider } from './contactReferences';
+import type { AttentionSource } from './attention';
 
 export interface ModuleNavItem {
   to: string;
@@ -63,6 +64,11 @@ export interface ModuleDef {
      * screen asks every module through this hook, so it never imports a household module. See `src/core/contactReferences.ts` and docs/module-hooks.md.
      */
     contactReferences?: ContactReferenceProvider;
+    /**
+     * R1.1 "Needs you": the unresolved things this module already knows need attention, as plain read-only items that the Today screen ranks together. Item ids
+     * must start with `<module id>:`. The source calls the module's EXISTING reader and computes nothing of its own. See `src/core/attention.ts` and docs/module-hooks.md.
+     */
+    attention?: AttentionSource;
   };
 }
 
@@ -245,6 +251,10 @@ export function allTxnReferenceProviders(mods: readonly ModuleDef[] = modules): 
 /** Every module's reader of "which of my records point at this Contact", in module order. */
 export function allContactReferenceProviders(mods: readonly ModuleDef[] = modules): ContactReferenceProvider[] {
   return mods.flatMap((m) => (m.contributes?.contactReferences ? [m.contributes.contactReferences] : []));
+}
+/** Every module's "Needs you" source, in module order. */
+export function allAttentionSources(mods: readonly ModuleDef[] = modules): { moduleId: string; source: AttentionSource }[] {
+  return mods.flatMap((m) => (m.contributes?.attention ? [{ moduleId: m.id, source: m.contributes.attention }] : []));
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {

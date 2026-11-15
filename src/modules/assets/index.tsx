@@ -9,6 +9,7 @@ import { assetsSearchSource } from './searchSource';
 import { assetsTxnReferences } from './txnReferences';
 import { serviceQuickAdd } from './serviceQuickAdd';
 import { ASSETS_TODAY_CARDS } from './todayCards';
+import { assetsAttention } from './attention';
 
 /** Home & Assets, module #5: what the household owns that needs looking after (the house, what is in it, vehicles), where it is, and who services it. */
 export const assetsModule: ModuleDef = {
@@ -18,5 +19,5 @@ export const assetsModule: ModuleDef = {
   Component: lazyModule(() => import('./AssetsModule')),
   routePaths: ['/', '/list'],
   nav: [],
-  contributes: { todayCards: ASSETS_TODAY_CARDS, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences, contactReferences: assetsContactReferences },
+  contributes: { todayCards: ASSETS_TODAY_CARDS, attention: assetsAttention, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences, contactReferences: assetsContactReferences },
 };

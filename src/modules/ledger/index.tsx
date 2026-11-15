@@ -10,6 +10,7 @@ import { ledgerTxnReferences } from './txnReferences';
 import { LEDGER_QUICK_ADDS } from './quickAddDef';
 import ScheduledFromEvent from './ScheduledFromEvent';
 import { LEDGER_TODAY_CARDS } from './todayCards';
+import { ledgerAttention } from './attention';
 
 /** Ledger, module #1: personal finance. Its pages, sidebar and calculations are unchanged; this only registers them. */
 export const ledgerModule: ModuleDef = {
@@ -28,6 +29,8 @@ export const ledgerModule: ModuleDef = {
     createFromEvent: { types: ['bill'], label: 'Create scheduled item in Ledger', ownerName: 'Ledger', Form: ScheduledFromEvent },
     // Today: Ledger's alerts (the same ones as Ledger Home, with dismiss and snooze) and the low point of the cash forecast.
     todayCards: LEDGER_TODAY_CARDS,
+    // Needs you (R1.1): the same alerts, minus dismissed and snoozed ones, without amounts.
+    attention: ledgerAttention,
     // Global search: Ledger's pages, accounts, holdings, loans, scenarios, scheduled items and transactions.
     searchSource: ledgerSearchSource,
     // Global Add box: a transaction (Ledger's quick form) and a scheduled payment (opens Ledger's Scheduled screen).

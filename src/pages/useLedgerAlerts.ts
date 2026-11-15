@@ -20,8 +20,9 @@ import { useCheckin } from './useCheckin';
  * Ledger's "needs attention" alerts for `today`, with everything that feeds them. Home and the Today screen both call this, so the
  * two always agree. (It was lifted out of HomePage unchanged apart from the minimum-balance alerts; Home still draws its own list.)
  * It also hands back the data Home draws other cards from, so Home does not read the same tables twice.
+ * `readOnly: true` (R1.1 "Needs you") stops the check-in from remembering a finished month; the alerts themselves are identical.
  */
-export function useLedgerAlerts(today: string) {
+export function useLedgerAlerts(today: string, { readOnly = false }: { readOnly?: boolean } = {}) {
   const month = monthOf(today);
   const year = Number(today.slice(0, 4));
   const accounts = useLiveQuery(() => db.accounts.toArray(), []) ?? [];
@@ -45,7 +46,7 @@ export function useLedgerAlerts(today: string) {
   const budget = useLiveQuery(() => loadBudget(db, month), [month]);
   // Shared with Today's cash-outlook card, so the forecast is worked out once per screen.
   const forecast = useSharedLive(`ledger.forecast:${today}`, () => loadForecast(db, today));
-  const checkin = useCheckin();
+  const checkin = useCheckin({ remember: !readOnly });
   const plan = useTaxPlanData(year);
 
   const gains = useMemo(() => netForTax(realizedFor(sales, year)), [sales, year]);

@@ -1,6 +1,7 @@
 import { projectsContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { PROJECTS_TODAY_CARDS } from './todayCards';
+import { projectsAttention } from './attention';
 import { projectsDueProvider } from './dueProvider';
 import { PROJECTS_BASE } from '../bases';
 import { lazyModule } from '../../core/lazyModule';
@@ -17,5 +18,5 @@ export const projectsModule: ModuleDef = {
   Component: lazyModule(() => import('./ProjectsModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd, txnReferences: projectsTxnReferences, contactReferences: projectsContactReferences },
+  contributes: { dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, attention: projectsAttention, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd, txnReferences: projectsTxnReferences, contactReferences: projectsContactReferences },
 };

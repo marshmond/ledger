@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import type { TodayCardDef, TodayCardProps } from '../../core/registry';
@@ -7,6 +7,8 @@ import { cashOutlook } from '../../lib/cashOutlook';
 import { formatCents } from '../../lib/money';
 import { loadForecast } from '../../lib/forecastLive';
 import { useLedgerAlerts } from '../../pages/useLedgerAlerts';
+import type { Alert } from '../../lib/alerts';
+import { useSharedLedgerAlerts } from './alertsShare';
 import { dayLabel } from '../../core/time';
 import { Icon } from '../../ui/icons';
 import { maskAmounts } from '../today/logic';
@@ -20,8 +22,19 @@ const ledgerHref = (to: string) => `#/ledger${to.startsWith('/') ? to : `/${to}`
  * Each is remembered against the alert plus the period it is about, and shared with your other devices, so it comes back by itself
  * when the situation changes (next month, a different dip date, another account under its minimum).
  */
-function AttentionCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
-  const { alerts, hasData } = useLedgerAlerts(today);
+/**
+ * R1.1: on Today the alerts come from the ONE shared copy of the alert hook (see `alertsShare.tsx`), so "Needs you" does not run a second copy. Anywhere else, or without a
+ * provider, the card reads them itself exactly as before. The card's own behavior is unchanged: this only chooses where `alerts` and `hasData` come from.
+ */
+function AttentionCard(props: TodayCardProps): ReactNode {
+  const shared = useSharedLedgerAlerts();
+  return shared ? <AttentionCardView {...props} alerts={shared.alerts} hasData={shared.hasData} /> : <AttentionCardOwn {...props} />;
+}
+function AttentionCardOwn(props: TodayCardProps) {
+  const { alerts, hasData } = useLedgerAlerts(props.today);
+  return <AttentionCardView {...props} alerts={alerts} hasData={hasData} />;
+}
+function AttentionCardView({ today, hideAmounts, reportEmpty, alerts, hasData }: TodayCardProps & { alerts: Alert[]; hasData: boolean }) {
   const memory = useLiveQuery(() => loadAlertMemory(db), []);
   const [snoozing, setSnoozing] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);

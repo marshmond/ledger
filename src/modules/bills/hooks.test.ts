@@ -58,7 +58,7 @@ describe('B1: registration and Quick Add clash checks (test: Search and Quick Ad
   it('B2 contributes the due provider (Calendar layer) and the Today card; ST-S2 adds the read-only transaction-reference reader and C2 the read-only contact reader', () => {
     expect(billsModule.contributes?.dueProvider?.id).toBe('bills');
     expect(billsModule.contributes?.todayCards?.map((c) => c.id)).toEqual(['bills.attention']);
-    expect(Object.keys(billsModule.contributes ?? {}).sort()).toEqual(['contactReferences', 'dueProvider', 'quickAdd', 'records', 'searchSource', 'todayCards', 'txnReferences']);
+    expect(Object.keys(billsModule.contributes ?? {}).sort()).toEqual(['attention', 'contactReferences', 'dueProvider', 'quickAdd', 'records', 'searchSource', 'todayCards', 'txnReferences']);
   });
 });
 
