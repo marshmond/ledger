@@ -14,6 +14,7 @@ import Collapsible from './Collapsible';
 import { MoneyField } from './fields';
 import { PageHeader } from '../ui/components';
 import ConfirmDialog from '../shell/ConfirmDialog';
+import { deletePropertyWithValues } from '../lib/confirmedDeletes';
 import { missingMonths, signedWords } from './analysisPresentation';
 import './analysis.css';
 
@@ -100,8 +101,8 @@ function PropertyCard({ p, loans }: { p: Property; loans: { id: number; name: st
           busyLabel="Deleting…"
           kind="irreversible"
           onCancel={() => setAskProperty(false)}
-          // The same two steps as before (the value history, then the property); nothing is written until this button is pressed.
-          onConfirm={async () => { await db.propertyValues.where('propertyId').equals(p.id!).delete(); await db.properties.delete(p.id!); setAskProperty(false); }}
+          // RS-1A (NC-22): the value history and the property go in ONE database transaction (all or nothing); nothing is written until this button is pressed.
+          onConfirm={async () => { const r = await deletePropertyWithValues(db, p.id!); if (!r.ok) return r.message; setAskProperty(false); }}
         >
           <p><strong>{p.name}</strong><br /><span className="muted small">{KIND_LABEL[p.kind]} · {sorted.length} saved value{sorted.length === 1 ? '' : 's'}</span></p>
           <p>This deletes the property and its whole value history. Any loans linked to it are not deleted.</p>

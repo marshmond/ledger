@@ -16,6 +16,7 @@ import { LotsPanel, RealizedSection, TradePanel } from './TradePanels';
 import { addLot, ensureLots, isTaxable, setHoldingBasis } from '../lib/lots';
 import { Banner, PageHeader } from '../ui/components';
 import ConfirmDialog from '../shell/ConfirmDialog';
+import { deleteHoldingWithLots, deleteInvestmentAccount, invAccountBlockMessage } from '../lib/confirmedDeletes';
 import Collapsible from './Collapsible';
 import { PRICE_KIND_WORD, priceKind } from './analysisPresentation';
 import './analysis.css';
@@ -128,6 +129,9 @@ function AccountBlock({ s, holdings, securities, classes, people, otherNames }: 
   const [askHolding, setAskHolding] = useState<number | null>(null);
   const [askAccount, setAskAccount] = useState(false);
   const askHoldingRow = askHolding === null ? undefined : mine.find((h) => h.id === askHolding);
+  // RS-1A (NC-19): shown in the delete-account dialog from the live lots. The real check is repeated inside the delete's own transaction.
+  const myLots = lotIds ?? [];
+  const accountBlock = invAccountBlockMessage(a.name, { lots: myLots, holdingsWithLots: new Set(myLots.filter((l) => mine.some((h) => h.id === l.holdingId)).map((l) => l.holdingId)).size, strayLots: myLots.filter((l) => !mine.some((h) => h.id === l.holdingId)).length });
 
   const ticker = (h: Holding) => secById.get(h.securityId)?.ticker ?? 'holding';
   return (
@@ -224,8 +228,8 @@ function AccountBlock({ s, holdings, securities, classes, people, otherNames }: 
               busyLabel="Removing…"
               kind="irreversible"
               onCancel={() => setAskHolding(null)}
-              // The same two steps as before (its lots, then the holding), not wrapped in one transaction; see the D20.1B report.
-              onConfirm={async () => { await db.taxLots.where('holdingId').equals(askHoldingRow.id!).delete(); await db.holdings.delete(askHoldingRow.id!); setAskHolding(null); }}
+              // RS-1A (NC-18): the lots and the holding go in ONE database transaction (all or nothing); a holding already gone or moved is refused with a message.
+              onConfirm={async () => { const r = await deleteHoldingWithLots(db, askHoldingRow.id!, a.id!); if (!r.ok) return r.message; setAskHolding(null); }}
             >
               <p><strong>{ticker(askHoldingRow)}</strong> in {a.name}<br /><span className="muted small">{askHoldingRow.shares} share{askHoldingRow.shares === 1 ? '' : 's'}</span></p>
               <p>This removes the holding and its tax lots from the account. It does not record a sale: to record a sale, use sell instead.</p>
@@ -238,11 +242,12 @@ function AccountBlock({ s, holdings, securities, classes, people, otherNames }: 
               busyLabel="Deleting…"
               kind="irreversible"
               onCancel={() => setAskAccount(false)}
-              // The same two steps as before (the account's holdings, then the account), not wrapped in one transaction; see the D20.1B report.
-              onConfirm={async () => { await db.holdings.where('accountId').equals(a.id!).delete(); await db.invAccounts.delete(a.id!); setAskAccount(false); }}
+              // RS-1A (NC-19): the holdings and the account go in ONE database transaction. If the account (or any holding) still has tax lots, it is refused before any write
+              // (the check is repeated inside the transaction); Ledger does not delete tax lots along with an account.
+              onConfirm={async () => { const r = await deleteInvestmentAccount(db, a.id!); if (!r.ok) return r.message; setAskAccount(false); }}
             >
               <p><strong>{a.name}</strong><br /><span className="muted small">{KIND_LABEL[a.kind]} · {mine.length} holding{mine.length === 1 ? '' : 's'}</span></p>
-              <p>This deletes the account and its {mine.length} holding{mine.length === 1 ? '' : 's'}. It does not record any sales.</p>
+              {accountBlock ? <p className="warn" role="note">This account still has tax lots, so it cannot be deleted yet. Pressing “Delete account” will not change anything and will explain what to do first.</p> :<p>This deletes the account and its {mine.length} holding{mine.length === 1 ? '' : 's'}. It does not record any sales.</p>}
             </ConfirmDialog>
           )}
         </div>
