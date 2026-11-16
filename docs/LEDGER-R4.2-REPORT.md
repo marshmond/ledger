@@ -1,6 +1,6 @@
 # Ledger R4.2: Family Lenses (report)
 
-Status (2026-11-16): **BUILT AND TESTED LOCALLY. UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED. Awaiting owner and ChatGPT review. NOT REAL-DEVICE TESTED.**
+Status (2026-11-16, corrected during CS-0): **COMMITTED AND DEPLOYED as `3ad8f09` (`feat(family): add family lenses and weekly schedule`), GitHub Pages run #126 success (public API). NOT REAL-DEVICE TESTED.** (The build-time status was: built and tested locally, uncommitted, awaiting review; the rest of this report is unchanged.)
 
 Gate verified first: `main` = `origin/main` = `802747c` (`feat(household): add centralized records index`, R4.1) and GitHub Pages run **#125** is `completed` / `success` (public Actions API; `gh` is not installed), so R4.1 is committed and deployed and none of it is mixed into R4.2. The three protected untracked files (`docs/UI-DESIGN-D0-AUDIT-2026-11-10.md`, `docs/UI-DESIGN-D1-DEMO-DATA-2026-11-10.md`, `scripts/dev-demo-seed.ts`) were not modified. (The demo seed itself was not run: the demo household already existed on the demo address and had everything needed.)
 
