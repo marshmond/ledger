@@ -23,6 +23,8 @@ import { lazyModule } from '../../core/lazyModule';
 import { NEEDS_PATH, NeedsYouPage, NeedsYouSlot } from './NeedsYou';
 import { TodayDataProvider } from './TodayData';
 import { TodayHero } from './TodayHero';
+import { useLens } from '../../core/peopleLens';
+import { PeopleFilterBar } from '../../ui/PeopleLens';
 import { PHONE_QUERY, headingDate } from './todayModel';
 
 export const TODAY_BASE = '/today';
@@ -78,6 +80,7 @@ function TodayScreen({ today }: { today: string }) {
   const [empty, setEmpty] = useState<Record<string, boolean>>({});
   const [noticeOff, setNoticeOff] = useState(() => { try { return localStorage.getItem(NOTICE_KEY) === '1'; } catch { return false; } });
   const settings = useLiveQuery(() => loadTodaySettings(), []);
+  const lens = useLens();
   // R1.1: "Needs you" is not a card and not part of the saved arrangement (nothing about the arrangement changed). It sits at the top of the side column, or above the agenda on one column.
   // The slot reads and ranks in its OWN component (like a card), so a change in any module re-renders only it, not the whole screen; it reports whether it is drawn, so the grid knows.
   const [needsShown, setNeedsShown] = useState(false);
@@ -217,6 +220,7 @@ function TodayScreen({ today }: { today: string }) {
         </div>
       )}
 
+      <PeopleFilterBar lens={lens} note="Today's schedule, tasks and family dates are narrowed to them. Money items, alerts, Needs you and totals are not filtered." className="td-lens" />
       <TodayHero today={today} hideAmounts={hideAmounts} />
 
       {/* The wrapper is the size container: the two columns appear when THIS area is wide enough (a sidebar or a narrow window can take width the screen alone would not show). */}

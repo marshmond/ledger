@@ -20,7 +20,9 @@ import { PERSONAL_ID } from './model';
 import type { Occurrence } from './occurrences';
 import TimeGrid, { weekStartOf, workWeekDays } from './TimeGrid';
 import { dayLabel } from './time';
-import { useCalendarData, useLayerVisibility, useNow, type CalItem } from './useCalendarData';
+import { lensItems, useCalendarData, useLayerVisibility, useNow, withPeople, type CalItem } from './useCalendarData';
+import { useLens } from '../../core/peopleLens';
+import { PeopleFilterBar } from '../../ui/PeopleLens';
 import { dropCovered } from './markerCoordination';
 
 const VIEWS: { id: ViewId; label: string }[] = [
@@ -75,7 +77,9 @@ export default function CalendarPage() {
   const layerIds = useMemo(() => (data?.layers ?? []).map((l) => l.id), [data]);
   const vis = useLayerVisibility(layerIds);
   // B3.1: a Bills marker is left out only while the Finance marker of its linked Scheduled payment is itself shown (display only; nothing is stored or deleted)
-  const items = useMemo(() => dropCovered((data?.items ?? []).filter((i) => vis.isVisible(i.layerId))), [data, vis.vis]); // eslint-disable-line react-hooks/exhaustive-deps
+  // R4.2: the person filter narrows what the switched-on calendars show (it never changes the calendar switches); each item then carries the household people it names.
+  const lens = useLens();
+  const items = useMemo(() => withPeople(lensItems(dropCovered((data?.items ?? []).filter((i) => vis.isVisible(i.layerId))), lens.selected, false), lens.byContact), [data, vis.vis, lens.selected, lens.byContact]); // eslint-disable-line react-hooks/exhaustive-deps
   const defaultCal = useLiveQuery(() => defaultCalendarId(), [settings?.defaultCalendarId]) ?? PERSONAL_ID;
 
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -149,6 +153,7 @@ export default function CalendarPage() {
           <button className="link cal-export" onClick={() => setExporting({})}>Export…</button>
         </div>
       </div>
+      <PeopleFilterBar lens={lens} note="Only events, tasks and family dates that name them are listed here. Your calendar switches under Layers are unchanged." />
       {data && vis.count === 0 && <p className="muted cal-allhidden" role="status">Every calendar is switched off, so nothing is shown. Open <strong>Layers</strong> and choose <strong>Select all</strong>, or switch on a calendar (for example Personal). Nothing was deleted or changed.</p>}
 
       {!data ? <p className="muted">Loading…</p> : (

@@ -1,6 +1,6 @@
 # Ledger R4.1: Records Index (report)
 
-Status (2026-11-16): **BUILT AND TESTED LOCALLY. UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED. Awaiting owner and ChatGPT review. NOT REAL-DEVICE TESTED.**
+Status (2026-11-16): **COMMITTED AND DEPLOYED as `802747c` (`feat(household): add centralized records index`), approved by ChatGPT, GitHub Pages run #125 success (public API). NOT REAL-DEVICE TESTED.**
 
 Gate verified first: `main` = `origin/main` = `bfe96d7` (`feat(search): add deterministic Quick Answers`, R3.2) and GitHub Pages run **#124** is `completed` / `success` (public Actions API; `gh` is not installed), so R3.2 is committed and deployed and none of it is mixed into R4.1. (The R3.2 report, backlog and handoff still say "uncommitted"; they are corrected in this batch.) The three protected untracked files (`docs/UI-DESIGN-D0-AUDIT-2026-11-10.md`, `docs/UI-DESIGN-D1-DEMO-DATA-2026-11-10.md`, `scripts/dev-demo-seed.ts`) are untouched: the demo seed was started once in the browser, refused to run because the demo database already held data, and was not changed.
 

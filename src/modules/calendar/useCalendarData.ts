@@ -16,6 +16,7 @@ import { PERSONAL_ID, type CalendarLayer, type EventRecord } from './model';
 import { occurrencesOf, statusOf, type Occurrence } from './occurrences';
 import { storedItemKey } from './markerCoordination';
 import { loadHideAmounts } from '../../core/hideAmounts';
+import { lensMatches, peopleOf, type HouseholdPerson } from '../../core/householdPeople';
 import {
   ALL_ON, deselectAll, isLayerVisible, parseVisibility, selectAll, serializeVisibility, toggleLayer, VISIBILITY_KEY, visibleCount, type Visibility,
 } from './layerVisibility';
@@ -45,7 +46,28 @@ export interface CalItem {
   source?: DerivedItem;
   /** The project this event or task belongs to, with the words to show for it. Absent when it has none. */
   project?: { id: number; label: string };
+  /** R4.2: the Contact ids the source record names (an event's People, a Task's People). Empty = nobody named. */
+  contactIds?: readonly number[];
+  /** R4.2: the household members those Contacts are, filled in by the screen that shows the item (never stored). */
+  people?: readonly HouseholdPerson[];
 }
+
+/** R4.2: the items with the household people each one names attached (display only; the same item objects are kept when nobody is named). */
+export function withPeople(items: CalItem[], byContact: ReadonlyMap<number, HouseholdPerson>): CalItem[] {
+  if (byContact.size === 0) return items;
+  return items.map((i) => { const people = peopleOf(i.contactIds, byContact); return people.length ? { ...i, people } : i; });
+}
+
+/**
+ * R4.2: the person filter for a list of items. Everyone (nothing chosen) keeps everything. With people chosen, items that can name a person (your own events,
+ * Tasks, Family dates) must name one of them; items from sources that never name a person (Finance, Bills, Services, ...) are kept or dropped by `keepOther`.
+ */
+export function lensItems(items: CalItem[], selected: readonly number[], keepOther: boolean): CalItem[] {
+  if (selected.length === 0) return items;
+  return items.filter((i) => (isPersonSource(i) ? lensMatches(i.contactIds, selected) : keepOther));
+}
+/** Which items can name a person at all: stored events, and the Tasks and Family providers' items. */
+export const isPersonSource = (i: CalItem): boolean => !i.derived || i.source?.sourceModule === 'tasks' || i.source?.sourceModule === 'family';
 
 export function readVisibility(): Visibility {
   try { return parseVisibility(localStorage.getItem(VISIBILITY_KEY)); } catch { return ALL_ON; }
@@ -120,7 +142,7 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
           key: storedItemKey(o.eventId, o.key), title: o.title || '(no title)', layerId: layer.id, layerName: layer.name, color: layer.color,
           derived: false, allDay: o.allDay, firstDay: o.firstDay, lastDay: o.lastDay, startMs: o.startMs, endMs: o.endMs,
           priority: o.priority, location: o.location, done: o.done, overdue: st.overdue, soon: st.soon, recurring: o.recurring, occ: o,
-          project: projectOf(readProjectId(o.event.data)),
+          project: projectOf(readProjectId(o.event.data)), contactIds: o.event.data.contactIds,
         });
       }
     }
@@ -136,7 +158,7 @@ export function useCalendarData(from: string, to: string, includeOverdue: boolea
           key: `d:${it.id}`, title: it.title, layerId: layer?.id ?? -1, layerName: layer?.name ?? p.layerName, color: layer?.color ?? p.color,
           derived: true, allDay: mins === null, firstDay: it.date, lastDay: it.endDate ?? it.date, startMs, endMs: mins === null ? msAt(addDays(it.endDate ?? it.date, 1)) : startMs + 30 * 60_000,
           priority: it.priority, location: '', done: !open, overdue: open && it.date < today, soon: false, recurring: false, source: it,
-          project: projectOf(it.projectId),
+          project: projectOf(it.projectId), contactIds: it.contactIds,
         });
       }
     }

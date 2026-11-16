@@ -17,6 +17,8 @@ export const FAMILY_BASE = '/family';
 export const memberRoute = (id: number) => `/m/${id}`;
 /** The Family dates page, as written inside the module. */
 export const DATES_ROUTE = '/dates';
+/** R4.2: the Family week page, as written inside the module. */
+export const WEEK_ROUTE = '/week';
 
 /** C1 adds `spouse`. A record from before still reads (nothing changes role by itself); an older build shows a `spouse` record as "needs review" until updated. */
 export const ROLES = ['parent', 'spouse', 'child', 'grandparent', 'other'] as const;

@@ -5,6 +5,7 @@ export { PriorityMark };
 import type { CalItem } from './useCalendarData';
 import { timeLabel } from './time';
 import { itemAccessibleName } from './calendarModel';
+import { PeopleChips } from '../../ui/PeopleLens';
 
 export const itemClass = (i: CalItem) =>
   `cal-chip p-${i.priority} ${i.derived ? 'derived' : ''} ${i.done ? 'done' : ''} ${i.overdue ? 'overdue' : ''} ${i.soon ? 'soon' : ''}`;
@@ -38,6 +39,7 @@ export function Chip({ item, onOpen, showTime = true, tabIndex }: { item: CalIte
       {showTime && !item.allDay && <span className="cal-chip-time">{timeLabel(item.startMs).replace(/ ?[AP]M$/i, (m) => m.trim().toLowerCase().slice(0, 1))}</span>}
       <span className="cal-chip-title">{item.title}</span>
       {item.project && <span className="cal-chip-proj" aria-label={`Project: ${item.project.label}`}>◇</span>}
+      {item.people && <span className="cal-chip-people" aria-hidden="true"><PeopleChips people={item.people} variant="dots" max={2} /></span>}
       {item.overdue && <span className="cal-chip-mark" aria-label="Overdue">!</span>}
     </button>
   );

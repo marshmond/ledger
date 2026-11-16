@@ -324,3 +324,9 @@
 /* A project marker on a calendar item: small and quiet, so it never competes with the title. */
 .cal-chip-proj { flex: none; font-size: 0.7em; }
 .cal-proj { color: var(--muted, inherit); }
+
+/* R4.2: who an event or task is for. Names under the title in lists; small dots in the crowded grid cells. */
+.cal-row-people { display: block; margin-top: 3px; }
+.cal-chip-people { flex: none; margin-left: 2px; display: inline-flex; }
+.cal-block-people { position: absolute; top: 3px; right: 4px; display: inline-flex; }
+.cal-block:has(.cal-block-people) .cal-block-title { padding-right: 30px; box-sizing: border-box; }

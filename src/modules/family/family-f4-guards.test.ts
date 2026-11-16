@@ -75,7 +75,7 @@ describe('nothing structural changed', () => {
   });
   it('the overview code is reached only from the lazily loaded page, never from the registration or the due provider', () => {
     const users = family.filter(({ text }) => /from '\.\/(householdOverview|HouseholdSections)'/.test(code(text))).map((x) => x.f).sort();
-    expect(users).toEqual(['src/modules/family/HouseholdSections.tsx', 'src/modules/family/OverviewPage.tsx', 'src/modules/family/weekReview.ts']); // R1.2: the weekly review's reader (also loaded only on demand)
+    expect(users).toEqual(['src/modules/family/HouseholdSections.tsx', 'src/modules/family/OverviewPage.tsx', 'src/modules/family/familyIcs.ts', 'src/modules/family/familyView.ts', 'src/modules/family/weekReview.ts']); // R1.2: the weekly review's reader (also loaded only on demand); R4.2: the shared Family view reader and the family file, both reached only from the lazily loaded Week page
     expect(code(one('index.tsx')) + code(one('dueProvider.ts'))).not.toMatch(/householdOverview|HouseholdSections/);
   });
   it('the only edits to F3\'s readers are exports: no write path, no new import', () => {

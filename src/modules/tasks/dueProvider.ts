@@ -21,6 +21,7 @@ export async function taskDueItems(d: FinanceDB, q: DueQuery): Promise<DerivedIt
       sourceModule: 'tasks', priority: t.data.priority, status: 'open' as const, detail: t.data.notes || undefined,
       openSource: () => goTo(`/tasks?task=${t.id}`), sourceLabel: 'Open task',
       projectId: t.data.projectId,
+      ...(t.data.contactIds.length ? { contactIds: [...t.data.contactIds] } : {}),
     };
     const move = (field: 'dueDate' | 'startDate') => async (date: string) => {
       const cur = await getTask(t.id, d);

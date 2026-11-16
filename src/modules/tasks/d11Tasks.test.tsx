@@ -126,7 +126,7 @@ describe('D11 filters: one state, same options on both layouts', () => {
     expect(page).toContain('useState<Filter>(NO_FILTER)');
     expect((page.match(/<FilterFields env=\{env\}/g) ?? []).length).toBe(2); // the chips and the sheet
     expect((page.match(/setFilter\(NO_FILTER\)/g) ?? []).length).toBeGreaterThanOrEqual(3); // every reset goes to the same default
-    expect(page).toContain('buildView(view, tasks ?? [], deleted,');
+    expect(page).toContain('buildView(view, lensed, lensedDeleted,'); // R4.2: the same call, on the person-filtered lists (identical when nobody is chosen)
     expect(page).not.toMatch(/matchesMobile|mobileFilter|phoneFilter/);
   });
 });

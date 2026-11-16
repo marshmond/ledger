@@ -47,6 +47,8 @@ export interface DerivedItem extends Pick<DueItemInput, 'sourceModule' | 'source
   };
   /** The project this item belongs to, when it comes from a project-linked record (a task, a milestone, a project date). */
   projectId?: number;
+  /** R4.2: the Contact ids the source record names (a Task's People, a family birthday's person). Used only to show who it concerns and for the person filter; absent = nobody named. */
+  contactIds?: number[];
   /** Calendar-file (.ics) export: the event id to use, so a phone calendar that already has the event does not get a duplicate. */
   icsUid?: string;
   /** Calendar-file export: add an alarm this many minutes before the event. */

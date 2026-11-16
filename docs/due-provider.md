@@ -41,6 +41,7 @@ Built on the `DueItem` shape (`src/core/entities.ts`), never stored:
 | `openSource()` | Opens the item in its own module (navigation only). `sourceLabel` is the button text ("Edit in Ledger"). |
 | `actions?` | Optional write-through for modules whose items are normal editable records (Tasks: `complete`, `reopen`, `reschedule`). Leave it out for read-only sources such as Ledger. |
 | `icsUid?`, `icsAlarmMinutes?` | For .ics export: the event id to use, and an alarm. Ledger uses its existing `bill-<ruleId>-<date>@ledger.local` ids so phone calendars do not show duplicates. |
+| `contactIds?` | **R4.2, display and filter only.** The Contact ids the source record names (the Tasks provider: a Task's People; the Family provider: a birthday's person, and the person a date record names). The Calendar, Tasks and Today use it to show who an item concerns and for the person filter. Providers that never name a person (Finance, Bills, Services, Home & Assets, Projects) leave it out. It is never an assignment, is not used by the Family calendar file, and no item is attributed to a person by its title or notes. |
 | `coveredBy?` | **B3.1, display only.** The id of ANOTHER layer's item that already stands for this same occurrence. A display filter (`calendar/markerCoordination.ts`) may leave this item out, but ONLY while that other item is itself being shown. Nothing is deleted, stored or re-identified. See "B3.1 coordination" below. |
 
 ## Linking records (optional)

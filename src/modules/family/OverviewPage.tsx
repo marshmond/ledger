@@ -15,7 +15,7 @@ import { useAddIntent } from './useAddIntent';
 import { MemberDot, MemberMark } from '../../ui/MemberIdentity';
 import { Icon } from '../../ui/icons';
 import { memberColorId } from './memberIdentity';
-import { colorName, DATES_ROUTE, duplicateGroups, effectiveMe, memberHint, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
+import { colorName, DATES_ROUTE, WEEK_ROUTE, duplicateGroups, effectiveMe, memberHint, memberRoute, monthDayText, ROLE_LABEL, type MemberRecord } from './model';
 
 /**
  * The Family overview (F4): the household members as simple cards, then a READ-ONLY summary of the household's next 7 days of Calendar activities,
@@ -38,7 +38,7 @@ export default function OverviewPage() {
       title="Family"
       eyebrow="Household"
       description="The people in your household. Each one is linked to a contact, so tasks and events that name that contact are associated with them."
-      actions={<span className="row"><Link to={DATES_ROUTE} className="btn">Family dates</Link><button type="button" className="btn primary" onClick={() => setAdding(true)}>Add member</button></span>}
+      actions={<span className="row"><Link to={WEEK_ROUTE} className="btn">This week</Link><Link to={DATES_ROUTE} className="btn">Family dates</Link><button type="button" className="btn primary" onClick={() => setAdding(true)}>Add member</button></span>}
     />
   );
   const form = adding && (

@@ -3,6 +3,7 @@ import { addDays } from '../../lib/dates';
 import { fullDate, itemAccessibleName } from './calendarModel';
 import { layoutDay, segmentOnDay } from './layout';
 import { Chip, colorStyle, itemClass, PriorityMark } from './parts';
+import { PeopleChips } from '../../ui/PeopleLens';
 import { onDay, type CalItem } from './useCalendarData';
 import { dayLabel, minutesOfDay, msAt, timeLabel, WEEKDAYS_SHORT } from './time';
 
@@ -100,6 +101,7 @@ export default function TimeGrid({ days, today, now, items, onSlot, onOpenItem, 
                       >
                         <span className="cal-block-title"><PriorityMark priority={i.priority} /> {i.title}</span>
                         <span className="cal-block-time">{timeLabel(i.startMs)}</span>
+                        {i.people && <span className="cal-block-people" aria-hidden="true"><PeopleChips people={i.people} variant="dots" max={3} /></span>}
                       </button>
                     );
                   })}

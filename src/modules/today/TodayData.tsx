@@ -10,7 +10,8 @@ import { loadCalendarSettings } from '../../core/calendarSettings';
 import { useSharedLive } from '../../core/sharedLive';
 import { getModule } from '../../core/registry';
 import { addDays } from '../../lib/dates';
-import { useCalendarData, useNow, type CalItem } from '../calendar/useCalendarData';
+import { lensItems, useCalendarData, useNow, withPeople, type CalItem } from '../calendar/useCalendarData';
+import { useLens } from '../../core/peopleLens';
 import { dropCovered } from '../calendar/markerCoordination';
 import { loadTodaySettings } from './settings';
 
@@ -45,6 +46,8 @@ export function TodayDataProvider({ today, children }: { today: string; children
   const overdueRows = settings?.overdueRows ?? 25;
   const overdueDays = calSettings?.overdueDays ?? 30;
   const data = useCalendarData(today, addDays(today, lookAheadDays), true, now);
+  // R4.2: the person filter narrows only the items that can name a person (your events, Tasks, family dates). Money items and every other source are kept as they are.
+  const lens = useLens();
 
   // "N older items": open things dated before the overdue window, which the Overdue card leaves out. One query for all modules.
   const olderRaw = useSharedLive(`today.older:${today}:${overdueDays}`, async () => {
@@ -61,8 +64,8 @@ export function TodayDataProvider({ today, children }: { today: string; children
   });
 
   const value = useMemo<TodayData>(
-    () => ({ today, items: data?.items ? dropCovered(data.items) : undefined, overdueDays, lookAheadDays, overdueRows, older: olderRaw ?? [] }),
-    [today, data, overdueDays, lookAheadDays, overdueRows, olderRaw],
+    () => ({ today, items: data?.items ? withPeople(lensItems(dropCovered(data.items), lens.selected, true), lens.byContact) : undefined, overdueDays, lookAheadDays, overdueRows, older: olderRaw ?? [] }),
+    [today, data, overdueDays, lookAheadDays, overdueRows, olderRaw, lens.selected, lens.byContact],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

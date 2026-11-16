@@ -256,3 +256,7 @@
   .td-need { padding-inline: var(--sp-3); }
 }
 .td-card > .card-head .td-head-note + .card-link { margin-left: var(--sp-3); }
+
+/* R4.2: who a Today row is for. The line may wrap so a long list of names never pushes the row wider. */
+.td-sub { flex-wrap: wrap; }
+.td-sub .ui-people { margin-left: 2px; }

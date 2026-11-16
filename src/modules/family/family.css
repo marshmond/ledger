@@ -194,3 +194,52 @@
   .fm-date-actions { width: 100%; }
 }
 .fm-date-row .fm-card-text { flex: 1 1 auto; align-items: flex-start; text-align: left; }
+
+/* ---------- R4.2: Family → This week ---------- */
+.fm-wk-actions { flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.fm-wk-nav button { min-height: 36px; }
+.fm-wk-days { display: grid; gap: var(--sp-3); }
+.fm-wk-day { padding: var(--sp-3) var(--sp-4); }
+.fm-wk-day.today { box-shadow: inset 3px 0 0 var(--accent); }
+.fm-wk-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.fm-wk-head .card-title { margin: 0; display: inline-flex; align-items: center; gap: var(--sp-2); flex: 1 1 auto; }
+.fm-wk-list { margin: 0; padding: 0; display: flex; flex-direction: column; }
+.fm-wk-item { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; gap: var(--sp-3); align-items: start; padding: var(--sp-2) 0; border-top: 1px solid var(--line); min-height: 44px; }
+.fm-wk-item:first-child { border-top: 0; }
+.fm-wk-item.done .fm-item-title { text-decoration: line-through; opacity: 0.7; }
+.fm-wk-when { font-size: var(--fs-sm); color: var(--fg-2); font-variant-numeric: tabular-nums; padding-top: 2px; }
+.fm-wk-main { display: grid; gap: 4px; min-width: 0; }
+.fm-wk-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.fm-wk-kind { font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.fm-wk-task .fm-wk-kind { color: var(--fg-2); }
+.fm-wk-empty { margin: 0; }
+.fm-wk-carried { border-left: 3px solid var(--warn); }
+.fm-wk-foot { margin-top: var(--sp-3); }
+.fm-printonly { display: none; }
+@media (max-width: 640px) {
+  .fm-wk-item { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .fm-wk-src { display: none; }
+  .fm-wk-nav button { min-height: 44px; }
+}
+/* Paper: a plain readable schedule. Names, kind words and times are all text, so it reads in grayscale; the colored dots are only decoration. */
+@media print {
+  .fm-wk .fm-noprint, .fm-wk .page-actions, .fm-wk .ui-lens { display: none; }
+  .fm-printonly { display: block; }
+  .fm-printonly h1 { font-size: 18pt; margin: 0 0 4pt; }
+  .fm-wk { color: CanvasText; }
+  .fm-wk .card.fm-wk-day { box-shadow: none; border: 1px solid CanvasText; background: Canvas; break-inside: avoid; margin-bottom: 8pt; }
+  .fm-wk-days { display: block; }
+  .fm-wk-item { grid-template-columns: 8.5em minmax(0, 1fr); break-inside: avoid; }
+  .fm-wk-src { display: none; }
+  .fm-wk a { color: inherit; text-decoration: none; }
+  .fm-wk .ui-people .ui-mchip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .fm-wk .ui-mdot { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .fm-wk-kind { color: CanvasText; }
+}
+@media (max-width: 640px) {
+  .fm-wk-day { padding: var(--sp-2) var(--sp-3); }
+  .fm-wk-head { gap: var(--sp-2); margin-bottom: 0; }
+  .fm-wk-head:has(+ .fm-wk-list) { margin-bottom: var(--sp-2); }
+  .fm-wk-head .card-title { flex: 0 1 auto; }
+  .fm-wk-empty { margin-left: auto; text-align: right; }
+}

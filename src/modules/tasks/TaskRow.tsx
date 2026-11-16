@@ -6,6 +6,8 @@ import { StatusChip } from '../../ui/StatusChip';
 import { isOverdue } from './views';
 import { dueState } from './viewModel';
 import { projectLabel, type ProjectChoice } from '../../core/projectLink';
+import type { HouseholdPerson } from '../../core/householdPeople';
+import { PeopleChips } from '../../ui/PeopleLens';
 
 const timeText = (hm: string) => {
   const [h, m] = hm.split(':').map(Number);
@@ -17,8 +19,8 @@ const timeText = (hm: string) => {
  * shared left-aligned row (`ui-row`), so the title no longer centers; its parts sit in fixed columns on a computer (title, project and
  * steps, due date) and flow onto two lines on a phone. Every piece of information, control and label from before is still here.
  */
-export default function TaskRow({ task, lists, tags, projects, today, selecting, selected, onSelect, onOpen, onToggle, restore }: {
-  task: TaskRecord; lists: TaskList[]; tags: { id: number; name: string }[]; projects?: ProjectChoice[]; today: string;
+export default function TaskRow({ task, people, lists, tags, projects, today, selecting, selected, onSelect, onOpen, onToggle, restore }: {
+  task: TaskRecord; /** R4.2: the household people this Task names under People (none when it names nobody). */ people?: readonly HouseholdPerson[]; lists: TaskList[]; tags: { id: number; name: string }[]; projects?: ProjectChoice[]; today: string;
   selecting: boolean; selected: boolean; onSelect: (id: number) => void; onOpen: (t: TaskRecord) => void; onToggle: (t: TaskRecord) => void;
   /** In the Deleted view, a Restore button replaces the tick box. */
   restore?: (t: TaskRecord) => void;
@@ -31,7 +33,7 @@ export default function TaskRow({ task, lists, tags, projects, today, selecting,
   const steps = d.checklist.length ? `${d.checklist.filter((c) => c.done).length}/${d.checklist.length} steps` : '';
   const at = d.dueDate && d.dueTime ? ` at ${timeText(d.dueTime)}` : '';
   const hasProject = d.projectId !== undefined;
-  const extras = !!list || d.tagIds.length > 0 || !!d.createdFrom;
+  const extras = !!list || d.tagIds.length > 0 || !!d.createdFrom || !!people?.length;
   return (
     <li className={`tk-row p-${d.priority} due-${state} ${done ? 'done' : ''} ${late ? 'late' : ''} ${selected ? 'selected' : ''}`}>
       {restore ? (
@@ -67,6 +69,7 @@ export default function TaskRow({ task, lists, tags, projects, today, selecting,
             {list && <span>{list.name}</span>}
             {d.tagIds.map((id) => <span key={id}>#{tags.find((t) => t.id === id)?.name ?? '?'}</span>)}
             {d.createdFrom && <span title="Made from another record">↗ {d.createdFrom.label}</span>}
+            {!!people?.length && <PeopleChips people={people} />}
           </span>
         )}
       </button>

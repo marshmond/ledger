@@ -5,6 +5,7 @@ import { DateTile } from '../../ui/DateTile';
 import { Icon } from '../../ui/icons';
 import { StatusChip } from '../../ui/StatusChip';
 import { useToast } from '../../ui/Toast';
+import { PeopleChips } from '../../ui/PeopleLens';
 import { markOccurrenceDone } from '../calendar/data';
 import { PriorityMark, whenLabel } from '../calendar/parts';
 import type { CalItem } from '../calendar/useCalendarData';
@@ -67,6 +68,7 @@ export function TodayRow({ item, hideAmounts, when, tile }: { item: CalItem; hid
         <span className="td-sub">
           {tile && <span className="td-sub-kind" aria-hidden="true"><Icon name={icon} size={13} /></span>}
           {item.layerName}{item.location ? ` · ${item.location}` : ''}
+          {item.people && <PeopleChips people={item.people} />}
         </span>
       </span>
       <span className="td-act">

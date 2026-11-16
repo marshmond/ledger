@@ -11,6 +11,9 @@ import Modal from '../../shell/Modal';
 import ConfirmDialog from '../../shell/ConfirmDialog';
 import { useToast } from '../../ui/Toast';
 import { projectLabel, selectableProjects, useProjectChoices } from '../../core/projectLink';
+import { peopleOf } from '../../core/householdPeople';
+import { useLens } from '../../core/peopleLens';
+import { PeopleFilterBar } from '../../ui/PeopleLens';
 import { dayLabel } from '../../core/time';
 import { announceTaskDone } from '../../core/taskFollowUp';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
@@ -52,6 +55,8 @@ export default function TasksPage() {
   const projects = useProjectChoices();
   const tagList = useMemo(() => tags.map((t) => ({ id: t.id as number, name: t.name })), [tags]);
 
+  // R4.2: the shared person filter. It narrows by each Task's own People (`contactIds`); with nobody chosen every Task, including those naming no one, is listed.
+  const lens = useLens();
   const view: ViewId = isView(sp.get('v')) ? (sp.get('v') as ViewId) : lastView();
   const [filter, setFilter] = useState<Filter>(NO_FILTER);
   const [sort, setSort] = useState<SortKey>('due');
@@ -94,11 +99,13 @@ export default function TasksPage() {
 
   // In Completed the natural order is "recently completed"; everywhere else that choice means the default (due date).
   const effSort: SortKey = view === 'completed' ? (sort === 'due' ? 'completed' : sort) : sort === 'completed' ? 'due' : sort;
+  const lensed = useMemo(() => (lens.active ? (tasks ?? []).filter((t) => lens.matches(t.data.contactIds)) : tasks ?? []), [tasks, lens.active, lens.selected]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lensedDeleted = useMemo(() => (lens.active ? deleted.filter((t) => lens.matches(t.data.contactIds)) : deleted), [deleted, lens.active, lens.selected]); // eslint-disable-line react-hooks/exhaustive-deps
   const groups = useMemo(
-    () => buildView(view, tasks ?? [], deleted, { today, days, sort: effSort, filter, lists, tags: tagList }),
-    [view, tasks, deleted, today, days, effSort, filter, lists, tagList],
+    () => buildView(view, lensed, lensedDeleted, { today, days, sort: effSort, filter, lists, tags: tagList }),
+    [view, lensed, lensedDeleted, today, days, effSort, filter, lists, tagList],
   );
-  const badge = useMemo(() => counts(tasks ?? [], today), [tasks, today]);
+  const badge = useMemo(() => counts(lensed, today), [lensed, today]);
   const listCounts = useMemo(() => {
     const m = new Map<number, number>();
     for (const t of tasks ?? []) if (isOpen(t) && t.data.listId !== null) m.set(t.data.listId, (m.get(t.data.listId) ?? 0) + 1);
@@ -184,7 +191,7 @@ export default function TasksPage() {
   };
   const filtering = isFiltering(filter);
   const env: FilterEnv = { filter, onChange: f, lists, tags: tagList, projects };
-  const openCount = tasks.filter(isOpen).length;
+  const openCount = lensed.filter(isOpen).length;
   const summary = `${openCount} open · ${badge.overdue} overdue · ${badge.waiting} waiting`;
   const active = describeFilters(filter, { lists, tags: tagList, projectLabel: (id) => projectLabel(projects, id), contact: filteredContact });
   const toggleSelecting = () => { setSelecting(!selecting); setSelected(new Set()); };
@@ -195,6 +202,7 @@ export default function TasksPage() {
       <PageHeader title="Tasks" eyebrow="Productivity" description={summary} actions={<button className="link" onClick={() => setManageLists(true)}>Lists…</button>} />
       <QuickAddBar />
 
+      <PeopleFilterBar lens={lens} note="Only tasks that name them under People are listed, and the counts above are theirs." />
       {phone ? <PhoneViews view={view} counts={badge} onGo={go} /> : <ViewTabs view={view} counts={badge} onGo={go} />}
 
       {phone ? (
@@ -284,7 +292,7 @@ export default function TasksPage() {
               <h2>{view === 'upcoming' && /^\d{4}-/.test(g.title) ? dayLabel(g.title, { weekday: 'long' }) : g.title} <span className="tk-gcount">{g.tasks.length}</span></h2>
               <ul className="plain">
                 {g.tasks.map((t) => (
-                  <TaskRow key={t.id} task={t} lists={lists} tags={tagList} projects={projects} today={today} selecting={selecting} selected={selected.has(t.id)}
+                  <TaskRow key={t.id} task={t} people={peopleOf(t.data.contactIds, lens.byContact)} lists={lists} tags={tagList} projects={projects} today={today} selecting={selecting} selected={selected.has(t.id)}
                     onSelect={(id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; })}
                     onOpen={setEditing} onToggle={(x) => void toggle(x)}
                     restore={view === 'deleted' ? async (x) => { await restoreTasks([x.id]); toast('Task restored'); } : undefined} />

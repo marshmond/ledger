@@ -9,6 +9,7 @@
  */
 import { addDays, addMonths, dayOfWeek } from '../../lib/dates';
 import { dateTileModel } from '../../ui/dateTileModel';
+import { nameList } from '../../core/householdPeople';
 import { PRIORITY_LABEL } from './model';
 import { timeLabel, WEEKDAYS_LONG, WEEKDAYS_SHORT } from './time';
 import { onDay, type CalItem } from './useCalendarData';
@@ -105,6 +106,7 @@ export function itemAccessibleName(i: CalItem): string {
   if (i.soon) parts.push('due soon');
   if (i.done && !i.derived) parts.push('done');
   if (i.project) parts.push(`project ${i.project.label}`);
+  if (i.people?.length) parts.push(`for ${nameList(i.people.map((p) => p.name))}`);
   return parts.join(', ');
 }
 

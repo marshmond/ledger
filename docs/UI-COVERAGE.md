@@ -46,7 +46,7 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 | Inventory | Total | Accepted |
 |---|---|---|
-| Routed page destinations | 59 | 0 |
+| Routed page destinations | 61 | 0 |
 | Global surfaces | 25 | 0 |
 | In-page views | 31 | 0 |
 | Dialogs (`<Modal>` call sites) | 63 | 0 |
@@ -85,6 +85,8 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | Y | Y | Y | Y | . | Y |
 | S-24 | Quick Answers screen and the Answers group in Search | `src/shell/AnswersPage.tsx`, `src/shell/searchAnswers.ts` | R3.2 | BLT | Y | . | Y | . | . | Y |
 | S-25 | Records screen and the Documents group in Search | `src/shell/RecordsPage.tsx`, `src/shell/recordsIndex.ts` | R4.1 | BLT | Y | . | Y | . | . | Y |
+
+R4.2 note (Family Lenses, not a design phase): `F-04` (`/family/week`) is new: marks `L`, `D` (looked at in the browser pane on the invented demo household), `375` (no sideways scroll; checked), `Func` (person filter, Print week preview with the print rules switched on, Download family calendar read back in memory). NOT recorded: `1440` (the pane is narrower), `Kbd` (no full Tab walk), a real print, a real phone. The shared person filter bar and the person chips were ADDED to C-01 Calendar (Agenda, Week, Month cells), T-01 Tasks, the Today page and the Family overview's header (a "This week" link); those rows keep their earlier status and marks because only an extra control and small markers were added, not a redesign. The filter bar is `src/ui/PeopleLens.tsx`.
 
 S-25 note (R4.1, not a design phase): the Records screen (`#/records`, `#/records?ref=<id>`), the "Records" link in the open module list and the Documents rows in the Search dialog were built from the Signature components already in place. Recorded marks: `L` and `375` (looked at in the browser pane on the invented demo household, light; 375 px had no sideways scroll and no control under 44 px), `Func` (search, every filter, an Open document link attributes, View record on a property/appliance, an arrangement and a bill, Search to a single reference, Hide amounts masking an amount typed in a label). NOT recorded: `D` (dark was not looked at), `1440` (the pane is narrower), `Kbd` (no full Tab walk). The Search dialog row S-06 and the module switcher S-02 are unchanged in status.
 
@@ -254,6 +256,7 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 | F-01 | `/family` | `src/modules/family/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
 | F-02 | `/family/m/:id` | `src/modules/family/MemberPage.tsx` | D9, D15 | BLT | Y | Y | Y | Y | Y | Y |
 | F-03 | `/family/dates` | `src/modules/family/DatesPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
+| F-04 | `/family/week` | `src/modules/family/WeekPage.tsx` | R4.2 | BLT | Y | Y | Y | . | . | Y |
 | N-01 | `/contacts` | `src/modules/contacts/DirectoryPage.tsx` | D14 | BLT | Y | Y | Y | Y | Y | Y |
 | N-02 | `/contacts/c/:id` | `src/modules/contacts/ContactPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
 

@@ -97,20 +97,22 @@ export function buildFamilyItems(
         id: derivedId('family', `birthday-${s.memberId}`, date), sourceModule: 'family', sourceRecordId: `member:${s.memberId}`,
         title: birthdayMarkerTitle(s.name), date, allDay: true, priority: 'low', status: status(date, q.today), detail: 'Birthday',
         openSource: () => goTo(`${FAMILY_BASE}${memberRoute(s.memberId)}`), sourceLabel: 'Open in Family',
-        icsUid: `family-birthday-${s.memberId}-${date}@ledger.local`,
+        icsUid: `family-birthday-${s.memberId}-${date}@ledger.local`, contactIds: [s.contactId],
         ...(cover ? { coveredBy: cover } : {}),
       });
     }
   }
+  const byId = new Map(input.members.map((m) => [m.id, m]));
   for (const r of input.dates) {
     const d = r.data;
     if (!d || d.status !== 'active' || d.onCalendar === false) continue;
+    const aboutContact = d.memberId !== undefined ? byId.get(d.memberId)?.data?.contactId : undefined;
     for (const date of datesInRange(d.monthDay, q.from, q.to)) {
       out.push({
         id: derivedId('family', `date-${r.id}`, date), sourceModule: 'family', sourceRecordId: `date:${r.id}`,
         title: d.label, date, allDay: true, priority: 'low', status: status(date, q.today), detail: DATE_KIND_LABEL[d.dateKind],
         openSource: () => goTo(`${FAMILY_BASE}${DATES_ROUTE}`), sourceLabel: 'Open Family dates',
-        icsUid: `family-date-${r.id}-${date}@ledger.local`,
+        icsUid: `family-date-${r.id}-${date}@ledger.local`, ...(aboutContact !== undefined ? { contactIds: [aboutContact] } : {}),
       });
     }
   }

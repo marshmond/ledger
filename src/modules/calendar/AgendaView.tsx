@@ -4,6 +4,7 @@ import { itemAccessibleName } from './calendarModel';
 import { Flags, PriorityMark, colorStyle, itemClass, whenLabel } from './parts';
 import { onDay, type CalItem } from './useCalendarData';
 import { dayLabel } from './time';
+import { PeopleChips } from '../../ui/PeopleLens';
 
 /** One row in a list: when, priority, title, which calendar, where. */
 export function AgendaRow({ item, onOpen }: { item: CalItem; onOpen: (i: CalItem) => void }) {
@@ -17,6 +18,7 @@ export function AgendaRow({ item, onOpen }: { item: CalItem; onOpen: (i: CalItem
           <span className="cal-row-sub">
             {item.layerName}{item.location ? ` · ${item.location}` : ''}{item.recurring ? ' · repeats' : ''}{item.project ? <span className="cal-proj" title="Project"> · ◇ {item.project.label}</span> : null} <Flags item={item} />
           </span>
+          {item.people && <span className="cal-row-people"><PeopleChips people={item.people} /></span>}
         </span>
       </button>
     </li>
@@ -48,6 +50,7 @@ export default function AgendaView({ from, days, today, items, onOpenItem, onCre
                   <span className="cal-row-main">
                     <span className="cal-row-title"><PriorityMark priority={i.priority} /> {i.title}</span>
                     <span className="cal-row-sub">{i.layerName}{i.project ? <span className="cal-proj"> · ◇ {i.project.label}</span> : null}</span>
+                    {i.people && <span className="cal-row-people"><PeopleChips people={i.people} /></span>}
                   </span>
                 </button>
               </li>

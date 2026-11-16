@@ -6,6 +6,7 @@ import { ToastProvider } from '../../ui/Toast';
 import DatesPage from './DatesPage';
 import MemberPage from './MemberPage';
 import OverviewPage from './OverviewPage';
+import WeekPage from './WeekPage';
 import { FAMILY_BASE } from './model';
 
 const Member = () => { const n = Number(useParams().id); return Number.isInteger(n) ? <MemberPage id={n} /> : <OverviewPage />; };
@@ -22,6 +23,7 @@ export default function FamilyModule() {
               <Route index element={<OverviewPage />} />
               <Route path="m/:id" element={<Member />} />
               <Route path="dates" element={<DatesPage />} />
+              <Route path="week" element={<WeekPage />} />
               <Route path="*" element={<OverviewPage />} />
             </Routes>
           </Main>
