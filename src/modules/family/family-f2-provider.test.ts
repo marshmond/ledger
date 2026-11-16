@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FinanceDB } from '../../db';
+import { scanText } from '../../lib/leakTestkit';
 import { createStore } from '../../core/store';
 import { queryProviders, type DerivedItem, type DueProvider } from '../../core/dueProvider';
 import { exportAll, importAll } from '../../lib/backup';
@@ -95,8 +96,8 @@ describe('member birthdays', () => {
     expect(await everyTable(d)).toBe(before); // read-only: byte-identical
     expect(await loadEvents(d)).toEqual([]);
     expect(await d.moduleRecords.where('module').equals('tasks').count()).toBe(0);
-    const text = JSON.stringify(items.map((i) => [i.title, i.detail, i.icsUid]));
-    for (const secret of ['2016', 'Private', '555', 'sam@example']) expect(text).not.toContain(secret);
+    const text = scanText(items.map((i) => [i.title, i.detail, i.icsUid])); // RS-1B: scanText hides generated ids, so a bare number cannot match one by chance
+    for (const secret of ['2016', 'Private', '555-0100', 'sam@example']) expect(text).not.toContain(secret); // RS-1B: the phone is matched whole, not just '555'
   });
 
   it('the name is the Contact\'s CURRENT name (rename the Contact and the title follows); a missing or deleted Contact gives no marker and no crash', async () => {

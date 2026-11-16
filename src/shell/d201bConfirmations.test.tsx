@@ -415,9 +415,11 @@ describe('D20.1B complex group: RSU schedule, even split and grant delete', () =
     const at = (s: string) => t.indexOf(s);
     expect(at('const problem = grantProblem(g);')).toBeGreaterThan(-1);
     expect(at('const problem = grantProblem(g);')).toBeLessThan(at('scheduleChange(full, vests).orphaned'));
-    expect(at('scheduleChange(full, vests).orphaned')).toBeLessThan(at('setAskSave({ full, security, goneIds'));
-    expect(at('setAskSave({ full, security, goneIds')).toBeLessThan(at('const id = await saveGrant(db, full);'));
-    expect(t).not.toMatch(/saveGrant\(db, full\)[\s\S]*saveGrant\(db, full\)/); // one saveGrant call site
+    expect(at('scheduleChange(full, vests).orphaned')).toBeLessThan(at('setAskSave({ full, security, newStock, goneIds'));
+    // RS-1B (NC-30): the question comes before the ONE save call, and the stock lookup creates nothing (the security is made inside the save's own transaction).
+    expect(at('setAskSave({ full, security, newStock, goneIds')).toBeLessThan(at('await saveGrantWithStock(db, full, newStock);'));
+    expect(t.match(/saveGrantWithStock\(db/g)).toHaveLength(1); // one save call site
+    expect(t).not.toMatch(/securityForTicker|securities\.add/);
   });
   it('NC-31: deleting a grant removes unrecorded vests, detaches recorded ones as single vests, and leaves another grant alone', async () => {
     const a = (await d.rsuGrants.add(grant())) as number;

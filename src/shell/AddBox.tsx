@@ -92,7 +92,9 @@ function AddBoxInner() {
     setError('');
     try {
       const undo = await dest.commit(preview);
-      toast(`Added: ${preview.summary}`, typeof undo === 'function' ? undo : undefined);
+      // An Undo that is refused throws its plain-words message; show it as a toast rather than letting it escape unhandled.
+      const guarded = typeof undo === 'function' ? async () => { try { await undo(); } catch (e) { toast(e instanceof Error && e.message ? e.message : 'Could not undo that. No changes were made.'); } } : undefined;
+      toast(`Added: ${preview.summary}`, guarded);
       close();
     } catch (e) {
       setBusy(false);

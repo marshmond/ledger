@@ -29,6 +29,8 @@ export default function CategoriesPage() {
   const cats = useLiveQuery(() => db.categories.toArray(), []);
   const targets = useLiveQuery(() => db.budgetTargets.toArray(), []) ?? [];
   // D20.1B (NC-10): the category whose delete was pressed (by id) and how many transactions used it when the question was shown.
+  // RS-1B: the refusal for deleting a group that still has categories shows inline (was a native alert).
+  const [groupNote, setGroupNote] = useState('');
   const [askCat, setAskCat] = useState<{ id: number; used: number } | null>(null);
   const askCatRow = askCat ? (cats ?? []).find((c) => c.id === askCat.id) : undefined;
   const [newGroup, setNewGroup] = useState('');
@@ -87,7 +89,8 @@ export default function CategoriesPage() {
 
   async function removeGroup(id: number) {
     if (id === SETUP_GROUP_ID) return;
-    if ((cats ?? []).some((c) => c.groupId === id)) return alert('Delete or move this group’s categories first.');
+    setGroupNote('');
+    if ((cats ?? []).some((c) => c.groupId === id)) return setGroupNote('Delete or move this group’s categories first.');
     await db.categoryGroups.delete(id);
   }
 
@@ -172,6 +175,7 @@ export default function CategoriesPage() {
         <div className="mny-fig"><dt>Income categories</dt><dd>{(cats ?? []).filter((c) => c.kind === 'income').length}</dd></div>
         <div className="mny-fig"><dt>Targets</dt><dd>{targets.length}</dd></div>
       </dl>
+      {groupNote && <div className="error" role="alert">{groupNote}</div>}
       {groups.map((g) => {
         const gid = g.id!;
         const setup = gid === SETUP_GROUP_ID;

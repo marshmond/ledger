@@ -124,8 +124,8 @@ export function parseBillQuick(text: string, today: string, contacts: string[], 
 
 let known: string[] = [];
 let opCounter = 0;
-/** Shows a refusal where a toast is not available (Quick Add's Undo runs outside the toast system). */
-const say = (text: string) => { if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(text); };
+/** Quick Add's Undo runs outside the toast system, so a refusal is thrown with its plain-words message; the Add box catches it and shows it in a toast (no native alert). */
+const say = (text: string): void => { throw new Error(text); };
 
 const amountWords = (d: ObligationData, hide: boolean) => {
   const c = d.prices[0]?.cents ?? null;

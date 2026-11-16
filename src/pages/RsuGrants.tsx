@@ -8,9 +8,13 @@ import { resolveVest } from '../lib/rsu';
 import { inScope } from './incomeOwners';
 import ConfirmDialog from '../shell/ConfirmDialog';
 import {
-  FREQUENCY_LABELS, deleteGrant, fillEvenly, grantProblem, refreshSecurityPrice, saveGrant, scheduleChange, securityForTicker, setVestShares, vestDates,
+  FREQUENCY_LABELS, deleteGrant, fillEvenly, grantProblem, findSecurityForTicker, refreshSecurityPrice, saveGrantWithStock, scheduleChange, setVestShares, vestDates,
 } from '../lib/rsuGrant';
 
+/** NC-30: a stock grant whose ticker has no security yet. Its security is created only when the save goes ahead. */
+type NewStock = { ticker: string; assetClassId: number };
+/** Stands in for the not-yet-created security id so the grant can be validated; never saved (the saved grant gets the real id). */
+const PENDING_STOCK = -1;
 const blank = (personId: number | undefined): Partial<RsuGrant> => ({ personId, name: '', startDate: todayISO(), frequency: 'quarterly', years: 4, cliffMonths: null, kind: 'cash', priceCents: null, afterVest: 'sold', accountId: null });
 
 /** A text box that saves when you click away or press Enter; text that is not valid goes back to the saved value. */
@@ -171,7 +175,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
   const [busy, setBusy] = useState(false);
   // D20.1B (NC-30, NC-31): the grant save that would drop vests (the grant, the resolved stock, the vests by id), and the grant whose "delete" was pressed (by id).
   // Nothing is saved or deleted until the dialog's own button is pressed.
-  const [askSave, setAskSave] = useState<{ full: RsuGrant; security: Security | undefined; goneIds: number[] } | null>(null);
+  const [askSave, setAskSave] = useState<{ full: RsuGrant; security: Security | undefined; newStock?: NewStock; goneIds: number[] } | null>(null);
   const [askDelete, setAskDelete] = useState<number | null>(null);
   const askDeleteGrant = askDelete === null ? undefined : allGrants.find((x) => x.id === askDelete);
 
@@ -202,28 +206,34 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
     const priceCents = draft.kind === 'cash' ? parseAmountToCents(priceText) : null;
     if (draft.kind === 'cash' && priceText.trim() !== '' && (priceCents === null || priceCents <= 0)) return setMsg('The price is not a valid amount');
     let security: Security | undefined;
+    let newStock: NewStock | undefined;
     if (draft.kind === 'stock') {
       if (!ticker.trim()) return setMsg('Enter the stock ticker');
       if (!defaultClass) return setMsg('Add an asset class on the Investments tab first');
-      security = await securityForTicker(db, ticker, defaultClass.id!);
+      // NC-30: look the stock up, never create it here. A new ticker is created only when the save itself goes ahead.
+      security = await findSecurityForTicker(db, ticker);
+      if (!security) newStock = { ticker, assetClassId: defaultClass.id! };
     }
     // A new grant in one person's workspace always belongs to that person; only editing an existing grant can deliberately move it to someone else.
-    const g = { ...draft, personId: scoped && !editing ? personId : draft.personId ?? (people.length === 1 ? people[0].id : undefined), priceCents, securityId: security?.id ?? null, years: Number(draft.years), cliffMonths: draft.cliffMonths || null } as Partial<RsuGrant>;
+    const g = { ...draft, personId: scoped && !editing ? personId : draft.personId ?? (people.length === 1 ? people[0].id : undefined), priceCents, securityId: security?.id ?? (newStock ? PENDING_STOCK : null), years: Number(draft.years), cliffMonths: draft.cliffMonths || null } as Partial<RsuGrant>;
     const problem = grantProblem(g);
     if (problem) return setMsg(problem);
-    const full = { ...g, ...(editing ? { id: editing } : {}) } as RsuGrant;
+    const full = { ...g, securityId: security?.id ?? null, ...(editing ? { id: editing } : {}) } as RsuGrant;
     if (editing) {
       // NC-30 (D20.1B): validated first, then the vests this schedule would drop are listed and the question is asked. Nothing is saved until the dialog's own button is pressed.
       const gone = scheduleChange(full, vests).orphaned.filter((v) => !v.recorded);
-      if (gone.length > 0) { setAskSave({ full, security, goneIds: gone.map((v) => v.id!) }); return; }
+      if (gone.length > 0) { setAskSave({ full, security, newStock, goneIds: gone.map((v) => v.id!) }); return; }
     }
-    await commitSave(full, security);
+    await commitSave(full, security, newStock);
   }
   /** The save itself (unchanged): the grant, its vests that no longer fit, then the optional price lookup. */
-  async function commitSave(full: RsuGrant, security: Security | undefined) {
+  async function commitSave(full: RsuGrant, security: Security | undefined, newStock?: NewStock) {
     setBusy(true);
     try {
-      const id = await saveGrant(db, full);
+      // NC-30: a new stock's security row is created inside this same transaction as the grant.
+      const saved = await saveGrantWithStock(db, full, newStock);
+      const id = saved.id;
+      security = saved.security ?? security;
       let note = 'Saved';
       if (security && security.priceCents == null) {
         const r = await refreshSecurityPrice(db, security);
@@ -241,7 +251,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
     }
   }
   /** NC-30, on confirm: the grant and its vests are read again; if what would be dropped is no longer the list that was shown, nothing is saved and the dialog says so. */
-  async function confirmSave(a: { full: RsuGrant; security: Security | undefined; goneIds: number[] }) {
+  async function confirmSave(a: { full: RsuGrant; security: Security | undefined; newStock?: NewStock; goneIds: number[] }) {
     if (!(await db.rsuGrants.get(a.full.id!))) throw new Error('This grant no longer exists. Nothing was saved.');
     const fresh = await db.rsuVests.where('grantId').equals(a.full.id!).toArray();
     const now = scheduleChange(a.full, fresh).orphaned.filter((v) => !v.recorded).map((v) => v.id!).sort((x, y) => x - y);
@@ -250,7 +260,7 @@ export default function RsuGrants({ people, vests, securities, invAccounts, pers
       setAskSave({ ...a, goneIds: now });
       return `The vests this schedule would drop changed while the question was open (now ${now.length}). Nothing was saved. Check the list and confirm again.`;
     }
-    await commitSave(a.full, a.security);
+    await commitSave(a.full, a.security, a.newStock);
     setAskSave(null);
   }
 

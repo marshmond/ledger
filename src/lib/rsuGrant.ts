@@ -181,6 +181,24 @@ export async function deleteGrant(d: FinanceDB, grantId: number): Promise<number
   });
 }
 
+/** Read-only: the security for a ticker (any case), or undefined. Never creates anything (NC-30). */
+export async function findSecurityForTicker(d: FinanceDB, ticker: string): Promise<Security | undefined> {
+  const t = ticker.trim().toUpperCase();
+  return (await d.securities.toArray()).find((s) => s.ticker.toUpperCase() === t);
+}
+
+/**
+ * NC-30: saves a grant and, for a stock grant whose ticker has no security yet, creates that security in the SAME transaction.
+ * Nothing exists before this runs, and if the grant or its vests fail to save, the new security is rolled back too.
+ */
+export async function saveGrantWithStock(d: FinanceDB, grant: RsuGrant, newStock?: { ticker: string; assetClassId: number }): Promise<{ id: number; security: Security | undefined }> {
+  return d.transaction('rw', d.rsuGrants, d.rsuVests, d.securities, async () => {
+    const security = newStock ? await securityForTicker(d, newStock.ticker, newStock.assetClassId) : undefined;
+    const id = await saveGrant(d, security ? { ...grant, securityId: security.id! } : grant);
+    return { id, security };
+  });
+}
+
 /** Finds the security for a ticker (any case) or creates it in the given asset class. */
 export async function securityForTicker(d: FinanceDB, ticker: string, assetClassId: number): Promise<Security> {
   const t = ticker.trim().toUpperCase();

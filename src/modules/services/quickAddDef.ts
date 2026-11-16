@@ -71,8 +71,8 @@ let known: string[] = [];
 /** The preview line for a provider typed into Quick Add. `exists` only says a Contact with that name is in your contacts; it is NOT linked (U2). */
 const providerNote = (name: string, exists: boolean) => `${name} (saved as a name only, no contact linked${exists ? '; a contact with this name exists, link the right one afterwards' : ''})`;
 
-/** Shows a refusal where a toast is not available (Quick Add's Undo runs outside the toast system). */
-const say = (text: string) => { if (typeof window !== 'undefined' && typeof window.alert === 'function') window.alert(text); };
+/** Quick Add's Undo runs outside the toast system, so a refusal is thrown with its plain-words message; the Add box catches it and shows it in a toast (no native alert). */
+const say = (text: string): void => { throw new Error(text); };
 
 /**
  * The Add box's Household Services destination. Shows what was understood; nothing is saved until Add is pressed.

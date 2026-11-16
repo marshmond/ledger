@@ -68,7 +68,7 @@ export interface TaxTables {
   ma: {
     rate: number;
     surtaxRate: number;
-    /** UNVERIFIED for 2026: sources disagree; $1,083,150 is the most common figure. */
+    /** MA DOR (mass.gov 4% surtax page, updated 2026-06-01): $1,083,150 for 2025, $1,107,750 for 2026. Corrected in RS-1B. */
     surtaxThreshold: number;
     personalExemptionMFJ: number;
     dependentExemption: number;
@@ -90,7 +90,7 @@ export const TAX_2026: TaxTables = {
   notes: [
     'Federal brackets, standard deduction, health FSA: IRS Rev. Proc. 2025-32.',
     '401(k) limits: IRS Notice 2025-67. Social Security wage base: SSA.',
-    'UNVERIFIED: dependent care FSA ($7,500), HSA catch-up ($1,000, statutory), MA surtax threshold, MA PFML wage cap.',
+    'UNVERIFIED: dependent care FSA ($7,500), HSA catch-up ($1,000, statutory), MA PFML wage cap. (The MA surtax threshold is confirmed: $1,107,750 for 2026, MA DOR.)',
     'UNVERIFIED: whether MA excludes 401(k) deferrals from state wages. Compare your W-2 Box 16 to Box 1 and change the "state exempt" box on the deduction if needed.',
     'Federal withholding per paycheck is an estimate of the IRS percentage method; the annual liability calculation is the more reliable figure.',
   ],
@@ -129,7 +129,7 @@ export const TAX_2026: TaxTables = {
   ma: {
     rate: 0.05,
     surtaxRate: 0.04,
-    surtaxThreshold: d(1083150),
+    surtaxThreshold: d(1107750), // 2026 per MA DOR (RS-1B correction; the 2025 figure is $1,083,150)
     personalExemptionMFJ: d(8800),
     dependentExemption: d(1000),
     ficaDeductionCapPerSpouse: d(2000),

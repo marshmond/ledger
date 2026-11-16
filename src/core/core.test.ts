@@ -149,9 +149,11 @@ describe('shared data store', () => {
     expect((await s.shared.tags.query((t) => t.name === 'b')).map((t) => t.name)).toEqual(['b']);
     const seen: number[] = [];
     const stop = s.shared.tags.watch((rows) => seen.push(rows.length));
-    await new Promise((r) => setTimeout(r, 50));
+    // RS-1B: wait for the change by looking for it (up to 3 s) instead of sleeping a fixed 50 and 100 ms, which was slow-machine dependent.
+    const until = async (ok: () => boolean) => { for (let i = 0; i < 150 && !ok(); i++) await new Promise((r) => setTimeout(r, 20)); };
+    await until(() => seen.length > 0);
     await s.shared.tags.put({ name: 'c' });
-    await new Promise((r) => setTimeout(r, 100));
+    await until(() => seen[seen.length - 1] === 3);
     stop();
     expect(seen[0]).toBe(2);
     expect(seen[seen.length - 1]).toBe(3);

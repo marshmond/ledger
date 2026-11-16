@@ -81,7 +81,7 @@ describe('Massachusetts', () => {
   it('adds the 4% surtax over the threshold', () => {
     const inc = $(1183150);
     const base = Math.round((inc - $(8800)) * 0.05);
-    expect(maTax(env(), inc, 0)).toBe(base + Math.round((inc - $(8800) - $(1083150)) * 0.04));
+    expect(maTax(env(), inc, 0)).toBe(base + Math.round((inc - $(8800) - $(1107750)) * 0.04));
   });
 });
 

@@ -153,13 +153,13 @@ describe('unpublished values are labelled, never invented or zero', () => {
 });
 
 describe('2026 stays exactly as it was', () => {
-  it('key 2026 values are unchanged (including the Massachusetts surtax figure, a separate open question)', () => {
+  it('key 2026 values are unchanged (except the Massachusetts surtax threshold, corrected in RS-1B)', () => {
     expect(TAX_2026.stdDeductionMFJ).toBe($(32200));
     expect(TAX_2026.ssWageBase).toBe($(184500));
     expect(TAX_2026.limits.k401Deferral).toBe($(24500));
     expect(TAX_2026.limits.healthFsa).toBe($(3400));
     expect(TAX_2026.fedBracketsMFJ[1].over).toBe($(24800));
-    expect(TAX_2026.ma.surtaxThreshold).toBe($(1083150));
+    expect(TAX_2026.ma.surtaxThreshold).toBe($(1107750)); // RS-1B: corrected from the 2025 figure ($1,083,150) to the 2026 figure per MA DOR
     expect(TAX_2026.ma.pfmlWageCap).toBe($(184500));
     expect(TAX_2026.provenance).toBeUndefined();
     expect(RETIREMENT_RULES_2026.ltcg0Top).toBe($(98900));
