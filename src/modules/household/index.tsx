@@ -16,5 +16,9 @@ export const householdModule: ModuleDef = {
   Component: lazyModule(() => import('./HouseholdModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { todayCards: HOUSEHOLD_TODAY_CARDS, attention: householdAttention, searchSource: householdSearchSource },
+  contributes: {
+    todayCards: HOUSEHOLD_TODAY_CARDS, attention: householdAttention, searchSource: householdSearchSource,
+    // R1.2: expected payments for the weekly review; the reader loads only when the review is opened.
+    weekReview: { money: (today) => import('./weekReview').then((m) => m.readWeekMoney(today)) },
+  },
 };

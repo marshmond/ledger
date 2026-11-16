@@ -8,6 +8,7 @@ import { registerDueProvider, type DueProvider } from './dueProvider';
 import type { TxnReferenceProvider } from './txnDependents';
 import type { ContactReferenceProvider } from './contactReferences';
 import type { AttentionSource } from './attention';
+import type { WeekReaders } from './weekReaders';
 
 export interface ModuleNavItem {
   to: string;
@@ -69,6 +70,11 @@ export interface ModuleDef {
      * must start with `<module id>:`. The source calls the module's EXISTING reader and computes nothing of its own. See `src/core/attention.ts` and docs/module-hooks.md.
      */
     attention?: AttentionSource;
+    /**
+     * R1.2 "This Week": plain read-only readers the weekly review asks for (expected payments, family dates, maintenance, projects over budget), so the review never
+     * imports a module. Each reader calls the module's EXISTING reader. See `src/core/weekReaders.ts` and docs/module-hooks.md.
+     */
+    weekReview?: WeekReaders;
   };
 }
 
@@ -255,6 +261,12 @@ export function allContactReferenceProviders(mods: readonly ModuleDef[] = module
 /** Every module's "Needs you" source, in module order. */
 export function allAttentionSources(mods: readonly ModuleDef[] = modules): { moduleId: string; source: AttentionSource }[] {
   return mods.flatMap((m) => (m.contributes?.attention ? [{ moduleId: m.id, source: m.contributes.attention }] : []));
+}
+/** The weekly review's readers, merged across modules (the first module to offer a reader wins; each reader is offered by one module). */
+export function allWeekReaders(mods: readonly ModuleDef[] = modules): WeekReaders {
+  const out: WeekReaders = {};
+  for (const m of mods) for (const [k, v] of Object.entries(m.contributes?.weekReview ?? {})) if (v && !(k in out)) (out as Record<string, unknown>)[k] = v;
+  return out;
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {

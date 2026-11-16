@@ -72,6 +72,11 @@ describe('what the first download is allowed to contain', () => {
     }
   });
 
+  it('R1.2: the weekly review is fetched on demand, so the first download of Today does not contain its page or its readers', () => {
+    expect(files.filter((x) => x.startsWith('modules/today/week/'))).toEqual([]);
+    for (const x of ['projects/overBudget.ts', 'household/weekReview.ts', 'family/weekReview.ts', 'assets/weekReview.ts']) expect(files, x).not.toContain(`modules/${x}`);
+  });
+
   it('Today stays in the first download: it is where the app opens, and it needs no second request', () => {
     expect(files).toContain('modules/today/TodayModule.tsx');
   });

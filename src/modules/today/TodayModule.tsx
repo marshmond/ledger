@@ -19,12 +19,17 @@ import {
 } from './composition';
 import { LOOK_AHEAD_CHOICES, OVERDUE_ROWS_CHOICES, loadTodaySettings, saveTodaySettings } from './settings';
 import { AttentionProviders } from '../../core/AttentionProviders';
+import { lazyModule } from '../../core/lazyModule';
 import { NEEDS_PATH, NeedsYouPage, NeedsYouSlot } from './NeedsYou';
 import { TodayDataProvider } from './TodayData';
 import { TodayHero } from './TodayHero';
 import { PHONE_QUERY, headingDate } from './todayModel';
 
 export const TODAY_BASE = '/today';
+
+/** R1.2: the weekly review at `#/today/week`. Its code is fetched only when it is opened, so Today's first download does not grow. */
+export const WEEK_PATH = '/week';
+const WeekPage = lazyModule(() => import('./week/WeekPage'));
 
 /**
  * Today: one screen that merges every module. D13.1: a Next up bar and a status band, then a wide agenda column and a narrow supporting column. The cards come
@@ -50,6 +55,7 @@ export default function TodayModule() {
 function TodayRoutes({ today }: { today: string }) {
   const { pathname } = useLocation();
   if (pathname === NEEDS_PATH) return <NeedsYouPage />;
+  if (pathname === WEEK_PATH) return <WeekPage />;
   return (
     <TodayDataProvider today={today}>
       <TodayScreen today={today} />

@@ -255,3 +255,4 @@
 @media (max-width: 640px) {
   .td-need { padding-inline: var(--sp-3); }
 }
+.td-card > .card-head .td-head-note + .card-link { margin-left: var(--sp-3); }

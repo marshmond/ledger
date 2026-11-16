@@ -19,5 +19,9 @@ export const familyModule: ModuleDef = {
   Component: lazyModule(() => import('./FamilyModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: familyDueProvider, contactReferences: familyContactReferences, searchSource: familySearchSource, quickAdd: FAMILY_QUICK_ADDS },
+  contributes: {
+    dueProvider: familyDueProvider, contactReferences: familyContactReferences, searchSource: familySearchSource, quickAdd: FAMILY_QUICK_ADDS,
+    // R1.2: birthdays, dates and activities for the weekly review; the reader loads only when the review is opened.
+    weekReview: { family: (today) => import('./weekReview').then((m) => m.readWeekFamily(today)) },
+  },
 };

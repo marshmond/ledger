@@ -18,5 +18,9 @@ export const projectsModule: ModuleDef = {
   Component: lazyModule(() => import('./ProjectsModule')),
   routePaths: ['/'],
   nav: [],
-  contributes: { dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, attention: projectsAttention, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd, txnReferences: projectsTxnReferences, contactReferences: projectsContactReferences },
+  contributes: {
+    dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, attention: projectsAttention, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd, txnReferences: projectsTxnReferences, contactReferences: projectsContactReferences,
+    // R1.2: projects over budget for the weekly review; the reader loads only when the review is opened.
+    weekReview: { overBudget: () => import('./overBudget').then((m) => m.readOverBudgetProjects()) },
+  },
 };

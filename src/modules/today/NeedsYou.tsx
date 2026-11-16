@@ -32,7 +32,7 @@ export function provenanceNote(item: Pick<RankedAttention, 'provenance'>): strin
 }
 
 /** One row: the whole row is the link, so there is one Tab stop and one 44 px target per item. The words (not only a color) say how urgent it is. */
-function Row({ item, today, hide, source }: { item: RankedAttention; today: string; hide: boolean; source?: boolean }) {
+export function NeedsRow({ item, today, hide, source }: { item: RankedAttention; today: string; hide: boolean; source?: boolean }) {
   const t = shown(hide);
   const when = whenWords(item, today);
   return (
@@ -67,7 +67,7 @@ export function NeedsYouSection({ needs, today, hideAmounts }: { needs: NeedsYou
         {preview.total > 0 && <span className="badge" aria-label={`${preview.total} ${preview.total === 1 ? 'item' : 'items'}`}>{preview.total}</span>}
         {preview.remaining > 0 && <Link className="card-link" to={NEEDS_PATH} aria-label={`See all ${preview.total} items that need you`}>See all ({preview.total})</Link>}
       </div>
-      {preview.total > 0 && <ul className="plain td-list td-need-list">{preview.shown.map((i) => <Row key={i.id} item={i} today={today} hide={hideAmounts} />)}</ul>}
+      {preview.total > 0 && <ul className="plain td-list td-need-list">{preview.shown.map((i) => <NeedsRow key={i.id} item={i} today={today} hide={hideAmounts} />)}</ul>}
       {needs.failed.length > 0 && <p className="muted small td-msg" role="status">Some modules could not be checked just now ({needs.failed.map(moduleName).join(', ')}), so their items are not listed.</p>}
     </section>
   );
@@ -125,7 +125,7 @@ function NeedsYouPageBody({ today }: { today: string }) {
       {groups.map((g) => (
         <section key={g.tier} className="card td-card td-needs-card" aria-labelledby={`td-needs-t${g.tier}`}>
           <div className="card-head"><h2 className="card-title" id={`td-needs-t${g.tier}`}>{TIER_WORDS[g.tier]}</h2><span className="badge" aria-label={`${g.items.length} ${g.items.length === 1 ? 'item' : 'items'}`}>{g.items.length}</span></div>
-          <ul className="plain td-list td-need-list">{g.items.map((i) => <Row key={i.id} item={i} today={today} hide={hide} source />)}</ul>
+          <ul className="plain td-list td-need-list">{g.items.map((i) => <NeedsRow key={i.id} item={i} today={today} hide={hide} source />)}</ul>
         </section>
       ))}
       {needs.failed.length > 0 && <p className="muted small td-msg" role="status">Some modules could not be checked just now ({needs.failed.map(moduleName).join(', ')}), so their items are not listed.</p>}

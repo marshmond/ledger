@@ -139,7 +139,7 @@ function UpcomingCard({ today, hideAmounts, reportEmpty }: TodayCardProps) {
   }, [expanded]);
   return (
     <section ref={section} className="card td-card" aria-label="Coming up">
-      <div className="card-head"><h2 className="card-title">Coming up</h2><span className="muted td-head-note">next {lookAheadDays} days</span></div>
+      <div className="card-head"><h2 className="card-title">Coming up</h2><span className="muted td-head-note">next {lookAheadDays} days</span><a className="card-link td-week-link" href="#/today/week" aria-label="This week: open the weekly household review">This week</a></div>
       {!items ? <Loading /> : days.length === 0
         ? <p className="muted td-msg">Nothing in the next {lookAheadDays} days.</p>
         : (

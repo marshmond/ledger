@@ -28,7 +28,7 @@ describe('registration', () => {
   });
   it('Family contributes the due provider, the read-only contact reader and (F5) a search source and two Add-box destinations: no Today card or Finance reference', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences', 'searchSource', 'quickAdd']);
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences', 'searchSource', 'quickAdd', 'weekReview']);
     expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
     expect(allSearchSources().filter((s) => s.moduleId === 'family')).toHaveLength(1);

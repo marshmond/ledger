@@ -67,7 +67,7 @@ describe('nothing structural changed', () => {
   });
   it('registration: the due provider, the contact reader and (F5) the search source and two Add-box destinations; still no Today card', () => {
     const mod = allModules().find((m) => m.id === 'family')!;
-    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences', 'searchSource', 'quickAdd']);
+    expect(Object.keys(mod.contributes ?? {})).toEqual(['dueProvider', 'contactReferences', 'searchSource', 'quickAdd', 'weekReview']);
     expect(allDueProviders().filter((p) => p.id === 'family')).toHaveLength(1);
     expect(allTodayCards().filter((c) => c.id.startsWith('family'))).toEqual([]);
     expect(allSearchSources().filter((s) => s.moduleId === 'family')).toHaveLength(1);
@@ -75,7 +75,7 @@ describe('nothing structural changed', () => {
   });
   it('the overview code is reached only from the lazily loaded page, never from the registration or the due provider', () => {
     const users = family.filter(({ text }) => /from '\.\/(householdOverview|HouseholdSections)'/.test(code(text))).map((x) => x.f).sort();
-    expect(users).toEqual(['src/modules/family/HouseholdSections.tsx', 'src/modules/family/OverviewPage.tsx']);
+    expect(users).toEqual(['src/modules/family/HouseholdSections.tsx', 'src/modules/family/OverviewPage.tsx', 'src/modules/family/weekReview.ts']); // R1.2: the weekly review's reader (also loaded only on demand)
     expect(code(one('index.tsx')) + code(one('dueProvider.ts'))).not.toMatch(/householdOverview|HouseholdSections/);
   });
   it('the only edits to F3\'s readers are exports: no write path, no new import', () => {

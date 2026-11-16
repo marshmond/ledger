@@ -12,6 +12,7 @@ contributes: {
   txnReferences?: TxnReferenceProvider; // ST-S2: see "txnReferences" below
   contactReferences?: ContactReferenceProvider; // C2: see "contactReferences" below
   attention?: AttentionSource; // R1.1: see "attention" below
+  weekReview?: WeekReaders; // R1.2: see "weekReview" below
 }
 ```
 
@@ -157,6 +158,22 @@ Ranking (documented in the file header and pinned by `src/core/attention.test.ts
 Rules for a source: call the module's EXISTING reader (the one its Today card or Overview page uses) and map what comes back; **do not recompute** any rule or figure; write nothing, start no timer and make no network call (a guard test in `src/modules/today/needsYouUi.test.tsx` checks the six adapters); omit what is only informational; keep to counts, dates and the household's own record names. Add a test that the adapter's items agree with the module's own reader (see `src/modules/today/needsYou.test.ts`). The registry is fixed at start-up, so the hooks of all sources run in the same order on every render.
 
 Registered by Ledger (alerts, minus dismissed and snoozed ones, and with amount-free wording), Home & Assets, Household Services, Bills & Subscriptions, Household finances and Projects. Tasks and Calendar are not sources: their overdue items are already Today's own agenda.
+
+## `weekReview`: what the weekly review reads from a module (R1.2 "This Week")
+
+Added in R1.2. The weekly review (`#/today/week`) is a consumer, like "Needs you": it imports no module. A module that has something to say for the week registers plain, **read-only** async readers, and each reader calls the module's EXISTING reader and does nothing but cut its answer to the seven-day window and hand it over in the neutral shapes in `src/core/weekReaders.ts`. Nothing is stored, synced or backed up.
+
+```ts
+contributes: { weekReview?: {
+  money?: (today) => Promise<WeekMoney>;            // Household finances: expected payments, commitments, contract dates
+  family?: (today) => Promise<WeekFamily>;          // Family: birthdays, important dates, activities with the member's name and color id
+  maintenance?: (today) => Promise<WeekMaintenance[]>; // Home & Assets: its own upcoming maintenance rows
+  overBudget?: () => Promise<WeekOverBudget[]>;     // Projects: active projects over budget, from the project summary
+} }
+weekReview: { money: (today) => import('./weekReview').then((m) => m.readWeekMoney(today)) }   // load on demand, never at start-up
+```
+
+Rules: write nothing, start no timer, recalculate no figure (a tally uses the module's own function, as Household finances uses B5's `addRow`); address links are the module's own (`#/family/m/3`, never a path under Today); amounts travel as whole cents with their certainty and are hidden by the page, not the reader; a stored color value never travels (a semantic color id does). Registered by Household finances (`money`), Family (`family`), Home & Assets (`maintenance`) and Projects (`overBudget`). `allWeekReaders()` merges them. Cash outlook is read by the page from Finance's own `cashOutlook` (a library function, not a module).
 
 ## Family's search source and Add-box destinations (Family Management F5)
 
