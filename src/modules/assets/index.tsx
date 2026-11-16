@@ -22,6 +22,8 @@ export const assetsModule: ModuleDef = {
   nav: [],
   contributes: {
     answers: ASSETS_ANSWERS,
+    // R4.1: the document references stored on assets, warranties and service history, as one read-only list. Loaded only when Records or Search asks.
+    documentRefs: { label: 'Home & Assets', read: (ctx) => import('./docRefs').then((m) => m.readAssetDocs(ctx)) },
     todayCards: ASSETS_TODAY_CARDS, attention: assetsAttention, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences, contactReferences: assetsContactReferences,
     // R1.2: upcoming maintenance for the weekly review; the reader loads only when the review is opened.
     weekReview: { maintenance: (today) => import('./weekReview').then((m) => m.readWeekMaintenance(today)) },

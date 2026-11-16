@@ -74,6 +74,7 @@ export default function ModuleBar() {
   }, [open]);
 
   const inSettings = loc.pathname.startsWith('/settings');
+  const inRecords = loc.pathname.startsWith('/records');
   const key = mac ? '⌘K' : 'Ctrl K';
 
   return (
@@ -90,6 +91,10 @@ export default function ModuleBar() {
         {open && (
           <div className="modmenu" id="module-list">
             <ModuleList mods={mods} currentId={current?.id} />
+            {/* R4.1: Records is a screen of its own (not a module): every document link saved in Home & Assets, Household Services and Bills, in one place. */}
+            <div className="modgroup modgroup-tools" role="group" aria-label="Across modules">
+              <Link to="/records" aria-current={inRecords ? 'page' : undefined} className={inRecords ? 'active' : ''}><span className="modicon" aria-hidden="true"><Icon name="folder" size={18} /></span>Records</Link>
+            </div>
             {/* Phone only (hidden by the stylesheet above 640px, where the bar itself shows these): Settings and the sync status. */}
             <ModuleFoot inSettings={inSettings} />
           </div>

@@ -47,7 +47,7 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 | Inventory | Total | Accepted |
 |---|---|---|
 | Routed page destinations | 59 | 0 |
-| Global surfaces | 23 | 0 |
+| Global surfaces | 25 | 0 |
 | In-page views | 31 | 0 |
 | Dialogs (`<Modal>` call sites) | 63 | 0 |
 | Named workflows | 37 | 0 |
@@ -56,7 +56,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 
 ---
 
-## 1. Global surfaces (24)
+## 1. Global surfaces (25)
 
 | ID | Surface | Source | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -84,6 +84,9 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
 | S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | Y | Y | Y | Y | . | Y |
 | S-24 | Quick Answers screen and the Answers group in Search | `src/shell/AnswersPage.tsx`, `src/shell/searchAnswers.ts` | R3.2 | BLT | Y | . | Y | . | . | Y |
+| S-25 | Records screen and the Documents group in Search | `src/shell/RecordsPage.tsx`, `src/shell/recordsIndex.ts` | R4.1 | BLT | Y | . | Y | . | . | Y |
+
+S-25 note (R4.1, not a design phase): the Records screen (`#/records`, `#/records?ref=<id>`), the "Records" link in the open module list and the Documents rows in the Search dialog were built from the Signature components already in place. Recorded marks: `L` and `375` (looked at in the browser pane on the invented demo household, light; 375 px had no sideways scroll and no control under 44 px), `Func` (search, every filter, an Open document link attributes, View record on a property/appliance, an arrangement and a bill, Search to a single reference, Hide amounts masking an amount typed in a label). NOT recorded: `D` (dark was not looked at), `1440` (the pane is narrower), `Kbd` (no full Tab walk). The Search dialog row S-06 and the module switcher S-02 are unchanged in status.
 
 S-24 note (R3.2, not a design phase): the Quick Answers screen (`#/answers`, `#/answers/<id>`) and the Answers rows in the Search dialog were built from the Signature components already in place. Recorded marks: `L` and `375` (looked at in the browser pane on the invented demo household, light; 375 px had no sideways scroll), `Func` (every answer opened from Search or by address; Hide amounts masked every amount on four answers; a source link opened the right record). NOT recorded: `D` (dark was not looked at), `1440` (the pane is narrower), `Kbd` (Enter on a Search answer was used; a full Tab walk was not done). The Search dialog row S-06 is unchanged in status.
 

@@ -12,6 +12,7 @@ import type { WeekReaders } from './weekReaders';
 import type { TaskFollowUpSource } from './taskFollowUp';
 import type { PaymentSuggestionSource } from './paymentSuggestions';
 import { readerProblem, type AnswerReader } from './answers';
+import type { DocumentSource } from './documentRefs';
 
 export interface ModuleNavItem {
   to: string;
@@ -95,6 +96,12 @@ export interface ModuleDef {
      * See `src/core/answers.ts` and docs/module-hooks.md.
      */
     answers?: AnswerReader[];
+    /**
+     * R4.1 "Records": a lazy, READ-ONLY reader that turns the document references this module already stores (a label, an optional web link, an optional note) into one common
+     * shape, with the record that holds each and the address to open it. It never copies, moves or rewrites a reference and stores no file; the Records screen and Search ask every
+     * module through this hook, so nothing imports a household module. See `src/core/documentRefs.ts` and docs/module-hooks.md.
+     */
+    documentRefs?: DocumentSource;
   };
 }
 
@@ -305,6 +312,10 @@ export function allWeekReaders(mods: readonly ModuleDef[] = modules): WeekReader
 /** Every module's Quick Answers readers, in module order. */
 export function allAnswerReaders(mods: readonly ModuleDef[] = modules): { moduleId: string; reader: AnswerReader }[] {
   return mods.flatMap((m) => (m.contributes?.answers ?? []).map((reader) => ({ moduleId: m.id, reader })));
+}
+/** Every module's document-reference reader (R4.1), in module order. */
+export function allDocumentSources(mods: readonly ModuleDef[] = modules): { moduleId: string; source: DocumentSource }[] {
+  return mods.flatMap((m) => (m.contributes?.documentRefs ? [{ moduleId: m.id, source: m.contributes.documentRefs }] : []));
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {

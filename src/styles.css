@@ -959,3 +959,6 @@ button.ab-chip--go:hover:not(:disabled) { background: var(--surface-soft); }
   .toast:has(button.toast-action) > span { flex: 1 1 100%; }
   .toast:has(button.toast-action) button.link { min-height: 44px; padding-inline: var(--sp-2); }
 }
+
+/* R4.1: the one cross-module link (Records) under the module list, across the full width of the open list. */
+.modgroup-tools { grid-column: 1 / -1; border-top: 1px solid var(--line); margin-top: var(--sp-1); padding-top: var(--sp-1); }

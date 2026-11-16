@@ -19,6 +19,8 @@ registerModules();
 const SettingsPage = lazyModule(() => import('./pages/SettingsPage'));
 /** Quick Answers (R3.2) loads on demand too: nothing of it is read until a question is opened. */
 const AnswersPage = lazyModule(() => import('./shell/AnswersPage'));
+/** Records (R4.1) loads on demand too: no module's documents are read until the screen (or a Search for one) asks. */
+const RecordsPage = lazyModule(() => import('./shell/RecordsPage'));
 
 /**
  * Called once at start-up, before the first screen is drawn: if the address already names a module that loads on demand (a bookmark, or a
@@ -30,6 +32,7 @@ export function preloadForAddress(hash: string): Promise<void> {
   const first = hash.replace(/^#\/?/, '').split(/[/?]/)[0];
   if (first === 'settings') return preloadLazyModule(SettingsPage);
   if (first === 'answers') return preloadLazyModule(AnswersPage);
+  if (first === 'records') return preloadLazyModule(RecordsPage);
   if (first) { const mod = getModule(first); return mod ? preloadLazyModule(mod.Component) : Promise.resolve(); }
   return loadShellSettings()
     .then((s) => {
@@ -72,6 +75,7 @@ export default function App() {
         ))}
         <Route path="/settings/*" element={<ModuleLoadBoundary key="settings" name="Settings" component={SettingsPage} resetKey={loc.pathname}><SettingsPage /></ModuleLoadBoundary>} />
         <Route path="/answers/*" element={<ModuleLoadBoundary key="answers" name="Quick Answers" component={AnswersPage} resetKey={loc.pathname}><AnswersPage /></ModuleLoadBoundary>} />
+        <Route path="/records/*" element={<ModuleLoadBoundary key="records" name="Records" component={RecordsPage} resetKey={loc.pathname}><RecordsPage /></ModuleLoadBoundary>} />
         <Route path="*" element={<Fallback />} />
       </Routes>
     </>

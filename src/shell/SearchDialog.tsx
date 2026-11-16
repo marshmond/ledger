@@ -11,6 +11,7 @@ import { filterActions } from './searchActions';
 import { groupResults, type ResultGroup } from './searchGroups';
 import Modal from './Modal';
 import { openAddTransaction } from './QuickAdd';
+import { resetDocumentSearch, searchDocuments } from './recordsIndex';
 
 /** Things you can do from the palette, not just places you can go. */
 // `to` is written the way Ledger writes its pages (/budget); the dialog lives outside Ledger, so it adds the /ledger prefix itself.
@@ -22,6 +23,8 @@ const ACTIONS: { title: string; words: string; to?: string; full?: string; run?:
   { title: 'Add a scheduled item', words: 'add new scheduled recurring bill', to: '/scheduled' },
   { title: 'New paycheck scenario', words: 'new paycheck scenario raise offer', to: '/paycheck' },
   { title: 'Import transactions', words: 'import csv bank upload', to: '/import' },
+  // R4.1: the Records screen is a shell page (not a Ledger page), so it carries its full address.
+  { title: 'Open Records', words: 'records documents document warranty warranties manual manuals contract contracts paperwork papers receipts', full: '/records' },
 ];
 
 const PER_SOURCE = 14;
@@ -35,19 +38,21 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
   const [groups, setGroups] = useState<ResultGroup[]>([]);
   const [busy, setBusy] = useState(false);
   const [ms, setMs] = useState<number | null>(null);
+  // R4.1: modules whose document references could not be read for this search (so a short list is never mistaken for a complete one).
+  const [docGaps, setDocGaps] = useState<string[]>([]);
   const token = useRef(0);
 
   // Let each module warm up while the dialog is open (e.g. keep a live snapshot of its data), and tidy up when it closes.
   useEffect(() => {
     const stops = allSearchSources().map((s) => { try { return s.source.start?.() ?? (() => undefined); } catch { return () => undefined; } });
-    return () => stops.forEach((stop) => { try { stop(); } catch { /* nothing to tidy */ } });
+    return () => { stops.forEach((stop) => { try { stop(); } catch { /* nothing to tidy */ } }); resetDocumentSearch(); };
   }, []);
 
   // Ask every module's source, a moment after typing stops. A source that fails is simply left out; the others still answer.
   useEffect(() => {
     const text = q.trim();
     const mine = ++token.current;
-    if (text === '') { setGroups([]); setBusy(false); setMs(null); return; }
+    if (text === '') { setGroups([]); setDocGaps([]); setBusy(false); setMs(null); return; }
     setBusy(true);
     const timer = setTimeout(async () => {
       const t0 = performance.now();
@@ -55,8 +60,12 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
       const answers = await Promise.all(sources.map(async (s) => {
         try { return { moduleId: s.moduleId, name: s.source.group ?? s.moduleName, results: await s.source.search(text, PER_SOURCE) }; } catch { return { moduleId: s.moduleId, name: s.source.group ?? s.moduleName, results: [] as SearchResult[] }; }
       }));
+      // R4.1: document references (labels and where they belong), read once per open dialog; a failed read leaves the group out and says so.
+      let docs: Awaited<ReturnType<typeof searchDocuments>> = { results: [], failed: ['Records'] };
+      try { docs = await searchDocuments(text, todayISO(), PER_SOURCE); } catch { /* reported below */ }
       if (mine !== token.current) return; // a newer search has started
-      setGroups(groupResults(answers));
+      setDocGaps(docs.failed);
+      setGroups(groupResults([...answers, { moduleId: 'records', name: 'Documents', results: docs.results }]));
       setMs(Math.round(performance.now() - t0));
       setBusy(false);
     }, DEBOUNCE_MS);
@@ -147,6 +156,7 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
         })}
         {q.trim() !== '' && !busy && total === 0 && <li className="muted hint">Nothing matches “{q.trim()}”.{looksLikeQuestion(q) && <> Ledger answers a fixed set of questions. <a href={`#${ANSWERS_BASE}`} onClick={onClose}>What can I ask?</a></>}</li>}
         {q.trim() !== '' && !busy && total > 0 && answers.length === 0 && looksLikeQuestion(q) && <li className="muted hint">Ledger can also answer a fixed set of questions. <a href={`#${ANSWERS_BASE}`} onClick={onClose}>What can I ask?</a></li>}
+        {q.trim() !== '' && !busy && docGaps.length > 0 && <li className="muted hint" role="presentation">Document search is incomplete: {docGaps.join(' and ')} could not be read.</li>}
         {q.trim() !== '' && busy && flat.length === 0 && actions.length === 0 && <li className="muted hint">Searching…</li>}
         {groups.map((g) => (
           <Fragment key={g.moduleId}>

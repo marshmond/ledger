@@ -1,6 +1,6 @@
 # Ledger R3.2: Quick Answers (report)
 
-Status (2026-11-16): **BUILT AND TESTED LOCALLY. UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED. Awaiting owner and ChatGPT review. NOT REAL-DEVICE TESTED.**
+Status (2026-11-16): **COMMITTED AND DEPLOYED as `bfe96d7` (`feat(search): add deterministic Quick Answers`), GitHub Pages run #124 success (verified at the start of R4.1 from the public API). NOT REAL-DEVICE TESTED.** (This line was "built and tested locally, uncommitted" when the report was written; the text below is otherwise unchanged.)
 
 Gate verified first: `main` = `origin/main` = `1855b23` (`feat(household): add year-ahead commitments and planning view`, R3.1) and GitHub Pages run **#123** is `completed` / `success` (public Actions API; `gh` is not installed), so R3.1 is committed and deployed and nothing of it is mixed in. (The R3.1 report and the handoff said "uncommitted" until this phase; both are corrected.) The three protected untracked files (`docs/UI-DESIGN-D0-AUDIT-2026-11-10.md`, `docs/UI-DESIGN-D1-DEMO-DATA-2026-11-10.md`, `scripts/dev-demo-seed.ts`) are untouched: the demo seed script was only started once and refused to run because the demo database already held the invented household.
 

@@ -15,6 +15,8 @@ contributes: {
   weekReview?: WeekReaders; // R1.2: see "weekReview" below
   taskFollowUp?: TaskFollowUpSource; // R1.3: see "taskFollowUp" below
   paymentSuggestions?: PaymentSuggestionSource; // R2.2: see "paymentSuggestions" below
+  answers?: AnswerReader[]; // R3.2: see "answers" below
+  documentRefs?: DocumentSource; // R4.1: see "documentRefs" below
 }
 ```
 
@@ -246,6 +248,26 @@ answers: [{ id: 'projects.overBudget', ..., run: (ctx) => import('./answers').th
 The ten readers: `today.needs` and `today.week` (Live), `projects.overBudget`, `assets.maintenanceSpend`, `assets.maintenanceOverdue`, `assets.warrantiesExpiring`, `services.upcoming`, `bills.priceIncreases`, `household.payments`, `household.yearAhead`. Answer files contain no write, no network call and no storage use (a test reads them). See `docs/LEDGER-R3.2-REPORT.md`.
 
 **Import Undo (R2.2).** `#/ledger/import` "undo" now asks `planTxnDeletion` (the same reader the Transactions delete uses) which household records point at the imported transactions and lists them before the owner confirms; if that cannot be checked, Undo is off; otherwise the Undo itself (`undoBatch`) is unchanged.
+
+## `documentRefs`: "the document links this module already stores" (R4.1 "Records")
+
+Added in R4.1. A module offers **one lazy, read-only reader** that turns the document references it already stores (`{ label, url?, note? }`, the same shape in Home & Assets, Household Services and Bills) into one common row, with the record that holds each. Nothing is stored, copied or moved; no table, migration, sync, backup or dependency changed; there is no file storage, upload, network call or model. The contract and the pure helpers are in `src/core/documentRefs.ts`; the loader that asks every module and reports a source it could not read is `src/shell/recordsIndex.ts`; the screen is `src/shell/RecordsPage.tsx` (`#/records`, and `#/records?ref=<reference id>` for one reference; a shell route like Settings and Quick Answers, loaded on demand).
+
+```ts
+contributes: { documentRefs?: { label: string; read(ctx: { today: string }): Promise<{ refs: DocumentRef[]; gaps: DocumentGap[] }> } }
+documentRefs: { label: 'Home & Assets', read: (ctx) => import('./docRefs').then((m) => m.readAssetDocs(ctx)) }   // nothing is read or downloaded until Records or Search asks
+```
+
+| Piece | Rule |
+|---|---|
+| A row (`DocumentRef`) | `id` (`<module>:<kind>:<record id>#<position>`, unique across the index), the reference's `label` and `note`, `link` (`open`, `label-only` or `review`), `href` (set ONLY when `isSafeUrl` accepts the stored address), `host` (site name only), the owner (`ownerName`, `recordKind`, `recordName`, `context`, `status`), `recordPath` and `recordAction` (the record that holds it, edited there), and `expires` (an end date that explicitly belongs to that reference's own record). |
+| Building rows | An adapter calls `makeRefs(owner, record.refs)` for each record. It never throws, skips a reference with no name, and never carries an unsafe address. |
+| Dates | Only a stored warranty's own end date is attached ("Warranty ends"). Purchase and service dates, an asset's old single warranty date, and renewal or notice dates are not turned into an expiration of a document. |
+| Gaps (`DocumentGap`) | Only where the record's own structure says a document belongs: a stored warranty record with no reference, still in force (no end date, or ending today or later), on an asset that is not archived or retired. Worded "No warranty document is linked", never "missing" or "lost". Services and Bills report none. |
+| Failure | A reader that throws is reported as "could not be read": the screen says the list is incomplete and offers Try again; Search says document search is incomplete. It is never drawn as an empty, complete index. |
+| Boundaries | An adapter calls its **own module's** existing loaders (Bills reads its obligation rows with `asObligation` and skips the lifecycle and cycle reads). Search and the Records screen import no module; Finance imports none; Today has no Records card. |
+| Search | `SearchDialog` adds a "Documents" group (kind "Document"): one row per reference whose label, owner, record kind, record name, context or module matches every typed word (notes, addresses and file contents are never searched). The modules are read once, on the first typed word, and the result is dropped when the dialog closes. A row opens the Records screen on that one reference, by id only (no name or address in the web address). "Open Records" is also a Search action, and "Records" is a link under the open module list. |
+| Safe links | An `open` row is an `<a target="_blank" rel="noopener noreferrer">`; a `review` row has no link, says "Link needs review" and sends the owner to the record. The full address is never printed (only the site name), and no link is ever fetched to see whether it still works. |
 
 ## Family's search source and Add-box destinations (Family Management F5)
 
