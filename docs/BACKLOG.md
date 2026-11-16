@@ -4,7 +4,21 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-16 (newest): R3.1 "YEAR AHEAD" BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; NOT REAL-DEVICE TESTED. NEXT RECOMMENDED PHASE R3.2 QUICK ANSWERS (NOT STARTED).
+## STATUS 2026-11-16 (newest): R3.2 "QUICK ANSWERS" BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; NOT REAL-DEVICE TESTED. R3.1 IS COMMITTED AND DEPLOYED (`1855b23`, Pages run #123 success). NEXT: R3.3 (OPTIONAL, NEEDS A SEPARATE OWNER DECISION); R4.1 RECORDS INDEX IS THE NEXT PLANNED NON-OPTIONAL PHASE; AI-D0 IS FUTURE DESIGN-ONLY AND NOT APPROVED.
+
+**What was asked:** ask a fixed set of useful household questions through Search and get a trustworthy, sourced answer from Ledger's own readers, with no language model, no network, no new stored data.
+
+**What was built:** ten questions (needs attention, this week, payments coming up, the year ahead, bills that went up, projects over budget, home maintenance spending this year, overdue maintenance, warranties expiring soon, household services coming up). A small optional registry hook `contributes.answers` (typed `AnswerReader` and structured `AnswerResult` in `src/core/answers.ts`, a pure matcher, a validator that every reader's test runs); a reader in each owning module that calls that module's existing reader (loaded only when the question is opened); an "Answers" group in Search and a "What can I ask?" list; the answer screen `#/answers/<id>` (a shell route like Settings). Report `docs/LEDGER-R3.2-REPORT.md`; screenshots in `Documents\ledger-design-concepts\R3.2-Evidence` (outside the repository).
+
+**Tests:** 63 new in four new files (matcher 18, answers on the invented household 19, Today builders 8, answer screen and Search rows 18); full suite 305 files, 5,998 tests (baseline 301 / 5,935); `tsc` and build clean. Eight stale guard expectations were updated (two hook-key lists, two clash tests, a route-boundary count, two page-address rules, a scan marker); nothing was weakened.
+
+**Judgment calls (please review):** 1. home maintenance = Home & Assets "Maintenance, repairs and inspections" (improvements, purchases and recurring Household Services excluded; needs your confirmation); 2. 30 days = today through day 29 (B5 and Services run to day 30), 90-day warranties vs the module's 60-day card; 3. a project with no overall budget uses its lines' total, stated on the row; 4. price increases are recorded changes only; 5. Needs you and This week run as lazily loaded `Live` components because they exist only as hooks; 6. the This week answer skips the Forecast read (optional switch); 7. "due", "coming up" and "expected" alone are ambiguous and offer choices; 8. Answers sit after Actions so Enter and arrow keys behave as before; 9. payments say "Not in the Forecast" or "Tied to a scheduled payment (may be in the Forecast)"; 10. Hide Amounts is read when an answer opens; 11. per-asset amounts can exceed the total when a payment is shared; 12. status words: nothing found / answered with limits / not enough information; 13. a shell route, not a module; 14. tracker row S-24 BLT with only L, 375 and Func; 15. screenshots outside the repo.
+
+**NOT built:** R3.3 budget-target suggestions, any AI or model or external call, free-text understanding, a Tasks-due answer, Household Services in the maintenance figure, saved questions, a Today card, any new stored record or migration.
+
+(Previous status, superseded; R3.1 is now COMMITTED AND DEPLOYED as `1855b23`, run #123 success:)
+
+## STATUS 2026-11-16 (superseded by R3.2 above): R3.1 "YEAR AHEAD" BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; NOT REAL-DEVICE TESTED. NEXT RECOMMENDED PHASE R3.2 QUICK ANSWERS (NOT STARTED).
 
 **What was asked:** one read-only page that answers "what do I need to prepare for over the next year?" by bringing together bills, services, Finance-only scheduled payments, project amounts and important dates, without merging them into a misleading total, and make Household Finances findable from Search.
 

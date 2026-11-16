@@ -217,6 +217,34 @@ paymentSuggestions: { label: 'Home & Assets', suggest: (c) => import('./paymentS
 
 Adapters and what they reuse (R2.2): **Bills** `modules/bills/paymentSuggest.ts` (suggest = `suggestMatches` through `suggestForTxns` in `suggestData.ts`; accept = `recordFact` `payment-link`; reject = `rejectSuggestion`), **Household Services** (logged visits only; accept = `setVisitPayment`), **Home & Assets** (existing service records; accept = `updateService` adding `txnRefs`; a record with a typed cost is always `review`), **Projects** (a vendor of an open project; accept = `setTxnProject` with the reference `buildRef` builds for the one agreed contract; split payments, several contracts or a contract split across lines are `review`). Registered by those four modules only. A module that stores a Finance reference and wants suggestions adds a `paymentSuggest.ts` with the same three functions and a test that suggest is read-only and accept equals the manual link.
 
+## `answers`: "a fixed question this module can answer" (R3.2 "Quick Answers")
+
+Added in R3.2. A module offers **named, read-only readers for fixed household questions it legitimately owns**; the shell matches a typed question to a reader and draws the structured result. Nothing is stored, no schema, sync or backup format changed, and there is no language model, network call or prompt anywhere in it. The contract, the matcher and the result checks are in `src/core/answers.ts` (pure); the screen is `src/shell/AnswersPage.tsx` (`#/answers` lists the questions, `#/answers/<id>` shows one answer; a shell route like Settings, loaded on demand); the Search dialog gets an "Answers" group from `src/shell/searchAnswers.ts`.
+
+```ts
+contributes: { answers?: AnswerReader[] }
+interface AnswerReader {
+  id: string;            // "<module id>.<name>", permanent ("projects.overBudget")
+  question: string;      // the fixed question, shown as written ("Which projects are over budget?")
+  title: string;         // short name for the list
+  phrases: string[];     // recognised wordings; each needs at least two meaningful words
+  defaultPeriod: string; // words, shown in Search and on the list ("the next 30 days")
+  run?(ctx: { today: string }): Promise<AnswerResult>;       // READ ONLY; rejects when a source cannot be read
+  Live?: ComponentType<{ ctx; render(run: AnswerRun): ReactNode }>; // ONLY for a source that exists as a React hook (R1.1, R1.2)
+}
+answers: [{ id: 'projects.overBudget', ..., run: (ctx) => import('./answers').then((m) => m.overBudgetAnswer(ctx)) }]   // light definitions at start-up, the reader loads when asked
+```
+
+| Rule | Meaning |
+|---|---|
+| One way to run | Exactly one of `run` or `Live`. `Live` is a lazily loaded component that calls the existing hook (`useNeedsYou`, `useWeekInputs`) and hands the state to `render`; it exists because those two sources are only available as hooks. |
+| Matching | Words are reduced to stems (filler dropped; plurals and a few irregular words folded). A phrase matches when **all** its stems are in the question. A lone keyword never matches. A period Ledger does not answer ("last year", "2024") still suggests the reader, with a note. "Due", "coming up" and "expected" alone are **ambiguous** (`AMBIGUOUS_QUESTIONS`): several readers are offered, none chosen. The suggestion always shows the reader's own question and period. |
+| A result (`AnswerResult`) | `status` (`answered`, `none` = checked and nothing found, `limited` = a documented limitation, `insufficient` + `missing`), a `headline` made of words and typed `{ money }` parts, `period` (always shown), `figures`, `groups` of `rows` (title, optional date, named `amounts`, chips, an internal `href`, the source module), `assumptions`, `limitations`, `sources` (at least one, hash addresses only) and `fullView`. A reader returns data, never a sentence with an amount in it; the screen words it and applies Hide amounts (`src/shell/answersModel.ts`). |
+| Failure | A reader that throws is "could not be read": the screen says so and offers Try again. It is never drawn as an empty answer or a zero. |
+| Boundaries | A reader calls its **own module's** existing reader (plus the shared lib readers that module already imports). Search imports no module; Finance imports none. Every reader's result must pass `resultProblem` in its test (sources, links inside Ledger, whole cents, a period). |
+
+The ten readers: `today.needs` and `today.week` (Live), `projects.overBudget`, `assets.maintenanceSpend`, `assets.maintenanceOverdue`, `assets.warrantiesExpiring`, `services.upcoming`, `bills.priceIncreases`, `household.payments`, `household.yearAhead`. Answer files contain no write, no network call and no storage use (a test reads them). See `docs/LEDGER-R3.2-REPORT.md`.
+
 **Import Undo (R2.2).** `#/ledger/import` "undo" now asks `planTxnDeletion` (the same reader the Transactions delete uses) which household records point at the imported transactions and lists them before the owner confirms; if that cannot be checked, Undo is off; otherwise the Undo itself (`undoBatch`) is unchanged.
 
 ## Family's search source and Add-box destinations (Family Management F5)

@@ -9,6 +9,7 @@ import { billsDueProvider } from './dueProvider';
 import { billsTxnReferences } from './txnReferences';
 import { BILLS_TODAY_CARDS } from './todayCards';
 import { billsAttention } from './attention';
+import { BILLS_ANSWERS } from './answerDefs';
 
 /**
  * Bills & Subscriptions, module #7: what you expect to pay regularly, to whom, how often and roughly how much.
@@ -21,7 +22,7 @@ export const billsModule: ModuleDef = {
   Component: lazyModule(() => import('./BillsModule')),
   routePaths: ['/', '/list', '/upcoming', '/review', '/o/:id'],
   nav: [],
-  contributes: { records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, attention: billsAttention, dueProvider: billsDueProvider, txnReferences: billsTxnReferences, contactReferences: billsContactReferences,
+  contributes: { answers: BILLS_ANSWERS, records: billRecords, searchSource: billsSearchSource, quickAdd: billQuickAdd, todayCards: BILLS_TODAY_CARDS, attention: billsAttention, dueProvider: billsDueProvider, txnReferences: billsTxnReferences, contactReferences: billsContactReferences,
     // R2.2: "Possible matches": candidate bills for a Finance payment, and Bills' own existing link call for Accept. Loaded only when the owner asks.
     paymentSuggestions: { label: 'Bills & Subscriptions', suggest: (c) => import('./paymentSuggest').then((m) => m.suggest(c)), accept: (c, d, today) => import('./paymentSuggest').then((m) => m.accept(c, d, today)), reject: (c, d) => import('./paymentSuggest').then((m) => m.reject(c, d)) },
   },

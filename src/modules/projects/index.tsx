@@ -9,6 +9,7 @@ import { projectQuickAdd } from './quickAddDef';
 import { projectRecords } from './records';
 import { projectsSearchSource } from './searchSource';
 import { projectsTxnReferences } from './txnReferences';
+import { PROJECTS_ANSWERS } from './answerDefs';
 
 /** Projects, module #4: a renovation, a trip or any big job, with a budget made of lines and the vendors involved. Money tracking comes in later steps. */
 export const projectsModule: ModuleDef = {
@@ -21,6 +22,8 @@ export const projectsModule: ModuleDef = {
   contributes: {
     dueProvider: projectsDueProvider, todayCards: PROJECTS_TODAY_CARDS, attention: projectsAttention, records: projectRecords, searchSource: projectsSearchSource, quickAdd: projectQuickAdd, txnReferences: projectsTxnReferences, contactReferences: projectsContactReferences,
     // R1.2: projects over budget for the weekly review; the reader loads only when the review is opened.
+    // R3.2: Quick Answers (the reader loads only when the question is asked).
+    answers: PROJECTS_ANSWERS,
     weekReview: { overBudget: () => import('./overBudget').then((m) => m.readOverBudgetProjects()) },
 // R2.2: "Possible matches": candidate records for a Finance payment, and the module's own existing link call for Accept. Loaded only when the owner asks.
     paymentSuggestions: { label: 'Projects', suggest: (c) => import('./paymentSuggest').then((m) => m.suggest(c)), accept: (c, d, today) => import('./paymentSuggest').then((m) => m.accept(c, d, today)), reject: (c, d) => import('./paymentSuggest').then((m) => m.reject(c, d)) },

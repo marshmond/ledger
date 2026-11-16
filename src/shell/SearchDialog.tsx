@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { withBasePath } from '../core/paths';
 import { requestEvent } from '../core/eventBridge';
 import { requestTask } from '../core/taskBridge';
-import { allSearchSources, type SearchResult } from '../core/registry';
+import { allAnswerReaders, allSearchSources, type SearchResult } from '../core/registry';
+import { ANSWERS_BASE, exampleQuestions, matchAnswers } from '../core/answers';
+import { todayISO } from '../lib/money';
+import { answerHits, looksLikeQuestion } from './searchAnswers';
 import { filterActions } from './searchActions';
 import { groupResults, type ResultGroup } from './searchGroups';
 import Modal from './Modal';
@@ -62,7 +65,12 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
 
   const actions = useMemo(() => filterActions(q, ACTIONS), [q]);
   const flat = useMemo(() => groups.flatMap((g) => g.results.map((r) => ({ g, r }))), [groups]);
-  const total = actions.length + flat.length;
+  // R3.2 Quick Answers: matched from the readers' fixed phrases (synchronous; reads no household data). Shown after Actions and before the module groups.
+  const today = useMemo(() => todayISO(), []);
+  const readers = useMemo(() => allAnswerReaders(), []);
+  const hits = useMemo(() => answerHits(q, matchAnswers(q, readers, today), exampleQuestions(readers)), [q, readers, today]);
+  const answers = hits.items;
+  const total = actions.length + answers.length + flat.length;
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
   useEffect(() => setCur(0), [q, groups]);
@@ -78,7 +86,8 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
     else if (a.full) nav(a.full);
     else if (a.to) nav(withBasePath('/ledger', a.to));
   };
-  const choose = (i: number) => (i < actions.length ? runAction(actions[i]) : open(flat[i - actions.length].r));
+  const openAnswer = (to: string) => { onClose(); nav(to); };
+  const choose = (i: number) => (i < actions.length ? runAction(actions[i]) : i < actions.length + answers.length ? openAnswer(answers[i - actions.length].to) : open(flat[i - actions.length - answers.length].r));
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -113,7 +122,7 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
       {/* Said once the answers are in, so a screen reader hears how many there are without having to move through them. */}
       <div className="sr-only" role="status" aria-live="polite">{q.trim() === '' || busy ? '' : total === 0 ? 'No results' : `${total} result${total === 1 ? '' : 's'}. Use the up and down arrow keys, then Enter.`}</div>
       <ul className="hits" id="search-results" role="listbox" aria-label="Search results" data-ms={ms ?? ''}>
-        {q.trim() === '' && <li className="muted hint">Try “budget”, a task, an event, a payee, a ticker like VTI, or an amount like 45.20.</li>}
+        {q.trim() === '' && <li className="muted hint">Try “budget”, a task, an event, a payee, a ticker like VTI, or an amount like 45.20. Or ask a question, like “projects over budget”. <a href={`#${ANSWERS_BASE}`} onClick={onClose}>What can I ask?</a></li>}
         {actions.length > 0 && <li className="group" role="presentation">Actions</li>}
         {actions.map((a, i) => (
           <li key={a.title} id={`hit-${i}`} role="option" aria-selected={i === cur} className={i === cur ? 'on' : ''} onMouseEnter={() => setCur(i)} onClick={() => choose(i)}>
@@ -121,13 +130,29 @@ export default function SearchDialog({ onClose }: { onClose: () => void }) {
             <span className="badge">Action</span>
           </li>
         ))}
-        {q.trim() !== '' && !busy && total === 0 && <li className="muted hint">Nothing matches “{q.trim()}”.</li>}
+        {answers.length > 0 && <li className="group" role="presentation">{hits.heading}</li>}
+        {hits.note && <li className="muted hint" role="presentation">{hits.note}</li>}
+        {answers.map((a, k) => {
+          const i = actions.length + k;
+          return (
+            <li key={a.key} id={`hit-${i}`} role="option" aria-selected={i === cur} className={i === cur ? 'on' : ''} onMouseEnter={() => setCur(i)} onClick={() => choose(i)}>
+              <span className="hit-main">
+                <strong>{a.title}</strong>
+                {a.subtitle && <span className="muted"> · {a.subtitle}</span>}
+                {a.caveat && <span className="ans-hit-note">{a.caveat}</span>}
+              </span>
+              <span className="badge">{a.kind}</span>
+            </li>
+          );
+        })}
+        {q.trim() !== '' && !busy && total === 0 && <li className="muted hint">Nothing matches “{q.trim()}”.{looksLikeQuestion(q) && <> Ledger answers a fixed set of questions. <a href={`#${ANSWERS_BASE}`} onClick={onClose}>What can I ask?</a></>}</li>}
+        {q.trim() !== '' && !busy && total > 0 && answers.length === 0 && looksLikeQuestion(q) && <li className="muted hint">Ledger can also answer a fixed set of questions. <a href={`#${ANSWERS_BASE}`} onClick={onClose}>What can I ask?</a></li>}
         {q.trim() !== '' && busy && flat.length === 0 && actions.length === 0 && <li className="muted hint">Searching…</li>}
         {groups.map((g) => (
           <Fragment key={g.moduleId}>
             <li className="group" role="presentation">{g.name}</li>
             {g.results.map((r) => {
-              const i = actions.length + flat.findIndex((x) => x.g === g && x.r === r);
+              const i = actions.length + answers.length + flat.findIndex((x) => x.g === g && x.r === r);
               return (
                 <li key={`${g.moduleId}-${r.id}`} id={`hit-${i}`} role="option" aria-selected={i === cur} className={i === cur ? 'on' : ''} onMouseEnter={() => setCur(i)} onClick={() => open(r)}>
                   <span className="hit-main">

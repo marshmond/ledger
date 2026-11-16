@@ -81,7 +81,7 @@ describe('B5 guard: registration', () => {
     registerModules();
     const m = allModules().find((x) => x.id === 'household')!;
     expect(m).toBeDefined();
-    expect(Object.keys(m.contributes ?? {}).sort()).toEqual(['attention', 'searchSource', 'todayCards', 'weekReview']);
+    expect(Object.keys(m.contributes ?? {}).sort()).toEqual(['answers', 'attention', 'searchSource', 'todayCards', 'weekReview']);
     expect(m.contributes!.todayCards!.map((c) => c.id)).toEqual(['household.attention']);
     expect(m.contributes!.todayCards![0].hideWhenEmpty).toBe(true);
   });

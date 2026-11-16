@@ -26,13 +26,14 @@ const missing = () => Promise.reject(new Error('This part of the review is not o
  * Needs-you hook (whose Ledger alerts run read-only, so the monthly check-in is not saved by looking), and the readers below are all reads. Call it inside
  * `AttentionProviders` (Needs you needs Ledger's shared alerts).
  */
-export function useWeekInputs(today: string): WeekInputs {
+export function useWeekInputs(today: string, opts: { cash?: boolean } = {}): WeekInputs {
   const readers = useMemo(() => allWeekReaders(), []);
   const needs = useNeedsYou(today);
   const now = useNow();
   const calendar = useCalendarData(today, weekWindow(today).to, false, now);
   const money = usePart(() => (readers.money ?? missing)(today), [today]);
-  const cash = usePart(() => loadForecast(db, today), [today]);
+  // `cash: false` (Quick Answers) skips the Forecast read, which the short answer does not show; the review page always reads it.
+  const cash = usePart(() => (opts.cash === false ? Promise.resolve(null) : loadForecast(db, today)), [today, opts.cash]);
   const assets = usePart(() => (readers.maintenance ?? missing)(today), [today]);
   const overBudget = usePart(() => (readers.overBudget ?? missing)(), []);
   const family = usePart(() => (readers.family ?? missing)(today), [today]);

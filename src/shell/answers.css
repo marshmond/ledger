@@ -1,0 +1,51 @@
+/* R3.2 Quick Answers. Tokens only; the words (not colour or line style) carry every meaning. */
+.ans { max-width: 56rem; margin-inline: auto; }
+.ans-lead { max-width: 44rem; margin: 0 0 var(--sp-3); }
+.ans-skel { color: var(--muted); }
+.ans-err { border: 1px solid var(--neg); border-radius: var(--r-lg); padding: var(--sp-3) var(--sp-4); margin: 0 0 var(--sp-3); }
+.ans-err p { margin: var(--sp-1) 0 var(--sp-2); }
+
+.ans-questions { list-style: none; margin: var(--sp-4) 0 0; padding: 0; display: grid; gap: var(--sp-2); }
+.ans-q { display: flex; flex-direction: column; gap: var(--sp-1); min-height: 44px; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); color: var(--fg); text-decoration: none; }
+.ans-q:hover { background: var(--hover); }
+.ans-q:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.ans-body { display: grid; gap: var(--sp-4); }
+.ans-answer { border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface); padding: var(--sp-4); display: grid; gap: var(--sp-3); }
+.ans-answer-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.ans-headline { margin: 0; font-size: var(--fs-lg); font-weight: 650; line-height: 1.35; max-width: 40rem; }
+.ans-money { font-variant-numeric: tabular-nums; }
+.ans-period { display: flex; align-items: center; gap: var(--sp-2); margin: 0; color: var(--fg-2); font-size: var(--fs-sm); }
+.ans-figures { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--sp-2); }
+.ans-figures .ui-figure-value { white-space: normal; }
+
+.ans-group h2, .ans-notes h2, .ans-sources h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-md); }
+.ans-count { font-weight: 500; font-size: var(--fs-sm); }
+.ans-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.ans-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.ans-row-main { display: grid; gap: var(--sp-1); min-width: 0; flex: 1 1 auto; }
+.ans-row-title { font-weight: 650; color: var(--fg); overflow-wrap: anywhere; min-height: 24px; }
+.ans-row-detail { color: var(--fg-2); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.ans-row-meta { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-sm); color: var(--fg-2); }
+.ans-row-meta a { min-height: 24px; display: inline-flex; align-items: center; }
+.ans-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.ans-amounts { margin: 0; display: grid; gap: var(--sp-1); text-align: right; flex: none; }
+.ans-amt { display: flex; justify-content: flex-end; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.ans-amt dt { font-weight: 500; }
+.ans-amt dd { margin: 0; }
+.ans-amt.strong { color: var(--fg); font-size: var(--fs-base); font-weight: 700; }
+
+.ans-notes, .ans-sources { border-top: 1px solid var(--line); padding-top: var(--sp-3); }
+.ans-notes h3 { margin: var(--sp-2) 0 var(--sp-1); font-size: var(--fs-sm); font-weight: 650; color: var(--fg-2); text-transform: none; }
+.ans-notes ul, .ans-sources ul { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); }
+.ans-sources a { display: inline-flex; align-items: center; min-height: 32px; }
+
+@media (max-width: 640px) {
+  .ans-row { flex-direction: column; }
+  .ans-amounts { text-align: left; width: 100%; }
+  .ans-amt { justify-content: space-between; }
+  .ans-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Search: the Answers group */
+.hits .ans-hit-note { display: block; font-size: var(--fs-sm); color: var(--muted); }

@@ -4,6 +4,7 @@ import { HOUSEHOLD_BASE } from './model';
 import { HOUSEHOLD_TODAY_CARDS } from './todayCards';
 import { householdAttention } from './attention';
 import { householdSearchSource } from './searchSource';
+import { HOUSEHOLD_ANSWERS } from './answerDefs';
 
 /**
  * Household finances, module #8 (B5): one read-only overview that composes Bills & Subscriptions, Household Services and Home & Assets. It owns no records, no table, no link type,
@@ -17,6 +18,7 @@ export const householdModule: ModuleDef = {
   routePaths: ['/'],
   nav: [],
   contributes: {
+    answers: HOUSEHOLD_ANSWERS,
     todayCards: HOUSEHOLD_TODAY_CARDS, attention: householdAttention, searchSource: householdSearchSource,
     // R1.2: expected payments for the weekly review; the reader loads only when the review is opened.
     weekReview: { money: (today) => import('./weekReview').then((m) => m.readWeekMoney(today)) },

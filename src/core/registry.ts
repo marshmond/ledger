@@ -11,6 +11,7 @@ import type { AttentionSource } from './attention';
 import type { WeekReaders } from './weekReaders';
 import type { TaskFollowUpSource } from './taskFollowUp';
 import type { PaymentSuggestionSource } from './paymentSuggestions';
+import { readerProblem, type AnswerReader } from './answers';
 
 export interface ModuleNavItem {
   to: string;
@@ -88,6 +89,12 @@ export interface ModuleDef {
      * existing link operation for an Accept. Ledger suggests; the owner confirms; the module links. See `src/core/paymentSuggestions.ts` and docs/module-hooks.md.
      */
     paymentSuggestions?: PaymentSuggestionSource;
+    /**
+     * R3.2 "Quick Answers": named, read-only readers for fixed household questions this module legitimately owns. Each calls the module's EXISTING reader and returns a structured
+     * result (figures, rows, links, assumptions, limitations); the shell matches typed questions to readers and draws the result. Ids are `<module id>.<name>`.
+     * See `src/core/answers.ts` and docs/module-hooks.md.
+     */
+    answers?: AnswerReader[];
   };
 }
 
@@ -252,6 +259,12 @@ function checkHooks(m: ModuleDef) {
     if (clash) throw new Error(`Quick-add "${q.id}" (prefix "${q.prefix}") clashes with "${clash.id}" (prefix "${clash.prefix}").`);
     mine.push(q);
   }
+  // R3.2 Quick Answers: a reader's id must be `<module id>.<name>`, usable, and registered once.
+  for (const r of m.contributes?.answers ?? []) {
+    const problem = readerProblem(m.id, r);
+    if (problem) throw new Error(`Answer reader "${r.id}": ${problem}.`);
+    if (allAnswerReaders().some((x) => x.reader.id === r.id)) throw new Error(`Answer reader "${r.id}" is registered twice.`);
+  }
 }
 const quickAddList = (m: ModuleDef): QuickAddDef[] => { const q = m.contributes?.quickAdd; return q ? (Array.isArray(q) ? q : [q]) : []; };
 export const allModules = (): readonly ModuleDef[] => modules;
@@ -288,6 +301,10 @@ export function allWeekReaders(mods: readonly ModuleDef[] = modules): WeekReader
   const out: WeekReaders = {};
   for (const m of mods) for (const [k, v] of Object.entries(m.contributes?.weekReview ?? {})) if (v && !(k in out)) (out as Record<string, unknown>)[k] = v;
   return out;
+}
+/** Every module's Quick Answers readers, in module order. */
+export function allAnswerReaders(mods: readonly ModuleDef[] = modules): { moduleId: string; reader: AnswerReader }[] {
+  return mods.flatMap((m) => (m.contributes?.answers ?? []).map((reader) => ({ moduleId: m.id, reader })));
 }
 /** Every quick-add destination, in module order. */
 export function allQuickAdds(mods: readonly ModuleDef[] = modules): (QuickAddDef & { moduleId: string })[] {

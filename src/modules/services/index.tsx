@@ -9,6 +9,7 @@ import { servicesSearchSource } from './searchSource';
 import { servicesTxnReferences } from './txnReferences';
 import { SERVICES_TODAY_CARDS } from './todayCards';
 import { servicesAttention } from './attention';
+import { SERVICES_ANSWERS } from './answerDefs';
 
 /** Household Services, module #6: who comes to the house (cleaners, lawn care, repair people), how often, and when they are next due. */
 export const servicesModule: ModuleDef = {
@@ -18,7 +19,7 @@ export const servicesModule: ModuleDef = {
   Component: lazyModule(() => import('./ServicesModule')),
   routePaths: ['/', '/a/:id', '/providers/:contactId', '/v/:id'],
   nav: [],
-  contributes: { records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, attention: servicesAttention, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences, contactReferences: servicesContactReferences,
+  contributes: { answers: SERVICES_ANSWERS, records: serviceRecords, searchSource: servicesSearchSource, quickAdd: serviceQuickAdd, todayCards: SERVICES_TODAY_CARDS, attention: servicesAttention, dueProvider: servicesDueProvider, txnReferences: servicesTxnReferences, contactReferences: servicesContactReferences,
     // R1.3: after a visit Task is finished, offer "Log completed visit" (the existing "Log this visit" dialog). Both parts load only when needed.
     taskFollowUp: { read: (taskId) => import('./followUp').then((m) => m.readServicesFollowUp(taskId)), Dialog: () => import('./FollowUpDialog') },
 // R2.2: "Possible matches": candidate records for a Finance payment, and the module's own existing link call for Accept. Loaded only when the owner asks.

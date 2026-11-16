@@ -47,7 +47,7 @@ describe('Search finds the Household finances page', () => {
   it('adds no Quick Add prefix and no new navigation framework (the module declares only a search source and a Today card)', async () => {
     registerModules();
     const m = (await import('./index')).householdModule;
-    expect(Object.keys(m.contributes ?? {}).sort()).toEqual(['attention', 'searchSource', 'todayCards', 'weekReview']);
+    expect(Object.keys(m.contributes ?? {}).sort()).toEqual(['answers', 'attention', 'searchSource', 'todayCards', 'weekReview']);
   });
 });
 

@@ -56,7 +56,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 
 ---
 
-## 1. Global surfaces (23)
+## 1. Global surfaces (24)
 
 | ID | Surface | Source | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -83,6 +83,9 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-21 | Shared page pieces: PageHeader, EmptyState, Banner, Stat, Sparkline; member identity mark, dot and chip (D9) | `src/ui/components.tsx`, `src/ui/MemberIdentity.tsx` | D6, D9 | BLT | Y | Y | . | Y | . | Y |
 | S-22 | Pickers and suggestion lists | `src/ui/pickers.tsx` | D6, D15 | NS | . | . | . | . | . | . |
 | S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | Y | Y | Y | Y | . | Y |
+| S-24 | Quick Answers screen and the Answers group in Search | `src/shell/AnswersPage.tsx`, `src/shell/searchAnswers.ts` | R3.2 | BLT | Y | . | Y | . | . | Y |
+
+S-24 note (R3.2, not a design phase): the Quick Answers screen (`#/answers`, `#/answers/<id>`) and the Answers rows in the Search dialog were built from the Signature components already in place. Recorded marks: `L` and `375` (looked at in the browser pane on the invented demo household, light; 375 px had no sideways scroll), `Func` (every answer opened from Search or by address; Hide amounts masked every amount on four answers; a source link opened the right record). NOT recorded: `D` (dark was not looked at), `1440` (the pane is narrower), `Kbd` (Enter on a Search answer was used; a full Tab walk was not done). The Search dialog row S-06 is unchanged in status.
 
 S-20 note: D5 deliberately left the browser-bar colour, `index.html` and the manifest alone (the default look is unchanged). When Signature is selected the bar takes the Signature canvas colour at run time. **D21:** `index.html` now also sets the bar colour before first paint from the saved mode and palette (no flash of Classic blue for a Signature device). The fixed fallback values (`THEME_COLOR`, the static meta tag, the manifest) stay Classic's, because the default look has not changed; they move only if the owner approves the default switch (report section 5).
 

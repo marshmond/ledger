@@ -10,6 +10,7 @@ import { assetsTxnReferences } from './txnReferences';
 import { serviceQuickAdd } from './serviceQuickAdd';
 import { ASSETS_TODAY_CARDS } from './todayCards';
 import { assetsAttention } from './attention';
+import { ASSETS_ANSWERS } from './answerDefs';
 
 /** Home & Assets, module #5: what the household owns that needs looking after (the house, what is in it, vehicles), where it is, and who services it. */
 export const assetsModule: ModuleDef = {
@@ -20,6 +21,7 @@ export const assetsModule: ModuleDef = {
   routePaths: ['/', '/list'],
   nav: [],
   contributes: {
+    answers: ASSETS_ANSWERS,
     todayCards: ASSETS_TODAY_CARDS, attention: assetsAttention, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences, contactReferences: assetsContactReferences,
     // R1.2: upcoming maintenance for the weekly review; the reader loads only when the review is opened.
     weekReview: { maintenance: (today) => import('./weekReview').then((m) => m.readWeekMaintenance(today)) },

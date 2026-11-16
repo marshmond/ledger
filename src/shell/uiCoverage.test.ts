@@ -38,7 +38,7 @@ const code = (cell: string) => [...cell.matchAll(/`([^`]+)`/g)].map((m) => m[1])
 describe('D5 the tracker is well formed', () => {
   it('has the inventory totals that D4 counted (checked against the source, see the report)', () => {
     expect(pages).toHaveLength(60);
-    expect(surfaces).toHaveLength(23);
+    expect(surfaces).toHaveLength(24);
     expect(views).toHaveLength(31);
     expect(workflows).toHaveLength(37);
     expect(dialogs).toHaveLength(10);
@@ -103,8 +103,9 @@ describe('D5 the tracker is well formed', () => {
     // D13 redesigned the Calendar page (C-01 and its four views), the event editor and day dialog (DL-03) and the layer menu and event workflows (W-09, W-10); W-11 and the other Calendar dialogs are untouched.
     // D21 set the browser-bar colour before first paint (S-20, built, not accepted; the default appearance and the manifest are unchanged).
     // D20 restyled the shared Modal and ConfirmDialog (S-08), added the page-error state to the module loader states (S-11) and marked the shared confirmation (CF-01); no dialog group (DL-xx) changed status, and CF-03 stays NS (OD-6 is open).
+    // R3.2 (not a design phase) added the Quick Answers screen and the Answers group in Search (S-24, built, not accepted); the Search dialog row S-06 itself is unchanged in status.
     // R3.1 (not a design phase) added the Year Ahead page (H-02, built, not accepted): a read-only composition page that uses the Signature components already in place.
-    expect(beyond.map((r) => r.id).sort()).toEqual([...['F-01', 'H-01', 'H-02', 'IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'L-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-11', 'CF-01', 'CF-03', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13', 'W-37', 'V-01', 'V-02', 'V-03', 'V-04', 'B-01', 'B-02', 'B-03', 'B-04', 'B-05', 'F-02', 'F-03', 'W-33', 'W-34', 'W-35'], 'C-01', 'DL-03', 'IV-01', 'IV-02', 'IV-03', 'IV-04', 'W-09', 'W-10', 'P-01', 'P-02', 'A-01', 'A-02', 'A-03', 'N-01', 'N-02', 'IV-15', 'IV-16', 'IV-17', 'IV-18', 'IV-19', 'IV-20', 'IV-21', 'IV-22', 'IV-23', 'W-31', 'W-32', 'W-36', 'L-02', 'L-03', 'L-04', 'L-05', 'L-06', 'L-07', 'L-10', 'L-11', 'L-12', 'W-14', 'W-15', 'W-16', 'W-17', 'W-18', 'W-19', 'L-08', 'L-09', 'L-13', 'L-14', 'L-15', 'L-16', 'IV-24', 'IV-25', 'IV-26', 'IV-29', 'IV-30', 'W-20', 'W-24', 'W-25', 'L-17', 'L-18', 'L-19', 'L-20', 'L-21', 'L-22', 'L-23', 'L-24', 'L-25', 'L-26', 'IV-27', 'IV-28', 'W-21', 'W-22', 'W-23', 'L-27', 'L-28', 'L-29', 'L-30', 'L-31', 'G-01', 'G-02', 'G-03', 'G-04', 'G-05', 'W-26', 'W-27', 'W-28', 'W-29', 'W-30', 'S-19', 'S-20'].sort());
+    expect(beyond.map((r) => r.id).sort()).toEqual([...['F-01', 'H-01', 'H-02', 'IV-05', 'IV-06', 'IV-07', 'IV-08', 'IV-09', 'IV-10', 'IV-11', 'IV-12', 'IV-13', 'IV-14', 'K-01', 'L-01', 'S-01', 'S-02', 'S-03', 'S-04', 'S-05', 'S-08', 'S-09', 'S-11', 'CF-01', 'CF-03', 'S-13', 'S-14', 'S-17', 'S-21', 'S-23', 'S-24', 'T-01', 'W-01', 'W-02', 'W-03', 'W-04', 'W-05', 'W-12', 'W-13', 'W-37', 'V-01', 'V-02', 'V-03', 'V-04', 'B-01', 'B-02', 'B-03', 'B-04', 'B-05', 'F-02', 'F-03', 'W-33', 'W-34', 'W-35'], 'C-01', 'DL-03', 'IV-01', 'IV-02', 'IV-03', 'IV-04', 'W-09', 'W-10', 'P-01', 'P-02', 'A-01', 'A-02', 'A-03', 'N-01', 'N-02', 'IV-15', 'IV-16', 'IV-17', 'IV-18', 'IV-19', 'IV-20', 'IV-21', 'IV-22', 'IV-23', 'W-31', 'W-32', 'W-36', 'L-02', 'L-03', 'L-04', 'L-05', 'L-06', 'L-07', 'L-10', 'L-11', 'L-12', 'W-14', 'W-15', 'W-16', 'W-17', 'W-18', 'W-19', 'L-08', 'L-09', 'L-13', 'L-14', 'L-15', 'L-16', 'IV-24', 'IV-25', 'IV-26', 'IV-29', 'IV-30', 'W-20', 'W-24', 'W-25', 'L-17', 'L-18', 'L-19', 'L-20', 'L-21', 'L-22', 'L-23', 'L-24', 'L-25', 'L-26', 'IV-27', 'IV-28', 'W-21', 'W-22', 'W-23', 'L-27', 'L-28', 'L-29', 'L-30', 'L-31', 'G-01', 'G-02', 'G-03', 'G-04', 'G-05', 'W-26', 'W-27', 'W-28', 'W-29', 'W-30', 'S-19', 'S-20'].sort());
     for (const r of beyond) expect(r.cells.includes('BLT'), `${r.id} is built, not accepted`).toBe(true);
   });
 });
@@ -166,7 +167,7 @@ describe('D5 every registered route is in the tracker', () => {
   it('no other source file declares routes (tripwire for a new module or a new route mechanism)', () => {
     const walk = (d: string): string[] => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`]));
     const withRoutes = walk('src').filter((f) => f.endsWith('.tsx') && !/\.test\.tsx$/.test(f) && /<Route[\s>]/.test(readFileSync(f, 'utf8')));
-    const known = [...Object.values(JSX_ROUTES).map((v) => v.file), 'src/App.tsx', 'src/modules/ledger/LedgerModule.tsx'];
+    const known = [...Object.values(JSX_ROUTES).map((v) => v.file), 'src/App.tsx', 'src/modules/ledger/LedgerModule.tsx', 'src/shell/AnswersPage.tsx'];
     expect(withRoutes.sort()).toEqual([...new Set(known)].sort());
   });
 

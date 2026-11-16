@@ -20,6 +20,8 @@ export interface OverBudgetProject {
   expectedTotalCents: number;
   /** expected total minus budget; always above zero. */
   overCents: number;
+  /** True when the project has no overall budget, so its budget is the total of its budget lines (the project page words it the same way). */
+  budgetFromLines: boolean;
   href: string;
 }
 
@@ -30,7 +32,7 @@ export function overBudgetOf(projects: readonly ProjectRecord[], summaries: Read
     if (!isActiveProject(p)) continue;
     const s = summaries.get(p.id);
     if (!s || !s.flags.overBudget || s.budgetCents <= 0) continue;
-    out.push({ id: p.id, name: p.data.name, budgetCents: s.budgetCents, expectedTotalCents: s.expectedTotalCents, overCents: s.expectedTotalCents - s.budgetCents, href: `#/projects/${p.id}` });
+    out.push({ id: p.id, name: p.data.name, budgetCents: s.budgetCents, expectedTotalCents: s.expectedTotalCents, overCents: s.expectedTotalCents - s.budgetCents, budgetFromLines: p.data.budgetCents === null, href: `#/projects/${p.id}` });
   }
   return out.sort((a, b) => b.overCents - a.overCents || a.name.localeCompare(b.name) || a.id - b.id);
 }
