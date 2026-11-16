@@ -4,6 +4,7 @@ import { addDays } from '../../lib/dates';
 import { downloadText } from '../../lib/download';
 import { todayISO } from '../../lib/money';
 import { store } from '../../core/store';
+import { announceTaskDone } from '../../core/taskFollowUp';
 import { queryProviders } from '../../core/dueProvider';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
@@ -36,7 +37,11 @@ export function DerivedDetail({ item, onClose }: { item: CalItem; onClose: () =>
   const [date, setDate] = useState(item.firstDay);
   const complete = async () => {
     await act!.complete!();
-    toast(`Done: ${item.title}`, async () => { await act!.reopen?.(); });
+    const taskId = src.sourceModule === 'tasks' && typeof src.sourceRecordId === 'number' ? src.sourceRecordId : null;
+    const undo = async () => { await act!.reopen?.(); };
+    // A finished Task that stands for a household visit or asset maintenance also offers to log it (R1.3). Other kinds of item are unchanged.
+    if (taskId !== null) await announceTaskDone(toast, { taskId, text: `Done: ${item.title}`, undo });
+    else toast(`Done: ${item.title}`, undo);
     onClose();
   };
   const move = async () => {

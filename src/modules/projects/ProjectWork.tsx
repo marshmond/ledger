@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { rovingKeys } from '../../ui/rovingKeys';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { dayLabel } from '../../core/time';
+import { announceTaskDone } from '../../core/taskFollowUp';
 import { projectLabel, useProjectChoices } from '../../core/projectLink';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
@@ -75,7 +76,7 @@ export default function ProjectWork({ project }: { project: ProjectRecord }) {
 
   const run = async (fn: () => Promise<void>) => { try { await fn(); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Something went wrong.'); } };
   const toggle = (t: TaskRecord) => void run(async () => {
-    if (isOpen(t)) { await completeTask(t.id, today); toast(`Done: ${t.data.title}`, async () => { await reopenTask(t.id); }); }
+    if (isOpen(t)) { await completeTask(t.id, today); await announceTaskDone(toast, { taskId: t.id, text: `Done: ${t.data.title}`, undo: async () => { await reopenTask(t.id); } }); }
     else { await reopenTask(t.id); toast(`Reopened: ${t.data.title}`, async () => { await completeTask(t.id, today); }); }
   });
   const removeFrom = (t: TaskRecord) => void run(async () => {

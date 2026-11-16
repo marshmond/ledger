@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RecordId } from '../../core/entities';
 import { createTaskFrom } from '../../core/taskBridge';
+import { announceTaskDone } from '../../core/taskFollowUp';
 import { todayISO } from '../../lib/money';
 import { useToast } from '../../ui/Toast';
 import { completeTask, reopenTask } from './data';
@@ -17,7 +18,7 @@ export default function TaskActions({ module, id, label, title }: { module: stri
   /** Mark done right here, without leaving the page. Undo puts it back (and removes a repeat's untouched next copy). */
   const finish = async (taskId: number, name: string) => {
     await completeTask(taskId, todayISO());
-    toast(`Done: ${name}`, () => reopenTask(taskId));
+    await announceTaskDone(toast, { taskId, text: `Done: ${name}`, undo: () => reopenTask(taskId) });
   };
   return (
     <span className="tk-actions">

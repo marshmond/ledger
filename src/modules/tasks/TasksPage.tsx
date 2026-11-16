@@ -12,6 +12,7 @@ import ConfirmDialog from '../../shell/ConfirmDialog';
 import { useToast } from '../../ui/Toast';
 import { projectLabel, selectableProjects, useProjectChoices } from '../../core/projectLink';
 import { dayLabel } from '../../core/time';
+import { announceTaskDone } from '../../core/taskFollowUp';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
 import { assignTasksToProject, completeTask, loadDeletedTasks, loadLists, loadTasks, planTaskProject, removeTasks, reopenTask, restoreTaskData, restoreTasks, saveTask, updateTasks, type ProjectAssignPlan } from './data';
 import ListsDialog from './ListsDialog';
@@ -111,7 +112,7 @@ export default function TasksPage() {
       toast('Reopened', async () => { await completeTask(t.id, todayISO()); });
     } else {
       const { spawnedId } = await completeTask(t.id, today);
-      toast(spawnedId ? 'Done. The next one is created.' : 'Done', async () => { await reopenTask(t.id); });
+      await announceTaskDone(toast, { taskId: t.id, text: spawnedId ? 'Done. The next one is created.' : 'Done', undo: async () => { await reopenTask(t.id); } });
     }
   };
 
@@ -162,7 +163,7 @@ export default function TasksPage() {
   const bulkComplete = async () => {
     const ids = picked().filter(isOpen).map((t) => t.id);
     for (const id of ids) await completeTask(id, today);
-    toast(`Completed ${ids.length} task${ids.length === 1 ? '' : 's'}`, async () => { for (const id of ids) await reopenTask(id); });
+    await announceTaskDone(toast, { taskIds: ids, text: `Completed ${ids.length} task${ids.length === 1 ? '' : 's'}`, undo: async () => { for (const id of ids) await reopenTask(id); } });
     setSelected(new Set());
   };
   const bulkDelete = async () => {

@@ -14,6 +14,7 @@ import { DateInline, DateTile } from '../../ui/DateTile';
 import { StatusChip, type StatusTone } from '../../ui/StatusChip';
 import { ARRANGEMENT_TONE, arrangementCard, groupByDate, UPCOMING_KIND_WORDS } from './presentation';
 import { STATUS_LABEL } from './model';
+import { markersOf } from './schedule';
 import type { Row } from './views';
 import { parseUpcomingDays, UPCOMING_ROWS, UPCOMING_WINDOWS, upcomingLabel, visibleUpcoming, type UpcomingDays } from './upcomingWindow';
 
@@ -37,8 +38,17 @@ const KIND_TONE: Record<AttentionEntry['kind'], StatusTone> = {
   contract: 'warning', unlogged: 'warning', schedule: 'warning', 'duplicate-visits': 'warning', 'duplicate-handoff': 'warning', 'finance-reference': 'warning', 'typed-amount': 'warning', 'review-visit': 'warning', provider: 'info', asset: 'info',
 };
 
-export function AttentionCard({ items, onLog }: { items: AttentionEntry[]; onLog: (u: NonNullable<AttentionEntry['unlogged']>) => void }) {
+type Unlogged = NonNullable<AttentionEntry['unlogged']>;
+/** The day the finished visit was due (the task's own due date, as the dialog also shows it; the occurrence marker only if there is none), so two finished visits of one service can be told apart. */
+const scheduledFor = (u: Unlogged) => u.task.data.dueDate ?? markersOf(u.task).occurrence;
+
+export function AttentionCard({ items, onLog, onLogMany }: { items: AttentionEntry[]; onLog: (u: Unlogged) => void; onLogMany?: (list: Unlogged[]) => void }) {
   const { text } = useMoney();
+  // R1.3: finished visits that were never logged can be ticked and logged one after another. Ticking changes nothing; only each visit's own "Log this visit" button saves.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const unlogged = items.filter((x): x is AttentionEntry & { unlogged: Unlogged } => !!x.unlogged);
+  const chosen = unlogged.filter((x) => picked.has(x.id)); // an entry that left the list (logged elsewhere) is dropped from the selection by this filter
+  const flip = (id: string) => setPicked((p) => { const n = new Set(p); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   return (
     <section className={`card sv-card sv-attn${items.length ? ' has-items' : ''}`} aria-labelledby="sv-att-h">
       <h2 id="sv-att-h">Needs attention{items.length ? ` (${items.length})` : ''}</h2>
@@ -46,13 +56,28 @@ export function AttentionCard({ items, onLog }: { items: AttentionEntry[]; onLog
         <ul className="plain sv-items">
           {items.map((x) => (
             <li key={x.id}>
+              {onLogMany && unlogged.length > 1 && x.unlogged && <label className="as-check sv-pick"><input type="checkbox" checked={picked.has(x.id)} onChange={() => flip(x.id)} aria-label={`Select to log: ${text(x.text)}${scheduledFor(x.unlogged) ? `, scheduled ${day(scheduledFor(x.unlogged)!)}` : ''}`} /></label>}
               <StatusChip tone={KIND_TONE[x.kind]} icon={false}>{KIND_LABEL[x.kind]}</StatusChip>{' '}
               {x.to || x.href ? <Target t={x}><strong>{text(x.text)}</strong></Target> : <strong>{text(x.text)}</strong>}
-              <span className="muted small"> · {text(x.hint)}</span>
+              <span className="muted small"> · {text(x.hint)}</span>{x.unlogged && scheduledFor(x.unlogged) && <span className="muted small"> · was scheduled for {day(scheduledFor(x.unlogged)!)}</span>}
               {x.unlogged && <div className="sv-actionrow"><button className="btn" onClick={() => x.unlogged && onLog(x.unlogged)}>Log this visit…</button></div>}
             </li>
           ))}
         </ul>
+      )}
+      {onLogMany && unlogged.length > 1 && (
+        <div className="sv-bulk" role="group" aria-label="Log several finished visits">
+          <p className="muted small" role="status">
+            {chosen.length === 0
+              ? 'Finishing a task does not prove the visit happened, so each finished visit is logged on its own. Tick several to go through them one after another.'
+              : `${chosen.length} finished ${chosen.length === 1 ? 'visit' : 'visits'} selected: ${chosen.map((x) => `${x.unlogged.task.data.title}${scheduledFor(x.unlogged) ? ` (scheduled ${day(scheduledFor(x.unlogged)!)})` : ''}`).join('; ')}. Each one opens its own form, and nothing is saved until you press that form's Log this visit.`}
+          </p>
+          <div className="sv-actionrow">
+            <button type="button" className="btn" onClick={() => setPicked(new Set(unlogged.map((x) => x.id)))} disabled={chosen.length === unlogged.length}>Select all ({unlogged.length})</button>
+            {chosen.length > 0 && <button type="button" className="btn" onClick={() => setPicked(new Set())}>Clear</button>}
+            <button type="button" className="btn primary" disabled={chosen.length === 0} onClick={() => { onLogMany(chosen.map((x) => x.unlogged)); setPicked(new Set()); }}>Log {chosen.length || ''} selected, one at a time…</button>
+          </div>
+        </div>
       )}
     </section>
   );

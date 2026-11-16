@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { goTo } from '../../core/dueProvider';
+import { announceTaskDone } from '../../core/taskFollowUp';
 import { DateTile } from '../../ui/DateTile';
 import { Icon } from '../../ui/icons';
 import { StatusChip } from '../../ui/StatusChip';
@@ -36,7 +37,10 @@ export function TodayRow({ item, hideAmounts, when, tile }: { item: CalItem; hid
     try {
       if (complete) {
         await complete();
-        toast(`Done: ${title}`, reopen ? () => reopen() : undefined);
+        // A finished Task that stands for a household visit or asset maintenance also offers to log it (R1.3). Other kinds of item are unchanged.
+        const taskId = item.source?.sourceModule === 'tasks' && typeof item.source.sourceRecordId === 'number' ? item.source.sourceRecordId : null;
+        if (taskId !== null) await announceTaskDone(toast, { taskId, text: `Done: ${title}`, undo: reopen ? () => reopen() : undefined });
+        else toast(`Done: ${title}`, reopen ? () => reopen() : undefined);
       } else if (item.occ) {
         const occ = item.occ;
         await markOccurrenceDone(occ, true);

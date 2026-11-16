@@ -77,6 +77,11 @@ describe('what the first download is allowed to contain', () => {
     for (const x of ['projects/overBudget.ts', 'household/weekReview.ts', 'family/weekReview.ts', 'assets/weekReview.ts']) expect(files, x).not.toContain(`modules/${x}`);
   });
 
+  it('R1.3: the "log it" readers and dialogs of Household Services and Home & Assets are fetched on demand, not in the first download', () => {
+    for (const x of ['services/followUp.ts', 'services/FollowUpDialog.tsx', 'services/VisitDialogs.tsx', 'assets/followUp.ts', 'assets/FollowUpDialog.tsx', 'assets/ServiceForm.tsx']) expect(files, x).not.toContain(`modules/${x}`);
+    expect(files).toContain('core/taskFollowUp.ts'); // the small neutral layer and the host are the only new first-download pieces
+  });
+
   it('Today stays in the first download: it is where the app opens, and it needs no second request', () => {
     expect(files).toContain('modules/today/TodayModule.tsx');
   });

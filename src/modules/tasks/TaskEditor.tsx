@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Priority, RecordRef } from '../../core/entities';
 import { store } from '../../core/store';
 import { todayISO } from '../../lib/money';
+import { announceTaskDone } from '../../core/taskFollowUp';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
 import { PRIORITIES, PRIORITY_ICON, PRIORITY_LABEL } from '../../core/priority';
@@ -67,7 +68,9 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
       });
       for (const e of existing) if (removed.has(refKey(e.ref))) await store.shared.links.remove(e.linkId);
       for (const r of added) await store.shared.links.add({ module: MODULE, id: task.id }, r, 'about');
-      toast('Task saved');
+      // Setting the status to Done here is an edit, not the check button, but the finished task can still be logged, so the same offer applies.
+      if (done && task.data.status !== 'done') await announceTaskDone(toast, { taskId: task.id, text: 'Task saved' });
+      else toast('Task saved');
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save.');
@@ -82,7 +85,7 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
   };
   const toggleDone = async () => {
     if (t.status === 'done') { await reopenTask(task.id); toast('Task reopened'); }
-    else { const { spawnedId } = await completeTask(task.id, today); toast(spawnedId ? 'Done. The next one is created.' : 'Done', async () => { await reopenTask(task.id); }); }
+    else { const { spawnedId } = await completeTask(task.id, today); await announceTaskDone(toast, { taskId: task.id, text: spawnedId ? 'Done. The next one is created.' : 'Done', undo: async () => { await reopenTask(task.id); } }); }
     onClose();
   };
 

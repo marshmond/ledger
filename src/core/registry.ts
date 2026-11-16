@@ -9,6 +9,7 @@ import type { TxnReferenceProvider } from './txnDependents';
 import type { ContactReferenceProvider } from './contactReferences';
 import type { AttentionSource } from './attention';
 import type { WeekReaders } from './weekReaders';
+import type { TaskFollowUpSource } from './taskFollowUp';
 
 export interface ModuleNavItem {
   to: string;
@@ -75,6 +76,12 @@ export interface ModuleDef {
      * imports a module. Each reader calls the module's EXISTING reader. See `src/core/weekReaders.ts` and docs/module-hooks.md.
      */
     weekReview?: WeekReaders;
+    /**
+     * R1.3 "Finish the loop": after a Task linked to one of this module's records is marked done, offer to log the work through this module's OWN existing dialog.
+     * A reader (read only) says whether there is anything left to log; a lazily loaded dialog does the logging, only when the person presses its button.
+     * See `src/core/taskFollowUp.ts` and docs/module-hooks.md.
+     */
+    taskFollowUp?: TaskFollowUpSource;
   };
 }
 
@@ -261,6 +268,10 @@ export function allContactReferenceProviders(mods: readonly ModuleDef[] = module
 /** Every module's "Needs you" source, in module order. */
 export function allAttentionSources(mods: readonly ModuleDef[] = modules): { moduleId: string; source: AttentionSource }[] {
   return mods.flatMap((m) => (m.contributes?.attention ? [{ moduleId: m.id, source: m.contributes.attention }] : []));
+}
+/** Every module's "finished Task, log it" offer, in module order. */
+export function allTaskFollowUps(mods: readonly ModuleDef[] = modules): { moduleId: string; source: TaskFollowUpSource }[] {
+  return mods.flatMap((m) => (m.contributes?.taskFollowUp ? [{ moduleId: m.id, source: m.contributes.taskFollowUp }] : []));
 }
 /** The weekly review's readers, merged across modules (the first module to offer a reader wins; each reader is offered by one module). */
 export function allWeekReaders(mods: readonly ModuleDef[] = modules): WeekReaders {

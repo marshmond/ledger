@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from '../../core/router';
+import { openTaskFollowUp } from '../../core/taskFollowUp';
+import { SERVICES_FOLLOW_LABEL } from './followUpText';
 import { EmptyState, PageHeader } from '../../ui/components';
 import { todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
@@ -56,7 +58,7 @@ export default function OverviewPage() {
         </EmptyState>
       ) : (
         <>
-          <AttentionCard items={ov.attention} onLog={(u) => setLogging({ arrangementId: u.arrangementId, taskId: u.task.id })} />
+          <AttentionCard items={ov.attention} onLog={(u) => setLogging({ arrangementId: u.arrangementId, taskId: u.task.id })} onLogMany={(list) => openTaskFollowUp(list.map((u) => ({ moduleId: 'services', taskId: u.task.id, label: SERVICES_FOLLOW_LABEL })))} />
 
           <div className="sv-filters" role="group" aria-label="Filter arrangements, upcoming services and recent visits">
             <fieldset className="sv-seg"><legend className="sr-only">Show arrangements</legend>

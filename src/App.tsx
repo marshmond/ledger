@@ -10,6 +10,7 @@ import { legacyTarget } from './core/legacy';
 import { lazyModule, preloadLazyModule } from './core/lazyModule';
 import { ModuleLoadBoundary } from './shell/ModuleLoader';
 import { TaskCreator } from './modules/tasks/QuickTask';
+import FollowUpHost from './shell/FollowUpHost';
 import { RouteAnnouncer, SkipLink } from './shell/SkipAndRoute';
 
 registerModules();
@@ -61,6 +62,7 @@ export default function App() {
       <ModuleBar />
       <GlobalFrame />
       <TaskCreator />
+      <FollowUpHost />
       <Routes>
         {allModules().map((m) => (
           <Route key={m.id} path={`/${m.id}/*`} element={<><Remember id={m.id} /><ModuleLoadBoundary key={m.id} name={m.name} component={m.Component} resetKey={loc.pathname}><m.Component /></ModuleLoadBoundary></>} />

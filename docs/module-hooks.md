@@ -13,6 +13,7 @@ contributes: {
   contactReferences?: ContactReferenceProvider; // C2: see "contactReferences" below
   attention?: AttentionSource; // R1.1: see "attention" below
   weekReview?: WeekReaders; // R1.2: see "weekReview" below
+  taskFollowUp?: TaskFollowUpSource; // R1.3: see "taskFollowUp" below
 }
 ```
 
@@ -174,6 +175,20 @@ weekReview: { money: (today) => import('./weekReview').then((m) => m.readWeekMon
 ```
 
 Rules: write nothing, start no timer, recalculate no figure (a tally uses the module's own function, as Household finances uses B5's `addRow`); address links are the module's own (`#/family/m/3`, never a path under Today); amounts travel as whole cents with their certainty and are hidden by the page, not the reader; a stored color value never travels (a semantic color id does). Registered by Household finances (`money`), Family (`family`), Home & Assets (`maintenance`) and Projects (`overBudget`). `allWeekReaders()` merges them. Cash outlook is read by the page from Finance's own `cashOutlook` (a library function, not a module).
+
+## `taskFollowUp`: "this finished Task can be logged" (R1.3 "Finish the loop")
+
+Added in R1.3. When a Task is marked done (Tasks page and editor, Today, the Calendar's "Mark done", a record's linked-task list, a Project's task list), the "Done" message may carry ONE extra button beside Undo ("Log completed visit", "Log maintenance") that opens the owning module's own existing logging dialog, in place, on whatever screen the person is on. The contract and the shared pieces are in `src/core/taskFollowUp.ts`; the app-wide host that opens the dialog is `src/shell/FollowUpHost.tsx`. Nothing is stored, synced or backed up, and **finishing a Task never creates a visit or a history entry**: the button only opens a dialog, and only that dialog's own Save writes, through the module's existing function.
+
+```ts
+contributes: { taskFollowUp?: {
+  read(taskId: number): Promise<{ label: string } | null>;      // read only; null = nothing to log
+  Dialog: () => Promise<{ default: ComponentType<TaskFollowUpDialogProps> }>; // the module's existing dialog behind a thin wrapper, loaded on demand
+} }
+taskFollowUp: { read: (id) => import('./followUp').then((m) => m.readServicesFollowUp(id)), Dialog: () => import('./FollowUpDialog') }
+```
+
+Rules: `read` is only called for a Task that has a link to a record of the module's own id (so an ordinary Task loads no module code), and only AFTER the Task was completed; a reader that throws offers nothing and never breaks the Done message; the first module in module order that offers wins. The dialog re-checks everything itself (reopened, deleted, already logged, record gone or archived) and shows a plain explanation instead of writing. Several offers (a bulk completion, or the tick boxes on the Household Services and Home & Assets overviews) are walked through one dialog at a time with "N of M", "Skip this one" and Cancel stopping the list (`advanceRun` and `stopRun`); there is no "log all" and no "dismiss". Registered by Household Services ("Log completed visit", the existing "Log this visit" dialog) and Home & Assets ("Log maintenance", the existing "Save to service history" form).
 
 ## Family's search source and Add-box destinations (Family Management F5)
 

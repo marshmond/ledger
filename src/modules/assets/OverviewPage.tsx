@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link } from '../../core/router';
+import { openTaskFollowUp } from '../../core/taskFollowUp';
 import { store } from '../../core/store';
 import { dayLabel } from '../../core/time';
 import { EmptyState, PageHeader } from '../../ui/components';
@@ -9,7 +10,10 @@ import { Figure } from '../../ui/Figure';
 import { StatusChip } from '../../ui/StatusChip';
 import { formatCents, todayISO } from '../../lib/money';
 import { useToday } from '../../ui/useToday';
+import { getTask } from '../tasks/data';
 import { loadAssets } from './data';
+import { ASSETS_FOLLOW_LABEL } from './followUpText';
+import { completedOn } from './maintenance';
 import { attentionRows } from './overviewText';
 import { loadOverview } from './overviewData';
 import { isYear, type Overview } from './overview';
@@ -86,6 +90,8 @@ export default function OverviewPage() {
                 )}
                 <AttentionLinks ov={ov} names={names} />
               </section>
+
+              <UnsavedWork rows={ov.attention.unsaved} names={names} />
 
               <section className="card as-card" aria-labelledby="ov-next-h">
                 <h2 id="ov-next-h">Upcoming maintenance</h2>
@@ -181,17 +187,73 @@ export default function OverviewPage() {
 function AttentionLinks({ ov, names }: { ov: Overview; names: Map<number, string> }) {
   const a = ov.attention;
   const overdue = a.overdueTasks.slice(0, 3);
-  if (!overdue.length && !a.unsaved.length && !a.orphans && !a.reviewRefs && !a.duplicateJobs) return null;
+  if (!overdue.length && !a.orphans && !a.reviewRefs && !a.duplicateJobs) return null;
   return (
     <ul className="plain as-items as-att-links">
       {overdue.map((m) => <li key={`o${m.taskId}`} className="small"><a href={`#/tasks?task=${m.taskId}`}>{m.title}</a> <span className="muted">· {assetNames(names, m.assetIds)}, was due {day(m.dueDate)}</span></li>)}
       {a.overdueTasks.length > overdue.length && <li className="small muted">{a.overdueTasks.length - overdue.length} more overdue in <a href="#/tasks?view=overdue">Tasks</a></li>}
-      {a.unsaved.slice(0, 3).map((u) => <li key={`u${u.taskId}`} className="small"><Link to={`/${u.assetIds[0]}`}>Save &ldquo;{u.title}&rdquo; to history</Link> <span className="muted">· {assetNames(names, u.assetIds)}</span></li>)}
-      {a.unsaved.length > 3 && <li className="small muted">{a.unsaved.length - 3} more on their asset pages</li>}
       {a.duplicateJobs > 0 && <li className="small muted">Saved-twice jobs are flagged on the asset&rsquo;s page, under Service history.</li>}
       {a.orphans > 0 && <li className="small"><Link to={LIST}>Review the records that point at a missing asset</Link></li>}
       {a.reviewRefs > 0 && <li className="small muted">Each is marked &ldquo;needs review&rdquo; on the asset&rsquo;s Spending card; open a service record or the asset to pick the payment again.</li>}
     </ul>
+  );
+}
+
+/** How many finished tasks the list shows at once; the rest are on their asset pages (each asset's Service history lists its own). */
+const UNSAVED_SHOWN = 25;
+
+/**
+ * R1.3: completed maintenance tasks that were never saved to service history, each with a button that opens the existing "Save to service history" form right here
+ * (no trip to the asset page). Several can be ticked and saved one after another. The list is H5's own `attention.unsaved`; nothing here decides what is unsaved.
+ * Finishing a task does not prove work was done, so there is no "save all": each task is saved only by its own form's Save, with its own date, cost and notes. There is
+ * no "dismiss", because Ledger has no record of "reviewed and left out", and one is not invented here.
+ */
+export function UnsavedWork({ rows, names }: { rows: Overview['attention']['unsaved']; names: Map<number, string> }) {
+  const [picked, setPicked] = useState<number[]>([]);
+  const shown = rows.slice(0, UNSAVED_SHOWN);
+  // The day each task was finished (read from the task itself), so two finished tasks with the same name can be told apart.
+  const finished = useLiveQuery(async () => {
+    const out = new Map<number, string>();
+    for (const r of shown) { const t = await getTask(r.taskId); if (t) out.set(r.taskId, completedOn(t)); }
+    return out;
+  }, [shown.map((r) => r.taskId).join(',')]);
+  if (rows.length === 0) return null;
+  const pickable = shown.filter((r) => r.assetIds.length === 1); // a task linked to several assets is never saved from here: which asset it belongs to is not known
+  const chosen = pickable.filter((r) => picked.includes(r.taskId)); // a task that was saved elsewhere has left the list, so it drops out of the selection here
+  const open = (list: typeof shown) => openTaskFollowUp(list.map((r) => ({ moduleId: 'assets', taskId: r.taskId, label: ASSETS_FOLLOW_LABEL, subject: r.assetIds[0] })));
+  const flip = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  return (
+    <section className="card as-card" aria-labelledby="ov-unsaved-h">
+      <h2 id="ov-unsaved-h">Finished, not yet saved ({rows.length})</h2>
+      <p className="muted small">These maintenance tasks were marked done, but nothing was saved to service history. Marking a task done does not record the work, its date or its cost. Saving is your choice, one task at a time.</p>
+      <ul className="plain as-items">
+        {shown.map((r) => (
+          <li key={r.taskId} className="as-unsaved-row">
+            {rows.length > 1 && r.assetIds.length === 1 && <label className="as-check as-pick"><input type="checkbox" checked={picked.includes(r.taskId)} onChange={() => flip(r.taskId)} aria-label={`Select to save: ${r.title}${finished?.get(r.taskId) ? `, finished ${day(finished.get(r.taskId)!)}` : ''}`} /></label>}
+            <span className="as-unsaved-main"><strong>{r.title}</strong> <span className="muted small">· {assetNames(names, r.assetIds)}{finished?.get(r.taskId) ? ` · finished ${day(finished.get(r.taskId)!)}` : ''}</span></span>
+            <span className="as-unsaved-act">
+              {r.assetIds.length === 1
+                ? <button type="button" className="btn" onClick={() => open([r])}>Save to history…</button>
+                : <span className="muted small">Linked to several assets: open the right one to save it. {r.assetIds.map((id, i) => <span key={id}>{i > 0 && ', '}<a href={`#/assets/${id}`}>{names.get(id) ?? 'asset'}</a></span>)}</span>}
+              <a className="link small" href={`#/tasks?task=${r.taskId}`}>Open task</a>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {rows.length > shown.length && <p className="muted small">{rows.length - shown.length} more on their asset pages.</p>}
+      {rows.length > 1 && (
+        <div className="as-bulk" role="group" aria-label="Save several finished tasks">
+          <p className="muted small" role="status">
+            {chosen.length === 0 ? 'Tick several to go through them one after another.' : `${chosen.length} selected: ${chosen.map((r) => `${r.title}${finished?.get(r.taskId) ? ` (finished ${day(finished.get(r.taskId)!)})` : ''}`).join('; ')}. Each one opens its own form, and nothing is saved until you press that form's Save.`}
+          </p>
+          <div className="row">
+            <button type="button" className="btn" onClick={() => setPicked(pickable.map((r) => r.taskId))} disabled={chosen.length === pickable.length}>Select all ({pickable.length})</button>
+            {chosen.length > 0 && <button type="button" className="btn" onClick={() => setPicked([])}>Clear</button>}
+            <button type="button" className="btn primary" disabled={chosen.length === 0} onClick={() => { open(chosen); setPicked([]); }}>Save {chosen.length || ''} selected, one at a time…</button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

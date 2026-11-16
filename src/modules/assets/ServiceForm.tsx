@@ -42,6 +42,10 @@ type Props = {
    */
   handoff?: Prefill;
   onClose: () => void;
+  /** R1.3: called once, just before `onClose`, after a task's work was saved to history (not when the form was only cancelled). */
+  onSaved?: () => void;
+  /** R1.3: shown when several finished tasks are being saved one after another; "Skip this one" leaves it unsaved and moves on, Cancel stops the list. */
+  queue?: { position: number; total: number; onSkip: () => void };
 };
 
 /**
@@ -49,7 +53,7 @@ type Props = {
  * Only known facts are prefilled (the task's title and notes, its date, a single contact). Cost and "what was done" are never invented:
  * a blank cost is saved as "not recorded", not as $0.
  */
-export default function ServiceForm({ asset, service, task, complete = false, prefill, handoff, onClose }: Props) {
+export default function ServiceForm({ asset, service, task, complete = false, prefill, handoff, onClose, onSaved, queue }: Props) {
   const toast = useToast();
   const today = todayISO();
   const contacts = useLiveQuery(() => store.shared.contacts.query(), []) ?? [];
@@ -108,10 +112,11 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
       else if (task) {
         const r = await logTaskService({ taskId: task.id, data, complete });
         toast(complete ? (r.spawnedId ? 'Done and saved to history. The next one is created.' : 'Done and saved to history') : 'Saved to service history');
+        onSaved?.();
       } else { await createService(data); toast('Service logged'); }
       onClose();
     } catch (err) {
-      if (err instanceof DuplicateServiceError) { toast('That task was already saved to history'); onClose(); return; }
+      if (err instanceof DuplicateServiceError) { toast('That task was already saved to history'); onSaved?.(); onClose(); return; }
       if (err instanceof HandoffExistsError) { setSaved({ serviceId: err.serviceId }); setError('This visit was already recorded for this asset (maybe a moment ago, or on another device). Nothing new was saved.'); setBusy(false); return; }
       setError(err instanceof Error ? err.message : 'Could not save.');
       setBusy(false);
@@ -147,6 +152,7 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
     <Modal title={heading} onClose={onClose} wide>
       <form className="as-form" onSubmit={submit}>
         <p className="muted small">On <strong>{asset.data.name}</strong>. Only the description and date are needed; everything else is optional and stays blank if you leave it.</p>
+        {queue && <p className="as-note small" role="status">Task {queue.position} of {queue.total} from your list. <strong>Skip this one</strong> leaves it unsaved and moves on. <strong>Cancel</strong> stops the list. Each one is saved only when you press its own Save.</p>}
         {task && !service && (
           <p className="as-note small" role="note">
             {complete ? nextLine(task, date) : 'This task is already done. Saving keeps a permanent record of it; the task itself is not changed.'}
@@ -224,6 +230,7 @@ export default function ServiceForm({ asset, service, task, complete = false, pr
             </span>
           )}
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
+          {queue && <button type="button" className="btn" onClick={queue.onSkip} disabled={busy}>Skip this one</button>}
           <button type="submit" className="btn primary" disabled={busy}>{service ? 'Save' : task && complete ? 'Mark done and save' : task ? 'Save to history' : 'Save'}</button>
         </div>
       </form>

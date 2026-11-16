@@ -23,5 +23,7 @@ export const assetsModule: ModuleDef = {
     todayCards: ASSETS_TODAY_CARDS, attention: assetsAttention, dueProvider: assetsDueProvider, records: assetRecords, searchSource: assetsSearchSource, quickAdd: [assetQuickAdd, serviceQuickAdd], txnReferences: assetsTxnReferences, contactReferences: assetsContactReferences,
     // R1.2: upcoming maintenance for the weekly review; the reader loads only when the review is opened.
     weekReview: { maintenance: (today) => import('./weekReview').then((m) => m.readWeekMaintenance(today)) },
+    // R1.3: after a Task linked to an asset is finished, offer "Log maintenance" (the existing "Save to history" form). Both parts load only when needed.
+    taskFollowUp: { read: (taskId) => import('./followUp').then((m) => m.readAssetsFollowUp(taskId)), Dialog: () => import('./FollowUpDialog') },
   },
 };

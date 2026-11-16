@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
 import { store } from '../../core/store';
+import { dayLabel } from '../../core/time';
 import { parseAmountToCents, todayISO } from '../../lib/money';
 import { loadAssets, publicLabel } from '../assets/data';
 import { runUndo, type Undo } from './undo';
@@ -58,7 +59,15 @@ const readAmount = (t: string): number | null | undefined => {
  * "Done, log it", "Skip this visit" and "Cancel this visit" for an upcoming visit Task, and "Log this visit" for a Task that was finished in
  * Tasks or the Calendar. Shows what will happen first (from the same function that does it); one press writes everything or nothing.
  */
-export function LogVisitDialog({ arrangementId, taskId, status, onClose }: { arrangementId: number; taskId: number; status: VisitStatus; onClose: () => void }) {
+export function LogVisitDialog({ arrangementId, taskId, status, onClose, onSaved, queue, finished = false }: {
+  arrangementId: number; taskId: number; status: VisitStatus; onClose: () => void;
+  /** R1.3: the Task is already known to be finished (the person got here from its "Done" message), so the dialog says "Log this visit" from the first moment instead of "Done, log it" until its preview has loaded. */
+  finished?: boolean;
+  /** R1.3: called once, just before `onClose`, after the visit was saved (and not when the dialog was only cancelled). */
+  onSaved?: () => void;
+  /** R1.3: shown when several finished visits are being logged one after another; "Skip this one" moves on without saving, Not now stops the list. */
+  queue?: { position: number; total: number; onSkip: () => void };
+}) {
   const toast = useToast();
   const today = todayISO();
   const [date, setDate] = useState(today);
@@ -95,7 +104,7 @@ export function LogVisitDialog({ arrangementId, taskId, status, onClose }: { arr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [arrangementId, taskId, input, today]);
 
-  const late = plan?.mode === 'late';
+  const late = plan ? plan.mode === 'late' : finished;
   const heading = late ? 'Log this visit' : TITLE[status];
   const blocked = !plan || !!plan.problem || cents === undefined || (status === 'cancelled' && !by);
 
@@ -105,6 +114,7 @@ export function LogVisitDialog({ arrangementId, taskId, status, onClose }: { arr
     try {
       const res = await logVisitFromTask({ arrangementId, taskId, input, today, expect: first.current });
       toast(late ? 'Visit logged. The task was not finished again.' : DONE[status], undoer(toast, res.undo));
+      onSaved?.();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not log it. Nothing was changed.');
@@ -115,7 +125,8 @@ export function LogVisitDialog({ arrangementId, taskId, status, onClose }: { arr
   return (
     <Modal title={heading} onClose={onClose} wide>
       <form className="sv-form" onSubmit={(e) => { e.preventDefault(); void go(); }}>
-        {late && <p className="sv-note small" role="note">This task was finished in Tasks or the Calendar. Check the date it really happened. Nothing is logged until you press the button.</p>}
+        {queue && <p className="sv-note small" role="status">Visit {queue.position} of {queue.total} from your list. <strong>Skip this one</strong> leaves it unlogged and moves on. <strong>Not now</strong> stops the list. Each visit is logged only when you press its own button.</p>}
+        {late && <p className="sv-note small" role="note">This task was finished in Tasks, Today or the Calendar{plan?.taskDue ? <> (it was scheduled for {dayLabel(plan.taskDue, { weekday: 'short', year: true })})</> : ''}. Check the date the visit really happened. Finishing a task is not proof the visit took place, so nothing is logged until you press the button.</p>}
         {status === 'cancelled' && (
           <fieldset className="sv-sub">
             <legend>Who cancelled it?</legend>
@@ -133,6 +144,7 @@ export function LogVisitDialog({ arrangementId, taskId, status, onClose }: { arr
         {error && <div className="error" role="alert">{error}</div>}
         <div className="row sv-actions">
           <button type="button" className="btn" onClick={onClose}>Not now</button>
+          {queue && <button type="button" className="btn" onClick={queue.onSkip} disabled={busy}>Skip this one</button>}
           <button type="submit" className={`btn ${status === 'completed' ? 'primary' : ''}`} disabled={busy || blocked}>{late ? 'Log this visit' : GO[status]}</button>
         </div>
       </form>

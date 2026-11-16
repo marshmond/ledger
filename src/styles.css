@@ -950,3 +950,12 @@ button.ab-chip--go:hover:not(:disabled) { background: var(--surface-soft); }
 }
 /* On the narrowest phones (a 320px screen) the mark gives way, so the module name keeps the room. */
 @media (max-width: 359px) { .modbrand { display: none; } }
+
+/* R1.3: the optional next-step button on a "Done" message (for example "Log completed visit"); it sits before Undo and is a little more prominent. */
+.toast button.toast-action { font-weight: 600; }
+/* On a phone the message goes on its own line and the buttons below it, so the words are not squeezed into a narrow column and each button is easy to tap. */
+@media (max-width: 640px) {
+  .toast:has(button.toast-action) { flex-wrap: wrap; row-gap: var(--sp-1); }
+  .toast:has(button.toast-action) > span { flex: 1 1 100%; }
+  .toast:has(button.toast-action) button.link { min-height: 44px; padding-inline: var(--sp-2); }
+}
