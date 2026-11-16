@@ -112,6 +112,92 @@ export function normalizeRows(rows: Record<string, string>[], map: CsvMapping): 
   return { rows: out, errors };
 }
 
+// ---- R2.1: pasted text and remembered column layouts ----
+
+/** The one place both "Upload CSV file" and "Paste transactions" read text, so they cannot disagree. Commas, tabs (a spreadsheet copy), semicolons and pipes are auto-detected. */
+export function parseTransactionText(text: string): { csv: ParsedCsv | null; problem: string | null } {
+  if (!text.trim()) return { csv: null, problem: 'Nothing to read yet. Paste your rows, including the header line.' };
+  const csv = parseCsv(text);
+  if (csv.headers.length < 2) return { csv: null, problem: 'This does not look like columns of data. The first line should name the columns (for example Date, Description, Amount).' };
+  if (csv.rows.length === 0) return { csv: null, problem: 'Only a header line was found. Include at least one transaction row under it.' };
+  return { csv, problem: null };
+}
+
+/** What is remembered per account: which column title plays which role, the date order and the sign flip. Never any rows or file contents. */
+export interface SavedLayout {
+  v: 1;
+  date: string;
+  description: string;
+  amount?: string;
+  debit?: string;
+  credit?: string;
+  externalId?: string;
+  dateOrder: 'MDY' | 'DMY';
+  invertSign: boolean;
+}
+
+/** One settings row per account, keyed by the account's id (never its name), so it rides the existing backup and sync with no migration. */
+export const layoutKey = (accountId: number) => `import-layout:${accountId}`;
+
+const ROLES = ['date', 'description', 'amount', 'debit', 'credit', 'externalId'] as const;
+const OPTIONAL_ROLES = ['amount', 'debit', 'credit', 'externalId'] as const;
+
+export function layoutFromMapping(map: CsvMapping): SavedLayout {
+  const l: SavedLayout = { v: 1, date: map.date, description: map.description, dateOrder: map.dateOrder, invertSign: map.invertSign };
+  for (const r of OPTIONAL_ROLES) if (map[r]) l[r] = map[r];
+  return l;
+}
+
+/** Reads a stored value defensively: anything malformed counts as "nothing saved". */
+export function readLayout(v: unknown): SavedLayout | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  if (o.v !== 1 || typeof o.date !== 'string' || typeof o.description !== 'string' || !o.date || !o.description) return null;
+  if (o.dateOrder !== 'MDY' && o.dateOrder !== 'DMY') return null;
+  if (typeof o.invertSign !== 'boolean') return null;
+  const l: SavedLayout = { v: 1, date: o.date, description: o.description, dateOrder: o.dateOrder, invertSign: o.invertSign };
+  for (const r of OPTIONAL_ROLES) {
+    if (o[r] === undefined) continue;
+    if (typeof o[r] !== 'string' || !o[r]) return null;
+    l[r] = o[r] as string;
+  }
+  if (!l.amount && !l.debit && !l.credit) return null;
+  return l;
+}
+
+export type LayoutCheck = { ok: true; map: CsvMapping } | { ok: false; reason: string };
+
+/**
+ * A saved layout is applied only when EVERY column it names is in the file exactly once (by title, ignoring capitals and spacing),
+ * so a reordered file still works, but a missing, renamed or repeated column sends the person back to the manual choices.
+ */
+export function applySavedLayout(layout: SavedLayout, headers: string[]): LayoutCheck {
+  const norm = (h: string) => h.trim().toLowerCase().replace(/\s+/g, ' ');
+  const map: CsvMapping = { date: '', description: '', dateOrder: layout.dateOrder, invertSign: layout.invertSign };
+  const missing: string[] = [];
+  const repeated: string[] = [];
+  for (const role of ROLES) {
+    const want = layout[role];
+    if (!want) continue;
+    const hits = headers.filter((h) => norm(h) === norm(want));
+    if (hits.length === 0) missing.push(want);
+    else if (hits.length > 1) repeated.push(want);
+    else map[role] = hits[0];
+  }
+  if (missing.length) return { ok: false, reason: `This file is missing the ${missing.map((m) => `"${m}"`).join(", ")} column${missing.length === 1 ? "" : "s"}.` };
+  if (repeated.length) return { ok: false, reason: `This file has more than one ${repeated.map((m) => `"${m}"`).join(", ")} column.` };
+  return { ok: true, map };
+}
+
+export async function loadLayout(d: FinanceDB, accountId: number): Promise<SavedLayout | null> {
+  return readLayout((await d.settings.get(layoutKey(accountId)))?.value);
+}
+
+/** Called only after the person has confirmed an import. */
+export async function saveLayout(d: FinanceDB, accountId: number, map: CsvMapping): Promise<void> {
+  await d.settings.put({ key: layoutKey(accountId), value: layoutFromMapping(map) });
+}
+
 const normPayee = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 
 /**

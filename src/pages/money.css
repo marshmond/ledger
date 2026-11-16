@@ -342,3 +342,11 @@
 }
 
 .mny-nowrap { white-space: nowrap; }
+
+/* R2.1 Import v2: how the rows arrive (file or paste) and the remembered-layout summary. */
+.mny-modes { display: inline-flex; gap: var(--sp-2); margin: 0 0 var(--sp-3); flex-wrap: wrap; }
+.mny-mode { min-height: 44px; padding: 0 var(--sp-4); cursor: pointer; }
+.mny-mode[aria-checked="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.mny-paste { width: 100%; min-height: 9rem; font-family: ui-monospace, Consolas, monospace; font-size: var(--fs-sm); resize: vertical; }
+.mny-saved { display: grid; gap: var(--sp-1); margin: 0 0 var(--sp-3); padding: 0; list-style: none; }
+.mny-saved li { overflow-wrap: anywhere; }

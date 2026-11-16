@@ -84,7 +84,7 @@ export function importStage(s: { hasFile: boolean; hasPreview: boolean }): Impor
 }
 
 export const IMPORT_STEPS: { id: ImportStage; title: string }[] = [
-  { id: 'file', title: 'Choose account and file' },
+  { id: 'file', title: 'Choose account and transactions' },
   { id: 'map', title: 'Match the columns' },
   { id: 'review', title: 'Review and import' },
 ];

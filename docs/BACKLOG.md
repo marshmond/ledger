@@ -4,7 +4,17 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
-## STATUS 2026-11-16 (newest): R1.3 "FINISH THE LOOP" APPROVED BY CHATGPT WITH ONE SAFEGUARD (APPLIED) AND AUTHORIZED FOR RELEASE; NEXT PHASE R2.1 MONEY INTAKE / IMPORT V2 (NOT STARTED); NO FURTHER R1 REFINEMENT PLANNED; NOT REAL-DEVICE TESTED
+## STATUS 2026-11-16 (newest): R2.1 "IMPORT V2" APPROVED BY CHATGPT AND AUTHORIZED FOR RELEASE (stepper wording corrected); NEXT PROPOSED PHASE R2.2 (NOT STARTED); NOT REAL-DEVICE TESTED
+
+**What was asked:** make routine imports easier: (1) remember the CSV column layout per account, (2) paste transactions as an alternative to uploading a file, both through the existing preview, duplicate detection, confirmation and undo; no schema change, OFX, bank feeds or R2.2.
+
+**What was built:** layout saved per account in the `settings` table (`import-layout:<account id>`) only after a confirmed import; "Using your saved layout" plus "Change mapping"; safe fallback with a reason when the file does not fit; "Paste transactions" beside "Upload CSV file"; a shared reader for both. **Tests:** 298 files, 5,881 pass (+15). `tsc` and build clean.
+
+**Judgment calls (please review):** 1. settings table, not `PREFERENCE_KEYS` (that list is device-only localStorage); 2. one row per account; 3. match by column title, all named columns required exactly once; 4. undoing an import keeps a newer layout; 5. layout re-saved on every confirmed import; 6. paste needs a "Read pasted rows" button; 7. account chosen first; 8. stepper wording kept; 9. pasted imports named "Pasted transactions, <date>". Full list in `docs/LEDGER-R2.1-REPORT.md` section G.
+
+**NOT built:** OFX/QFX, bank connections, R2.2 payment-link suggestions, rules v2, receipt scanning, multiple named layouts. R1.3 is committed and deployed (`16d6659`, run #120).
+
+(Previous status, superseded:) STATUS 2026-11-16 (newest): R1.3 "FINISH THE LOOP" APPROVED BY CHATGPT WITH ONE SAFEGUARD (APPLIED) AND AUTHORIZED FOR RELEASE; NEXT PHASE R2.1 MONEY INTAKE / IMPORT V2 (NOT STARTED); NO FURTHER R1 REFINEMENT PLANNED; NOT REAL-DEVICE TESTED
 
 **Final multi-asset rule (ChatGPT review, 2026-11-16):** when a finished Task is linked to more than one eligible (live, un-archived) asset, nothing in the Task says which one the work was done on, so Ledger does NOT choose by database order: no "Log maintenance" button is offered, and the existing manual "Save to history" on the asset's own page stays available (the one-history-entry-per-Task rule is unchanged). With exactly one eligible asset (an archived or deleted one does not count) the contextual flow is unchanged. On the Home & Assets overview a task linked to several assets shows links to those assets instead of a button and has no tick box. No new selection screen was added; Household Services is untouched. R1.3 is the last R1 phase; no further R1 refinement is planned; the next phase is R2.1 Money Intake / Import v2 (not started).
 

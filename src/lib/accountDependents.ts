@@ -114,6 +114,7 @@ export async function deleteAccountWithTransactions(d: FinanceDB, accountId: num
     const txns = await d.txns.where('accountId').equals(accountId).toArray();
     for (const t of txns) await deleteTxn(d, t.id!);
     await d.accounts.delete(accountId);
+    await d.settings.delete(`import-layout:${accountId}`); // R2.1: the remembered CSV layout belongs to the account
     return { ok: true as const, transactionsDeleted: txns.length };
   });
 }

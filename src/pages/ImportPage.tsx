@@ -4,9 +4,12 @@ import { db } from '../db';
 import {
   classifyRows,
   commitImport,
+  applySavedLayout,
   detectMapping,
+  loadLayout,
   normalizeRows,
-  parseCsv,
+  parseTransactionText,
+  saveLayout,
   undoBatch,
   type ClassifiedRow,
   type CsvMapping,
@@ -43,6 +46,12 @@ export default function ImportPage() {
   const [rows, setRows] = useState<ClassifiedRow[]>([]);
   const [includeOld, setIncludeOld] = useState(false);
   const [message, setMessage] = useState('');
+  // R2.1: how the rows arrive, the pasted text (kept only on this screen), and whether a remembered layout was used.
+  const [mode, setMode] = useState<'file' | 'paste'>('file');
+  const [pasteText, setPasteText] = useState('');
+  const [problem, setProblem] = useState('');
+  const [layoutState, setLayoutState] = useState<{ kind: 'none' } | { kind: 'saved' } | { kind: 'mismatch'; reason: string }>({ kind: 'none' });
+  const [editing, setEditing] = useState(false);
 
   const parsed = useMemo(() => (csv && map && map.date && map.description ? normalizeRows(csv.rows, map) : null), [csv, map]);
 
@@ -55,28 +64,60 @@ export default function ImportPage() {
     };
   }, [parsed, accountId, batches.length]);
 
+  // Choosing the columns: the account's remembered layout when this file fits it, otherwise the usual guess. Nothing is written here.
+  useEffect(() => {
+    if (!csv) { setMap(null); setLayoutState({ kind: 'none' }); setEditing(false); return; }
+    let live = true;
+    (async () => {
+      const saved = accountId === '' ? null : await loadLayout(db, accountId);
+      if (!live) return;
+      if (saved) {
+        const check = applySavedLayout(saved, csv.headers);
+        if (check.ok) { setMap(check.map); setLayoutState({ kind: 'saved' }); setEditing(false); return; }
+        setLayoutState({ kind: 'mismatch', reason: check.reason });
+      } else setLayoutState({ kind: 'none' });
+      setMap(detectMapping(csv.headers));
+      setEditing(true);
+    })();
+    return () => { live = false; };
+  }, [csv, accountId]);
+
   const account = accounts.find((a) => a.id === accountId);
   const count = (c: ClassifiedRow['cls']) => rows.filter((r) => r.cls === c).length;
   const willAdd = count('new') + (includeOld ? count('before_opening') : 0);
   const stage = importStage({ hasFile: !!csv && !!map, hasPreview: !!parsed });
 
-  async function onFile(f: File | undefined) {
+  function chooseMode(m: 'file' | 'paste') {
+    if (m === mode) return;
+    setMode(m);
+    setCsv(null); setMap(null); setRows([]); setFilename(''); setProblem(''); setMessage('');
+  }
+
+  /** Upload and paste both end here, so the same text always gives the same rows. */
+  function load(text: string, name: string) {
     setMessage('');
+    const r = parseTransactionText(text);
+    setProblem(r.problem ?? '');
+    setFilename(r.csv ? name : '');
+    setCsv(r.csv);
+  }
+
+  async function onFile(f: File | undefined) {
     if (!f) return;
-    const parsedCsv = parseCsv(await f.text());
-    setFilename(f.name);
-    setCsv(parsedCsv);
-    const m = detectMapping(parsedCsv.headers);
-    setMap({ ...m, invertSign: account?.kind === 'credit_card' && !!m.amount ? false : m.invertSign });
+    load(await f.text(), f.name);
   }
 
   async function commit() {
-    if (accountId === '') return;
+    if (accountId === '' || !map) return;
     const b = await commitImport(db, accountId, filename, rows, { includeBeforeOpening: includeOld });
-    setMessage(`Imported ${b.createdCount} new, matched ${b.matched.length} existing. Skipped ${count('duplicate')} duplicates.`);
+    // The layout is remembered only now, after the person confirmed. A failure here never undoes or blocks the import.
+    let remembered = false;
+    try { await saveLayout(db, accountId, map); remembered = true; } catch { /* the import itself succeeded */ }
+    setMessage(`Imported ${b.createdCount} new, matched ${b.matched.length} existing. Skipped ${count('duplicate')} duplicates.${remembered ? ` Your column layout is remembered for ${account?.name ?? 'this account'}.` : ''}`);
     setCsv(null);
     setMap(null);
     setRows([]);
+    setPasteText('');
   }
 
   const col = (label: string, key: 'date' | 'description' | 'amount' | 'debit' | 'credit' | 'externalId', optional = false) => (
@@ -91,7 +132,7 @@ export default function ImportPage() {
 
   return (
     <div className="mny-page mny-import">
-      <PageHeader title="Import CSV" description="Bring in transactions from a bank CSV." />
+      <PageHeader title="Import transactions" description="Bring in transactions from a bank CSV file or by pasting rows." />
 
       <ol className="mny-stepper" aria-label="Import steps">
         {IMPORT_STEPS.map((s, i) => {
@@ -107,7 +148,7 @@ export default function ImportPage() {
       </ol>
 
       <section className="card" aria-labelledby="imp-file">
-        <h2 id="imp-file" className="mny-h2 mny-h2--tight">1. Choose account and file</h2>
+        <h2 id="imp-file" className="mny-h2 mny-h2--tight">1. Choose account and transactions</h2>
         <div className="mny-form mny-form--two">
           <label className="f">Account
             <select value={accountId} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : '')}>
@@ -115,11 +156,31 @@ export default function ImportPage() {
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </label>
+        </div>
+        <div className="mny-modes" role="radiogroup" aria-label="How to bring in transactions">
+          <button type="button" role="radio" aria-checked={mode === 'file'} className="mny-mode" onClick={() => chooseMode('file')}>Upload CSV file</button>
+          <button type="button" role="radio" aria-checked={mode === 'paste'} className="mny-mode" onClick={() => chooseMode('paste')}>Paste transactions</button>
+        </div>
+        {mode === 'file' ? (
           <label className="f">CSV file
             <input type="file" accept=".csv,text/csv" disabled={accountId === ''} onChange={(e) => onFile(e.target.files?.[0])} />
           </label>
-        </div>
-        {csv && filename && <p className="mny-filename">Chosen file: <strong>{filename}</strong></p>}
+        ) : (
+          <>
+            <label className="f">Pasted transactions
+              <textarea className="mny-paste" value={pasteText} disabled={accountId === ''} spellCheck={false}
+                placeholder={'Date,Description,Amount\n2026-11-01,Grocery Store,-85.42'}
+                onChange={(e) => setPasteText(e.target.value)} />
+            </label>
+            <div className="mny-commit">
+              <button type="button" disabled={accountId === '' || !pasteText.trim()} onClick={() => load(pasteText, `Pasted transactions, ${new Date().toLocaleDateString()}`)}>Read pasted rows</button>
+              <span className="muted">Include the header line. Copying cells from a spreadsheet works too.</span>
+            </div>
+          </>
+        )}
+        {accountId === '' && <p className="muted">Choose an account first.</p>}
+        {problem && <p className="warn" role="alert">{problem}</p>}
+        {csv && filename && <p className="mny-filename">{mode === 'file' ? 'Chosen file' : 'Pasted'}: <strong>{filename}</strong> ({csv.rows.length} row{csv.rows.length === 1 ? '' : 's'})</p>}
         <p className="muted">
           Re-importing the same or an overlapping file is safe: rows already imported are skipped, and rows that match something you
           entered by hand mark it cleared instead of creating a duplicate. Nothing is written until you confirm.
@@ -131,6 +192,25 @@ export default function ImportPage() {
         <>
           <section className="card" aria-labelledby="imp-map">
             <h2 id="imp-map" className="mny-h2 mny-h2--tight">2. Match the columns</h2>
+            {layoutState.kind === 'saved' && !editing && (
+              <>
+                <p role="status"><strong>Using your saved layout</strong> for {account?.name}.</p>
+                <ul className="mny-saved" aria-label="Saved column layout">
+                  <li>Date: <strong>{map.date}</strong>{' '}({map.dateOrder === 'MDY' ? 'month/day/year' : 'day/month/year'})</li>
+                  <li>Description: <strong>{map.description}</strong></li>
+                  {map.amount && <li>Amount: <strong>{map.amount}</strong></li>}
+                  {map.debit && <li>Money out: <strong>{map.debit}</strong></li>}
+                  {map.credit && <li>Money in: <strong>{map.credit}</strong></li>}
+                  {map.externalId && <li>Bank transaction ID: <strong>{map.externalId}</strong></li>}
+                  {map.invertSign && <li>Signs are flipped.</li>}
+                </ul>
+                <button type="button" onClick={() => setEditing(true)}>Change mapping</button>
+              </>
+            )}
+            {layoutState.kind === 'mismatch' && <p className="warn" role="status">Your saved layout for {account?.name} does not fit this file. {layoutState.reason} Please check the columns below.</p>}
+            {(editing || layoutState.kind !== 'saved') && (<>
+            {layoutState.kind === 'saved' && <p className="muted">You are changing your saved layout. The new choices are remembered after you import.</p>}
+            {layoutState.kind !== 'saved' && <p className="muted">After you import, Ledger remembers these columns for {account?.name ?? 'this account'}. Nothing is remembered until then.</p>}
             <div className="mny-form mny-form--wide">
               {col('Date', 'date')}
               {col('Description', 'description')}
@@ -150,6 +230,7 @@ export default function ImportPage() {
               Flip signs (use if purchases show as positive, as many credit card exports do)
             </label>
             <p className="muted">If both a signed amount and debit/credit columns are set, the signed amount is used.</p>
+            </>)}
             {!parsed && <p className="warn" role="status">Choose a Date column and a Description column to see the preview.</p>}
           </section>
 
