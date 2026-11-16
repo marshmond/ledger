@@ -24,7 +24,7 @@ const Count = ({ children }: { children: ReactNode }) => <span className="hh-cou
 const chipClass = (m: string) => `hh-chip m-${m}`;
 /** The words are always present; the shape (check, wave, question mark) and the edge only reinforce them. */
 const CERT_ICON: Record<Certainty, IconName> = { known: 'check', estimated: 'wave', unknown: 'help', disputed: 'warning' };
-const CertaintyChip = ({ c }: { c: Certainty }) => <span className={`hh-chip c-${c}`}><Icon name={CERT_ICON[c]} size={12} />{CERTAINTY_LABEL[c]}</span>;
+export const CertaintyChip = ({ c }: { c: Certainty }) => <span className={`hh-chip c-${c}`}><Icon name={CERT_ICON[c]} size={12} />{CERTAINTY_LABEL[c]}</span>;
 
 /** Moves the reader to a section on this page. (The app uses hash routes, so a "#section" link would leave the page.) */
 function jump(id: string) {

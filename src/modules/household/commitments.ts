@@ -94,8 +94,8 @@ export function addRow(t: Totals, cents: number | null, certainty: Certainty) {
   else t.unknown.count++;
 }
 
-const PRICE_CONFLICTS = new Set(['price-same-date', 'price-overlap']);
-const hasPriceDispute = (o: ObligationRecord) => !!o.data.lc?.conflicts.some((c) => PRICE_CONFLICTS.has(c.kind));
+export const PRICE_CONFLICTS = new Set(['price-same-date', 'price-overlap']);
+export const hasPriceDispute = (o: ObligationRecord) => !!o.data.lc?.conflicts.some((c) => PRICE_CONFLICTS.has(c.kind));
 const priceDisputedOn = (o: ObligationRecord, date: string) => !!o.data.lc && priceOn(o.data.lc.prices, date)?.conflict === true;
 
 /** What a bill's lifecycle says that a reader of the amount should know, in words. */

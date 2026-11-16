@@ -239,11 +239,12 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 | B-04 | `/bills/review` | `src/modules/bills/ReviewPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
 | B-05 | `/bills/o/:id` | `src/modules/bills/ObligationPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |
 
-### 2.4 Household Finances, Family, Contacts (6)
+### 2.4 Household Finances, Family, Contacts (7)
 
 | ID | Address | Component | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
 | H-01 | `/household` | `src/modules/household/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
+| H-02 | `/household/year-ahead` | `src/modules/household/YearAheadPage.tsx` | R3.1 | BLT | Y | Y | Y | Y | . | Y |
 | F-01 | `/family` | `src/modules/family/OverviewPage.tsx` | D12 | BLT | Y | Y | Y | Y | Y | Y |
 | F-02 | `/family/m/:id` | `src/modules/family/MemberPage.tsx` | D9, D15 | BLT | Y | Y | Y | Y | Y | Y |
 | F-03 | `/family/dates` | `src/modules/family/DatesPage.tsx` | D15 | BLT | Y | Y | Y | Y | Y | Y |

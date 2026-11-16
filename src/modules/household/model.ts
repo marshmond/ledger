@@ -39,6 +39,7 @@ export function hrefOfRecord(recordId: string, assetId?: number): string {
 
 export const HOUSEHOLD_BASE = '/household';
 export const householdPath = () => '/household';
+export const yearAheadPath = () => '/household/year-ahead';
 
 /** How sure a figure is. Used for every expected amount; an unknown or disputed amount is NEVER added as zero. */
 export type Certainty = 'known' | 'estimated' | 'unknown' | 'disputed';

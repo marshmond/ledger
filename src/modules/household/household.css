@@ -154,3 +154,30 @@
 @media (max-width: 640px), (pointer: coarse) {
   .hh-prow-main > a, .hh-list .hh-row-main > a, .hh-mrow a { display: inline-flex; align-items: center; min-height: 44px; }
 }
+
+/* Year Ahead (R3.1) */
+.ya-range { display: flex; align-items: center; gap: var(--sp-2); margin: 0 0 var(--sp-4); font-size: var(--fs-lg, 1.1rem); }
+.ya-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ya-tile .hh-tile-figs { grid-template-columns: minmax(0, 1fr); }
+.ya-qual { margin: 0; color: var(--warn-text); }
+.ya-na { display: flex; align-items: center; gap: var(--sp-2); margin: 0; padding: var(--sp-2); border: 1px dashed var(--warn); border-radius: var(--r-md); }
+.ya-incomplete { display: flex; gap: var(--sp-2); padding: var(--sp-3); margin: 0 0 var(--sp-4); border: 1px solid var(--warn); border-radius: var(--r-lg); }
+.ya-attn { display: inline-flex; align-items: center; gap: 6px; }
+.ya-attn--overlap, .ya-attn--source, .ya-attn--maintenance { color: var(--warn-text); }
+.ya-months { margin-bottom: var(--sp-4); }
+.ya-period > summary { cursor: pointer; }
+.ya-psum { display: inline-flex; flex-direction: column; gap: 2px; vertical-align: top; min-width: 0; max-width: calc(100% - 2rem); }
+.ya-sub { font-size: var(--fs-sm); color: var(--fg-2); overflow-wrap: anywhere; }
+.ya-nodate { display: inline-grid; place-items: center; width: 44px; height: 44px; border: 1px dashed var(--warn); border-radius: var(--r-md); color: var(--warn-text); }
+.ya-info .hh-prow-amt { color: var(--muted); }
+.ya-ovl { display: inline-flex; align-items: center; gap: 6px; color: var(--warn-text); }
+.ya-fc--in { color: var(--accent-text); border-color: var(--accent-line); background: var(--accent-soft); }
+.ya-fc--not { border-style: dashed; background: none; }
+.ya-irr { border-style: dotted; }
+@media (max-width: 1280px) { .ya-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .ya-tiles { grid-template-columns: minmax(0, 1fr); } .ya-tile .hh-tile-figs { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); } }
+@media (max-width: 640px), (pointer: coarse) { .ya-period > summary { min-height: 44px; } }
+.ya-near { display: none; }
+@media (max-width: 760px) { .ya-near { display: block; } }
+.ya-ovl { align-items: flex-start; }
+.ya-ovl .ui-icon, .ya-attn .ui-icon { flex: none; margin-top: 3px; }

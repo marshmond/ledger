@@ -4,6 +4,20 @@
 
 Status key: `[ ]` not started, `[x]` built.
 
+## STATUS 2026-11-16 (newest): R3.1 "YEAR AHEAD" BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; NOT REAL-DEVICE TESTED. NEXT RECOMMENDED PHASE R3.2 QUICK ANSWERS (NOT STARTED).
+
+**What was asked:** one read-only page that answers "what do I need to prepare for over the next year?" by bringing together bills, services, Finance-only scheduled payments, project amounts and important dates, without merging them into a misleading total, and make Household Finances findable from Search.
+
+**What was built:** `#/household/year-ahead` (reached from a Year Ahead button on Household Finances and from Search): four separate summaries, a Planning attention list, twelve rolling periods with source, certainty, Forecast status and a link on every row, and a phone-only "Coming up first" list. Pure composer `yearAhead.ts`, loader `yearAheadData.ts`, page `YearAheadPage.tsx`. No table, migration, dependency, backup, sync or model change. Report `docs/LEDGER-R3.1-REPORT.md`; screenshots `Documentsedger-design-conceptsr3.1-evidence` (outside the repository).
+
+**Tests:** 22 new (18 in `yearAhead.test.ts`, 4 in `yearAheadUi.test.tsx`); full suite 301 files, 5,935 tests (baseline 299 / 5,912); `tsc` and build clean; B5 guard and UI-coverage tracker updated (row H-02).
+
+**Judgment calls (please review):** 1. Quick Add left unchanged (creation only); 2. twelve rolling periods, not calendar months; 3. Bills-and-services figure is B5's own; 4. Finance-only excludes possible overlaps while B5 keeps both halves and states the exposure; 5. overlap uses the existing word-based payee match (conservative); 6. loan and tax rows Estimated, scheduled rows Known; 7. "not every month" = four or fewer occurrences; 8. Home & Assets adds dates only (no lifecycle milestones or replacement cost exist); 9. project commitments have no payment dates, so they sit in a "Date not specified" card; 10. `loadForecast(13 months)` is read on open (about the cost of the Forecast page); 11. screenshots kept outside the repo; 12. a "Not in the Forecast" chip on every unlinked bill row.
+
+**NOT built:** R3.2 Quick Answers, R3.3 Budget suggestions, new forecasting/tax/loan calculations, Bill-to-Scheduled creation, payment automation, notifications, replacement-cost fields, filters, a Household Finances redesign.
+
+(Previous status, superseded; R2.2 is now COMMITTED AND DEPLOYED as `2f7670b`, run #122 success:)
+
 ## STATUS 2026-11-16 (newest): R2.2 "POSSIBLE MATCHES" (CROSS-MODULE PAYMENT-LINK SUGGESTIONS) BUILT AND TESTED LOCALLY; UNCOMMITTED, NOT PUSHED, NOT DEPLOYED; AWAITING OWNER AND CHATGPT REVIEW; NOT REAL-DEVICE TESTED. NEXT PROPOSED PHASE: R3.1 YEAR-AHEAD COMMITMENTS (NOT STARTED)
 
 **What was asked:** after an import and on the Transactions page, suggest which bill, service visit, maintenance record or project a payment may belong to; the owner confirms; the module's own existing link operation does the linking; deterministic, explainable, no automatic links, no schema change. Gate: R2.1 committed and deployed (`c1707c7`, run #121 success).

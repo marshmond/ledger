@@ -10,11 +10,13 @@ import { registerModules } from '../index';
  */
 const DIR = 'src/modules/household';
 const sources = readdirSync(DIR).filter((f) => /\.(ts|tsx)$/.test(f) && !/\.test\.tsx?$/.test(f) && !['householdTestkit.ts', 'householdSeed.ts'].includes(f)).map((f) => ({ f, text: readFileSync(join(DIR, f), 'utf8') }));
+/** R3.1 Year Ahead is the one place in this module that reads Finance Scheduled and the Forecast (read only); it has its own, stricter whitelist below. */
+const YEAR_AHEAD = new Set(['yearAhead.ts', 'yearAheadData.ts', 'YearAheadPage.tsx']);
 const code = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/ \/\/ .*$/gm, '');
 
 describe('B5 guard: the household module is read only', () => {
   it('has source files to check', () => {
-    expect(sources.map((s) => s.f).sort()).toEqual(expect.arrayContaining(['commitments.ts', 'overview.ts', 'review.ts', 'unionSpend.ts', 'relatedBill.ts', 'Parts.tsx', 'OverviewPage.tsx', 'todayCards.tsx']));
+    expect(sources.map((s) => s.f).sort()).toEqual(expect.arrayContaining(['commitments.ts', 'overview.ts', 'review.ts', 'unionSpend.ts', 'relatedBill.ts', 'Parts.tsx', 'OverviewPage.tsx', 'todayCards.tsx', 'yearAhead.ts', 'yearAheadData.ts', 'YearAheadPage.tsx']));
   });
 
   it('calls no database write (add, put, update, delete, bulk writes, clear, a read-write transaction) and imports no writer', () => {
@@ -29,10 +31,18 @@ describe('B5 guard: the household module is read only', () => {
   });
 
   it('imports from lib only the pure date, money and Finance-reference helpers, and never a Finance writer, the forecast or the posting code', () => {
-    for (const s of sources) {
+    for (const s of sources.filter((x) => !YEAR_AHEAD.has(x.f))) {
       for (const m of s.text.matchAll(/from '\.\.\/\.\.\/lib\/([A-Za-z/]+)'/g)) expect(s.f.endsWith('searchSource.ts') ? ['dates', 'money', 'txnLookup', 'txnRef', 'search'] : ['dates', 'money', 'txnLookup', 'txnRef'], `${s.f} imports lib/${m[1]}`).toContain(m[1]);
       // (the imports above are whitelisted, so no forecast or posting module can come in; the words are not searched because on-screen copy says "not a forecast")
       expect(code(s.text), s.f).not.toMatch(/recurringLog|\.recurring\b|loadScheduled|d\.txns|db\.txns/);
+    }
+  });
+
+  it('R3.1: Year Ahead reads Finance only through the existing read helpers (dates, money, payee match, financeRead dates, the Forecast loader, the project summary) and calls no posting code', () => {
+    const ok = ['dates', 'money', 'financeRead', 'payeeMatch', 'forecastLive', 'txnProject', 'search'];
+    for (const s of sources.filter((x) => YEAR_AHEAD.has(x.f))) {
+      for (const m of s.text.matchAll(/from '\.\.\/\.\.\/lib\/([A-Za-z/]+)'/g)) expect(ok, `${s.f} imports lib/${m[1]}`).toContain(m[1]);
+      expect(code(s.text), s.f).not.toMatch(/postInstance|skipInstance|deleteRule|createTransfer|setTxnProject|\.recurring\.(add|put|update|delete)|\bd\.txns/);
     }
   });
 
