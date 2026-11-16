@@ -138,7 +138,8 @@ describe('D20.1B: pressing a delete or action button only remembers WHICH record
     expect(t('pages/NetWorthPage.tsx')).toMatch(/onConfirm=\{async \(\) => \{ await db\.propertyValues\.delete\(askValueRow\.id!\);/);
     expect(t('pages/NetWorthPage.tsx')).toMatch(/onConfirm=\{async \(\) => \{ await db\.netWorthSnapshots\.delete\(pointRow\.id!\);/);
     expect(t('pages/NetWorthPage.tsx')).toMatch(/onConfirm=\{async \(\) => \{ await addPoint\(\); setAskAnother\(false\);/);
-    expect(t('pages/ImportPage.tsx')).toMatch(/onConfirm=\{async \(\) => \{ await undoBatch\(db, undoRow\.id!\);/);
+    // R2.2: the Undo now checks what depends on the imported transactions first, inside onConfirm; the write is still only inside it
+    expect(t('pages/ImportPage.tsx')).toMatch(/onConfirm=\{async \(\) => \{[\s\S]*?await undoBatch\(db, undoRow\.id!\);/);
     expect(t('pages/TradePanels.tsx')).toMatch(/onConfirm=\{async \(\) => \{ await deleteLot\(db, askLotRow\.id!\);/);
     expect(t('pages/TransactionsPage.tsx')).toMatch(/onConfirm=\{async \(\) => \{ await deleteSavedFilter\(db, askFilterRow\.id\);/);
   });

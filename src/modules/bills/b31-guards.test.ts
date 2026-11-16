@@ -32,7 +32,7 @@ describe('B3.1 guards: Finance is read through ONE read-only loader', () => {
   });
 
   it('only these Bills files import it, and no Bills file opens a Finance table of its own (the earlier guards still hold)', () => {
-    expect(scan(/lib\/financeRead'/)).toEqual(['discovery.ts', 'discoveryData.ts', 'dueProvider.ts', 'lifecycleFinance.ts', 'payeeMatch.ts', 'scheduledLink.ts', 'scheduledLinkData.ts', 'suggest.ts', 'suggestData.ts']);
+    expect(scan(/lib\/financeRead'/)).toEqual(['discovery.ts', 'discoveryData.ts', 'dueProvider.ts', 'lifecycleFinance.ts', 'scheduledLink.ts', 'scheduledLinkData.ts', 'suggest.ts', 'suggestData.ts']);
     expect(scan(/\.(txns|recurring|recurringLog|loans)\b/)).toEqual([]);
   });
 });
@@ -59,7 +59,7 @@ describe('B3.1 guards: who may write what', () => {
 
   it('the rejection fact is written only in cycleData.ts (the existing one-file rule for cycle records), and by no screen', () => {
     expect(scan(/kind:\s*CYCLE_KIND/).filter((f) => !['cycleData.ts', 'cycleRepair.ts'].includes(f))).toEqual([]);
-    expect(scan(/\brejectSuggestion\b|\breconsiderRejection\b/)).toEqual(['PeriodsCard.tsx', 'SuggestionsUI.tsx', 'cycleData.ts']);
+    expect(scan(/\brejectSuggestion\b|\breconsiderRejection\b/)).toEqual(['PeriodsCard.tsx', 'SuggestionsUI.tsx', 'cycleData.ts', 'paymentSuggest.ts']);
   });
 
   it('a bill\'s Scheduled pointer is changed only by the link writers (and the creation that the owner confirmed)', () => {

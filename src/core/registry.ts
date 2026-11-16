@@ -10,6 +10,7 @@ import type { ContactReferenceProvider } from './contactReferences';
 import type { AttentionSource } from './attention';
 import type { WeekReaders } from './weekReaders';
 import type { TaskFollowUpSource } from './taskFollowUp';
+import type { PaymentSuggestionSource } from './paymentSuggestions';
 
 export interface ModuleNavItem {
   to: string;
@@ -82,6 +83,11 @@ export interface ModuleDef {
      * See `src/core/taskFollowUp.ts` and docs/module-hooks.md.
      */
     taskFollowUp?: TaskFollowUpSource;
+    /**
+     * R2.2 "Possible matches": which of this module's records a Finance payment may belong to, as read-only candidates with a plain reason, plus the module's OWN
+     * existing link operation for an Accept. Ledger suggests; the owner confirms; the module links. See `src/core/paymentSuggestions.ts` and docs/module-hooks.md.
+     */
+    paymentSuggestions?: PaymentSuggestionSource;
   };
 }
 
@@ -272,6 +278,10 @@ export function allAttentionSources(mods: readonly ModuleDef[] = modules): { mod
 /** Every module's "finished Task, log it" offer, in module order. */
 export function allTaskFollowUps(mods: readonly ModuleDef[] = modules): { moduleId: string; source: TaskFollowUpSource }[] {
   return mods.flatMap((m) => (m.contributes?.taskFollowUp ? [{ moduleId: m.id, source: m.contributes.taskFollowUp }] : []));
+}
+/** Every module's "which of my records may this payment belong to" source, in module order. */
+export function allPaymentSuggestionSources(mods: readonly ModuleDef[] = modules): { moduleId: string; source: PaymentSuggestionSource }[] {
+  return mods.flatMap((m) => (m.contributes?.paymentSuggestions ? [{ moduleId: m.id, source: m.contributes.paymentSuggestions }] : []));
 }
 /** The weekly review's readers, merged across modules (the first module to offer a reader wins; each reader is offered by one module). */
 export function allWeekReaders(mods: readonly ModuleDef[] = modules): WeekReaders {

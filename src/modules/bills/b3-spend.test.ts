@@ -238,8 +238,8 @@ describe('B3 boundaries: no schema change, no change to the other modules\' mone
   it('Bills reads Finance only through the shared bulk loader (never a table of its own), and never writes a Finance table', () => {
     expect(scan(/\.(txns|accounts|categories|recurring|recurringLog|loans)\s*\.\s*(add|put|update|delete|bulkAdd|bulkPut|bulkDelete|clear|modify)\b/)).toEqual([]);
     expect(scan(/\.txns\b/)).toEqual([]);
-    expect(scan(/\bloadTxnMap\b/).sort()).toEqual(['PaymentHistoryCard.tsx', 'PeriodsCard.tsx', 'readModel.ts', 'tasks.ts']);
-    expect(scan(/from '\.\.\/\.\.\/lib\/txnLookup'/).sort()).toEqual(['PaymentHistoryCard.tsx', 'PeriodsCard.tsx', 'dueProvider.ts', 'readModel.ts', 'tasks.ts']);
+    expect(scan(/\bloadTxnMap\b/).sort()).toEqual(['PaymentHistoryCard.tsx', 'PeriodsCard.tsx', 'paymentSuggest.ts', 'readModel.ts', 'tasks.ts']);
+    expect(scan(/from '\.\.\/\.\.\/lib\/txnLookup'/).sort()).toEqual(['PaymentHistoryCard.tsx', 'PeriodsCard.tsx', 'dueProvider.ts', 'paymentSuggest.ts', 'readModel.ts', 'tasks.ts']);
   });
 
   it('the new money files write nothing and store nothing', () => {
@@ -269,8 +269,8 @@ describe('B3 boundaries: no schema change, no change to the other modules\' mone
 
   it('only the owner of a fact kind writes it: link, replace and switch go through the one fact writer', () => {
     expect(scan(/kind:\s*CYCLE_KIND|kind:\s*'cycle'/).sort()).toEqual(['cycleData.ts', 'cycleRepair.ts']);
-    // the only places that BUILD a payment-link fact body: the model's own writer and the confirmation dialog (which hands it to the one fact writer)
-    expect(scan(/\bfact:\s*'payment-link'/).sort()).toEqual(['PaymentUI.tsx', 'cycleModel.ts']);
+    // the only places that BUILD a payment-link fact body: the model's own writer the confirmation dialog, and R2.2 "Possible matches" (each hands it to the one fact writer, recordFact)
+    expect(scan(/\bfact:\s*'payment-link'/).sort()).toEqual(['PaymentUI.tsx', 'cycleModel.ts', 'paymentSuggest.ts']);
   });
 
   it('every kind of item the Today card counts can be found and acted on from the Needs-review page (a Today link must never lead to an empty page)', () => {

@@ -25,5 +25,7 @@ export const assetsModule: ModuleDef = {
     weekReview: { maintenance: (today) => import('./weekReview').then((m) => m.readWeekMaintenance(today)) },
     // R1.3: after a Task linked to an asset is finished, offer "Log maintenance" (the existing "Save to history" form). Both parts load only when needed.
     taskFollowUp: { read: (taskId) => import('./followUp').then((m) => m.readAssetsFollowUp(taskId)), Dialog: () => import('./FollowUpDialog') },
+// R2.2: "Possible matches": candidate records for a Finance payment, and the module's own existing link call for Accept. Loaded only when the owner asks.
+    paymentSuggestions: { label: 'Home & Assets', suggest: (c) => import('./paymentSuggest').then((m) => m.suggest(c)), accept: (c, d, today) => import('./paymentSuggest').then((m) => m.accept(c, d, today)), reject: (c, d) => import('./paymentSuggest').then((m) => m.reject(c, d)) },
   },
 };

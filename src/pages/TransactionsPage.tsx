@@ -19,6 +19,7 @@ import { openAddTransaction } from '../shell/QuickAdd';
 import { ColumnBoxes, ColumnFilterRow, FilterChips, PRESETS, STATUSES, TxnFilterPanel, filterChips, toggleList } from './TxnFilterUi';
 import TxnForm from './TxnForm';
 import BulkProject from './BulkProject';
+import { PossibleMatchesDialog } from '../shell/PossibleMatches';
 import { projectLabel, useProjectChoices } from '../core/projectLink';
 import { SplitDetailRow, SplitToggle } from './SplitDetail';
 import { StatusChip } from '../ui/StatusChip';
@@ -74,6 +75,8 @@ export default function TransactionsPage() {
   const [bulkStatus, setBulkStatus] = useState('');
   const [saveName, setSaveName] = useState('');
   const [panel, setPanel] = useState(false);
+  // R2.2: the payments "Possible matches" is looking at (chosen when the button is pressed, never on render), or null when it is closed.
+  const [matchIds, setMatchIds] = useState<number[] | null>(null);
   const [openSplits, setOpenSplits] = useState<Set<number>>(new Set());
   const toggleSplit = (id: number) => setOpenSplits((o) => { const n = new Set(o); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const catName = (id: number | null) => (id === null ? 'Uncategorized' : categories.find((c) => c.id === id)?.name ?? 'Unknown');
@@ -202,7 +205,15 @@ export default function TransactionsPage() {
             ])}
           </select>
         </label>
+        <button
+          type="button"
+          className="filter-btn"
+          title="Look for the bill, service visit, maintenance record or project these payments may belong to. Nothing is linked until you accept."
+          onClick={() => setMatchIds(selIds.length ? selIds : sorted.filter((r) => r.txn.amountCents < 0 && !r.txn.transferTxnId).sort((a, b) => b.txn.date.localeCompare(a.txn.date)).slice(0, 600).map((r) => r.txn.id!))}
+        >{selIds.length ? `Possible matches (${selIds.length})` : 'Possible matches'}</button>
       </div>
+
+      {matchIds && <PossibleMatchesDialog txnIds={matchIds} onClose={() => setMatchIds(null)} />}
 
       {panel && (
         <TxnFilterPanel id="txn-filter-panel" filter={filter} patch={patch} setPreset={setPreset} categories={categories} groups={groups} projects={projectChoices.map((p) => ({ id: p.id, name: projectLabel(projectChoices, p.id) }))}>

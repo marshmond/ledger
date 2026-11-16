@@ -14,6 +14,7 @@ contributes: {
   attention?: AttentionSource; // R1.1: see "attention" below
   weekReview?: WeekReaders; // R1.2: see "weekReview" below
   taskFollowUp?: TaskFollowUpSource; // R1.3: see "taskFollowUp" below
+  paymentSuggestions?: PaymentSuggestionSource; // R2.2: see "paymentSuggestions" below
 }
 ```
 
@@ -189,6 +190,34 @@ taskFollowUp: { read: (id) => import('./followUp').then((m) => m.readServicesFol
 ```
 
 Rules: `read` is only called for a Task that has a link to a record of the module's own id (so an ordinary Task loads no module code), and only AFTER the Task was completed; a reader that throws offers nothing and never breaks the Done message; the first module in module order that offers wins. The dialog re-checks everything itself (reopened, deleted, already logged, record gone or archived) and shows a plain explanation instead of writing. Several offers (a bulk completion, or the tick boxes on the Household Services and Home & Assets overviews) are walked through one dialog at a time with "N of M", "Skip this one" and Cancel stopping the list (`advanceRun` and `stopRun`); there is no "log all" and no "dismiss". Registered by Household Services ("Log completed visit", the existing "Log this visit" dialog) and Home & Assets ("Log maintenance", the existing "Save to service history" form).
+
+## `paymentSuggestions`: "this payment may belong to one of my records" (R2.2 "Possible matches")
+
+Added in R2.2. **Ledger suggests. The owner confirms. The module that owns the record does the linking.** Finance never imports a household module: the shell composes the answers. The contract, the one gatherer and the one Accept path are in `src/core/paymentSuggestions.ts`; the screen is `src/shell/PossibleMatches.tsx` (the dialog and the small follow-up line after an import); it is opened from the Import page after a successful import and from the Transactions page ("Possible matches" in the toolbar: the selected rows, else the newest filtered payments, never on render). Nothing is stored for a suggestion, no schema or backup format changed.
+
+```ts
+contributes: { paymentSuggestions?: {
+  label: string;                                                                 // "Household Services"
+  suggest(ctx: { txns: Txn[]; today: string; d: FinanceDB }): Promise<RawCandidate[]>; // READ ONLY
+  accept(c: LinkCandidate, d: FinanceDB, today: string): Promise<LinkResult>;     // the module's OWN existing link call, after re-checking
+  reject(c: LinkCandidate, d: FinanceDB): Promise<(() => Promise<void>) | void>;  // "Not a match" for this one pair; may return an Undo
+} }
+paymentSuggestions: { label: 'Home & Assets', suggest: (c) => import('./paymentSuggest').then((m) => m.suggest(c)), accept: ..., reject: ... }   // loaded on demand, never at start-up
+```
+
+| Rule | Meaning |
+|---|---|
+| What the shell hands a module | Only committed Finance transactions that are money out, not transfers or setup entries, not tagged to a Project, and **not already used by any household record** (every module's `txnReferences` reader, other than Ledger's own Scheduled posting history, plus the tag). At most 400, newest first. If "who already uses this payment?" cannot be fully answered, **nothing is suggested** and the screen says so. Ledger never replaces, unlinks or shares a link. |
+| A candidate (`RawCandidate`) | `txnId`, `targetKey` (stable id of the household record; for a bill, record plus billing period), `targetKind/Title/Detail`, `href` (to inspect it), plain-English `reasons` (each backed by what the matcher actually compared; **no amount, percentage or score**, because text cannot be masked by Hide Amounts), `action` (`accept` or `review`), `reviewNote`, `reviewHref`, and an opaque JSON `payload` for the module's own re-check. |
+| `accept` vs `review` | `accept` only when the full association is clear and the module's own link call can do it safely. Anything that still needs a choice (a split payment, a typed amount, a reminder Task, several agreed contracts, a weak amount check) is `review`: the module's own screen opens where the existing dialog asks. **If more than one record could match one payment, every candidate becomes `review`** and the screen says Ledger has not chosen. Several records plausible is shown, never resolved by guessing. |
+| Amount alone | Never a reason. Identity must come from the payee (compared with `src/lib/payeeMatch.ts`, the Bills comparison moved to `lib`; Bills still imports it from its old path) or, for a bill, the linked Scheduled item. A recorded amount may only EXCLUDE a candidate or add a supporting reason. |
+| Accept | `acceptCandidate`: the shell re-reads the payment (refuses if its date, payee or amount changed since it was suggested) and asks again whether anything now uses it; then the module re-reads its own record (refuses on a changed record, a record that now holds a payment or typed amount, an archived asset, an inactive project, and so on) and calls its **existing** operation. A refusal is a plain sentence and nothing is written. The Finance transaction's amount, payee, account, date, splits and status are never touched (a Project tag is the one field Projects owns on a transaction). |
+| Not a match | Bills: its own `suggestion-reject` fact (`rejectSuggestion`), period-scoped, shared with the Link-a-payment dialog, so each place honours the other's rejection. The others: one `settings` row per (module, payment, record) `link-reject:<module>:<txn id>:<record key>` (rides sync and backup, no migration). A rejection is honoured only while the payment is unchanged (an edited payment is judged again) and never blocks a payee or provider for other payments. |
+| Failure | A module that throws is named ("Could not look at Projects just now") and the others still answer. |
+
+Adapters and what they reuse (R2.2): **Bills** `modules/bills/paymentSuggest.ts` (suggest = `suggestMatches` through `suggestForTxns` in `suggestData.ts`; accept = `recordFact` `payment-link`; reject = `rejectSuggestion`), **Household Services** (logged visits only; accept = `setVisitPayment`), **Home & Assets** (existing service records; accept = `updateService` adding `txnRefs`; a record with a typed cost is always `review`), **Projects** (a vendor of an open project; accept = `setTxnProject` with the reference `buildRef` builds for the one agreed contract; split payments, several contracts or a contract split across lines are `review`). Registered by those four modules only. A module that stores a Finance reference and wants suggestions adds a `paymentSuggest.ts` with the same three functions and a test that suggest is read-only and accept equals the manual link.
+
+**Import Undo (R2.2).** `#/ledger/import` "undo" now asks `planTxnDeletion` (the same reader the Transactions delete uses) which household records point at the imported transactions and lists them before the owner confirms; if that cannot be checked, Undo is off; otherwise the Undo itself (`undoBatch`) is unchanged.
 
 ## Family's search source and Add-box destinations (Family Management F5)
 
