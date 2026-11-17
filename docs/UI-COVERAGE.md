@@ -36,6 +36,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **D21.1 (2026-11-14, built and tested locally, uncommitted; D21 is committed and deployed as `582ce64`, run #114 success): Signature is now the one design system for every palette; five palettes; Settings > Appearance rebuilt. No row changed status. S-20 (app identity: bar colour and manifest are now Signature Navy's) and G-02 (Appearance page) were re-checked in the browser at 1440, 800, 375 and 320 px in Light and Dark for all five palettes, and G-02 with real arrow and Tab keys (the Kbd mark is not changed); S-17 (the menu-bar theme button) was not separately exercised; their marks stay as recorded and nothing is `ACC`. Evidence: `docs/LEDGER-SIGNATURE-D21.1-REPORT.md` and `Documents\Ledger-Design-Concepts\D21.1-Evidence\sheet.html`. The 14 representative pages (Today, Tasks, Calendar, Ledger Home, Transactions, Budget, Income, Investments, Family, Household Services, Bills, Projects, Contacts, Appearance) were captured for all five palettes; Signature Navy is pixel-identical to the prior Signature on all but Appearance. Real-device, screen-reader and forced-colors checks remain unrecorded.** **D21 (2026-11-13, built and tested locally, uncommitted; D20.1B is committed and deployed as `21a20a1`, run #113 success): finishing work, NOT a release. The Signature default was NOT switched (an explicit Classic choice cannot be told from never choosing; owner decision needed, report section 5). Browser-bar colour now set before first paint (S-20, section 1.18); one table-overflow fix and 18 field names; a scripted width and accessibility sweep. No row changed status except S-20 (`NS` to `BLT`, marks `L`, `D`, `Func`); the roll-up is unchanged and nothing is `ACC`. Report: `docs/LEDGER-SIGNATURE-D21-REPORT.md`.**
 
+**CAL-N1 (2026-11-16, built and tested locally, uncommitted; not a design phase): the Calendar event editor gains a collapsed "Messages" card, the Calendar page gains a small non-blocking "Email someone about it?" panel and a review screen ("Email about this event", one new `<Modal>`, built from shared classes and tokens only, a bottom sheet on a phone), and the repeating-event delete dialog gains one unticked option. No tracker row, mark or count changed: C-01 and DL-03 keep their status and marks, the dialog table now counts the review screen (Calendar 9, total 64 in 43 files) and the structural baseline was raised to match, an intentional addition. Seen in the browser pane on invented data: desktop (light), 375 px (no sideways scroll, page and dialog), desktop dark; a keyboard-only walk, a screen reader and light mode at 375 px are NOT recorded.**
+
 **D20.1B (2026-11-13, built and tested locally, uncommitted): the remaining 33 native confirmations became Ledger confirmation dialogs (the planned B, C and D batches in one cycle); 0 actual browser-native `confirm()` calls remain (the historical rule also reads 0; its D4 baseline stays 37 in 24 files). CF-03 reads `BLT` (built, pending owner acceptance); nothing is `ACC`, no dialog group changed status, D21 is not started. Report: `docs/LEDGER-SIGNATURE-D20.1B-REPORT.md`.**
 
 **D20.1A (2026-11-13, built and tested locally, uncommitted): owner approved OD-6 option (a) (replace all 38 native confirmations in controlled batches, high-risk last). Five low-risk native boxes were replaced by the shared ConfirmDialog (gift, goal, policy record, saved flow view, saved theme delete); CF-03 reads PARTIALLY MIGRATED (33 actual native calls remain; the historical rule counts 32; both are kept, see the inventory file). CF-03 stays `NS` (not accepted) and no dialog group changed status. D21 is not started.**
@@ -409,7 +411,7 @@ Views share their page's address. Each needs its page's checks plus its own empt
 
 ## 4. Dialogs and confirmations
 
-### 4.1 Dialogs: `<Modal>` call sites (63 in 42 files)
+### 4.1 Dialogs: `<Modal>` call sites (64 in 43 files)
 
 Each site is a form, a question or a detail view. Counted from the source in D5 (the number below must equal the guard's recorded baseline in `src/shell/uiBaseline.ts`).
 
@@ -417,7 +419,7 @@ Each site is a form, a question or a detail view. Counted from the source in D5 
 |---|---|---|---|---|---|
 | DL-01 | Shell (Add box, Search, ConfirmDialog base) | 3 | `AddBox`, `SearchDialog`, `ConfirmDialog` | D6, D10 | NS |
 | DL-02 | Tasks | 4 | `TaskEditor`, `QuickTask`, `ListsDialog`, `TasksPage` (the phone Filters sheet, D11) | D11 | NS |
-| DL-03 | Calendar | 8 | `EventEditor` (2), `dialogs` (5), `HandoffDialog` | D13 | BLT |
+| DL-03 | Calendar | 9 | `EventEditor` (2), `dialogs` (5), `HandoffDialog`, `NoticeComposer` (CAL-N1) | D13 | BLT |
 | DL-04 | Projects | 3 | `ProjectForm`, `CommitmentForm`, `DeleteProject` | D14 | NS |
 | DL-05 | Home & Assets | 7 | `AssetForm`, `AddMaintenance`, `ServiceForm` (2), `WarrantyForm`, `LifecycleDialog`, `DeleteAsset` | D14 | NS |
 | DL-06 | Contacts | 2 | `ContactForm`, `RemoveContact` | D14 | NS |
@@ -425,7 +427,7 @@ Each site is a form, a question or a detail view. Counted from the source in D5 
 | DL-08 | Bills & Subscriptions | 17 | `ObligationForm`, `Dialogs` (3), `CycleDialogs` (2), `LifecycleDialogs` (2), `PaymentUI`, `RepairDialogs` (2), `ScheduledUI` (3), `ContractCard` (2), `DiscoverCard` | D15 | NS |
 | DL-09 | Family | 3 | `MemberForm`, `DateForm`, `ImportantContacts` | D9, D15 | NS |
 | DL-10 | Ledger pages | 3 | `LedgerPage`, `ScheduledPage`, `TxnDeleteDialog` | D16 | NS |
-| | **Total** | **63** | 42 files | | |
+| | **Total** | **64** | 43 files | | |
 
 Inline (non-modal) forms in Ledger pages (transaction form, income setup, scenario editors, loan forms) are covered by their page rows.
 

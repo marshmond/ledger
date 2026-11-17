@@ -24,6 +24,14 @@ import { lensItems, useCalendarData, useLayerVisibility, useNow, withPeople, typ
 import { useLens } from '../../core/peopleLens';
 import { PeopleFilterBar } from '../../ui/PeopleLens';
 import { dropCovered } from './markerCoordination';
+import NoticeComposer from './notify/NoticeComposer';
+import NoticePrompt from './notify/NoticePrompt';
+import type { NoticeOffer } from './notify/offers';
+import { installDevSwitch } from './notify/devSwitch';
+import { declineOffer } from './notify/send';
+import { todayISO } from '../../lib/money';
+
+installDevSwitch(); // development builds only (a no-op in the real app)
 
 const VIEWS: { id: ViewId; label: string }[] = [
   { id: 'month', label: 'Month' }, { id: 'week', label: 'Week' }, { id: 'workweek', label: 'Work week' }, { id: 'agenda', label: 'Agenda' },
@@ -87,6 +95,11 @@ export default function CalendarPage() {
   const [dayOpen, setDayOpen] = useState<string | null>(null);
   const [manage, setManage] = useState(false);
   const [exporting, setExporting] = useState<{ only?: number } | null>(null);
+  // CAL-N1: the optional "email someone about it?" question after a save or delete. `offer` is the small prompt; `composing` is the review screen. Nothing here sends anything.
+  const [offer, setOffer] = useState<NoticeOffer | null>(null);
+  const [composing, setComposing] = useState<NoticeOffer | null>(null);
+  const notify = (o: NoticeOffer, openNow?: boolean) => { if (openNow) { setOffer(null); setComposing(o); } else setOffer(o); };
+  const notNow = () => { const o = offer; setOffer(null); if (o) void declineOffer(o.subject, { today: todayISO() }).catch(() => undefined); };
 
   const openItem = (i: CalItem) => (i.derived ? setDetail(i) : i.occ && setEditor({ occ: i.occ }));
 
@@ -175,7 +188,9 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {editor && data && <EventEditor key={editor.occ ? `${editor.occ.eventId}:${editor.occ.key}` : 'new'} occ={editor.occ} start={editor.start} layers={data.layers} defaultCalendarId={defaultCal} onClose={() => setEditor(null)} />}
+      {editor && data && <EventEditor key={editor.occ ? `${editor.occ.eventId}:${editor.occ.key}` : 'new'} occ={editor.occ} start={editor.start} layers={data.layers} defaultCalendarId={defaultCal} onClose={() => setEditor(null)} onNotify={notify} />}
+      {offer && !composing && <NoticePrompt offer={offer} onNotNow={notNow} onChoose={() => { setComposing(offer); setOffer(null); }} />}
+      {composing && <NoticeComposer offer={composing} onClose={() => setComposing(null)} />}
       {detail && <DerivedDetail item={detail} onClose={() => setDetail(null)} />}
       {dayOpen && <DayPanel date={dayOpen} items={items} onOpenItem={openItem} onAdd={(date) => setEditor({ start: { date } })} onAddTask={(date) => requestTask({ dueDate: date })} onClose={() => setDayOpen(null)} />}
       {manage && data && <ManageCalendars layers={data.layers} defaultId={defaultCal} onClose={() => setManage(false)} onExport={(only) => { setManage(false); setExporting({ only }); }} onSetDefault={(id) => void saveCalendarSettings({ defaultCalendarId: id })} />}

@@ -23,6 +23,9 @@ import type { Priority } from '../../core/entities';
 import { findProject, projectLabel, projectPath, selectableProjects, useProjectChoicesLoaded } from '../../core/projectLink';
 import { EventDisplayControl } from '../../display/DisplayControl';
 import type { DisplayChoice } from '../../display/pending';
+import MessagesSection from './notify/MessagesSection';
+import { anyoneToEmail, senderConnected, effectiveDeleteScope, offerAfterDelete, offerAfterRestore, offerAfterSave, quietly, type NoticeOffer } from './notify/offers';
+import { toldAboutCancellation } from './notify/send';
 
 export interface EditorStart {
   date: string;
@@ -35,13 +38,16 @@ export interface EditorStart {
 const SCOPE_WORDS: Record<Scope, string> = { one: 'This event', following: 'This and following events', all: 'All events' };
 
 /** Asks which part of a repeating series a change or delete applies to. */
-function ScopeDialog({ verb, onPick, onClose }: { verb: string; onPick: (s: Scope) => void; onClose: () => void }) {
+function ScopeDialog({ verb, onPick, onClose, canEmail = false }: { verb: string; onPick: (s: Scope, email: boolean) => void; onClose: () => void; canEmail?: boolean }) {
+  /** CAL-N1: an optional pre-answer to "let someone know?" for a delete. Unticked by default; ticking it only opens the (unsent) email review after the delete. */
+  const [email, setEmail] = useState(false);
   return (
     <Modal title={`${verb} a repeating event`} onClose={onClose}>
       <p className="muted">This event repeats. What should be {verb === 'Delete' ? 'deleted' : 'changed'}?</p>
       {verb !== 'Delete' && <p className="muted small">"This event" changes only this one date. The calendar, tags, people and repeat settings always apply to the whole series.</p>}
       <div className="cal-scope">
-        {(['one', 'following', 'all'] as Scope[]).map((s) => <button key={s} className={`btn ${s === 'all' ? 'primary' : ''}`} onClick={() => onPick(s)}>{SCOPE_WORDS[s]}</button>)}
+        {verb === 'Delete' && canEmail && <label className="row cal-check"><input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} /> Then choose people to email that it is cancelled</label>}
+        {(['one', 'following', 'all'] as Scope[]).map((s) => <button key={s} className={`btn ${s === 'all' ? 'primary' : ''}`} onClick={() => onPick(s, email)}>{SCOPE_WORDS[s]}</button>)}
         <button className="link" onClick={onClose}>Cancel</button>
       </div>
     </Modal>
@@ -49,8 +55,10 @@ function ScopeDialog({ verb, onPick, onClose }: { verb: string; onPick: (s: Scop
 }
 
 /** Add or edit an event. Only the title is required. Repeating events ask which occurrences a change applies to. */
-export default function EventEditor({ occ, start, layers, defaultCalendarId, onClose }: {
+export default function EventEditor({ occ, start, layers, defaultCalendarId, onClose, onNotify }: {
   occ?: Occurrence; start?: EditorStart; layers: CalendarLayer[]; defaultCalendarId: number; onClose: () => void;
+  /** CAL-N1: called after the event is saved or deleted when an email could be offered. The page shows the (non-blocking) question; nothing is sent from here. */
+  onNotify?: (offer: NoticeOffer, openNow?: boolean) => void;
 }) {
   const toast = useToast();
   const ev = occ?.event.data;
@@ -87,6 +95,8 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   const [error, setError] = useState('');
   const [ask, setAsk] = useState<null | { kind: 'save'; fields: EventFields } | { kind: 'delete' }>(null);
   const [busy, setBusy] = useState(false);
+  /** CAL-N1: is there anyone with an email address at all? (Decides whether the delete question offers to email.) */
+  const canEmail = useLiveQuery(() => anyoneToEmail(), []) ?? false;
 
   // Links to other records: loaded for an existing event, changed only when you press Save.
   const links = useLiveQuery(async () => (occ ? await store.shared.links.linkedTo({ module: MODULE, id: occ.eventId }) : []), [occ?.eventId]) ?? [];
@@ -201,7 +211,10 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
     try {
       const id = occ ? await saveEdit(occ, fields, extras(), scope, undefined, displayChoice) : await createEvent(newEventData(fields, extras()), undefined, displayChoice);
       await applyLinks(id);
-      toast(occ ? 'Event saved' : 'Event added');
+      // CAL-N1: the event is saved. Only now is an email OFFERED (never sent), and any problem looking for one is swallowed: it cannot affect the save.
+      const offer = senderConnected() ? await quietly(() => offerAfterSave({ occ, scope, savedId: id, edited: fields })) : null;
+      if (offer && onNotify) onNotify(offer);
+      else toast(occ ? 'Event saved' : 'Event added');
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save.');
@@ -215,12 +228,24 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
     else void doSave(f, 'all');
   };
 
-  const doDelete = async (scope: Scope) => {
+  const doDelete = async (scope: Scope, emailNow = false) => {
     if (!occ) return;
     const snap = await snapshotEvent(occ.eventId);
     await removeOccurrence(occ, scope);
-    toast('Event deleted', async () => { await restoreEventData(occ.eventId, snap); });
+    // CAL-N1: Undo brings the event back; if people were already told it was cancelled, a correction is OFFERED (never sent by itself).
+    const eff = effectiveDeleteScope(occ, scope);
+    const affected = eff === 'one' || eff === 'following' ? occ.key : '';
+    toast('Event deleted', async () => {
+      await restoreEventData(occ.eventId, snap);
+      void quietly(async () => {
+        if (!senderConnected()) return null;
+        const told = await toldAboutCancellation(occ.eventId, eff, affected);
+        return told.contactIds.length ? offerAfterRestore({ eventId: occ.eventId, scope: eff, affectedDate: affected, told: told.contactIds }) : null;
+      }).then((o) => { if (o) onNotify?.(o); });
+    });
     onClose();
+    // The delete is finished; only now is "let someone know it is cancelled?" offered.
+    if (snap && senderConnected()) void quietly(() => offerAfterDelete({ occ, scope, snap })).then((o) => { if (o) onNotify?.(o, emailNow); });
   };
   const del = () => (occ?.recurring ? setAsk({ kind: 'delete' }) : void doDelete('all'));
 
@@ -357,6 +382,8 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
 
           <EventDisplayControl eventId={occ?.eventId ?? null} calendarId={calendarId} savedTitle={occ?.event.data.title ?? ''} formTitle={title} value={displayChoice} onChange={setDisplayChoice} />
 
+          {occ && <MessagesSection occ={occ} />}
+
           {error && <p className="cal-error" role="alert">{error}</p>}
           <div className="row spread cal-actions">
             <span className="row">
@@ -374,7 +401,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
       </Modal>
       {handoff && handoffFor(type) && <HandoffDialog handoff={handoffFor(type)!} seed={handoff} replacing={!!occ} onCreated={(r) => void handedOver(r)} onClose={() => setHandoff(null)} />}
       {ask?.kind === 'save' && <ScopeDialog verb="Change" onClose={() => setAsk(null)} onPick={(s) => { const f = ask.fields; setAsk(null); void doSave(f, s); }} />}
-      {ask?.kind === 'delete' && <ScopeDialog verb="Delete" onClose={() => setAsk(null)} onPick={(s) => { setAsk(null); void doDelete(s); }} />}
+      {ask?.kind === 'delete' && <ScopeDialog verb="Delete" canEmail={canEmail && senderConnected()} onClose={() => setAsk(null)} onPick={(s, email) => { setAsk(null); void doDelete(s, email); }} />}
     </>
   );
 }

@@ -342,3 +342,27 @@
 .cal-xsummary ul { margin: var(--sp-2) 0; padding-left: var(--sp-4); list-style: disc; }
 .cal-xsummary ul.cal-xprev { list-style: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: var(--sp-2); }
 .cal-xprev li { overflow-wrap: anywhere; }
+
+/* CAL-N1: "email someone about it" (the small question, the review screen, the Messages list). Tokens only, so every palette and theme follows. */
+.cal-np { position: fixed; z-index: 119; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h, 0px) + 150px + env(safe-area-inset-bottom)); width: min(440px, calc(100vw - 32px)); display: grid; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface-raised); color: var(--fg); box-shadow: var(--shadow-md, 0 6px 24px rgba(0, 0, 0, 0.18)); }
+@media (min-width: 900px) { .cal-np { bottom: 88px; } }
+body:has(.modal-back) .cal-np { z-index: 90; }
+.cal-np-text { margin: 0; }
+.cal-np-actions { justify-content: flex-end; gap: var(--sp-2); }
+.cal-np-form { gap: var(--sp-3); }
+.cal-np-what { margin: 0; }
+.cal-np-title { margin: 0; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-2); }
+.cal-np-quick { flex-wrap: wrap; gap: var(--sp-2); }
+.cal-np-list, .cal-np-results, .cal-msgs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.cal-np-list .cal-check { flex-wrap: wrap; row-gap: 0; }
+.cal-np-off { opacity: 0.7; }
+.cal-np-to { display: grid; gap: var(--sp-1); }
+.cal-np-preview { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); padding: var(--sp-3); min-width: 0; }
+.cal-np-subject { margin: 0 0 var(--sp-2); overflow-wrap: anywhere; font-weight: 600; }
+.cal-np-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: var(--fs-sm); line-height: 1.5; }
+.cal-msgs { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-soft); padding: var(--sp-2) var(--sp-3); }
+.cal-msgs > summary { cursor: pointer; font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-2); min-height: 32px; display: flex; align-items: center; }
+.cal-msgs-body { display: grid; gap: var(--sp-3); padding-top: var(--sp-2); }
+.cal-msgs-group { display: grid; gap: var(--sp-2); padding-bottom: var(--sp-2); border-bottom: 1px solid var(--line); }
+.cal-msgs-list li { display: grid; gap: var(--sp-1); }
+@media (max-width: 640px) { .cal-np { bottom: calc(var(--tab-h, 0px) + 150px + env(safe-area-inset-bottom)); } .cal-np-actions .btn { flex: 1 1 auto; min-height: 44px; } }

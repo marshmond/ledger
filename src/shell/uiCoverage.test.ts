@@ -116,10 +116,10 @@ describe('D5 the tracker is well formed', () => {
 describe('D5 dialogs and confirmations are accounted for', () => {
   it('the dialog rows add up to the recorded <Modal> count, which equals the source baseline', () => {
     const sum = dialogs.reduce((n, r) => n + Number(r.cells[1]), 0);
-    expect(sum).toBe(63);
+    expect(sum).toBe(64);
     expect(sum).toBe(BASELINE.modalSites);
-    expect(tracker).toMatch(/\| \| \*\*Total\*\* \| \*\*63\*\* \| 42 files/);
-    expect(BASELINE.modalFiles).toBe(42);
+    expect(tracker).toMatch(/\| \| \*\*Total\*\* \| \*\*64\*\* \| 43 files/);
+    expect(BASELINE.modalFiles).toBe(43);
   });
   it('every dialog row names a module and a phase, and the three confirmation styles are listed with the native count', () => {
     for (const d of dialogs) expect(d.cells.some((c) => /^D\d+/.test(c)), d.id).toBe(true);
