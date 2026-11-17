@@ -1,6 +1,8 @@
 # Ledger CAL-G1: Direct Gmail Integration (report)
 
-Status (2026-11-17): **BUILT AND TESTED LOCALLY. UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED. AWAITING CHATGPT REVIEW. NOT REAL-DEVICE TESTED. NO REAL GOOGLE AUTHORIZATION WAS REQUESTED AND NO REAL EMAIL WAS SENT. NOTHING WAS CREATED IN GOOGLE CLOUD.** Proposed commit message: `feat(calendar): connect Gmail for approved event notifications`.
+**RELEASED (2026-11-17): committed and pushed as `5cbb3c0` (`feat(calendar): connect Gmail for approved event notifications`); GitHub Pages run #134 completed `success` (public API). The first push was blocked by GitHub push protection because fake test fixtures matched Google key formats; the unpushed commit was amended so the fixtures are built at runtime (no real secret ever existed). Still NOT real-device tested; no real Google authorization or email; the 'uncommitted' wording below is build-time history.**
+
+Status (2026-11-17, at build time): **BUILT AND TESTED LOCALLY. UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED. AWAITING CHATGPT REVIEW. NOT REAL-DEVICE TESTED. NO REAL GOOGLE AUTHORIZATION WAS REQUESTED AND NO REAL EMAIL WAS SENT. NOTHING WAS CREATED IN GOOGLE CLOUD.** Proposed commit message: `feat(calendar): connect Gmail for approved event notifications`.
 
 **Architecture decisions retained (not reopened):** single-user, browser-only app; the current GitHub Pages address `https://marshmond.github.io/ledger/` is retained; a custom domain, moving hosting, multiuser accounts and the Family Command Station (CS-3) all remain **deferred** by the owner. No backend, no unattended sender, no new database table, no migration, no new dependency.
 
