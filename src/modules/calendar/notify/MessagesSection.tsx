@@ -6,7 +6,9 @@ import NoticeComposer from './NoticeComposer';
 import { offerForDetails, quietly, type NoticeOffer } from './offers';
 import { foldRequests, type RequestView } from './records';
 import { loadNoticeRows, refreshStatuses, retryRequest, sendApproved } from './send';
-import { getTransport } from './transport';
+import { useTransport } from './useTransport';
+import GmailConnect from '../gmail/GmailConnect';
+import { useGmailState } from '../gmail/useGmail';
 import { RETRY_WARNING, statusLabel, statusWords, whenSent } from './words';
 
 /**
@@ -15,7 +17,8 @@ import { RETRY_WARNING, statusLabel, statusWords, whenSent } from './words';
  */
 export default function MessagesSection({ occ }: { occ: Occurrence }) {
   const loaded = useLiveQuery(() => loadNoticeRows(), []);
-  const transport = getTransport();
+  const transport = useTransport();
+  const gmail = useGmailState();
   const [composing, setComposing] = useState<NoticeOffer | null>(null);
   const [again, setAgain] = useState<RequestView | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,13 +36,15 @@ export default function MessagesSection({ occ }: { occ: Occurrence }) {
     }
     return [...m.values()].sort((a, b) => b.at - a.at);
   }, [mine]);
-  const waiting = mine.some((v) => v.state === 'queued' || v.state === 'unknown');
+  // "Check status" exists only for a sender that can be asked (Gmail, with only the send permission, cannot): never offered where it could not work.
+  const canCheck = !!transport?.status;
+  const waiting = canCheck && mine.some((v) => v.state === 'queued' || v.state === 'unknown');
 
   const run = async (f: () => Promise<unknown>, done: string) => {
     setBusy(true); setNote('');
     try { await f(); setNote(done); } catch { setNote('That did not work. Nothing was changed. Try again later.'); } finally { setBusy(false); }
   };
-  const check = () => transport && run(async () => { const n = await refreshStatuses(transport); setNote(n ? '' : 'Nothing new to report.'); }, '');
+  const check = () => transport && canCheck && run(async () => { const n = await refreshStatuses(transport); setNote(n ? '' : 'Nothing new to report.'); }, '');
 
   return (
     <details className="cal-msgs" onToggle={(e) => { if ((e.currentTarget as HTMLDetailsElement).open && transport && waiting) void refreshStatuses(transport).catch(() => undefined); }}>
@@ -67,7 +72,13 @@ export default function MessagesSection({ occ }: { occ: Occurrence }) {
         ))}
         {declined.map((r) => <p key={r.id} className="muted small">You chose not to email: {r.data.t === 'declined' ? r.data.summary : ''} ({whenSent(r.createdAt)})</p>)}
         {waiting && transport && <button type="button" className="btn" disabled={busy} onClick={() => void check()}>Check status</button>}
-        {!transport && mine.length > 0 && <p className="muted small">Email sending is not connected yet, so status can only change once it is.</p>}
+        {!transport && mine.length > 0 && !gmail.configured && <p className="muted small">Email sending is not connected yet, so status can only change once it is.</p>}
+        {!transport && gmail.configured && (
+          <div className="row">
+            <span className="muted small">{gmail.phase === 'expired' ? 'Gmail authorization expired.' : 'Gmail is not connected.'} Connecting does not send anything.</span>
+            <GmailConnect />
+          </div>
+        )}
         {note && <p className="muted small" role="status">{note}</p>}
         <div className="row">
           <button type="button" className="btn" onClick={() => void quietly(() => offerForDetails({ occ })).then((o) => o && setComposing(o))}>Email people the saved details…</button>

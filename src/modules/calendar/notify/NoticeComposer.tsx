@@ -8,7 +8,10 @@ import type { NoticeOffer } from './offers';
 import { classifyContacts, MAX_PER_DAY, MAX_RECIPIENTS, pickRecipients } from './recipients';
 import { confirmAndSend, loadRequests, prepare, type Prepared, type PreparedItem } from './send';
 import { loadNoticeSettings, saveNoticeSettings } from './settings';
-import { getTransport } from './transport';
+import { getTransport, type NoticeTransport } from './transport';
+import { useTransport } from './useTransport';
+import GmailConnect from '../gmail/GmailConnect';
+import { useGmailState } from '../gmail/useGmail';
 import { buildMessage, PERSONAL_MAX, summaryOf } from './wording';
 import { statusLabel, statusWords, zoneLabelFor } from './words';
 import type { MessageOptions } from './types';
@@ -22,7 +25,10 @@ export default function NoticeComposer({ offer, onClose }: { offer: NoticeOffer;
   const contacts = useLiveQuery(() => db.contacts.toArray(), []);
   const history = useLiveQuery(() => loadRequests(), []);
   const saved = useLiveQuery(() => loadNoticeSettings(), []);
-  const transport = getTransport();
+  const transport = useTransport();
+  const gmail = useGmailState();
+  /** The sender that handled the last Send press. Kept so the result screen stays truthful even if Gmail runs out a moment later. */
+  const [via, setVia] = useState<NoticeTransport | null>(null);
 
   const [chosen, setChosen] = useState<number[]>([]); // nobody is chosen for you
   const [includeLocation, setIncludeLocation] = useState(false);
@@ -81,12 +87,16 @@ export default function NoticeComposer({ offer, onClose }: { offer: NoticeOffer;
   const canSend = sendable.length > 0 && !!name.trim() && replyOk && !busy;
   const onSend = async () => {
     if (!prepared || !canSend) return;
+    // The button the owner pressed said "Send" only if a sender was connected when this screen last drew. Look again now: if it has run out since,
+    // record nothing and say so (the draft stays). If none was connected, this press can only approve; it can never start sending by accident.
+    const live = transport ? getTransport() : null;
+    if (transport && !live) { setProblem('Gmail authorization has expired. Nothing was sent and nothing was recorded. Your choices are kept: press Reconnect Gmail, then press Send again.'); return; }
     setBusy(true);
     setProblem('');
     try {
       await saveNoticeSettings({ senderName: name, replyTo: replyOk ? reply : '' });
-      const r = await confirmAndSend({ subject: s, prepared, transport });
-      if (r.kind === 'recorded') { setSent(sendable.map((i) => i.requestId)); setPhase('done'); }
+      const r = await confirmAndSend({ subject: s, prepared, transport: live });
+      if (r.kind === 'recorded') { setVia(live); setSent(sendable.map((i) => i.requestId)); setPhase('done'); }
       else if (r.kind === 'nothing-new') setProblem('Everyone you picked has already been emailed about this change, so nothing new was sent.');
       else if (r.kind === 'daily-limit') setProblem(`Ledger approves at most ${MAX_PER_DAY} messages a day. ${r.left} left in the last 24 hours.`);
       else setProblem(`You can email up to ${MAX_RECIPIENTS} people at once.`);
@@ -102,12 +112,12 @@ export default function NoticeComposer({ offer, onClose }: { offer: NoticeOffer;
     <Modal title="Email about this event" onClose={onClose} wide variant="sheet" locked={busy}>
       {phase === 'done' ? (
         <div className="cal-form cal-np-form">
-          <div className={`banner ${transport ? '' : 'warn'}`}><div className="banner-text"><strong>{transport ? (transport.live ? 'Handed to the sender' : 'Test mode: nothing was really sent') : 'Approved, not sent'}</strong><br />
-            {transport ? 'Here is where each message stands. Ledger can only say the mail service accepted it, never that it reached an inbox.' : 'Email sending is not connected yet, so nothing was sent. Your approval is saved with the exact text; it can be sent later from this event\'s Messages.'}</div></div>
+          <div className={`banner ${via ? '' : 'warn'}`}><div className="banner-text"><strong>{via ? (via.id === 'gmail' ? 'Result from Gmail' : via.live ? 'Handed to the sender' : 'Test mode: nothing was really sent') : 'Approved, not sent'}</strong><br />
+            {via ? `Here is where each message stands. Ledger can only say ${via.id === 'gmail' ? 'Gmail' : 'the mail service'} accepted it, never that it reached an inbox.` : 'Email sending is not connected yet, so nothing was sent. Your approval is saved with the exact text; it can be sent later from this event\'s Messages.'}</div></div>
           <ul className="cal-np-results" aria-label="Message status">
             {sent.map((id) => {
               const v = (history ?? []).find((x) => x.requestId === id);
-              return v ? <li key={id}><strong>{v.recipient.name}</strong> <span className="badge">{statusLabel(v, !!transport)}</span><div className="muted small">{statusWords(v, !!transport)}</div></li> : null;
+              return v ? <li key={id}><strong>{v.recipient.name}</strong> <span className="badge">{statusLabel(v, !!via)}</span><div className="muted small">{statusWords(v, !!via)}</div></li> : null;
             })}
           </ul>
           <div className="row cal-actions"><button type="button" className="btn primary" onClick={onClose}>Done</button></div>
@@ -116,7 +126,9 @@ export default function NoticeComposer({ offer, onClose }: { offer: NoticeOffer;
         <div className="cal-form cal-np-form">
           <p className="cal-np-what"><strong>{whatLine}</strong></p>
           <p className="muted small">Nothing is sent until you press <strong>{transport ? 'Send' : 'Approve'}</strong>. Closing this does nothing.</p>
-          {!transport && <div className="banner warn"><div className="banner-text"><strong>Email sending is not connected yet.</strong><br />You can choose people and review the message. Pressing Approve saves your approval; nothing is sent until sending is set up.</div></div>}
+          {!transport && !gmail.configured && <div className="banner warn"><div className="banner-text"><strong>Email sending is not connected yet.</strong><br />You can choose people and review the message. Pressing Approve saves your approval; nothing is sent until sending is set up.</div></div>}
+          {!transport && gmail.configured && <div className="banner warn"><div className="banner-text"><strong>{gmail.phase === 'expired' ? 'Gmail authorization expired.' : 'Gmail is not connected.'}</strong><br />Your choices and note are kept. Press {gmail.phase === 'expired' ? 'Reconnect Gmail' : 'Connect Gmail'}, then press Send. Connecting does not send anything. Until then, Approve only saves your approval.</div></div>}
+          {transport?.id === 'gmail' && <div className="banner"><div className="banner-text"><strong>Sending through Gmail.</strong> Each person gets their own message from the Google account you authorized.</div></div>}
           {transport && !transport.live && <div className="banner"><div className="banner-text"><strong>Test mode.</strong> Nothing is really sent.</div></div>}
 
           <section className="cal-sec" aria-labelledby="np-who">
@@ -199,7 +211,8 @@ export default function NoticeComposer({ offer, onClose }: { offer: NoticeOffer;
           {problem && <p className="cal-error" role="alert">{problem}</p>}
           <div className="row spread cal-actions">
             <span className="row">
-              <button type="button" className="btn primary" disabled={!canSend} onClick={() => void onSend()}>{busy ? 'Working…' : sendLabel}</button>
+              {!transport && gmail.configured && <GmailConnect primary />}
+              <button type="button" className={`btn${!transport && gmail.configured ? '' : ' primary'}`} disabled={!canSend} onClick={() => void onSend()}>{busy ? 'Working…' : sendLabel}</button>
               <button type="button" className="btn" onClick={onClose} disabled={busy}>Cancel</button>
             </span>
           </div>

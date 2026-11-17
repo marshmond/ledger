@@ -153,3 +153,6 @@
 @media (min-width: 720px) { .se-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .se-steps { margin: 0 0 var(--sp-4); padding-left: var(--sp-5); }
 .se-steps li + li { margin-top: var(--sp-2); }
+.se-sub-details { margin-top: var(--sp-3); }
+.se-sub-details > summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.se-steps li { overflow-wrap: anywhere; }

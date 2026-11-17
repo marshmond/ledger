@@ -10,6 +10,7 @@ import { WEEKDAYS_LONG } from './time';
 import { PageHeader } from '../../ui/components';
 import { SettingsSection } from '../../pages/SettingsParts';
 import { Link } from '../../core/router';
+import GmailSettings from './gmail/GmailSettings';
 
 /** Calendar options, shown on the shell's Settings page. */
 export default function CalendarSettingsCard() {
@@ -81,6 +82,8 @@ export default function CalendarSettingsCard() {
         </div>
         <div className="row se-actions"><button className="btn" onClick={() => set({ financePriorities: DEFAULT_CALENDAR_SETTINGS.financePriorities })}>Reset priorities</button></div>
       </SettingsSection>
+
+      <GmailSettings />
 
       <SettingsSection id="cal-family-display" title="Showing a calendar on a family display" intro="Every calendar is private by default. To allow a calendar of family events on a shared display, or to keep single events private, use Family display.">
         <p><Link to="/settings/family-display">Open Family display settings</Link></p>

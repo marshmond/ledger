@@ -36,6 +36,8 @@ export const PREF_ITEMS: PrefItem[] = [
 
   // This device only, and NOT in a backup file.
   { kind: 'device', inBackup: false, label: 'Calendar: which calendars are shown, the last view and the agenda range', keys: ['calendar-hidden-layers', 'calendar-last-view', 'calendar-agenda-range'] },
+  // CAL-G1: the public Google client ID for Gmail. Not a secret. The Gmail permission itself is never saved anywhere: it lives in the page's memory and is forgotten on close or reload.
+  { kind: 'device', inBackup: false, label: 'Calendar email: the public Google client ID for Gmail (the Gmail permission itself is never saved; you connect again each session)', keys: ['ledger-gmail-client-id'] },
 
   // Secrets.
   { kind: 'secret', label: 'The sync token and sync passphrase' },

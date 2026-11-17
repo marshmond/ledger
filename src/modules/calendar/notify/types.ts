@@ -87,7 +87,11 @@ export interface BuiltMessage {
 }
 
 /** Plain-words classes for a message that was not sent. Never a raw provider error. */
-export type ReasonClass = 'address-rejected' | 'service-refused' | 'quota' | 'unauthorized' | 'stale' | 'not-received' | 'unknown';
+export type ReasonClass = 'address-rejected' | 'service-refused' | 'quota' | 'unauthorized' | 'stale' | 'not-received' | 'unknown'
+  /** CAL-G1: the device had no connection, so nothing left it. */
+  | 'offline'
+  /** CAL-G1: the Gmail API is switched off for the owner's Google Cloud project. */
+  | 'api-disabled';
 
 /**
  * The seven things a message can be (CS-0 J.8, simplified). "Accepted" is the strongest claim: the mail service took the message. Ledger can never

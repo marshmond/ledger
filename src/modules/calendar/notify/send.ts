@@ -174,8 +174,24 @@ export function outboxRequestFor(rc: SendRecipient, send: Pick<SendData, 'kind'>
   };
 }
 
-async function progress(d: FinanceDB, rc: { requestId: string; attempt: number }, state: ProgressState, transport: NoticeTransport, reason?: ReasonClass) {
-  await add(d, { t: 'progress', requestId: rc.requestId, attempt: rc.attempt, state, transport: { id: transport.id, label: transport.label, live: transport.live }, ...(reason ? { reason } : {}) } satisfies Omit<ProgressData, 'v' | 'deviceId'>);
+async function progress(d: FinanceDB, rc: { requestId: string; attempt: number }, state: ProgressState, transport: NoticeTransport, reason?: ReasonClass, ref?: string) {
+  await add(d, { t: 'progress', requestId: rc.requestId, attempt: rc.attempt, state, transport: { id: transport.id, label: transport.label, live: transport.live }, ...(reason ? { reason } : {}), ...(ref ? { ref } : {}) } satisfies Omit<ProgressData, 'v' | 'deviceId'>);
+}
+
+/**
+ * For a sender that cannot refuse a repeat (Gmail). In ONE transaction: if nobody has acted on this attempt yet, write the claim and return true;
+ * otherwise return false and send nothing. The claim is an "unknown" step: from the moment it exists until the sender answers, Ledger honestly cannot
+ * tell what became of the message, so a page that closes mid-send leaves exactly that truth behind. A second tab, a second press and "Send now" all
+ * find the claim and stand down. The sender's answer (accepted, failed) is written afterwards and outranks it.
+ */
+async function claim(d: FinanceDB, rc: { requestId: string; attempt: number }, transport: NoticeTransport): Promise<boolean> {
+  return d.transaction('rw', d.moduleRecords, async () => {
+    const views = foldRequests(readRows(await d.moduleRecords.where('[module+kind]').equals([NOTICE_MODULE, NOTICE_KIND]).toArray()).rows);
+    const att = views.find((v) => v.requestId === rc.requestId)?.attempts.find((x) => x.attempt === rc.attempt);
+    if (att && att.state !== 'confirmed') return false;
+    await progress(d, rc, 'unknown', transport);
+    return true;
+  });
 }
 
 
@@ -199,10 +215,11 @@ export async function deliver(d: FinanceDB, send: NoticeRow & { data: SendData }
   const s = await loadNoticeSettings(d);
   const from = { name: s.senderName, replyTo: s.replyTo };
   for (const rc of pending) {
+    if (!transport.serverDedupe && !(await claim(d, rc, transport))) continue; // another tab or press already took this attempt
     let out;
     try { out = await transport.submit(outboxRequestFor(rc, send.data, from)); } catch { out = { kind: 'unknown' } as const; }
     if (out.kind === 'queued' || out.kind === 'duplicate') await progress(d, rc, 'queued', transport);
-    else if (out.kind === 'accepted') await progress(d, rc, 'accepted', transport);
+    else if (out.kind === 'accepted') await progress(d, rc, 'accepted', transport, undefined, out.ref);
     else if (out.kind === 'rejected') await progress(d, rc, 'failed', transport, out.reason);
     else await progress(d, rc, 'unknown', transport);
   }
@@ -249,11 +266,13 @@ export async function retryRequest(a: { requestId: string; transport: NoticeTran
 
 /** "Check status": asks the transport what became of messages that are waiting or uncertain. One pass, on request only. Returns how many changed. */
 export async function refreshStatuses(transport: NoticeTransport, d: FinanceDB = db): Promise<number> {
+  const ask = transport.status?.bind(transport);
+  if (!ask) return 0; // Gmail cannot be asked (that would need permission to read mail): nothing is checked and nothing is guessed
   let changed = 0;
   for (const v of await loadRequests(d)) {
     if (v.state !== 'queued' && v.state !== 'unknown') continue;
     let s;
-    try { s = await transport.status(transportIdOf(v.requestId, v.attempt)); } catch { continue; }
+    try { s = await ask(transportIdOf(v.requestId, v.attempt)); } catch { continue; }
     const rc = { requestId: v.requestId, attempt: v.attempt };
     if (s.kind === 'accepted') { await progress(d, rc, 'accepted', transport); changed++; }
     else if (s.kind === 'failed') { await progress(d, rc, 'failed', transport, s.reason); changed++; }

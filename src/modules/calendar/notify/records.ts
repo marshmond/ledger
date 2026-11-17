@@ -43,16 +43,20 @@ export interface SendData extends Common {
 }
 export type ProgressState = 'queued' | 'accepted' | 'failed' | 'unknown';
 export interface TransportRef { id: string; label: string; live: boolean }
-/** `transport` is the sender that produced this step (so a message approved with no sender and sent later by the test sender is never described as really sent). */
-export interface ProgressData extends Common { t: 'progress'; requestId: string; attempt: number; state: ProgressState; reason?: ReasonClass; transport?: TransportRef }
+/**
+ * `transport` is the sender that produced this step (so a message approved with no sender and sent later by the test sender is never described as really sent).
+ * `ref` (CAL-G1, optional, so older records read exactly as before) is the id the mail service gave an accepted message (Gmail's message id): not a secret.
+ */
+export interface ProgressData extends Common { t: 'progress'; requestId: string; attempt: number; state: ProgressState; reason?: ReasonClass; transport?: TransportRef; ref?: string }
 export type NoticeData = DeclineData | SendData | ProgressData;
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const str = (v: unknown) => (typeof v === 'string' ? v : '');
 const KINDS: NoticeKind[] = ['created', 'updated', 'cancelled', 'restored', 'details'];
 const SCOPES: NoticeScope[] = ['single', 'one', 'following', 'all'];
-const REASONS: ReasonClass[] = ['address-rejected', 'service-refused', 'quota', 'unauthorized', 'stale', 'not-received', 'unknown'];
-const ids = (v: unknown): number[] => (Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : []);
+const REASONS: ReasonClass[] = ['address-rejected', 'service-refused', 'quota', 'unauthorized', 'stale', 'not-received', 'unknown', 'offline', 'api-disabled'];
+const REF = /^[A-Za-z0-9_-]{1,64}$/;
+const ids =(v: unknown): number[] => (Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : []);
 
 /** Reads one stored record; null when it is not a notice this version understands. Never throws. */
 export function readNotice(r: ModuleRecord): NoticeData | null {
@@ -83,7 +87,7 @@ export function readNotice(r: ModuleRecord): NoticeData | null {
     if (d.t === 'progress') {
       if (!str(d.requestId) || typeof d.attempt !== 'number' || !['queued', 'accepted', 'failed', 'unknown'].includes(str(d.state))) return null;
       const ptr = isObj(d.transport) && str(d.transport.id) ? { id: str(d.transport.id), label: str(d.transport.label), live: d.transport.live === true } : null;
-      return { v: 1, deviceId, t: 'progress', requestId: str(d.requestId), attempt: d.attempt, state: str(d.state) as ProgressState, ...(REASONS.includes(d.reason as ReasonClass) ? { reason: d.reason as ReasonClass } : {}), ...(ptr ? { transport: ptr } : {}) };
+      return { v: 1, deviceId, t: 'progress', requestId: str(d.requestId), attempt: d.attempt, state: str(d.state) as ProgressState, ...(REASONS.includes(d.reason as ReasonClass) ? { reason: d.reason as ReasonClass } : {}), ...(ptr ? { transport: ptr } : {}), ...(REF.test(str(d.ref)) ? { ref: str(d.ref) } : {}) };
     }
     return null;
   } catch { return null; }
@@ -93,7 +97,7 @@ export function readNotice(r: ModuleRecord): NoticeData | null {
 const RANK: Record<LiveState, number> ={ confirmed: 1, unknown: 2, queued: 3, failed: 4, accepted: 5 };
 
 export type LiveState = Exclude<NoticeState, 'declined' | 'drafted'>;
-export interface AttemptView { attempt: number; state: LiveState; reason?: ReasonClass; at: number; sendRecordId: number; transport: TransportRef | null }
+export interface AttemptView { attempt: number; state: LiveState; reason?: ReasonClass; at: number; sendRecordId: number; transport: TransportRef | null; ref?: string }
 
 /** One message to one person about one change, with everything known about it. */
 export interface RequestView {
@@ -109,6 +113,8 @@ export interface RequestView {
   /** The overall state: accepted if any attempt was accepted, otherwise the state of the newest attempt. */
   state: LiveState;
   reason?: ReasonClass;
+  /** What the mail service called the accepted message (Gmail's message id), when it said. */
+  ref?: string;
   /** The newest attempt number. */
   attempt: number;
   attempts: AttemptView[];
@@ -148,13 +154,14 @@ export function foldRequests(rows: readonly NoticeRow[]): RequestView[] {
       const mine = progress.filter((p) => p.data.requestId === rc.requestId && p.data.attempt === rc.attempt);
       let state: LiveState = 'confirmed';
       let reason: ReasonClass | undefined;
+      let ref: string | undefined;
       let used: TransportRef | null = s.data.transport;
       let at = s.createdAt;
       for (const p of mine) {
-        if (RANK[p.data.state] > RANK[state] || (RANK[p.data.state] === RANK[state] && p.createdAt > at)) { state = p.data.state; reason = p.data.reason; if (p.data.transport) used = p.data.transport; }
+        if (RANK[p.data.state] > RANK[state] || (RANK[p.data.state] === RANK[state] && p.createdAt > at)) { state = p.data.state; reason = p.data.reason; ref = p.data.ref; if (p.data.transport) used = p.data.transport; }
         at = Math.max(at, p.createdAt);
       }
-      const attempt: AttemptView = { attempt: rc.attempt, state, ...(reason ? { reason } : {}), at, sendRecordId: s.id, transport: used };
+      const attempt: AttemptView = { attempt: rc.attempt, state, ...(reason ? { reason } : {}), ...(ref ? { ref } : {}), at, sendRecordId: s.id, transport: used };
       const prev = byRequest.get(rc.requestId);
       const view: RequestView = prev ?? {
         requestId: rc.requestId, noticeKey: s.data.noticeKey, eventIds: s.data.eventIds, factsEventId: s.data.factsEventId, kind: s.data.kind, scope: s.data.scope,
@@ -182,6 +189,7 @@ export function foldRequests(rows: readonly NoticeRow[]): RequestView[] {
     const shown = accepted ?? newest;
     v.state = shown.state;
     v.reason = shown.reason;
+    v.ref = shown.ref;
     v.transport = shown.transport;
     v.duplicateRisk = v.attempts.slice(0, -1).some((a) => a.state === 'queued' || a.state === 'unknown' || a.state === 'accepted') || (v.state === 'unknown' && v.attempts.length > 0);
   }
@@ -203,8 +211,10 @@ export function approvedSince(rows: readonly NoticeRow[], since: number): number
 export const REASON_WORDS: Record<ReasonClass, string> = {
   'address-rejected': 'The email address was refused.',
   'service-refused': 'The mail service refused the message.',
-  quota: 'The daily sending limit was reached.',
-  unauthorized: 'Ledger is not allowed to use the sender. The key may have expired.',
+  quota: 'A sending limit was reached. Wait a while, then try again.',
+  unauthorized: 'Ledger is not allowed to use the sender. The permission may have expired: reconnect it in Calendar settings.',
+  offline: 'This device was offline, so nothing was sent.',
+  'api-disabled': 'The Gmail service is switched off for your Google project. Turn on the Gmail API (see the setup steps in Calendar settings), then try again.',
   stale: 'The event changed after you approved this message, so it was not sent. Review it again.',
   'not-received': 'The sender never received it.',
   unknown: 'The sender did not say why.',

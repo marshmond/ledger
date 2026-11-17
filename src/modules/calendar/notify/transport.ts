@@ -10,11 +10,15 @@
  *  - `githubOutboxTransport`: the code that would write and read those files with the GitHub contents API (modelled on the verified CS-2 display
  *    client; UNVERIFIED against a live repository; used by no screen; nothing stores a token);
  *  - `fakeTransport`: an in-memory sender for tests (and a development-only switch) that sends nothing anywhere.
- * What does NOT exist: the outbox repository, the workflow, the email provider, a sender address, any credential. `getTransport()` therefore returns
- * null in the real app, and the screens say plainly that sending is not connected.
+ * What does NOT exist: the outbox repository, the workflow, the email provider, a sender address, any credential.
+ *
+ * CAL-G1 (the sender that is actually offered): `getTransport()` returns the GMAIL sender (gmail/transport.ts), but ONLY while the owner has
+ * authorised Gmail in this browser session and the authorisation has not run out. Otherwise it returns null, exactly as before, so every screen keeps
+ * saying that sending is not connected and no question is asked after Save, Delete or Undo. The GitHub outbox writer above stays unused and unconfigured.
  */
 import { canonicalJson } from '../../../display/contract';
 import { toB64, utf8 } from '../../../display/transport/bytes';
+import { gmailTransportIfConnected } from '../gmail/transport';
 import type { NoticeKind, ReasonClass } from './types';
 
 export interface OutboxRequest {
@@ -56,8 +60,8 @@ export function parseResult(text: string): OutboxResult | null {
 export type SubmitOutcome =
   /** In the outbox, not yet reported on. */
   | { kind: 'queued' }
-  /** The mail service already took it (a sender that answers at once). */
-  | { kind: 'accepted' }
+  /** The mail service already took it (a sender that answers at once). `ref` is the id the service gave it, when it gave one (Gmail's message id). */
+  | { kind: 'accepted'; ref?: string }
   /** This exact request is already in the outbox (another press, another device, a reload). Nothing new was written. */
   | { kind: 'duplicate' }
   /** Definitely not sent. */
@@ -76,15 +80,21 @@ export interface NoticeTransport {
   label: string;
   /** False for anything that does not really send mail (the test sender). The screens never call a non-live result "sent". */
   live: boolean;
+  /**
+   * True when the service itself refuses a repeat of the same request (a create-only outbox file). False for a service that cannot (Gmail): the sender
+   * code then records a claim on the attempt before submitting, so another tab or press cannot send it twice.
+   */
+  serverDedupe: boolean;
   submit(req: OutboxRequest): Promise<SubmitOutcome>;
-  status(id: string): Promise<RemoteStatus>;
+  /** Absent when the service offers no way to ask (Gmail, with only the send permission). The screens never offer "Check status" without it. */
+  status?(id: string): Promise<RemoteStatus>;
 }
 
 // ---- the one place the app asks "can I send?" ----
 
 let current: NoticeTransport | null = null;
-/** The configured transport, or null when sending is not connected (the real app today). */
-export const getTransport = (): NoticeTransport | null => current;
+/** The sender to use right now, or null when sending is not connected: Gmail while it is authorised, otherwise nothing (tests and the dev switch can install a stand-in). */
+export const getTransport = (): NoticeTransport | null => current ?? gmailTransportIfConnected();
 /** Tests and the development-only switch install a transport here. No screen does. */
 export function setTransport(t: NoticeTransport | null): void { current = t; }
 
@@ -106,7 +116,7 @@ export function fakeTransport(mode: FakeMode = 'accept'): FakeTransport {
   const files = new Map<string, OutboxRequest>();
   const results = new Map<string, OutboxResult>();
   const t: FakeTransport = {
-    id: 'fake', label: 'Test sender (nothing is really sent)', live: false, mode, outbox: [], calls: 0,
+    id: 'fake', label: 'Test sender (nothing is really sent)', live: false, serverDedupe: true, mode, outbox: [], calls: 0,
     async submit(req) {
       t.calls++;
       if (t.mode === 'unreachable') return { kind: 'unknown' }; // could not even connect: the caller cannot tell either
@@ -151,7 +161,7 @@ export function githubOutboxTransport(cfg: OutboxRepoConfig, f: typeof fetch = (
     });
   const reasonFor = (status: number, limited: boolean): ReasonClass => (limited ? 'quota' : status === 401 ? 'unauthorized' : 'service-refused');
   return {
-    id: 'github-outbox', label: 'Private outbox repository', live: true,
+    id: 'github-outbox', label: 'Private outbox repository', live: true, serverDedupe: true,
     async submit(req) {
       if (!isTransportId(req.id)) return { kind: 'rejected', reason: 'unknown' };
       let res: Response;

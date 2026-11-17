@@ -9,7 +9,7 @@ export function statusLabel(v: Pick<RequestView, 'state' | 'transport'>, connect
   switch (v.state) {
     case 'confirmed': return connected ? 'Approved' : 'Approved, not sent';
     case 'queued': return 'Waiting';
-    case 'accepted': return v.transport?.live === true ? 'Accepted by mail service' : v.transport ? 'Accepted by test sender' : 'Accepted (sender unknown)';
+    case 'accepted': return v.transport?.live === true ? (v.transport.id === 'gmail' ? 'Accepted by Gmail' : 'Accepted by mail service') : v.transport ? 'Accepted by test sender' : 'Accepted (sender unknown)';
     case 'failed': return 'Not sent';
     case 'unknown': return 'Outcome unknown';
   }
@@ -21,11 +21,13 @@ export function statusWords(v: Pick<RequestView, 'state' | 'transport' | 'reason
     case 'confirmed': return connected ? 'Approved. It has not been handed to the sender yet.' : 'Approved. Email sending is not connected yet, so nothing has been sent.';
     case 'queued': return 'Handed to the sender. The mail service has not confirmed it yet.';
     case 'accepted': return v.transport?.live === true
-      ? 'Accepted by the mail service. Ledger cannot tell whether it reached an inbox.'
+      ? v.transport.id === 'gmail' ? 'Accepted by Gmail. Ledger cannot tell whether it reached an inbox or what happened to it afterwards.' : 'Accepted by the mail service. Ledger cannot tell whether it reached an inbox.'
       : v.transport ? 'Accepted by the test sender. Nothing was really sent.'
       : 'Marked accepted, but Ledger did not record which sender handled it, so nothing shows it was really sent.';
     case 'failed': return `Not sent. ${REASON_WORDS[v.reason ?? 'unknown']}`;
-    case 'unknown': return 'Ledger cannot tell whether this was sent. Sending it again could send a second copy.';
+    case 'unknown': return v.transport?.id === 'gmail'
+      ? 'Outcome unknown: Ledger cannot tell whether Gmail took this. Sending it again could send a second copy. Look in the Sent folder in Gmail first.'
+      : 'Ledger cannot tell whether this was sent. Sending it again could send a second copy.';
   }
 }
 
