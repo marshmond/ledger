@@ -1,6 +1,6 @@
 # Ledger CS-2: Secure Publishing and Retrieval (report)
 
-**Status (2026-11-16): BUILT AND TESTED LOCALLY. UNCOMMITTED, NOT STAGED, NOT PUSHED, NOT DEPLOYED. NO LIVE GITHUB REPOSITORY, NO REAL KEY AND NO REAL TABLET WERE USED.** Awaiting ChatGPT and owner review. CS-3 is not started.
+**Status (2026-11-16): APPROVED, COMMITTED AND DEPLOYED (`ef5b14e`, GitHub Pages run #129 succeeded). LIVE PUBLISHING IS NOT CONFIGURED: no repository, key or tablet exists, and nothing publishes until the owner sets it up. NOT REAL-DEVICE TESTED.** CS-3 is not started.
 
 ## A. Executive summary
 
@@ -176,3 +176,11 @@ When you are ready to go live:
 **Ready for ChatGPT and owner review. Not for live publication.** The code, tests, builds and browser checks support committing it, and nothing in it publishes until the owner sets up a repository, a key and a passphrase on a device and confirms the review. Live publication has **not** been approved and nothing live was tested; real-tablet acceptance is pending. Suggested commit message when authorized: `feat(display): add encrypted publishing and tablet retrieval client`. Per the handoff rules: no commit, push or deploy has been done or will be done without separate approval; after a push, check the Actions tab for a green run.
 
 Questions worth the reviewers' attention: judgment calls 1 to 4 and 7 above.
+
+## N. Release record
+
+- **Approval:** ChatGPT accepted the architecture, encryption, protocol, compatibility mitigation and tablet client, subject to one focused check (section E.1) and one wording correction (section D).
+- **Reliability check:** the quiet shortcut missed remote-only changes (a code change was needed, small: the shortcut now also checks the sync file's version). Fixed and tested (4 tests). Affected suites (38 files, 1,016 tests), `tsc`, and both production builds pass; the full suite was not re-run (the change is confined to the publisher's quiet check and its tests; the last full run was 321 files, 6,334 tests, all passing before it).
+- **Wording:** the stable-id claim now says simulated devices, not physical ones.
+- **Commit:** `ef5b14e` `feat(display): add encrypted publishing and tablet retrieval client`, pushed to `main`. **Deployment:** Pages run #129 for that SHA: success. This record was added in a documentation-only follow-up commit.
+- **Checked before commit:** only the intended 48 files; no credentials (the key-looking strings in tests are short made-up placeholders), no household data, the three protected untracked files untouched and not committed. No repository, organization, credential or hosted resource was created; no live publication was configured or started.
