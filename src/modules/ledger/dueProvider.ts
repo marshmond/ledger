@@ -74,6 +74,7 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery, hide: boolean = 
       status: 'open',
       detail: hide ? maskMoney(e.detail) : e.detail,
       ...(hide ? { icsTitle: e.title, icsDetail: e.detail } : {}),
+      icsPlainTitle: e.plainTitle ?? e.title, icsPlainDetail: e.plainDetail ?? e.detail, // R4.3: the amount-free words for a file made without amounts
       openSource: () => goTo(`/ledger${e.to}`),
       sourceLabel: 'Edit in Ledger',
       icsUid: `${e.id}@ledger.local`,
@@ -100,6 +101,7 @@ export async function ledgerDueItems(d: FinanceDB, q: DueQuery, hide: boolean = 
       status: 'open',
       detail: (rule.transferAccountId ? 'Scheduled transfer to approve.' : rule.amountCents < 0 ? 'Scheduled payment to approve.' : 'Scheduled income to approve.') + (orphanIds.has(rule.id) ? ' Its account no longer exists, so it cannot be approved. Open it to fix or delete it.' : ''),
       ...(hide ? { icsTitle: `${rule.payee} ${formatCents(Math.abs(rule.amountCents))}` } : {}),
+      icsPlainTitle: rule.payee, icsPlainDetail: rule.transferAccountId ? 'Scheduled transfer to approve.' : rule.amountCents < 0 ? 'Scheduled payment to approve.' : 'Scheduled income to approve.',
       // Opens that item in the Scheduled page's edit form (the date and amount are changed there, never in the Calendar).
       openSource: () => goTo(`/ledger/scheduled?rule=${rule.id}`),
       sourceLabel: 'Edit in Ledger',

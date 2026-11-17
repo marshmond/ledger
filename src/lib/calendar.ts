@@ -15,6 +15,9 @@ export interface CalEvent {
   kind: CalKind;
   /** Where in the app to go about it. */
   to: string;
+  /** R4.3: the same title and detail without any money figure, for a calendar file made without amounts. Set only where `title` or `detail` carries one. */
+  plainTitle?: string;
+  plainDetail?: string;
 }
 
 export interface CalendarInput {
@@ -39,15 +42,15 @@ export function buildCalendar(i: CalendarInput): CalEvent[] {
   const inRange = (d: string) => d >= i.today && daysBetween(d, i.today) <= i.horizonDays;
   const add = (e: CalEvent) => inRange(e.date) && out.push(e);
 
-  for (const v of i.vests) add({ id: `vest-${v.id}`, date: v.date, title: `RSU vest: ${v.label}`, detail: `${v.person}: about ${i.fmt(v.grossCents)} before tax. It counts as wages.`, kind: 'vest', to: '/income' });
+  for (const v of i.vests) add({ id: `vest-${v.id}`, date: v.date, title: `RSU vest: ${v.label}`, detail: `${v.person}: about ${i.fmt(v.grossCents)} before tax. It counts as wages.`, plainDetail: `${v.person}: RSU vest. It counts as wages.`, kind: 'vest', to: '/income' });
   for (const m of i.milestones) add({ id: `cap-${m.id}`, date: m.date, title: `${m.person}: ${m.label}`, detail: 'Your take-home changes after this paycheck.', kind: 'cap', to: '/income' });
   if (i.estimated && i.estimated.amountCents > 0) {
-    for (const d of i.estimated.dueDates) add({ id: `est-${d}`, date: d, title: 'Estimated tax payment due', detail: `You are on track to owe about ${i.fmt(i.estimated.amountCents)} in federal tax beyond withholding. Pay some or all, or add withholding.`, kind: 'tax', to: '/taxplan' });
+    for (const d of i.estimated.dueDates) add({ id: `est-${d}`, date: d, title: 'Estimated tax payment due', detail: `You are on track to owe about ${i.fmt(i.estimated.amountCents)} in federal tax beyond withholding. Pay some or all, or add withholding.`, plainDetail: 'You are on track to owe federal tax beyond withholding. Pay some or all, or add withholding.', kind: 'tax', to: '/taxplan' });
   }
   for (const r of i.rmds) add({ id: `rmd-${r.person}-${r.year}`, date: `${r.year}-12-31`, title: `${r.person}: required minimum distribution due`, detail: 'Take the full amount from your IRA(s) by this date.', kind: 'rmd', to: '/taxplan' });
   for (const y of i.yearEndYears) add({ id: `ye-${y}`, date: `${y}-12-31`, title: 'Last day for year-end tax moves', detail: 'Retirement and HSA contributions, harvesting losses, Roth conversions, and charitable gifts for the year.', kind: 'year-end', to: '/taxplan' });
-  for (const s of i.scheduled) add({ id: `bill-${s.id}-${s.date}`, date: s.date, title: `${s.payee} ${i.fmt(Math.abs(s.amountCents))}`, detail: 'Scheduled item to approve.', kind: 'bill', to: '/scheduled' });
-  for (const l of i.loans) add({ id: `loan-${l.id}-${l.date}`, date: l.date, title: `${l.name} payment ${i.fmt(l.paymentCents)}`, detail: 'Loan payment due.', kind: 'loan', to: '/debt' });
+  for (const s of i.scheduled) add({ id: `bill-${s.id}-${s.date}`, date: s.date, title: `${s.payee} ${i.fmt(Math.abs(s.amountCents))}`, plainTitle: s.payee, detail: 'Scheduled item to approve.', kind: 'bill', to: '/scheduled' });
+  for (const l of i.loans) add({ id: `loan-${l.id}-${l.date}`, date: l.date, title: `${l.name} payment ${i.fmt(l.paymentCents)}`, plainTitle: `${l.name} payment`, detail: 'Loan payment due.', kind: 'loan', to: '/debt' });
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 

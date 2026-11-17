@@ -330,3 +330,15 @@
 .cal-chip-people { flex: none; margin-left: 2px; display: inline-flex; }
 .cal-block-people { position: absolute; top: 3px; right: 4px; display: inline-flex; }
 .cal-block:has(.cal-block-people) .cal-block-title { padding-right: 30px; box-sizing: border-box; }
+
+/* R4.3: the export dialog (layers, privacy, what the file will contain) */
+.cal-xtools { align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-2); }
+.cal-xgroup { border: 1px solid var(--line); border-radius: var(--r-md); margin: 0 0 var(--sp-3); padding: var(--sp-2) var(--sp-3); min-width: 0; }
+.cal-xgroup legend { padding: 0 var(--sp-1); font-weight: 600; }
+.cal-xrow { flex-wrap: wrap; row-gap: 0; }
+.cal-xcount { margin-left: auto; }
+.cal-xconfirm { border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); margin: var(--sp-2) 0; }
+.cal-xsummary { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); padding: var(--sp-2) var(--sp-3); margin: var(--sp-3) 0; }
+.cal-xsummary ul { margin: var(--sp-2) 0; padding-left: var(--sp-4); list-style: disc; }
+.cal-xsummary ul.cal-xprev { list-style: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: var(--sp-2); }
+.cal-xprev li { overflow-wrap: anywhere; }

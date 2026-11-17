@@ -164,8 +164,10 @@ describe('B3.0B: it is one visibility system and it changes nothing but the pref
 
   it('Today does not read this preference (its Calendar surfaces are unaffected), and the .ics export only follows the same on/off state of your own calendars', () => {
     expect(read('../today/TodayData.tsx')).not.toMatch(/calendar-hidden-layers|layerVisibility/);
-    const dlg = read('./dialogs.tsx');
-    expect(dlg).toContain("l.sourceType === 'local' && isVisible(l.id)");
+    // R4.3: the export dialog (its own file now) only READS the on/off state, to choose which boxes start ticked; its own ticks are separate state and never write the preference back.
+    const dlg = read('./ExportDialog.tsx');
+    expect(dlg).toContain('defaultKeys(offered, isVisible)');
+    for (const word of ['localStorage', 'sessionStorage', 'VISIBILITY_KEY', 'calendar-hidden-layers', 'toggleLayer', 'selectAll', 'deselectAll']) expect(dlg.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')).not.toContain(word);
   });
 
   it('running every operation against a real database changes no row and creates no record, Task or Calendar event', async () => {

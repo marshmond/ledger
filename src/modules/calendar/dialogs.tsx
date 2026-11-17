@@ -1,19 +1,11 @@
 import { useState } from 'react';
-import { allDueProviders } from '../../core/dueProvider';
-import { addDays } from '../../lib/dates';
-import { downloadText } from '../../lib/download';
-import { todayISO } from '../../lib/money';
-import { store } from '../../core/store';
 import { announceTaskDone } from '../../core/taskFollowUp';
-import { queryProviders } from '../../core/dueProvider';
 import Modal from '../../shell/Modal';
 import { useToast } from '../../ui/Toast';
 import { DayItems } from './SelectedDay';
-import { buildIcs } from './ics';
 import { loadEvents, createCalendar, deleteCalendar, updateCalendar } from './data';
 import { PRIORITY_LABEL, PERSONAL_ID, SWATCHES, type CalendarLayer } from './model';
 import { PriorityMark } from './parts';
-import { loadHideAmounts } from '../../core/hideAmounts';
 import { dayLabel } from './time';
 import type { CalItem } from './useCalendarData';
 
@@ -108,7 +100,7 @@ export function ManageCalendars({ layers, defaultId, onExport, onClose, onSetDef
               <span className="muted small">{l.sourceType === 'derived' ? 'Read-only · worked out for you' : l.id === defaultId ? 'Default for new events' : ''}</span>
               <span className="row cal-manage-actions">
                 {l.sourceType === 'local' && l.id !== defaultId && <button className="link" onClick={() => onSetDefault(l.id)}>Make default</button>}
-                {l.sourceType === 'local' && <button className="link" onClick={() => onExport(l.id)}>Export</button>}
+                <button className="link" onClick={() => onExport(l.id)}>Export</button>
                 {l.sourceType === 'local' && !l.builtin && <button className="link danger" onClick={() => void askDelete(l)}>Delete</button>}
               </span>
             </li>
@@ -135,49 +127,5 @@ export function ManageCalendars({ layers, defaultId, onExport, onClose, onSetDef
   );
 }
 
-/** Download a calendar file (.ics) of one calendar or of everything visible. */
-export function ExportDialog({ layers, isVisible, only, onClose }: { layers: CalendarLayer[]; isVisible: (id: number) => boolean; only?: number; onClose: () => void }) {
-  const toast = useToast();
-  const [includeFinance, setIncludeFinance] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const provLayers = layers.filter((l) => l.sourceType === 'derived' && l.providerId);
-  const finance = provLayers.find((l) => l.providerId === 'ledger');
-  const chosen = only !== undefined ? layers.filter((l) => l.id === only) : layers.filter((l) => l.sourceType === 'local' && isVisible(l.id));
-  const hideAmounts = loadHideAmounts();
-
-  const run = async () => {
-    setBusy(true);
-    const events = (await loadEvents()).filter((e) => chosen.some((c) => c.id === e.data.calendarId));
-    const tags = new Map((await store.shared.tags.query()).map((t) => [t.id as number, t.name]));
-    let derived: Awaited<ReturnType<typeof queryProviders>>[string] = [];
-    if (includeFinance && finance && only === undefined) {
-      const today = todayISO();
-      const p = allDueProviders().filter((x) => x.id === finance.providerId);
-      // The same stretch of time the existing Ledger file covers: from today for a year.
-      derived = (await queryProviders({ from: today, to: addDays(today, 365), today, overdueDays: 0 }, p))[finance.providerId!] ?? [];
-    }
-    const name = only !== undefined ? chosen[0]?.name ?? 'Calendar' : 'Calendar';
-    const text = buildIcs({ name, events, derived, nowIso: new Date().toISOString(), tagName: (id) => tags.get(id) });
-    downloadText(`${name.replace(/[^\w-]+/g, '-').toLowerCase()}.ics`, 'text/calendar', text);
-    toast(`Downloaded ${events.length} event${events.length === 1 ? '' : 's'}${derived.length ? ` and ${derived.length} finance date${derived.length === 1 ? '' : 's'}` : ''}`);
-    setBusy(false);
-    onClose();
-  };
-  return (
-    <Modal title="Export a calendar file (.ics)" onClose={onClose}>
-      <p>{only !== undefined ? <>Exports <strong>{chosen[0]?.name}</strong>.</> : <>Exports your {chosen.length} visible calendar{chosen.length === 1 ? '' : 's'}: {chosen.map((c) => c.name).join(', ') || 'none'}.</>}</p>
-      {only === undefined && finance && (
-        <label className="row cal-check">
-          <input type="checkbox" checked={includeFinance} onChange={(e) => setIncludeFinance(e.target.checked)} />
-          Also include the Finance layer (the next 12 months)
-        </label>
-      )}
-      {only === undefined && finance && <p className="muted small">Off by default. If your phone calendar already has Ledger's "Add to my calendar" file, the bills here use the same ids, so they are not shown twice.</p>}
-      {only === undefined && finance && includeFinance && hideAmounts && <p className="bl-warn small" role="note">Hide Amounts is on, but this file still includes the amounts of your scheduled Finance items, as Ledger's own calendar file does. Leave the Finance layer out if you do not want the amounts to leave this screen.</p>}
-      {only === undefined && chosen.length === 0 && <p className="muted small">None of your own calendars is switched on. Switch one on in the Calendar, or pick one under Manage calendars and choose Export.</p>}
-      <p className="muted small">This only creates a file on this device. Nothing is sent anywhere, and repeats, all-day dates and reminders are included.</p>
-      <div className="row cal-actions"><button className="btn primary" disabled={busy || chosen.length === 0} onClick={() => void run()}>Download</button><button className="btn" onClick={onClose}>Cancel</button></div>
-    </Modal>
-  );
-}
-
+/** R4.3: the export dialog now lives in its own file (richer layers, privacy and alarms). Re-exported so the Calendar page's import is unchanged. */
+export { ExportDialog } from './ExportDialog';

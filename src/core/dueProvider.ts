@@ -61,6 +61,13 @@ export interface DerivedItem extends Pick<DueItemInput, 'sourceModule' | 'source
   icsTitle?: string;
   icsDetail?: string;
   /**
+   * R4.3: the AMOUNT-FREE title and detail for a calendar file the owner downloaded WITHOUT choosing to include amounts. A provider whose `title` or
+   * `detail` can carry a money figure (Finance) must set both, so the export never has to guess. A provider that never writes an amount leaves them out
+   * and the export uses `title` and `detail` as they are. The export never strips digits from text: it only chooses between these approved versions.
+   */
+  icsPlainTitle?: string;
+  icsPlainDetail?: string;
+  /**
    * B3.1 display coordination. The id of ANOTHER layer's item that already stands for this same occurrence (a Bills expected-payment marker whose linked
    * Finance Scheduled payment shows the same date). A DISPLAY filter may leave this item out, but ONLY while that other item is itself being shown
    * (`calendar/markerCoordination.ts`), so switching a layer off can never make both disappear. It is not a financial event and changes no record:

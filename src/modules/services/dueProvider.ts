@@ -54,6 +54,8 @@ export async function servicesDueItems(d: FinanceDB, q: DueQuery): Promise<Deriv
       id: derivedId('services', deadlineKey(x.kind, x.arrangementId), x.date), sourceModule: 'services', sourceRecordId: arrangementRefId(x.arrangementId),
       title: `${DEADLINE_LABEL[x.kind]}: ${x.title}`, date: x.date, allDay: true, priority: x.kind === 'notice' ? 'medium' : 'low', status: x.date >= q.today ? 'open' : 'handled',
       detail: deadlineMeaning(x.kind), openSource: () => goTo(arrangementPath(x.arrangementId)), sourceLabel: 'Open arrangement',
+      // R4.3: a notice-by date is an action deadline, so a calendar FILE reminds the day before; a renewal is information and gets no alarm.
+      ...(x.kind === 'notice' ? { icsAlarmMinutes: 1440 } : {}),
     }));
 
   // expected visits: only arrangements that are active with a fixed schedule, and only when the range reaches into today..horizon

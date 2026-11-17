@@ -27,7 +27,7 @@ describe('Hide amounts preference (moved to core)', () => {
     expect(HIDE_AMOUNTS_SCOPE.help).toMatch(/Today, Calendar, Bills, Services, Home & Assets and Household finances/);
     expect(HIDE_AMOUNTS_SCOPE.help).toMatch(/Accounts, Transactions, Budget, Reports/);
     expect(HIDE_AMOUNTS_SCOPE.help).toMatch(/not a privacy lock/);
-    expect(HIDE_AMOUNTS_SCOPE.doesNotCover).toMatch(/exports and backups still contain them/);
+    expect(HIDE_AMOUNTS_SCOPE.doesNotCover).toMatch(/Calendar file \(\.ics\) leaves Finance-generated amounts out unless you choose.*exported as written/);
   });
 });
 

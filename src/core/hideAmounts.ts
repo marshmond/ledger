@@ -23,6 +23,6 @@ export function saveHideAmounts(on: boolean, store: Pick<Storage, 'setItem'> = l
 export const HIDE_AMOUNTS_SCOPE = {
   label: 'Hide amounts',
   covers: 'Today, Calendar, Bills & Subscriptions, Household Services, Home & Assets and Household finances',
-  doesNotCover: "Ledger's own pages (Accounts, Transactions, Budget, Reports, Net worth and the rest of Ledger Home) still show amounts, and exports and backups still contain them",
+  doesNotCover: "Ledger's own pages (Accounts, Transactions, Budget, Reports, Net worth and the rest of Ledger Home) still show amounts, and backups and Ledger's other exports keep their own behavior (they still contain amounts). The Calendar file (.ics) leaves Finance-generated amounts out unless you choose to include them; titles and notes you wrote yourself are exported as written and may contain sensitive information",
   help: "Hides amounts on Today, Calendar, Bills, Services, Home & Assets and Household finances. Ledger's own pages (Accounts, Transactions, Budget, Reports, Net worth) still show amounts. It is for glancing at a screen, not a privacy lock.",
 } as const;

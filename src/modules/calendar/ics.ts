@@ -11,7 +11,10 @@ import { addDays, dayOfWeek } from '../../lib/dates';
 import type { EventRecord } from './model';
 import { geometry, pickFields, placeOn, seriesStart } from './occurrences';
 import { nthOfMonth, type Recurrence } from './recurrence';
-import { localISO, minutesOfDay } from './time';
+import { localISO, minutesOfDay, msAt, parseHM } from './time';
+
+/** How long a timed derived item lasts in the file (the Calendar draws them as a half hour too). */
+export const DERIVED_TIMED_MINUTES = 30;
 
 const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const compact = (d: string) => d.replace(/-/g, '');
@@ -120,12 +123,17 @@ export function buildIcs(o: IcsOptions): string {
   }
 
   for (const it of o.derived ?? []) {
+    // R4.3: a derived item that has a clock time (a Task due at 2:30pm, a service visit at 9:00) keeps it, as an absolute time lasting the half hour the Calendar draws.
+    // Everything else stays an all-day date, as before.
+    const mins = !it.allDay && it.time ? parseHM(it.time) : null;
+    const when = mins === null
+      ? [`DTSTART;VALUE=DATE:${compact(it.date)}`, `DTEND;VALUE=DATE:${compact(addDays(it.endDate ?? it.date, 1))}`]
+      : [`DTSTART:${utc(msAt(it.date, mins))}`, `DTEND:${utc(msAt(it.date, mins) + DERIVED_TIMED_MINUTES * 60_000)}`];
     lines.push(
       'BEGIN:VEVENT',
       `UID:${it.icsUid ?? `${it.id}@ledger.local`}`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${compact(it.date)}`,
-      `DTEND;VALUE=DATE:${compact(addDays(it.endDate ?? it.date, 1))}`,
+      ...when,
       `SUMMARY:${esc(it.icsTitle ?? it.title)}`,
       `DESCRIPTION:${esc(it.icsDetail ?? it.detail ?? '')}`,
     );
