@@ -22,6 +22,7 @@ const MODULE_KINDS: Record<string, { group: string; kinds: Record<string, string
   services: { group: 'services', kinds: { arrangement: 'Arrangements', visit: 'Visits' } },
   bills: { group: 'bills', kinds: { obligation: 'Bills and subscriptions', cycle: 'Billing-period records', discovery: 'Recurring-expense review choices', lifecycle: 'Subscription lifecycle records' } },
   family: { group: 'family', kinds: { member: 'Family members', date: 'Important dates', contact: 'Important contacts' } },
+  display: { group: 'family', kinds: { grant: 'Family display choices (what may be shown on a shared display)' } },
 };
 const GROUP_LABEL: Record<string, string> = {
   finance: 'Finance', 'tasks-calendar': 'Tasks & Calendar', projects: 'Projects', assets: 'Home & Assets', services: 'Household Services', bills: 'Bills & Subscriptions', family: 'Family',

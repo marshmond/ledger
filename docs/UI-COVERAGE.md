@@ -46,7 +46,7 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 | Inventory | Total | Accepted |
 |---|---|---|
-| Routed page destinations | 61 | 0 |
+| Routed page destinations | 62 | 0 |
 | Global surfaces | 25 | 0 |
 | In-page views | 31 | 0 |
 | Dialogs (`<Modal>` call sites) | 63 | 0 |
@@ -260,7 +260,7 @@ Addresses are written as they appear after `#` in the browser. Ledger pages are 
 | N-01 | `/contacts` | `src/modules/contacts/DirectoryPage.tsx` | D14 | BLT | Y | Y | Y | Y | Y | Y |
 | N-02 | `/contacts/c/:id` | `src/modules/contacts/ContactPage.tsx` | D14 | BLT | Y | Y | Y | Y | . | Y |
 
-### 2.5 Settings (5)
+### 2.5 Settings (6)
 
 The Settings frame (heading and tab row) is `src/pages/SettingsPage.tsx`; each row below is one tab.
 
@@ -271,6 +271,9 @@ The Settings frame (heading and tab row) is `src/pages/SettingsPage.tsx`; each r
 | G-03 | `/settings/backup` | `src/pages/BackupPage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
 | G-04 | `/settings/sync` | `src/pages/SyncPage.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
 | G-05 | `/settings/calendar` | `src/modules/calendar/CalendarSettings.tsx` | D19 | BLT | Y | Y | Y | Y | . | Y |
+| G-06 | `/settings/family-display` | `src/pages/FamilyDisplayPage.tsx` | CS-1 | BLT | Y | Y | Y | . | . | Y |
+
+G-06 note (CS-1, 2026-11-16): the Family display page is built, not accepted. Seen in the in-app browser with invented data: light and dark, 375 px (no horizontal overflow; the Personal-calendar warning dialog), and the real controls (calendar share with Cancel then confirm, hide everything and stop hiding, a reminder shown under a typed name, the editor controls). Not seen: 1440 px (the pane was about 800 px wide), keyboard-only use, a screen reader, a real phone.
 
 G-02 note: D5 added the Ledger Signature choice (labelled preview) to this screen. D19 recomposed the screen (section 1.16); the palette builder, saved themes and every stored value are unchanged, and only the three menu-bar color labels were reworded.
 

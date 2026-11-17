@@ -8,22 +8,24 @@ import BackupPage from './BackupPage';
 import SyncPage from './SyncPage';
 import CalendarSettingsCard from '../modules/calendar/CalendarSettings';
 import GeneralSettings from './GeneralSettings';
+import FamilyDisplayPage from './FamilyDisplayPage';
 import AppearanceCard from './AppearanceCard';
 import './settings.css';
 
-/** The five Settings pages, in order. The address is under the Settings module; the hint is what the page is for. */
+/** The six Settings pages, in order. The address is under the Settings module; the hint is what the page is for. */
 const TABS = [
   { to: '/general', label: 'General', hint: 'Which module opens first, and what stays on this device' },
   { to: '/appearance', label: 'Appearance', hint: 'Light or dark, color palettes and saved themes' },
   { to: '/backup', label: 'Data & Backups', hint: 'Back up, restore and automatic weekly copies' },
   { to: '/sync', label: 'Sync devices', hint: 'Keep your phone and computer in step' },
   { to: '/calendar', label: 'Calendar', hint: 'Week start, opening view and Finance items' },
+  { to: '/family-display', label: 'Family display', hint: 'What a shared family display may show (local preview)' },
 ] as const;
 
 /**
  * Settings for the whole app (not for one module): which module opens first, how the app looks (colors, light/dark), data and backups, and syncing between devices.
  * Ledger's own menu still has a Sync page (the same page). Appearance and Data & Backups live ONLY here; Ledger's old addresses for them forward to this page.
- * On a computer the five pages are a list beside the page; on a phone they are a row of tabs that scrolls sideways (every page stays one tap away).
+ * On a computer the six pages are a list beside the page; on a phone they are a row of tabs that scrolls sideways (every page stays one tap away).
  */
 export default function SettingsPage() {
   const fade = useEdgeFade<HTMLElement>();
@@ -51,6 +53,7 @@ export default function SettingsPage() {
                     <Route path="backup" element={<BackupPage />} />
                     <Route path="sync" element={<SyncPage />} />
                     <Route path="calendar" element={<CalendarSettingsCard />} />
+                    <Route path="family-display" element={<FamilyDisplayPage />} />
                     <Route path="*" element={<Navigate to="/settings/backup" replace />} />
                   </Routes>
                 </PageHeadingLevel.Provider>

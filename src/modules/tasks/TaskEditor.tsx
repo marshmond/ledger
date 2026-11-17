@@ -13,6 +13,9 @@ import RepeatFields from '../../ui/RepeatFields';
 import { normalizeRule, type Recurrence } from '../../core/recurrence';
 import { completeTask, createList, loadLists, removeTasks, reopenTask, restoreTasks, saveTask } from './data';
 import { MODULE, STATUSES, STATUS_LABEL, type ChecklistItem, type TaskRecord, type TaskStatus } from './model';
+import { TaskDisplayControl } from '../../display/DisplayControl';
+import { applyTaskChoice, type DisplayChoice } from '../../display/pending';
+import { db } from '../../db';
 
 /** All the details of one task. Only the title is required. */
 export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClose: () => void }) {
@@ -40,6 +43,8 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
   const [newItem, setNewItem] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /** A family-display choice is a pending form change: saved with Save, dropped by Cancel. */
+  const [displayChoice, setDisplayChoice] = useState<DisplayChoice | null>(null);
 
   const currentListName = lists.find((l) => l.id === t.listId)?.name ?? '';
   const shownList = listTouched ? listName : currentListName;
@@ -61,10 +66,14 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
       const done = status === 'done';
       // The project fields are rebuilt from the screen, so choosing "No project" really removes them; everything else on the record is kept.
       const { projectId: _p, isMilestone: _m, ...base } = t;
+      // the save and the pending family-display choice are one transaction: both happen or neither
+      await db.transaction('rw', db.moduleRecords, async () => {
       await saveTask(task.id, {
         ...base, ...(projectId !== undefined ? { projectId, ...(milestone ? { isMilestone: true } : {}) } : {}), title: title.trim(), notes: notes.trim(), status, priority, dueDate: dueDate || null, dueTime: dueDate && dueTime ? dueTime : null, startDate: startDate || null,
         repeat: rule ? { mode, rule: normalizeRule(rule) ?? rule } : null, tagIds, contactIds, checklist: checklist.filter((c) => c.text.trim()), listId,
         completedAt: done ? t.completedAt ?? Date.now() : null,
+      });
+      await applyTaskChoice(db, task.id, displayChoice);
       });
       for (const e of existing) if (removed.has(refKey(e.ref))) await store.shared.links.remove(e.linkId);
       for (const r of added) await store.shared.links.add({ module: MODULE, id: task.id }, r, 'about');
@@ -180,6 +189,8 @@ export default function TaskEditor({ task, onClose }: { task: TaskRecord; onClos
             onUndoRemove={(r) => setRemoved(new Set([...removed].filter((k) => k !== refKey(r))))}
           />
         </div>
+
+        <TaskDisplayControl taskId={task.id} savedTitle={task.data.title} formTitle={title} value={displayChoice} onChange={setDisplayChoice} />
 
         {error && <p className="cal-error" role="alert">{error}</p>}
         <div className="row spread cal-actions">

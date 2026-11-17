@@ -2,6 +2,7 @@ import { familyContactReferences } from './contactReferences';
 import type { ModuleDef } from '../../core/registry';
 import { lazyModule } from '../../core/lazyModule';
 import { familyDueProvider } from './dueProvider';
+import './displayRead'; // registers the narrow family-display reader (CS-1)
 import { FAMILY_BASE } from './model';
 import { FAMILY_QUICK_ADDS } from './quickAddDef';
 import { familySearchSource } from './searchSource';

@@ -235,6 +235,8 @@ Ledger lives at `marshmond.github.io/ledger/`, and your two other apps (FBB and 
 
 ## Part D. Your results (tick as you go)
 
+> **Owner-reported, 2026-11-16 (recorded by Claude, not tested by Claude):** the owner has reported that steps 12 (backups downloaded), 13 (encrypted restore into a test window, wrong passphrase refused) and 16 (secrets stored in a password manager) are complete, and that every household Ledger device runs a build at or after ST-S5.1. No per-device results, dates or notes were supplied, so **the table below is intentionally left unticked** rather than filled with invented evidence. Steps 1 to 11, 14, 15 and 17 to 19 are not covered by that report. See `docs/LEDGER-CS-1-G1-GATE-REPORT-2026-11-16.md` section 6.
+
 Write **P** for passed, **F** for failed (and what you saw), or **S** for skipped. Date and device next to each.
 
 | # | Step | iPhone | Android | Computer | Notes (what you saw) |

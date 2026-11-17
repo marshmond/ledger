@@ -29,7 +29,7 @@ import { isBooking } from './schedule';
 export const SERVICES_LAYER_COLOR = '#2f7f9a';
 
 /** The live visit Tasks of each arrangement (booking reminders left out), read with one pass over the links. */
-async function visitTasksBy(d: FinanceDB, wanted: Set<number>): Promise<Map<number, TaskRecord[]>> {
+export async function visitTasksBy(d: FinanceDB, wanted: Set<number>): Promise<Map<number, TaskRecord[]>> {
   const out = new Map<number, TaskRecord[]>();
   if (wanted.size === 0) return out;
   const [tasks, links] = await Promise.all([loadTasks(d), d.links.toArray()]);

@@ -21,6 +21,8 @@ import { normalizeRule, type Recurrence } from './recurrence';
 import { fmtHM, localISO, minutesOfDay, msAt, parseHM } from './time';
 import type { Priority } from '../../core/entities';
 import { findProject, projectLabel, projectPath, selectableProjects, useProjectChoicesLoaded } from '../../core/projectLink';
+import { EventDisplayControl } from '../../display/DisplayControl';
+import type { DisplayChoice } from '../../display/pending';
 
 export interface EditorStart {
   date: string;
@@ -71,6 +73,8 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   const [priority, setPriority] = useState<Priority>(initial.priority);
   const [reminders, setReminders] = useState<number[]>(initial.reminders);
   const [calendarId, setCalendarId] = useState(ev?.calendarId ?? defaultCalendarId);
+  /** A family-display choice is a pending form change: saved with Save, dropped by Cancel. */
+  const [displayChoice, setDisplayChoice] = useState<DisplayChoice | null>(null);
   const [tagIds, setTagIds] = useState<number[]>(ev?.tagIds ?? []);
   const [contactIds, setContactIds] = useState<number[]>(ev?.contactIds ?? []);
   const [rule, setRule] = useState<Recurrence | null>(ev?.recurrence ?? null);
@@ -195,7 +199,7 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
   const doSave = async (fields: EventFields, scope: Scope) => {
     setBusy(true);
     try {
-      const id = occ ? await saveEdit(occ, fields, extras(), scope) : await createEvent(newEventData(fields, extras()));
+      const id = occ ? await saveEdit(occ, fields, extras(), scope, undefined, displayChoice) : await createEvent(newEventData(fields, extras()), undefined, displayChoice);
       await applyLinks(id);
       toast(occ ? 'Event saved' : 'Event added');
       onClose();
@@ -350,6 +354,8 @@ export default function EventEditor({ occ, start, layers, defaultCalendarId, onC
             />
           </div>
           </section>
+
+          <EventDisplayControl eventId={occ?.eventId ?? null} calendarId={calendarId} savedTitle={occ?.event.data.title ?? ''} formTitle={title} value={displayChoice} onChange={setDisplayChoice} />
 
           {error && <p className="cal-error" role="alert">{error}</p>}
           <div className="row spread cal-actions">

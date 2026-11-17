@@ -425,7 +425,7 @@ describe('D13 the event editor keeps its fields and gains only grouping', () => 
     expect(read('./calendar.css')).toMatch(/\.cal-form \.cal-actions \{[^}]*position: sticky/);
   });
   it('persistence and validation were not touched: the same save, create and delete calls and the same error path', () => {
-    for (const w of ['saveEdit(occ, fields, extras(), scope)', 'createEvent(newEventData(fields, extras()))', 'setError(e instanceof Error ? e.message', 'if (occ?.recurring) setAsk({ kind: \'save\', fields: f })', 'retireEvent(', 'removeOccurrence(occ, scope)']) expect(src, w).toContain(w);
+    for (const w of ['saveEdit(occ, fields, extras(), scope, undefined, displayChoice)', 'createEvent(newEventData(fields, extras()), undefined, displayChoice)', 'setError(e instanceof Error ? e.message', 'if (occ?.recurring) setAsk({ kind: \'save\', fields: f })', 'retireEvent(', 'removeOccurrence(occ, scope)']) expect(src, w).toContain(w);
   });
   it('a derived item (a bill, a task, a family date) still opens a read-only detail, never the event editor', () => {
     const dlg = read('./dialogs.tsx');

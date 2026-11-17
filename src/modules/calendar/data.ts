@@ -8,6 +8,8 @@ import type { ModuleRecord } from '../../core/entities';
 import { allDueProviders } from '../../core/dueProvider';
 import { loadCalendarSettings } from '../../core/calendarSettings';
 import { createStore, isLive, repo } from '../../core/store';
+import { carryEventDecision } from '../../display/grantStore';
+import { applyEventChoice, type DisplayChoice } from '../../display/pending';
 import {
   ASSETS_ID, asEvent, asLayer, BILLS_ID, FAMILY_ID, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SERVICES_ID, SWATCHES, TASKS_ID,
   type CalendarLayer, type EventData, type EventFields, type EventRecord, type LayerData,
@@ -96,8 +98,13 @@ const asLayerMaybe = (r: ModuleRecord | undefined) => (r ? asLayer(r) : undefine
 
 export const newEventData = (f: EventFields, extras: SeriesExtras): EventData => ({ ...f, ...extras, skipped: [], overrides: {}, doneKeys: [] });
 
-export async function createEvent(data: EventData, d: FinanceDB = db): Promise<number> {
-  return rows(d).put({ module: MODULE, kind: 'event', data: { ...data } });
+/** Creates an event. A pending family-display `choice` is written in the SAME transaction, so the event is never visible before its save succeeds and a failed save leaves no decision behind. */
+export async function createEvent(data: EventData, d: FinanceDB = db, choice?: DisplayChoice | null): Promise<number> {
+  return d.transaction('rw', d.moduleRecords, async () => {
+    const id = await rows(d).put({ module: MODULE, kind: 'event', data: { ...data } });
+    await applyEventChoice(d, id, choice);
+    return id;
+  });
 }
 
 /** Deletes a whole event by id (soft, like every delete). Used by Undo after the Add box creates one. */
@@ -138,8 +145,16 @@ async function current(id: number, d: FinanceDB): Promise<EventRecord> {
 export type Scope = 'one' | 'following' | 'all';
 
 /** Saves an edit made to one occurrence (or a one-off event). Returns the id of the event now holding the edited occurrence. */
-export async function saveEdit(occ: Occurrence, edited: EventFields, extras: SeriesExtras, scope: Scope, d: FinanceDB = db): Promise<number> {
+export async function saveEdit(occ: Occurrence, edited: EventFields, extras: SeriesExtras, scope: Scope, d: FinanceDB = db, choice?: DisplayChoice | null): Promise<number> {
+  // A pending family-display choice is applied to the id that now holds the occurrence (the NEW id after a split), in the same transaction.
   return d.transaction('rw', d.moduleRecords, d.links, async () => {
+    const id = await saveEditIn(occ, edited, extras, scope, d);
+    await applyEventChoice(d, id, choice);
+    return id;
+  });
+}
+async function saveEditIn(occ: Occurrence, edited: EventFields, extras: SeriesExtras, scope: Scope, d: FinanceDB): Promise<number> {
+  {
     const ev = await current(occ.eventId, d);
     if (!ev.data.recurrence) {
       await save(ev.id, { ...ev.data, ...edited, ...extras, recurrence: extras.recurrence }, d);
@@ -156,12 +171,14 @@ export async function saveEdit(occ: Occurrence, edited: EventFields, extras: Ser
         await save(ev.id, split.old, d);
         const newId = await rows(d).put({ module: MODULE, kind: 'event', data: { ...split.next } });
         await copyLinks(ev.id, newId, d);
+        // CS-1: a family-display choice made for the old event (a "show", or an explicit "keep private") follows the series; it can only fail closed.
+        await carryEventDecision(ev.id, newId, d, split.next.title);
         return newId;
       }
     }
     await save(ev.id, editAll(ev.data, occ, edited, extras), d);
     return ev.id;
-  });
+  }
 }
 
 /** Deletes a one-off event, one occurrence, this-and-following, or the whole series. Everything is soft, so Undo can bring it back. */

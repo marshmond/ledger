@@ -1,0 +1,28 @@
+/* CS-1: the "On the family tablet" control and the Family display settings page. Tokens only; no hard-coded colors. */
+.ds-box { display: grid; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-soft); min-width: 0; margin: 0; }
+.ds-box legend { padding: 0 var(--sp-1); font-size: var(--fs-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-2); }
+.ds-options { display: grid; gap: var(--sp-2); }
+.ds-option { display: flex; gap: var(--sp-2); align-items: flex-start; min-height: var(--control-h); }
+.ds-option input { margin-top: 3px; }
+.ds-note { margin: 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--accent-line); border-radius: var(--r-md); background: var(--accent-soft); color: var(--fg); font-size: var(--fs-sm); }
+.ds-note--stop { border-color: var(--warn); background: var(--warn-soft); }
+.ds-local { margin: 0; }
+
+.ds-page { display: grid; gap: var(--sp-4); }
+.ds-banner { margin: 0; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--accent-line); border-radius: var(--r-lg); background: var(--accent-soft); }
+.ds-banner--kill { border-color: var(--warn); background: var(--warn-soft); }
+.ds-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.ds-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); justify-content: space-between; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); min-width: 0; }
+.ds-row-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 14rem; }
+.ds-row-main strong { overflow-wrap: anywhere; }
+.ds-row-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ds-stats { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); margin: 0; padding: 0; list-style: none; }
+.ds-stats li { display: grid; }
+.ds-stats strong { font-size: var(--fs-lg); }
+.ds-label-form { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: flex-end; }
+.ds-label-form .f { flex: 1 1 12rem; }
+.ds-preview-day { margin: 0; font-size: var(--fs-sm); font-weight: 700; color: var(--fg-2); }
+.ds-lock { margin-right: var(--sp-1); }
+.ds-detail { font-size: var(--fs-sm); color: var(--fg-2); }
+.ds-detail summary { cursor: pointer; min-height: var(--control-h); display: flex; align-items: center; }
+.ds-scroll { max-height: 14rem; overflow: auto; }
