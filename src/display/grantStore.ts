@@ -5,6 +5,7 @@
 import { db, type FinanceDB } from '../db';
 import type { ModuleRecord } from '../core/entities';
 import { repo } from '../core/store';
+import { emitHideDecision } from './publish/signals';
 import {
   ALL_SUBJECT, cleanLabel, DISPLAY_MODULE, GRANT_KIND, GRANT_VERSION, LABEL_MAX, parseSubject, resolveGrants, subjectOf,
   type Decision, type GrantData, type GrantIndex, type Level,
@@ -68,7 +69,9 @@ export async function appendInTransaction(i: DecisionInput, d: FinanceDB): Promi
     ...(i.titleAtGrant ? { titleAtGrant: i.titleAtGrant.slice(0, 200) } : {}),
     supersedes: seen.sort((a, b) => a - b), deviceId: SESSION_DEVICE,
   };
-  return repo<ModuleRecord>(d.moduleRecords).put({ module: DISPLAY_MODULE, kind: GRANT_KIND, data: data as unknown as Record<string, unknown> });
+  const id = await repo<ModuleRecord>(d.moduleRecords).put({ module: DISPLAY_MODULE, kind: GRANT_KIND, data: data as unknown as Record<string, unknown> });
+  if (i.decision === 'hide') emitHideDecision(); // CS-2: a revocation should reach the display promptly (runs after this call returns)
+  return id;
 }
 
 /** The global switch. `true` hides everything locally; `false` resumes ordinary decisions. Both are decisions: nothing is deleted. */

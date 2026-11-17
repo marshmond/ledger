@@ -9,6 +9,8 @@ import { allDueProviders } from '../../core/dueProvider';
 import { loadCalendarSettings } from '../../core/calendarSettings';
 import { createStore, isLive, repo } from '../../core/store';
 import { carryEventDecision } from '../../display/grantStore';
+import { stampFor } from '../../display/compat';
+import { newId as freshId } from '../../lib/sync/track';
 import { applyEventChoice, type DisplayChoice } from '../../display/pending';
 import {
   ASSETS_ID, asEvent, asLayer, BILLS_ID, FAMILY_ID, FINANCE_ID, MODULE, PERSONAL_ID, PROJECTS_ID, SERVICES_ID, SWATCHES, TASKS_ID,
@@ -101,7 +103,8 @@ export const newEventData = (f: EventFields, extras: SeriesExtras): EventData =>
 /** Creates an event. A pending family-display `choice` is written in the SAME transaction, so the event is never visible before its save succeeds and a failed save leaves no decision behind. */
 export async function createEvent(data: EventData, d: FinanceDB = db, choice?: DisplayChoice | null): Promise<number> {
   return d.transaction('rw', d.moduleRecords, async () => {
-    const id = await rows(d).put({ module: MODULE, kind: 'event', data: { ...data } });
+    const id = freshId();
+    await rows(d).put({ id, module: MODULE, kind: 'event', data: { ...data, prov: stampFor(id) } }); // CS-2: stamped with its own id
     await applyEventChoice(d, id, choice);
     return id;
   });
@@ -169,7 +172,9 @@ async function saveEditIn(occ: Occurrence, edited: EventFields, extras: SeriesEx
       const split = splitFollowing(ev.data, occ.key, edited, extras);
       if (split) {
         await save(ev.id, split.old, d);
-        const newId = await rows(d).put({ module: MODULE, kind: 'event', data: { ...split.next } });
+        // CS-2: the new half is stamped with its OWN id (the copy above carried the old event's stamp, which no longer matches).
+        const newId = freshId();
+        await rows(d).put({ id: newId, module: MODULE, kind: 'event', data: { ...split.next, prov: stampFor(newId) } });
         await copyLinks(ev.id, newId, d);
         // CS-1: a family-display choice made for the old event (a "show", or an explicit "keep private") follows the series; it can only fail closed.
         await carryEventDecision(ev.id, newId, d, split.next.title);

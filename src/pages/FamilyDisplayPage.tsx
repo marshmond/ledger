@@ -14,14 +14,14 @@ import { appendDecision, setKillSwitch, type DecisionInput } from '../display/gr
 import { ALL_DATES_SUBJECT, memberDatesSubject, subjectOf, type GrantIndex, type Level } from '../display/grants';
 import { previewCalendarShare, readDisplayState, RECENT_DAYS, type CalendarPreview } from '../display/readState';
 import { Pill, SettingsSection, SubHeading } from './SettingsParts';
+import { Preview, shortDay } from '../display/DisplayPreview';
+import PublishingPanel, { PreviewBanner } from './FamilyDisplayPublishing';
 import '../display/display.css';
 
 /**
  * CS-1: Settings > Family display. The owner's management page for what a shared family display MAY show, with a LOCAL preview of exactly the
  * dataset a later release could publish. There is no display yet: nothing here is published, sent or stored anywhere else, and the page says so.
  */
-const dayLabel = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-const shortDay = (date: string | null) => (date ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'no upcoming date');
 
 type Dialog =
   | { kind: 'kill' }
@@ -92,18 +92,17 @@ export default function FamilyDisplayPage() {
     <div className="ds-page">
       <PageHeader title="Family display" description="Choose what a shared family display, such as a kitchen tablet, is allowed to show. Everything starts hidden, and nothing is shown unless you choose it." />
 
-      <p className="ds-banner" role="note">
-        <strong>This is a local preview. Nothing has been published.</strong> No display exists yet, and Ledger has sent nothing to any device or service. Your choices are saved only in Ledger (and in your backups and synced devices, like everything else). Finance, Bills, Projects, notes, places and contact details can never be shown.
-      </p>
+      <PreviewBanner />
       {error && <p className="cal-error" role="alert">{error}</p>}
       {report.limitations.length > 0 && <p className="ds-note ds-note--stop" role="status">{report.limitations.join(' ')} Those parts are left out of the preview.</p>}
+      <PublishingPanel report={report} />
 
       <SettingsSection id="fd-kill" title="Hide everything" badge={<Pill tone={report.killed ? 'warn' : 'ok'}>{report.killed ? 'On: everything hidden' : 'Off'}</Pill>} tone={report.killed ? 'warn' : 'default'}
         intro="One switch that hides every item at once without losing your choices. Your other choices are kept; turning it off lets them apply again.">
         {report.killed
           ? <p><button type="button" className="btn primary" onClick={() => setDialog({ kind: 'resume' })}>Stop hiding everything</button></p>
           : <p><button type="button" className="btn danger" onClick={() => setDialog({ kind: 'kill' })}>Hide everything now</button></p>}
-        <p className="muted small">This changes what Ledger would allow a display to show. Because nothing is published yet, it affects only this device's preview and your other synced devices. When publishing is added later, it will say separately whether a display has actually been updated.</p>
+        <p className="muted small">This changes what Ledger allows a display to show. If publishing is set up, Ledger tries to update the display straight away, and the "Publishing" section below says separately whether the display file has actually been updated. If nothing is set up, it affects only this device's preview and your other synced devices.</p>
       </SettingsSection>
 
       <SettingsSection id="fd-summary" title="What is allowed right now" badge={<Pill tone="info">Preview only</Pill>}>
@@ -300,8 +299,8 @@ export default function FamilyDisplayPage() {
         )}
       </SettingsSection>
 
-      <SettingsSection id="fd-preview" title="Preview of what a display would receive" badge={<Pill tone="quiet">Local · not published</Pill>}
-        intro="This is built by the same code a later release would use to publish. It is shown only here. Nothing in it has been sent anywhere.">
+      <SettingsSection id="fd-preview" title="Preview of what a display would receive" badge={<Pill tone="quiet">Preview</Pill>}
+        intro="This is built by the same code that publishes, from what is approved right now. Looking at it sends nothing anywhere. What has actually been published is shown under Publishing above.">
         {projectionError && <p className="cal-error" role="alert">{projectionError}</p>}
         {!projection ? <p className="muted">Building the preview…</p> : <Preview p={projection} killed={report.killed} />}
       </SettingsSection>
@@ -384,43 +383,5 @@ function ScheduleRow({ subject, sourceName, grants, people, onSave, count }: {
         {on && <button type="button" className="btn" onClick={() => void onSave({ subject, decision: 'hide' }, 'Kept private')} aria-label={`Stop showing ${sourceName}`}>Stop showing</button>}
       </span>
     </li>
-  );
-}
-
-function Preview({ p, killed }: { p: DisplayProjection; killed: boolean }) {
-  const names = new Map(p.people.map((x) => [x.id, x.name]));
-  const days = new Map<string, { when: string; title: string; who: string; kind: string }[]>();
-  for (const e of p.entries) {
-    const when = e.allDay ? (e.start.date === e.end.date ? 'All day' : `All day to ${shortDay(e.end.date)}`) : `${e.start.time}–${e.end.time}`;
-    days.set(e.start.date, [...(days.get(e.start.date) ?? []), { when, title: e.title, who: e.people.map((x) => names.get(x) ?? '').join(', '), kind: e.source }]);
-  }
-  const KIND: Record<string, string> = { events: 'Event', dates: 'Family date', visits: 'Visit', reminders: 'Reminder' };
-  return (
-    <>
-      <ul className="ds-stats">
-        <li><strong>{p.counts.entries}</strong><span className="muted small">{p.counts.entries === 1 ? 'calendar item' : 'calendar items'}</span></li>
-        <li><strong>{p.counts.tasks}</strong><span className="muted small">Tasks</span></li>
-        <li><strong>{p.people.length}</strong><span className="muted small">{p.people.length === 1 ? 'person named' : 'people named'}</span></li>
-        <li><strong>{p.grantsSeen.length}</strong><span className="muted small">{p.grantsSeen.length === 1 ? 'choice recorded' : 'choices recorded'}</span></li>
-      </ul>
-      <p className="muted small">From {shortDay(p.window.from)} to {shortDay(p.window.to)}, in the time zone {p.generatedFor.tz}.</p>
-      {p.entries.length === 0 && p.tasks.length === 0 && <p className="muted">{killed ? 'Hide everything is on, so nothing would be shown.' : 'Nothing would be shown. That is how everything starts.'}</p>}
-      {[...days.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, items]) => (
-        <div key={date}>
-          <h4 className="ds-preview-day">{dayLabel(date)}</h4>
-          <ul className="ds-list">
-            {items.map((it, i) => <li key={i} className="ds-row"><span className="ds-row-main"><strong>{it.title}</strong><span className="muted small">{KIND[it.kind]} · {it.when}{it.who ? ` · ${it.who}` : ''}</span></span></li>)}
-          </ul>
-        </div>
-      ))}
-      {p.tasks.length > 0 && (
-        <div>
-          <h4 className="ds-preview-day">Tasks</h4>
-          <ul className="ds-list">
-            {p.tasks.map((t) => <li key={t.id} className="ds-row"><span className="ds-row-main"><strong>{t.title}</strong><span className="muted small">{t.due ? `Due ${shortDay(t.due.date)}${t.due.time ? ` ${t.due.time}` : ''}` : 'No due date'} · {t.status}{t.repeat ? ' · repeats' : ''}{t.people.length ? ` · ${t.people.map((x) => names.get(x) ?? '').join(', ')}` : ''}</span></span></li>)}
-          </ul>
-        </div>
-      )}
-    </>
   );
 }

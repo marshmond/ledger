@@ -1,0 +1,22 @@
+:root { --bg: #f7f6f2; --fg: #1d2530; --muted: #5a6573; --line: #d8d6cf; --card: #ffffff; --ok: #1f7a4d; --warn: #9a6200; --bad: #b3261e; --info: #355c9a; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) { :root { --bg: #14181d; --fg: #e8ebef; --muted: #a2adba; --line: #2c343d; --card: #1b2128; --ok: #5fcf9a; --warn: #f0b84d; --bad: #ff8b84; --info: #8fb3f0; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 18px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.t-page { max-width: 40rem; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.6rem; margin: 0 0 8px; }
+h2 { font-size: 1.2rem; margin: 0 0 8px; }
+.t-status { display: inline-block; font-weight: 600; padding: 4px 12px; border-radius: 999px; border: 1px solid currentColor; margin: 0 0 12px; }
+.t-ok { color: var(--ok); } .t-warn { color: var(--warn); } .t-bad, .t-error { color: var(--bad); } .t-info { color: var(--info); }
+.t-list { margin: 16px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.t-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.t-list > div:last-child { border-bottom: 0; }
+dt { color: var(--muted); } dd { margin: 0; text-align: right; font-weight: 500; }
+.t-note { color: var(--muted); font-size: 0.9rem; }
+.t-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.t-btn { min-height: 48px; padding: 0 20px; font: inherit; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); cursor: pointer; }
+.t-primary { background: var(--info); border-color: var(--info); color: #fff; }
+.t-danger { background: var(--bad); border-color: var(--bad); color: #fff; }
+.t-btn:disabled { opacity: 0.6; cursor: default; }
+textarea, select { width: 100%; font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--fg); margin: 6px 0 12px; }
+label { display: block; font-weight: 600; margin-top: 8px; }
+.t-dialog { position: fixed; inset: auto 16px 16px; max-width: 36rem; margin: 0 auto; padding: 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35); }

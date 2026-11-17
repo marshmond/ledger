@@ -98,6 +98,25 @@ export function syncNow(opts: { auto?: boolean } = {}): Promise<void> {
   return running;
 }
 
+/**
+ * CS-2: a FULL sync round for the family-display publisher, with a plain yes or no. (Unlike the automatic runs this never skips the download.)
+ * It also says no while an unreviewed sync conflict involves a family-display privacy decision, because a publisher must not build from a
+ * state where it is unclear which privacy choice won. Returns the sync file's version so the publisher can check it did not move.
+ */
+export async function syncForPublish(): Promise<{ ok: true; sha: string | null } | { ok: false; message: string }> {
+  if (!readConfig()) return { ok: false, message: 'Sync is not set up on this device.' };
+  await syncNow();
+  if (status.state === 'error') return { ok: false, message: status.error ?? 'Sync did not finish.' };
+  const lost = (await readConflicts(meta)).some((c) => c.table === 'moduleRecords' && (c.lost as { module?: unknown } | undefined)?.module === 'display');
+  if (lost) return { ok: false, message: 'A sync conflict involves a family display choice. Open Settings > Sync, review it, then try again.' };
+  return { ok: true, sha: (await meta.get<string>('remoteSha')) ?? null };
+}
+/** The sync file's current version without downloading it (null if there is none or sync is not set up). */
+export async function syncHeadSha(): Promise<string | null> {
+  const c = readConfig();
+  return c ? ((await githubRemote(c).headSha?.()) ?? null) : null;
+}
+
 export async function loadLastSynced() {
   emit({ stats: await syncStats(meta), lastSyncedAt: await meta.get<number>('lastSyncedAt'), conflicts: (await readConflicts(meta)).length });
 }

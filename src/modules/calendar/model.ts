@@ -74,6 +74,8 @@ export interface EventData extends EventFields {
   projectId?: number;
   /** If this event was retired because another module took it over: where it went. */
   retired?: { module: string; recordId: string | number; note: string };
+  /** CS-2: written by a current build and bound to this record's own id (see display/compat.ts). An older build copies it onto a split, where it no longer matches. */
+  prov?: { v: 1; id: number };
 }
 export interface EventRecord {
   id: number;

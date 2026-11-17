@@ -17,7 +17,8 @@ import { confirmParts, confirmText, noteLines, type AccountDependents } from '..
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
 }
-const sources = walk('src').filter((f) => /\.(ts|tsx)$/.test(f) && !/\.test\./.test(f));
+// src/tablet is the separate family-display app (its own page and build). It cannot use Ledger's shell, so it is not one of Ledger's screens.
+const sources = walk('src').filter((f) => /\.(ts|tsx)$/.test(f) && !/\.test\./.test(f) && !/src[\\/]tablet[\\/]/.test(f));
 const read = (f: string) => readFileSync(f, 'utf8');
 
 describe('ST-S3 / AX-03: one main landmark, written one way', () => {

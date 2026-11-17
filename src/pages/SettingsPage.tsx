@@ -19,7 +19,7 @@ const TABS = [
   { to: '/backup', label: 'Data & Backups', hint: 'Back up, restore and automatic weekly copies' },
   { to: '/sync', label: 'Sync devices', hint: 'Keep your phone and computer in step' },
   { to: '/calendar', label: 'Calendar', hint: 'Week start, opening view and Finance items' },
-  { to: '/family-display', label: 'Family display', hint: 'What a shared family display may show (local preview)' },
+  { to: '/family-display', label: 'Family display', hint: 'What a shared family display may show, and publishing to it' },
 ] as const;
 
 /**

@@ -5,6 +5,7 @@ import App, { preloadForAddress } from './App';
 import { db, seedIfEmpty } from './db';
 import { startAutoSync } from './lib/sync/auto';
 import { startAutoBackup } from './lib/autoBackup';
+import { startDisplayPublisher } from './display/publish/start';
 import { installTracking } from './lib/sync/track';
 import { ensureSetupCategory } from './lib/setupCategory';
 import { updateAssetClasses } from './lib/assetClassUpdate';
@@ -23,6 +24,7 @@ const atMost = (p: Promise<unknown>, ms: number) => Promise.race([p, new Promise
 seedIfEmpty().then(() => ensureSetupCategory(db)).then(() => updateAssetClasses(db)).catch(() => undefined).then(() => atMost(moduleReady, 400)).finally(() => {
   startAutoSync();
   startAutoBackup();
+  startDisplayPublisher(); // CS-2: does nothing until the owner has set up and reviewed publishing on this device
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <HashRouter>

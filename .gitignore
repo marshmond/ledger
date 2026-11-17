@@ -7,3 +7,4 @@ backups/
 Ledger Backup*.json
 Ledger Pre-Import*.json
 *.csv
+dist-tablet

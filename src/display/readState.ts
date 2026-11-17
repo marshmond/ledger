@@ -28,6 +28,7 @@ import {
 import { loadGrantRows } from './grantStore';
 import { eventRejection, taskRejection, type Rejection } from './eligibility';
 import { linkModules } from './linkModules';
+import { loadBaseline, needsReview } from './compat';
 import type { BuildInput, DateSource, EventSource, PersonSource, ScheduleSource, TaskSource } from './build';
 import type { IdKey } from './contract';
 
@@ -47,6 +48,8 @@ export interface PrivateRow { eventId: number; title: string; calendarName: stri
 export interface TaskRow { rootId: number; taskId: number; title: string; due: string | null; status: string; updatedAt: number; titleChanged: boolean; conflict: boolean }
 export interface DateRow { key: string; title: string; subject: string; via: string; count: number }
 export interface ScheduleRow { id: number; label: string; people: number[]; count: number }
+/** An event that would be shown only because its calendar is shared, made after the first publication by a build that does not stamp events. Held back until the owner chooses. */
+export interface WithheldRow { eventId: number; title: string; calendarName: string; createdAt: number; nextDate: string | null }
 export interface DecisionRow { id: number; subject: string; decision: string; level: string; createdAt: number }
 
 export interface DisplayReport {
@@ -56,6 +59,8 @@ export interface DisplayReport {
   events: EventRow[];
   rejected: RejectedRow[];
   keptPrivate: PrivateRow[];
+  /** CS-2: held back for review (see compat.ts). Never in the projection. */
+  withheld: WithheldRow[];
   tasks: TaskRow[];
   ambiguousTasks: number;
   dates: DateRow[];
@@ -110,7 +115,7 @@ export async function readDisplayState(d: FinanceDB, o: ReadOptions): Promise<Di
   const membersOf = (contactIds: readonly number[]) => [...new Set(contactIds.map((c) => memberOfContact.get(c)).filter((m): m is number => m !== undefined))].sort((a, b) => a - b);
 
   const report: DisplayReport = {
-    killed: grants.killed, window, sharedCalendars: [], events: [], rejected: [], keptPrivate: [], tasks: [], ambiguousTasks: 0, dates: [], visits: [], reminders: [],
+    killed: grants.killed, window, sharedCalendars: [], events: [], rejected: [], keptPrivate: [], withheld: [], tasks: [], ambiguousTasks: 0, dates: [], visits: [], reminders: [],
     recentEvents: [], recentTasks: [], recentDecisions: [], conflicts: grants.conflicts.map((c) => ({ subject: c.subject, reason: c.reason })), unattributable: grants.unattributable.length, subjectNames: {}, limitations,
   };
   const events: EventSource[] = [];
@@ -126,6 +131,7 @@ export async function readDisplayState(d: FinanceDB, o: ReadOptions): Promise<Di
       d.moduleRecords.where('[module+kind]').equals([CAL, 'event']).toArray(),
       linkModules(d, CAL),
     ]);
+    const baseline = await loadBaseline(d); // not caught on purpose: if it cannot be read, nothing is published
     const layers = new Map<number, CalendarLayer>(layerRows.filter(isLive).map((r) => [r.id as number, asLayer(r)]));
     for (const l of layers.values()) {
       const s = listing.get(subjectOf('calendar', l.id));
@@ -149,6 +155,10 @@ export async function readDisplayState(d: FinanceDB, o: ReadOptions): Promise<Di
       if (rejection) { report.rejected.push({ id: ev.id, title: ev.data.title, where: calendarName, rejection }); continue; }
       const memberIds = membersOf(ev.data.contactIds);
       const src = narrowEvent(ev, eff, memberIds, window.from, window.to);
+      if (eff.via === 'calendar' && needsReview(ev, baseline)) {
+        report.withheld.push({ eventId: ev.id, title: ev.data.title, calendarName, createdAt: ev.createdAt, nextDate: src.occurrences.map((x) => x.start.date).filter((x) => x >= o.today).sort()[0] ?? null });
+        continue;
+      }
       const first = src.occurrences.map((x) => x.start.date).filter((x) => x >= o.today).sort()[0] ?? null;
       const stateOwn = eff.via === 'event' ? listing.get(subjectOf('event', ev.id)) : null;
       const row: EventRow = {
