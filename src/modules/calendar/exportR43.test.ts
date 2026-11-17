@@ -107,7 +107,7 @@ describe('financial amounts', () => {
     for (const hide of [false, true]) {
       const h = await household(hide);
       const text = make(h, choice()).text;
-      expect(scanText(text), `hide=${hide}`).not.toMatch(/1\\?,?500/);
+      expect(scanText(text), `hide=${hide}`).not.toMatch(/1\\?,500|\$1500/); // the amount as written, not any digits that an id may happen to hold
       expect(text, `hide=${hide}`).not.toMatch(/\$[\d\\,]+\.\d\d/); // no figure with cents anywhere
       const lines = unfold(text);
       const landlord = vevents(text).find((e) => e.some((l) => l.startsWith('SUMMARY:Test Landlord')))!;
