@@ -77,6 +77,7 @@ describe('page addresses', () => {
       for (const m of text.matchAll(/\bto[:=]\s*\{?[`'"](\/[a-z][^`'"?$]*)/g)) {
         const path = m[1].endsWith('/') ? `${m[1]}1` : m[1]; // `/account/${id}` is read as /account/1
         if (path === '/settings' || path.startsWith('/settings/')) continue; // the app-wide Settings, outside any module
+        if (path === '/help') continue; // the app-wide Getting Started & Help page (a shell page: withBasePath leaves it unprefixed)
         if (!ROUTES.some((r) => matches(r, path))) bad.push(`${f}: ${m[1]}`);
       }
     }

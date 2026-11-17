@@ -102,6 +102,8 @@ to Twelve Data using your own key.
 
 Under **Settings > Appearance** (the app-wide Settings, reached from the top bar; it applies to every module) you can choose Light / Dark / Device and a color palette (Signature Navy, the default; Coastal Slate; Evergreen; Warm Stone; Midnight Plum; or your own colors picked from a color map, with warnings if text would be hard to read). Every palette gives Ledger the same layout; only the colors change. Both are remembered on each device. Sections on the Income, Transactions, and Debt screens can be collapsed, and the app remembers what you collapsed on each device.
 
+**Getting Started & Help** (`#/help`, the small question-mark link in the top bar, or in the module list on a phone) is a short, read-only guide: what Ledger does, five steps to begin, how the modules connect, where to go for a task, and three fictional examples. It reads and saves nothing.
+
 Everything is a planning aid, not tax, legal, or investment advice. Return assumptions are yours to set and are not predictions.
 
 ## Running it on your computer

@@ -40,6 +40,8 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 
 **CAL-G1 (2026-11-17, built and tested locally, uncommitted; not a design phase): Settings > Calendar (G-05) gains one section, "Email notifications through Gmail" (a status badge, the public client ID box, Connect Gmail, Reconnect Gmail, Disconnect Gmail, plain-language errors and a collapsed list of setup steps), built from the existing shared Settings pieces (`SettingsSection`, `Pill`) plus two small rules in `settings.css` (`.se-sub-details`, and wrapping for long addresses in `.se-steps`); the CAL-N1 review screen and Messages card gain a Connect Gmail button and Gmail-specific wording. No dialog was added (Modal sites stay 64 in 43 files), no tracker row, mark or count changed, and no inline style, hex colour, native confirmation or `!important` was added. Seen in the browser pane on invented data with a fake Google and a fake Gmail: desktop (light and dark) and 375 px (no sideways scroll; one overflow of a long web address in the setup steps was found and fixed); a keyboard-only walk, a screen reader, Safari, Firefox and real devices are NOT recorded.**
 
+**GS-1 (2026-11-17, built and tested locally, uncommitted; not a design phase): a read-only Getting Started & Help page at `#/help` plus a Help link in the header, the phone module list and the Finance Home checklist row. One new global-surface row, S-26 (`BLT`, marks in the S-26 note below); the roll-up is now 26 global surfaces. No routed-page row, dialog or workflow row changed, the Modal count is unchanged, and nothing is `ACC`.**
+
 **D20.1B (2026-11-13, built and tested locally, uncommitted): the remaining 33 native confirmations became Ledger confirmation dialogs (the planned B, C and D batches in one cycle); 0 actual browser-native `confirm()` calls remain (the historical rule also reads 0; its D4 baseline stays 37 in 24 files). CF-03 reads `BLT` (built, pending owner acceptance); nothing is `ACC`, no dialog group changed status, D21 is not started. Report: `docs/LEDGER-SIGNATURE-D20.1B-REPORT.md`.**
 
 **D20.1A (2026-11-13, built and tested locally, uncommitted): owner approved OD-6 option (a) (replace all 38 native confirmations in controlled batches, high-risk last). Five low-risk native boxes were replaced by the shared ConfirmDialog (gift, goal, policy record, saved flow view, saved theme delete); CF-03 reads PARTIALLY MIGRATED (33 actual native calls remain; the historical rule counts 32; both are kept, see the inventory file). CF-03 stays `NS` (not accepted) and no dialog group changed status. D21 is not started.**
@@ -51,7 +53,7 @@ A row reaches `ACC` only when **L, D, 375, 1440, Kbd and Func are all `Y`**. The
 | Inventory | Total | Accepted |
 |---|---|---|
 | Routed page destinations | 62 | 0 |
-| Global surfaces | 25 | 0 |
+| Global surfaces | 26 | 0 |
 | In-page views | 31 | 0 |
 | Dialogs (`<Modal>` call sites) | 63 | 0 |
 | Named workflows | 37 | 0 |
@@ -60,7 +62,7 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 
 ---
 
-## 1. Global surfaces (25)
+## 1. Global surfaces (26)
 
 | ID | Surface | Source | Phase | Status | L | D | 375 | 1440 | Kbd | Func |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -89,8 +91,11 @@ A guard test (`src/shell/uiCoverage.test.ts`) fails if a registered route is mis
 | S-23 | Charts | `src/ui/charts.tsx` | D6, D12, D17 | BLT | Y | Y | Y | Y | . | Y |
 | S-24 | Quick Answers screen and the Answers group in Search | `src/shell/AnswersPage.tsx`, `src/shell/searchAnswers.ts` | R3.2 | BLT | Y | . | Y | . | . | Y |
 | S-25 | Records screen and the Documents group in Search | `src/shell/RecordsPage.tsx`, `src/shell/recordsIndex.ts` | R4.1 | BLT | Y | . | Y | . | . | Y |
+| S-26 | Getting Started & Help page (`#/help`) and the Help link in the header and in the phone module list | `src/shell/HelpPage.tsx`, `src/shell/helpContent.ts`, `src/core/ModuleBar.tsx` | GS-1 | BLT | Y | Y | Y | Y | Y | Y |
 
 R4.2 note (Family Lenses, not a design phase): `F-04` (`/family/week`) is new: marks `L`, `D` (looked at in the browser pane on the invented demo household), `375` (no sideways scroll; checked), `Func` (person filter, Print week preview with the print rules switched on, Download family calendar read back in memory). NOT recorded: `1440` (the pane is narrower), `Kbd` (no full Tab walk), a real print, a real phone. The shared person filter bar and the person chips were ADDED to C-01 Calendar (Agenda, Week, Month cells), T-01 Tasks, the Today page and the Family overview's header (a "This week" link); those rows keep their earlier status and marks because only an extra control and small markers were added, not a redesign. The filter bar is `src/ui/PeopleLens.tsx`.
+
+S-26 note (GS-1, not a design phase): the Getting Started & Help page (`#/help`, a shell page like Settings, Answers and Records, not a module) and the Help entry points were built from the Signature components and tokens already in place (`PageHeader`, the shared `Icon`, `--sp-*`, `--fs-*`, `--accent-soft`; one small stylesheet, `src/shell/help.css`). Entry points: a small icon-only Help link in the header between the sync status and Settings (hidden below 641 px), a Help link in the phone module list beside Settings, and one "Read the guide" link in the Finance Home "Get started" row (the checklist itself, its saved dismissal and its progress are unchanged). Recorded marks: `L` (desktop, light), `D` (dark, seen at 375 px only; desktop dark was not looked at), `375` (no sideways scroll; every link, button and summary at least 44 px tall; the phone module list shows Help), `1440` (viewport set to 1440 x 900), `Kbd` (a real Tab walk down the content links on the desktop layout, Enter on "Open the Add box" opened the Add box with focus inside, Escape closed it and returned focus; the phone was not keyboard-walked), `Func` (focused tests, plus each of the 16 distinct links opened its screen with no redirect or error, and the record count of every database table and the saved browser settings were identical before and after opening the page and the Add box). NOT recorded: a screen reader, forced-colors mode, Safari and Firefox, a real phone, desktop dark. Nothing is `ACC`. The row's phase "GS-1" is a Getting Started phase; the guard accepts it.
 
 S-25 note (R4.1, not a design phase): the Records screen (`#/records`, `#/records?ref=<id>`), the "Records" link in the open module list and the Documents rows in the Search dialog were built from the Signature components already in place. Recorded marks: `L` and `375` (looked at in the browser pane on the invented demo household, light; 375 px had no sideways scroll and no control under 44 px), `Func` (search, every filter, an Open document link attributes, View record on a property/appliance, an arrangement and a bill, Search to a single reference, Hide amounts masking an amount typed in a label). NOT recorded: `D` (dark was not looked at), `1440` (the pane is narrower), `Kbd` (no full Tab walk). The Search dialog row S-06 and the module switcher S-02 are unchanged in status.
 

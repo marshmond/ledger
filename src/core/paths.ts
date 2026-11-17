@@ -5,7 +5,7 @@
  */
 
 /** Addresses that belong to the app shell itself, never to a module. */
-export const SHELL_PATHS = ['/settings', '/answers', '/records'];
+export const SHELL_PATHS = ['/settings', '/answers', '/records', '/help'];
 
 const isUnder = (base: string, p: string) => p === base || p.startsWith(`${base}/`) || p.startsWith(`${base}?`) || p.startsWith(`${base}#`);
 

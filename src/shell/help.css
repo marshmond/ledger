@@ -1,0 +1,50 @@
+/* Getting Started & Help. Tokens only; words (not colour) carry every meaning. */
+.help { max-width: 46rem; margin-inline: auto; }
+.help-sec { margin: 0 0 var(--sp-6, 2rem); }
+.help-sec h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); }
+.help-sec p { margin: 0 0 var(--sp-3); max-width: 42rem; }
+.help-lead { font-size: var(--fs-md); font-weight: 600; }
+.help-note { color: var(--fg-2); font-size: var(--fs-sm); }
+
+.help-steps { list-style: none; margin: var(--sp-3) 0 0; padding: 0; display: grid; gap: var(--sp-4); counter-reset: helpstep; }
+.help-step { display: flex; gap: var(--sp-3); align-items: flex-start; counter-increment: helpstep; }
+.help-ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-text); }
+.help-step-body { min-width: 0; flex: 1 1 auto; }
+.help-step-body h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-md); }
+.help-step-body h3::before { content: 'Step ' counter(helpstep) '. '; color: var(--fg-2); font-weight: 500; }
+.help-step-body p { margin: 0 0 var(--sp-2); max-width: 40rem; }
+
+.help-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.help-links a { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+
+.help-areas { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: grid; gap: var(--sp-1); }
+.help-areas li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sp-2); }
+.help-areas a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+.help-hint { color: var(--fg-2); font-size: var(--fs-sm); }
+
+.help-conn { list-style: none; margin: var(--sp-3) 0; padding: 0; display: grid; gap: var(--sp-2); }
+.help-conn li { padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.help-conn-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
+.help-conn p { margin: var(--sp-1) 0 0; }
+.help-arrow { color: var(--fg-2); }
+.help-tag { margin-left: auto; padding: 0 var(--sp-2); border: 1px solid var(--line-strong); border-radius: var(--r-sm); color: var(--fg-2); font-size: var(--fs-sm); white-space: nowrap; }
+
+.help-where { list-style: none; margin: 0; padding: 0; }
+.help-where li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--sp-3); padding: var(--sp-1) 0; border-bottom: 1px solid var(--line); }
+.help-where li:last-child { border-bottom: 0; }
+.help-need { padding-block: var(--sp-2); }
+
+.help-ex { border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface); padding: 0 var(--sp-4); }
+.help-ex summary { display: flex; align-items: center; min-height: 44px; font-weight: 650; font-size: var(--fs-lg); cursor: pointer; }
+.help-ex summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.help-ex[open] summary { margin-bottom: var(--sp-2); }
+.help-ex-item { padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.help-ex-item h3 { margin: 0; font-size: var(--fs-md); }
+.help-story { margin: 0 0 var(--sp-2); color: var(--fg-2); font-style: italic; }
+.help-ex-item ol { margin: 0 0 var(--sp-2); padding-left: var(--sp-5); display: grid; gap: var(--sp-1); }
+.help-ex-item li { max-width: 40rem; }
+
+@media (max-width: 640px) {
+  .help-tag { margin-left: 0; }
+  .help-where li { display: block; }
+}

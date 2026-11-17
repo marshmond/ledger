@@ -475,7 +475,7 @@ describe('D20 a screen that fails while drawing', () => {
 
   it('the app wires both boundaries: every module and Settings reset on a new address, and Ledger shields each page inside its own frame', () => {
     const app = read('src/App.tsx');
-    expect(app.match(/resetKey=\{loc\.pathname\}/g)).toHaveLength(4); // every module, Settings, Quick Answers (R3.2) and Records (R4.1)
+    expect(app.match(/resetKey=\{loc\.pathname\}/g)).toHaveLength(5); // every module, Settings, Quick Answers (R3.2), Records (R4.1) and Getting Started & Help (GS-1)
     const shell = read('src/shell/Shell.tsx');
     expect(shell).toMatch(/<PageErrorBoundary resetKey=\{loc\.pathname\}>\{children\}<\/PageErrorBoundary>/);
     expect(shell.indexOf('<LedgerNav')).toBeLessThan(shell.indexOf('<PageErrorBoundary')); // the navigation is outside the shielded part

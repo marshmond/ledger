@@ -31,10 +31,11 @@ export function ModuleList({ mods, currentId }: { mods: readonly ModuleDef[]; cu
 }
 
 /** The foot of the open module list: Settings and the sync status. Drawn only on a phone (the stylesheet hides it above 640px, where the bar itself carries both). Exported so it can be tested without a browser. */
-export function ModuleFoot({ inSettings }: { inSettings: boolean }) {
+export function ModuleFoot({ inSettings, inHelp = false }: { inSettings: boolean; inHelp?: boolean }) {
   return (
     <div className="modfoot">
       <Link to="/settings" className={inSettings ? 'active' : ''} aria-current={inSettings ? 'page' : undefined}><Icon name="sliders" size={18} />Settings</Link>
+      <Link to="/help" className={inHelp ? 'active' : ''} aria-current={inHelp ? 'page' : undefined}><Icon name="help" size={18} />Help</Link>
       <SyncChip inline />
     </div>
   );
@@ -75,6 +76,7 @@ export default function ModuleBar() {
 
   const inSettings = loc.pathname.startsWith('/settings');
   const inRecords = loc.pathname.startsWith('/records');
+  const inHelp = loc.pathname.startsWith('/help');
   const key = mac ? '⌘K' : 'Ctrl K';
 
   return (
@@ -96,7 +98,7 @@ export default function ModuleBar() {
               <Link to="/records" aria-current={inRecords ? 'page' : undefined} className={inRecords ? 'active' : ''}><span className="modicon" aria-hidden="true"><Icon name="folder" size={18} /></span>Records</Link>
             </div>
             {/* Phone only (hidden by the stylesheet above 640px, where the bar itself shows these): Settings and the sync status. */}
-            <ModuleFoot inSettings={inSettings} />
+            <ModuleFoot inSettings={inSettings} inHelp={inHelp} />
           </div>
         )}
       </div>
@@ -107,6 +109,8 @@ export default function ModuleBar() {
         <kbd className="modkbd" aria-hidden="true">{key}</kbd>
       </button>
       <SyncChip />
+      {/* GS-1: Help is a small icon link (not a module). On a phone it moves into the open module list, next to Settings. */}
+      <Link to="/help" className={`modhelp ${inHelp ? 'active' : ''}`} aria-label="Help" title="Help and getting started" aria-current={inHelp ? 'page' : undefined}><Icon name="help" size={18} /></Link>
       <Link to="/settings" className={`modsettings ${inSettings ? 'active' : ''}`} aria-current={inSettings ? 'page' : undefined}><Icon name="sliders" size={18} className="modsettings-icon" />Settings</Link>
       <QuickAdd />
     </nav>

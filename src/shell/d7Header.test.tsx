@@ -73,12 +73,13 @@ describe('D7 header: structure and names', () => {
     expect(all(d, (e) => e.tag === 'svg').every((s) => s.attrs['aria-hidden'] === 'true')).toBe(true);
   });
 
-  it('Tab order follows the picture, left to right: switcher, Search, Sync, Settings, Add', async () => {
+  it('Tab order follows the picture, left to right: switcher, Search, Sync, Help, Settings, Add', async () => {
     const d = await header('/ledger/budget');
     const names = tabStops(d).map((e) => accessibleName(d, e));
-    expect(names).toHaveLength(5);
+    expect(names).toHaveLength(6);
     expect(names[0]).toMatch(/^Switch module\. Current module: Ledger/);
-    expect(names.slice(1)).toEqual(['Search', 'Sync off', 'Settings', 'Quick add']);
+    // GS-1 added the small Help link between the sync status and Settings.
+    expect(names.slice(1)).toEqual(['Search', 'Sync off', 'Help', 'Settings', 'Quick add']);
   });
 
   it('Search and Add keep their names and shortcut hints; Settings is a plain link to /settings', async () => {
@@ -144,7 +145,8 @@ describe('D7 module switcher: every module, grouped, from the registry', () => {
     const html = (inSettings: boolean) => parseHtml(renderToStaticMarkup(createElement(MemoryRouter, null, createElement(ModuleFoot, { inSettings }))));
     const d = html(false);
     const a = all(d, (e) => e.tag === 'a');
-    expect(a.map((e) => [e.attrs.href, accessibleName(d, e)])).toEqual([['/settings', 'Settings'], ['/settings/sync', 'Sync off']]);
+    // GS-1 added Help between Settings and the sync status (the open list is the only place a phone shows it).
+    expect(a.map((e) => [e.attrs.href, accessibleName(d, e)])).toEqual([['/settings', 'Settings'], ['/help', 'Help'], ['/settings/sync', 'Sync off']]);
     expect(all(d, (e) => e.tag === 'a' && e.attrs.href === '/settings')[0].attrs['aria-current']).toBeUndefined();
     expect(all(html(true), (e) => e.tag === 'a' && e.attrs.href === '/settings')[0].attrs['aria-current']).toBe('page');
   });
@@ -181,7 +183,7 @@ describe('D7 stylesheet: the sticky layers still hang from one number, and the l
 
   it('on a phone the bar keeps the switcher and Search; Settings and the sync chip move into the list foot, which is hidden everywhere else', () => {
     const phone = block('@media (max-width: 640px) {', css.indexOf('D7: the header on a phone'));
-    expect(phone).toMatch(/\.modulebar > \.syncwrap:not\(\.attn\), \.modulebar > \.syncchip, \.modulebar > \.modsettings \{ display: none; \}/);
+    expect(phone).toMatch(/\.modulebar > \.syncwrap:not\(\.attn\), \.modulebar > \.syncchip, \.modulebar > \.modsettings, \.modulebar > \.modhelp \{ display: none; \}/);
     expect(phone).toMatch(/\.modfoot \{ display: grid;/);
     expect(css).toMatch(/^\.modfoot \{ display: none; \}$/m);
   });
@@ -195,7 +197,7 @@ describe('D7 stylesheet: the sticky layers still hang from one number, and the l
   });
 
   it('controls in the bar are at least 44px tall on a phone or touch screen', () => {
-    expect(block('@media (max-width: 640px), (pointer: coarse) {')).toMatch(/\.modbtn, \.modsearch, \.syncchip, \.modsettings, \.modmenu a \{ min-height: 44px; \}/);
+    expect(block('@media (max-width: 640px), (pointer: coarse) {')).toMatch(/\.modbtn, \.modsearch, \.syncchip, \.modsettings, \.modhelp, \.modmenu a \{ min-height: 44px; \}/);
   });
 
   it('the header uses theme tokens only: no hex or rgb colour in the header rules', () => {

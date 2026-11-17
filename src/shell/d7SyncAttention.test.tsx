@@ -67,7 +67,7 @@ describe('D7 sync attention indicator: which states reach the phone bar', () => 
 describe('D7 sync attention indicator: the stylesheet', () => {
   const phone = css.slice(css.indexOf('D7: the header on a phone'));
   it('hides the bar copy on a phone unless it needs attention, and shows an icon with the words kept for screen readers', () => {
-    expect(phone).toMatch(/\.modulebar > \.syncwrap:not\(\.attn\), \.modulebar > \.syncchip, \.modulebar > \.modsettings \{ display: none; \}/);
+    expect(phone).toMatch(/\.modulebar > \.syncwrap:not\(\.attn\), \.modulebar > \.syncchip, \.modulebar > \.modsettings, \.modulebar > \.modhelp \{ display: none; \}/);
     expect(phone).toMatch(/\.syncwrap\.attn \.syncchip \{[^}]*min-width: 44px/); // touch target
     expect(phone).toMatch(/\.syncwrap\.attn \.syncicon \{ display: block; \}/); // shape cue, not colour alone
     expect(phone).toMatch(/\.syncwrap\.attn \.synctext \{ position: absolute; width: 1px;/); // visually hidden, still read

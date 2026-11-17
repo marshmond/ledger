@@ -635,6 +635,10 @@ details.pick label.chk:hover { background: var(--hover); }
 @media (min-width: 900px) { .modsettings-icon { display: var(--ui-modall); } }
 .modsettings:hover, .modsettings.active { color: var(--fg); }
 .modsettings:hover { background: var(--hover); }
+/* GS-1: the Help link, an icon-only button-sized link beside Settings. Hidden on a phone, where the open module list carries it. */
+.modhelp { display: inline-flex; align-items: center; justify-content: center; min-width: var(--hdr-ctl-h); min-height: var(--hdr-ctl-h); border-radius: var(--hdr-ctl-r); color: var(--muted); text-decoration: none; }
+.modhelp:hover, .modhelp.active { color: var(--fg); }
+.modhelp:hover { background: var(--hover); }
 .settings-tabs { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-4); border-bottom: 1px solid var(--line); }
 .settings-tabs a { padding: var(--sp-2) 0; border-radius: 0; color: var(--muted); text-decoration: none; }
 .settings-tabs a.active { background: none; color: var(--fg); font-weight: 650; box-shadow: inset 0 -2px 0 var(--accent); } /* ST-S3 (AX-04): without background:none the .sectiontabs pill colour showed through, dark text on blue (2.8:1) */
@@ -898,7 +902,8 @@ button.ab-chip--go:hover:not(:disabled) { background: var(--surface-soft); }
 @media (max-width: 640px), (pointer: coarse) {
   :root { --bar-h: calc(var(--hdr-h-touch) + env(safe-area-inset-top)); }
   .modulebar { gap: var(--sp-2); }
-  .modbtn, .modsearch, .syncchip, .modsettings, .modmenu a { min-height: 44px; }
+  .modbtn, .modsearch, .syncchip, .modsettings, .modhelp, .modmenu a { min-height: 44px; }
+  .modhelp { min-width: 44px; }
   .modsearch { min-width: 44px; justify-content: center; }
   .modsettings { padding: 0 var(--sp-2); }
   .syncchip { padding: 2px var(--sp-2); }
@@ -928,7 +933,7 @@ button.ab-chip--go:hover:not(:disabled) { background: var(--surface-soft); }
 @media (max-width: 640px) {
   :root { --bar-h: calc(var(--hdr-h-phone) + env(safe-area-inset-top)); }
   .modulebar { padding-left: max(var(--sp-3), env(safe-area-inset-left)); padding-right: max(var(--sp-2), env(safe-area-inset-right)); }
-  .modulebar > .syncwrap:not(.attn), .modulebar > .syncchip, .modulebar > .modsettings { display: none; }
+  .modulebar > .syncwrap:not(.attn), .modulebar > .syncchip, .modulebar > .modsettings, .modulebar > .modhelp { display: none; }
   /* A sync problem (error, or edits to review) stays visible in the bar as a 44px warning icon; the words are kept for assistive technology. */
   .modulebar > .syncwrap.attn .syncchip { min-width: 44px; justify-content: center; padding: 0; color: var(--fg); }
   .modulebar > .syncwrap.attn .syncdot { display: none; }

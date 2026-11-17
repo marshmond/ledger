@@ -281,6 +281,7 @@ export default function HomePage() {
               {nextOnboard && <span className="home-start-next"><span className="home-start-eyebrow">Next</span><Link to={nextOnboard.to}>{nextOnboard.label}</Link></span>}
               <span className="home-start-acts">
                 <button className="link" aria-expanded={stepsOpen} aria-controls="home-start-steps" onClick={() => setStepsOpen(!stepsOpen)}>{stepsOpen ? 'Hide steps' : 'Show all steps'}</button>
+                <Link className="link" to="/help">Read the guide</Link>
                 <button className="link" onClick={dismissOnboard}>Dismiss</button>
               </span>
             </div>
